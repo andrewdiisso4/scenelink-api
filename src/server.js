@@ -121,14 +121,15 @@ async function initDatabase() {
       console.log(`✅ Database already has ${n} venues`);
     }
   } catch (err) {
-    console.error('❌ Database init error:', err.message);
+    console.error('❌ Database init error:', err.message || String(err), '| code:', err.code, '| first stack:', (err.stack||'').split('\n')[0]);
+    console.error('❌ DATABASE_URL present?', !!process.env.DATABASE_URL, '| length:', (process.env.DATABASE_URL||'').length);
     // Don't crash — schema might already exist with different extension setup
     // Try just checking connection
     try {
       await pool.query('SELECT 1');
       console.log('✅ Database connection OK (schema may need manual init)');
     } catch (connErr) {
-      console.error('❌ Cannot connect to database:', connErr.message);
+      console.error('❌ Cannot connect to database:', connErr.message || String(connErr), '| code:', connErr.code);
     }
   }
 }
