@@ -10,7 +10,7 @@
     "health": "curl -s http://localhost:3001/api/health | node -e \"process.stdin.on('data',d=>console.log(JSON.parse(d)))\""
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "20.x"
   },
   "keywords": [
     "scenelink",
