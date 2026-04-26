@@ -68,6 +68,9 @@ app.use('/api/lists', require('./routes/lists'));
 app.use('/api/plans', require('./routes/plans'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/checkins', require('./routes/checkins'));
+app.use('/api/business', require('./routes/business'));
+app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/concierge', require('./routes/concierge'));
 
 // Admin: force reseed (requires secret header)
 app.post('/api/admin/reseed', async (req, res) => {
