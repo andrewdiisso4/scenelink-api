@@ -110,8 +110,9 @@ function classifyIntent(message) {
         });
     });
 
-    // Group size
-    const groupMatch = m.match(/\b(\d+)\s*(people|person|friends?|guys|ppl|of us)\b/);
+    // Group size - matches "for 4", "table for 6", "party of 8", "4 people", etc.
+    const groupMatch = m.match(/\b(?:for|party of|table for|group of)\s+(\d+)\b/) ||
+                       m.match(/\b(\d+)\s*(people|person|friends?|guys|ppl|of us|top)\b/);
     if (groupMatch) intent.group_size = parseInt(groupMatch[1]);
     if (/\bdate\b|\btwo of us\b|\bmy (partner|girlfriend|boyfriend|wife|husband)\b/.test(m)) intent.group_size = intent.group_size || 2;
 
