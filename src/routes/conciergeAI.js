@@ -44,6 +44,8 @@ HARD RULES (never break these):
 8. For planning questions (date night, bachelor party, birthday, "plan my night", "dinner then drinks"), build a recommendedPlan with 1–3 stops (e.g. dinner → drinks → late-night).
 9. For simple lookup questions ("best italian in north end"), leave recommendedPlan null and fill recommendedVenues with the 3–6 best matches.
 10. Honor the user's stated neighborhood, vibe, price, party size. If they didn't specify, pick reasonable defaults and briefly explain.
+11. recommendedPlan.stops: 1 to 3 items max. recommendedVenues: max 6. quickReplies: 3 to 4 items.
+12. For every stop: always include bestTime (e.g. "7:30 PM"), priceLevel (e.g. "$$" or null if unknown), and vibeTags (array of 1 to 4 short tags).
 
 OUTPUT: JSON only, enforced by schema. No prose outside JSON.`;
 
@@ -64,6 +66,8 @@ const RESPONSE_SCHEMA = {
             enum: ['plan_night', 'find_venue', 'find_event', 'greeting', 'clarify', 'other']
         },
         recommendedPlan: {
+            // OpenAI strict schema requires every property to be in `required`.
+            // Use `null` as the sentinel for optional fields.
             type: ['object', 'null'],
             additionalProperties: false,
             required: ['title', 'summary', 'stops'],
@@ -72,11 +76,10 @@ const RESPONSE_SCHEMA = {
                 summary: { type: 'string' },
                 stops: {
                     type: 'array',
-                    maxItems: 4,
                     items: {
                         type: 'object',
                         additionalProperties: false,
-                        required: ['venueId', 'name', 'neighborhood', 'category', 'whyItFits'],
+                        required: ['venueId', 'name', 'neighborhood', 'category', 'whyItFits', 'bestTime', 'priceLevel', 'vibeTags'],
                         properties: {
                             venueId: { type: 'string' },
                             name: { type: 'string' },
@@ -87,7 +90,6 @@ const RESPONSE_SCHEMA = {
                             priceLevel: { type: ['string', 'null'] },
                             vibeTags: {
                                 type: 'array',
-                                maxItems: 5,
                                 items: { type: 'string' }
                             }
                         }
@@ -97,7 +99,6 @@ const RESPONSE_SCHEMA = {
         },
         recommendedVenues: {
             type: 'array',
-            maxItems: 8,
             items: {
                 type: 'object',
                 additionalProperties: false,
@@ -110,8 +111,6 @@ const RESPONSE_SCHEMA = {
         },
         quickReplies: {
             type: 'array',
-            minItems: 2,
-            maxItems: 5,
             items: { type: 'string' }
         }
     }
