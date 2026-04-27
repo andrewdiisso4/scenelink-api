@@ -78,6 +78,8 @@ app.use('/api/friends', require('./routes/friends'));
 app.use('/api/conversations', require('./routes/messages'));
 app.use('/api/posts', require('./routes/posts'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/reports', require('./routes/reports'));         // UGC moderation
+app.use('/api/push', require('./routes/push'));               // push token registration
 
 // Admin: force reseed (requires secret header)
 app.post('/api/admin/reseed', async (req, res) => {
