@@ -57,6 +57,7 @@ const VENUE_COLUMNS = `
   v.spotlight, v.trending, v.featured, v.time_slot,
   v.is_active, v.is_claimed,
   v.reservation_url, v.opentable_url, v.resy_url, v.yelp_url, v.google_maps_url, v.place_id, v.source,
+  v.osm_id, v.osm_type, v.data_quality, v.data_quality_score, v.vibe_tags, v.external_id,
   v.created_at, v.updated_at
 `;
 
@@ -230,6 +231,57 @@ router.get('/:id', optionalAuth, async (req, res) => {
     res.json({ venue, reviews: reviews.rows, similar_venues: similar.rows });
   } catch (err) {
     console.error('Venue by ID error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+// GET /api/venues/nearby — geospatial search (lat/lng + radius km)
+router.get('/nearby', optionalAuth, async (req, res) => {
+  try {
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    const radius = Math.min(parseFloat(req.query.radius_km) || 2, 25); // km, capped
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return res.status(400).json({ error: 'lat & lng are required numbers' });
+    }
+    // Bounding box prefilter (degrees) for index usage
+    const dlat = radius / 111;
+    const dlng = radius / (111 * Math.cos(lat * Math.PI/180));
+    const south = lat - dlat, north = lat + dlat, west = lng - dlng, east = lng + dlng;
+
+    // Haversine distance in km via SQL
+    const q = `
+      SELECT ${VENUE_COLUMNS},
+             v.vibe_tags, v.data_quality, v.data_quality_score,
+             (6371 * acos(
+                LEAST(1, GREATEST(-1,
+                  cos(radians($1)) * cos(radians(v.lat::float)) *
+                  cos(radians(v.lng::float) - radians($2)) +
+                  sin(radians($1)) * sin(radians(v.lat::float))
+                ))
+             )) AS distance_km
+      FROM venues v
+      WHERE v.is_active = true
+        AND v.lat IS NOT NULL AND v.lng IS NOT NULL
+        AND v.lat BETWEEN $3 AND $4
+        AND v.lng BETWEEN $5 AND $6
+      ORDER BY distance_km ASC
+      LIMIT $7
+    `;
+    const r = await pool.query(q, [lat, lng, south, north, west, east, limit]);
+    // Filter again precisely by radius
+    const venues = r.rows.filter(v => (v.distance_km || 0) <= radius);
+    res.json({
+      venues,
+      total: venues.length,
+      origin: { lat, lng },
+      radius_km: radius,
+      attribution: 'Includes data © OpenStreetMap contributors (ODbL) where source=openstreetmap'
+    });
+  } catch (err) {
+    console.error('Venues nearby error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
