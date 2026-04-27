@@ -251,20 +251,57 @@ router.get('/me', requireAuth, async (req, res) => {
 // PUT /api/auth/profile
 router.put('/profile', requireAuth, async (req, res) => {
   try {
-    const { display_name, bio, neighborhood, avatar_url } = req.body;
+    const { display_name, bio, neighborhood, avatar_url, username } = req.body || {};
+
+    // Validate username if provided
+    let nextUsername = null;
+    if (typeof username === 'string' && username.trim()) {
+      const u = username.trim().toLowerCase();
+      if (!/^[a-z0-9_]{3,30}$/.test(u)) {
+        return res.status(400).json({ error: 'Username must be 3–30 chars, letters/numbers/underscore only' });
+      }
+      const clash = await pool.query(
+        `SELECT id FROM users WHERE LOWER(username) = $1 AND id <> $2 LIMIT 1`,
+        [u, req.user.id]
+      );
+      if (clash.rows.length) return res.status(409).json({ error: 'Username already taken' });
+      nextUsername = u;
+    }
+
+    // Validate bio length
+    if (typeof bio === 'string' && bio.length > 500) {
+      return res.status(400).json({ error: 'Bio too long (max 500)' });
+    }
+    // Validate display_name
+    if (typeof display_name === 'string' && display_name.length > 100) {
+      return res.status(400).json({ error: 'Display name too long (max 100)' });
+    }
+
     const result = await pool.query(
-      `UPDATE users SET display_name = COALESCE($1, display_name), bio = COALESCE($2, bio),
-       neighborhood = COALESCE($3, neighborhood), avatar_url = COALESCE($4, avatar_url),
-       updated_at = NOW()
-       WHERE id = $5
+      `UPDATE users SET
+         display_name = COALESCE($1, display_name),
+         bio = COALESCE($2, bio),
+         neighborhood = COALESCE($3, neighborhood),
+         avatar_url = COALESCE($4, avatar_url),
+         username = COALESCE($5, username),
+         updated_at = NOW()
+       WHERE id = $6
        RETURNING id, email, display_name, username, avatar_url, bio, neighborhood, city, role, created_at`,
-      [display_name, bio, neighborhood, avatar_url, req.user.id]
+      [display_name ?? null, bio ?? null, neighborhood ?? null, avatar_url ?? null, nextUsername, req.user.id]
     );
     res.json({ user: result.rows[0] });
   } catch (err) {
     console.error('Update profile error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// GET /api/auth/username-available?u=foo  — check availability
+router.get('/username-available', async (req, res) => {
+  const u = String(req.query.u || '').trim().toLowerCase();
+  if (!/^[a-z0-9_]{3,30}$/.test(u)) return res.json({ available: false, reason: 'invalid' });
+  const r = await pool.query('SELECT id FROM users WHERE LOWER(username) = $1 LIMIT 1', [u]);
+  res.json({ available: r.rows.length === 0 });
 });
 
 module.exports = router;
