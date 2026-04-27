@@ -1,401 +1,592 @@
 /**
- * SceneLink Concierge — OpenAI integration with function-calling
- *
- * The LLM is given tools that query the real venue DB, guaranteeing
- * responses are grounded in real Boston venues (no hallucinations).
+ * SceneLink Concierge — OpenAI Responses API integration
+ * ─────────────────────────────────────────────────────────────────────────
+ * Backend-only. Reads OPENAI_API_KEY from env. Never exposed to frontend.
  *
  * Flow:
- *   1. User message + tool definitions sent to OpenAI
- *   2. Model calls search_venues/search_events/build_itinerary as needed
- *   3. We execute those calls against our DB
- *   4. Model uses results to write the final natural-language response
- *   5. We return the same response shape as the rule-based endpoint
+ *   1. Parse user message into filters (neighborhood/vibe/cuisine/price/party).
+ *   2. Pre-query real venue candidates from DB based on those filters.
+ *      → this is the ONLY set the LLM is allowed to recommend.
+ *   3. Send user message + candidates to OpenAI Responses API with a strict
+ *      JSON schema for structured output.
+ *   4. LLM picks from the real candidates and writes copy.
+ *   5. We validate every venueId is in the allowed set; drop any that aren't.
+ *   6. Return structured JSON matching the spec.
  *
- * If OPENAI_API_KEY is missing or OpenAI fails, caller should fall back.
+ * If OPENAI_API_KEY is missing, OpenAI errors, times out, or returns invalid
+ * JSON, caller (concierge.js) falls back to rule-based mode which uses the
+ * same real DB venues.
  */
 
 const pool = require('../config/database');
 
-const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
+const OPENAI_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-const MAX_TOOL_ITERS = 4;
+const MAX_OUTPUT_TOKENS = parseInt(process.env.OPENAI_MAX_OUTPUT_TOKENS || '700', 10);
+const REQUEST_TIMEOUT_MS = parseInt(process.env.OPENAI_TIMEOUT_MS || '15000', 10);
+const MAX_CANDIDATE_VENUES = 20;
+const MAX_CONTEXT_HISTORY = 6;
 
-// ═══════════════════════════════════════════════════════════
-// SYSTEM PROMPT — SceneLink Concierge persona
-// ═══════════════════════════════════════════════════════════
-const SYSTEM_PROMPT = `You are SceneLink Concierge — a premium AI guide to Boston's best dining and nightlife.
+// ═══════════════════════════════════════════════════════════════════════════
+// SYSTEM PROMPT
+// ═══════════════════════════════════════════════════════════════════════════
+const SYSTEM_PROMPT = `You are SceneLink Concierge — a premium Boston dining & nightlife guide.
+You sound like a well-connected local friend: warm, confident, concise.
 
-Your job is to help users discover great restaurants, bars, nightlife, and events in Boston.
-You speak in a warm, confident, insider tone — like a well-connected local friend who knows the scene.
+HARD RULES (never break these):
+1. You MUST recommend ONLY venues from the "Available venues" list provided in the user message.
+2. Never invent or imagine venues, addresses, ratings, reviews, hours, prices, menus, or availability.
+3. Every stop.venueId MUST be an id that appears verbatim in the Available venues list. If nothing matches the user's request, return an empty stops array and be honest in the reply.
+4. Keep reply text to 1–3 sentences. Friendly, insider tone. No emojis unless the user uses one first.
+5. Never claim a venue is "available tonight", "open right now", or "has a table" — we do not have real-time availability.
+6. Never mention you are AI / GPT / OpenAI / an LLM. You are SceneLink Concierge.
+7. quickReplies: 3–4 short, tappable follow-ups. Examples: "Make it more casual", "Add a late-night spot", "Show cheaper options", "Invite friends", "Earlier seating".
+8. For planning questions (date night, bachelor party, birthday, "plan my night", "dinner then drinks"), build a recommendedPlan with 1–3 stops (e.g. dinner → drinks → late-night).
+9. For simple lookup questions ("best italian in north end"), leave recommendedPlan null and fill recommendedVenues with the 3–6 best matches.
+10. Honor the user's stated neighborhood, vibe, price, party size. If they didn't specify, pick reasonable defaults and briefly explain.
 
-IMPORTANT RULES:
-1. ALWAYS use the provided tools to find venues/events. Never invent venues, addresses, or events.
-2. All venue data must come from search_venues, search_events, or get_venue_details tool calls.
-3. Keep responses short and scannable (2-4 sentences max before the venue list).
-4. When users ask for a plan/itinerary (e.g. "plan my night", "dinner then drinks"), use build_itinerary.
-5. Don't list every venue — the frontend renders the venue cards. You just write a short intro.
-6. For vague queries, ask ONE clarifying question (vibe/neighborhood/group size).
-7. For greetings, be brief + prompt them with 2-3 concrete questions they could ask.
-8. Never mention you're an AI, LLM, OpenAI, or "language model". You're the SceneLink Concierge.
+OUTPUT: JSON only, enforced by schema. No prose outside JSON.`;
 
-Boston neighborhoods you know well: North End, South End, Back Bay, Seaport, Cambridge, Fort Point,
-Somerville, Downtown, Beacon Hill, Allston, Fenway, Jamaica Plain, Chinatown, Charlestown, Brookline.`;
-
-// ═══════════════════════════════════════════════════════════
-// TOOL DEFINITIONS — what the LLM can call
-// ═══════════════════════════════════════════════════════════
-const TOOLS = [
-    {
-        type: 'function',
-        function: {
-            name: 'search_venues',
-            description: 'Search Boston venues by cuisine, vibe, neighborhood, price, or type. Returns up to 8 matching venues with ratings, neighborhoods, and booking URLs. Use this for most user queries.',
-            parameters: {
-                type: 'object',
-                properties: {
-                    cuisines: { type: 'array', items: { type: 'string' }, description: 'e.g. ["italian","steakhouse"]' },
-                    vibes: { type: 'array', items: { type: 'string' }, description: 'e.g. ["romantic","rooftop","upscale","lively","low-key","trendy"]' },
-                    neighborhoods: { type: 'array', items: { type: 'string' }, description: 'e.g. ["North End","Seaport"]' },
-                    venue_type: { type: 'string', enum: ['restaurant', 'bar', 'nightlife', 'cafe', 'any'], description: 'Kind of place. Use "any" to not filter.' },
-                    price_max: { type: 'integer', enum: [1, 2, 3, 4], description: '1=$, 2=$$, 3=$$$, 4=$$$$' },
-                    open_now: { type: 'boolean', description: 'Only currently open venues' },
-                    limit: { type: 'integer', description: 'Max results (1-8), default 5' }
+// ═══════════════════════════════════════════════════════════════════════════
+// STRUCTURED OUTPUT SCHEMA
+// ═══════════════════════════════════════════════════════════════════════════
+const RESPONSE_SCHEMA = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['reply', 'intent', 'recommendedPlan', 'recommendedVenues', 'quickReplies'],
+    properties: {
+        reply: {
+            type: 'string',
+            description: '1-3 sentence reply. Warm, concise, insider tone.'
+        },
+        intent: {
+            type: 'string',
+            enum: ['plan_night', 'find_venue', 'find_event', 'greeting', 'clarify', 'other']
+        },
+        recommendedPlan: {
+            type: ['object', 'null'],
+            additionalProperties: false,
+            required: ['title', 'summary', 'stops'],
+            properties: {
+                title: { type: 'string' },
+                summary: { type: 'string' },
+                stops: {
+                    type: 'array',
+                    maxItems: 4,
+                    items: {
+                        type: 'object',
+                        additionalProperties: false,
+                        required: ['venueId', 'name', 'neighborhood', 'category', 'whyItFits'],
+                        properties: {
+                            venueId: { type: 'string' },
+                            name: { type: 'string' },
+                            neighborhood: { type: 'string' },
+                            category: { type: 'string' },
+                            whyItFits: { type: 'string' },
+                            bestTime: { type: ['string', 'null'] },
+                            priceLevel: { type: ['string', 'null'] },
+                            vibeTags: {
+                                type: 'array',
+                                maxItems: 5,
+                                items: { type: 'string' }
+                            }
+                        }
+                    }
                 }
             }
-        }
-    },
-    {
-        type: 'function',
-        function: {
-            name: 'search_events',
-            description: 'Search upcoming events (concerts, live music, parties, special nights). Use when user asks about events, "what\'s happening", concerts, or specific dates.',
-            parameters: {
+        },
+        recommendedVenues: {
+            type: 'array',
+            maxItems: 8,
+            items: {
                 type: 'object',
+                additionalProperties: false,
+                required: ['venueId', 'whyItFits'],
                 properties: {
-                    when: { type: 'string', enum: ['tonight', 'tomorrow', 'weekend', 'week'], description: 'Time window' },
-                    categories: { type: 'array', items: { type: 'string' }, description: 'e.g. ["music","comedy","dance"]' },
-                    neighborhoods: { type: 'array', items: { type: 'string' } },
-                    limit: { type: 'integer' }
+                    venueId: { type: 'string' },
+                    whyItFits: { type: 'string' }
                 }
             }
-        }
-    },
-    {
-        type: 'function',
-        function: {
-            name: 'build_itinerary',
-            description: 'Build a 3-stop Boston night plan: dinner → drinks → late night. Use when user asks to "plan my night", "build my night", wants a full itinerary, or says "dinner then drinks".',
-            parameters: {
-                type: 'object',
-                properties: {
-                    vibe: { type: 'string', description: 'overall vibe, e.g. "upscale","date night","lively","low-key"' },
-                    neighborhood: { type: 'string', description: 'preferred neighborhood, optional' },
-                    group_type: { type: 'string', enum: ['date', 'small_group', 'large_group', 'solo'], description: 'Who\'s coming' },
-                    cuisines: { type: 'array', items: { type: 'string' }, description: 'Preferred dinner cuisines, optional' }
-                }
-            }
+        },
+        quickReplies: {
+            type: 'array',
+            minItems: 2,
+            maxItems: 5,
+            items: { type: 'string' }
         }
     }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INPUT PARSING
+// ═══════════════════════════════════════════════════════════════════════════
+const NEIGHBORHOODS = [
+    'Allston', 'Back Bay', 'Beacon Hill', 'Boston', 'Brookline', 'Cambridge',
+    'Dorchester', 'Downtown', 'Fenway', 'Jamaica Plain', 'North End',
+    'Seaport', 'Somerville', 'South End'
+];
+const NEIGHBORHOOD_ALIASES = {
+    'south boston': 'Seaport',
+    'southie': 'Seaport',
+    'east boston': 'Boston',
+    'eastie': 'Boston',
+    'charlestown': 'Boston',
+    'roxbury': 'Boston',
+    'mission hill': 'Fenway',
+    'kendall square': 'Cambridge',
+    'harvard square': 'Cambridge',
+    'central square': 'Cambridge',
+    'davis square': 'Somerville',
+    'union square': 'Somerville',
+    'chinatown': 'Downtown',
+    'theater district': 'Downtown',
+    'financial district': 'Downtown'
+};
+
+const VIBE_KEYWORDS = {
+    romantic:  ['date', 'romantic', 'anniversary', 'intimate', 'cozy'],
+    upscale:   ['upscale', 'fancy', 'elegant', 'high-end', 'fine dining', 'fine-dining'],
+    trendy:    ['trendy', 'hot', 'buzzy', 'popular', 'hip', 'scene'],
+    lively:    ['lively', 'fun', 'energetic', 'loud', 'happening'],
+    lowkey:    ['low-key', 'lowkey', 'chill', 'casual', 'relaxed', 'quiet'],
+    group:     ['group', 'friends', 'party', 'bachelor', 'bachelorette', 'birthday'],
+    rooftop:   ['rooftop', 'outdoor', 'patio', 'views', 'view'],
+    cocktails: ['cocktail', 'cocktails', 'speakeasy', 'mixology'],
+    wine:      ['wine', 'wine bar'],
+    beer:      ['beer', 'brewery', 'draft'],
+    latenight: ['late night', 'late-night', 'after hours', 'dj', 'club', 'dancing']
+};
+
+const CUISINES = [
+    'italian','japanese','sushi','steakhouse','steak','seafood','american','mexican',
+    'french','thai','chinese','korean','indian','mediterranean','pizza','burger',
+    'vietnamese','greek','spanish','tapas','bbq','southern','diner','vegan','vegetarian'
 ];
 
-// ═══════════════════════════════════════════════════════════
-// TOOL IMPLEMENTATIONS — grounded in real DB
-// ═══════════════════════════════════════════════════════════
+function parseFilters(message = '', context = {}) {
+    const text = String(message || '').toLowerCase();
+    const out = {
+        neighborhoods: [],
+        vibes: [],
+        cuisines: [],
+        priceMax: null,
+        partySize: null,
+        venueType: null,
+        isPlan: false,
+        isEvent: false
+    };
 
-function addBookingUrls(venues) {
-    return (venues || []).map(v => {
-        const query = encodeURIComponent((v.name || '') + ' Boston MA');
-        if (!v.opentable_url) v.opentable_url = `https://www.opentable.com/s?covers=2&dateTime=&term=${query}&metroId=8`;
-        if (!v.resy_url) v.resy_url = `https://resy.com/cities/bos/search?query=${query}`;
-        if (!v.yelp_url) v.yelp_url = `https://www.yelp.com/search?find_desc=${query}&find_loc=Boston%2C+MA`;
-        if (!v.reservation_url) v.reservation_url = v.opentable_url;
-        if (!v.cover_image_url && !v.image_url) {
-            // Leave null — frontend SLVenueImages curates a fallback by category
+    // Check aliases FIRST (e.g. "south boston" → Seaport) and strip them from
+    // the text so the literal "Boston" scan below doesn't re-match "boston"
+    // inside "south boston".
+    let stripped = text;
+    for (const [alias, real] of Object.entries(NEIGHBORHOOD_ALIASES)) {
+        if (stripped.includes(alias)) {
+            if (!out.neighborhoods.includes(real)) out.neighborhoods.push(real);
+            stripped = stripped.split(alias).join(' ');
         }
-        return v;
-    });
+    }
+    // Then literal neighborhood names, word-boundary, on the stripped text
+    for (const n of NEIGHBORHOODS) {
+        const re = new RegExp('\\b' + n.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b');
+        if (re.test(stripped) && !out.neighborhoods.includes(n)) out.neighborhoods.push(n);
+    }
+
+    for (const [vibe, kws] of Object.entries(VIBE_KEYWORDS)) {
+        if (kws.some(kw => text.includes(kw))) out.vibes.push(vibe);
+    }
+
+    for (const c of CUISINES) {
+        if (text.includes(c)) out.cuisines.push(c);
+    }
+
+    if (/\$\$\$\$|most expensive|splurge/.test(text)) out.priceMax = 4;
+    else if (/\$\$\$|upscale|fine dining/.test(text)) out.priceMax = 3;
+    else if (/cheap|budget|affordable|inexpensive/.test(text)) out.priceMax = 2;
+
+    const pm = text.match(/\b(?:for|party of|table for|group of)\s+(\d+)\b/) ||
+               text.match(/\b(\d+)\s+(?:people|person|friends?|of us)\b/);
+    if (pm) out.partySize = parseInt(pm[1], 10);
+
+    if (/\b(bar|cocktail|drinks|pub)\b/.test(text)) out.venueType = 'bar';
+    else if (/\b(club|nightlife|dance|dj)\b/.test(text)) out.venueType = 'nightlife';
+    else if (/\b(restaurant|dinner|lunch|brunch|eat|dining|food)\b/.test(text)) out.venueType = 'restaurant';
+    else if (/\b(cafe|coffee)\b/.test(text)) out.venueType = 'cafe';
+
+    if (/\b(plan|itinerary|night out|date night|dinner then|drinks after|dinner and drinks|full night|schedule)\b/.test(text)) {
+        out.isPlan = true;
+    }
+    if (/\b(event|concert|show|live music|dj set|performing|playing tonight)\b/.test(text)) {
+        out.isEvent = true;
+    }
+
+    if (context && typeof context === 'object') {
+        if (context.neighborhood && !out.neighborhoods.includes(context.neighborhood)) {
+            out.neighborhoods.push(context.neighborhood);
+        }
+        if (Array.isArray(context.vibes)) {
+            for (const v of context.vibes) if (!out.vibes.includes(v)) out.vibes.push(v);
+        }
+    }
+
+    return out;
 }
 
-async function tool_search_venues(args) {
-    const cuisines = args.cuisines || [];
-    const vibes = args.vibes || [];
-    const neighborhoods = args.neighborhoods || [];
-    const venue_type = args.venue_type && args.venue_type !== 'any' ? args.venue_type : null;
-    const price_max = args.price_max || null;
-    const open_now = args.open_now || false;
-    const limit = Math.min(Math.max(parseInt(args.limit) || 5, 1), 8);
+// ═══════════════════════════════════════════════════════════════════════════
+// DB QUERIES — real venue candidates only
+// ═══════════════════════════════════════════════════════════════════════════
+const VENUE_SELECT = `
+    id, slug, name, type, category, cuisine, neighborhood, address, city,
+    lat::text AS lat, lng::text AS lng,
+    price_level, price_label, rating::text AS rating,
+    buzz_score::text AS buzz_score, going_count,
+    cover_image_url, image_url,
+    vibe, highlight, why_hot, pair_with, short_desc, description,
+    opentable_url, resy_url, yelp_url, google_maps_url, reservation_url,
+    trending, featured, is_open_now, hours_display
+`;
 
-    const where = [];
+async function fetchCandidateVenues(filters, limit = MAX_CANDIDATE_VENUES) {
+    const where = ['is_active = true'];
     const params = [];
+    let i = 1;
 
-    if (cuisines.length) {
-        const parts = cuisines.map(c => { params.push(`%${c}%`); return `(cuisine ILIKE $${params.length} OR description ILIKE $${params.length})`; });
-        where.push(`(${parts.join(' OR ')})`);
+    if (filters.neighborhoods && filters.neighborhoods.length) {
+        where.push(`neighborhood = ANY($${i}::text[])`);
+        params.push(filters.neighborhoods);
+        i++;
     }
-    if (vibes.length) {
-        const parts = vibes.map(v => {
-            params.push(`%${v}%`);
-            return `(vibe_tags::text ILIKE $${params.length} OR description ILIKE $${params.length} OR why_hot ILIKE $${params.length})`;
+    if (filters.priceMax) {
+        where.push(`(price_level IS NULL OR price_level <= $${i})`);
+        params.push(filters.priceMax);
+        i++;
+    }
+    if (filters.venueType === 'bar') {
+        where.push(`(type IN ('bar','nightlife','cocktail') OR category ILIKE '%bar%')`);
+    } else if (filters.venueType === 'nightlife') {
+        where.push(`(type IN ('nightlife','club','bar') OR category ILIKE '%nightlife%' OR category ILIKE '%club%')`);
+    } else if (filters.venueType === 'restaurant') {
+        where.push(`(type = 'restaurant' OR category ILIKE '%restaurant%')`);
+    } else if (filters.venueType === 'cafe') {
+        where.push(`(type = 'cafe' OR category ILIKE '%cafe%' OR category ILIKE '%coffee%')`);
+    }
+    if (filters.cuisines && filters.cuisines.length) {
+        const likes = filters.cuisines.map((_, idx) => `cuisine ILIKE $${i + idx}`);
+        where.push(`(${likes.join(' OR ')})`);
+        filters.cuisines.forEach(c => params.push(`%${c}%`));
+        i += filters.cuisines.length;
+    }
+
+    let vibeBoost = '0';
+    if (filters.vibes && filters.vibes.length) {
+        const vibeChecks = filters.vibes.map((v) => {
+            const key = String(v).toLowerCase().replace(/'/g, "''");
+            return `(CASE WHEN vibe ILIKE '%${key}%' OR highlight ILIKE '%${key}%' OR why_hot ILIKE '%${key}%' THEN 1 ELSE 0 END)`;
         });
-        where.push(`(${parts.join(' OR ')})`);
+        vibeBoost = vibeChecks.join(' + ');
     }
-    if (neighborhoods.length) {
-        const parts = neighborhoods.map(n => { params.push(`%${n}%`); return `neighborhood ILIKE $${params.length}`; });
-        where.push(`(${parts.join(' OR ')})`);
-    }
-    if (venue_type) {
-        params.push(`%${venue_type}%`);
-        where.push(`(type ILIKE $${params.length} OR category ILIKE $${params.length})`);
-    }
-    if (price_max) {
-        params.push(price_max);
-        where.push(`(price_level IS NULL OR price_level <= $${params.length})`);
-    }
-    if (open_now) where.push(`(is_open_now = true OR is_open_now IS NULL)`);
-
-    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    params.push(limit);
 
     const sql = `
-        SELECT id, slug, name, type, cuisine, category, neighborhood, city, address,
-               rating, price_level, buzz_score, why_hot, pair_with, short_desc, description,
-               cover_image_url, image_url, reservation_url, opentable_url, resy_url, yelp_url,
-               lat, lng, is_open_now, hours_display, trending, featured,
-               COALESCE(going_count, 0) AS going_count
+        SELECT ${VENUE_SELECT},
+               (COALESCE(buzz_score, 0) + (${vibeBoost}) * 0.5) AS score
         FROM venues
-        ${whereSql}
-        ORDER BY
-            COALESCE(trending::int, 0) DESC,
-            COALESCE(buzz_score, 0) DESC,
-            COALESCE(rating, 0) DESC
-        LIMIT $${params.length}`;
+        WHERE ${where.join(' AND ')}
+        ORDER BY score DESC NULLS LAST, rating DESC NULLS LAST
+        LIMIT ${Math.min(limit, 30)}
+    `;
+    const r = await pool.query(sql, params);
 
-    const { rows } = await pool.query(sql, params);
-    return addBookingUrls(rows);
+    // If too few after strict filters, relax
+    if (r.rows.length < 5 && (filters.neighborhoods.length || filters.cuisines.length)) {
+        const relaxedParams = [];
+        let j = 1;
+        const relaxedWhere = ['is_active = true'];
+        if (filters.venueType === 'bar') {
+            relaxedWhere.push(`(type IN ('bar','nightlife','cocktail') OR category ILIKE '%bar%')`);
+        } else if (filters.venueType === 'restaurant') {
+            relaxedWhere.push(`(type = 'restaurant' OR category ILIKE '%restaurant%')`);
+        }
+        if (filters.neighborhoods.length) {
+            relaxedWhere.push(`neighborhood = ANY($${j}::text[])`);
+            relaxedParams.push(filters.neighborhoods);
+            j++;
+        }
+        const relax = await pool.query(
+            `SELECT ${VENUE_SELECT}
+             FROM venues WHERE ${relaxedWhere.join(' AND ')}
+             ORDER BY buzz_score DESC NULLS LAST, rating DESC NULLS LAST
+             LIMIT ${Math.min(limit, 20)}`,
+            relaxedParams
+        );
+        const seen = new Set(r.rows.map(x => x.id));
+        for (const row of relax.rows) {
+            if (!seen.has(row.id)) r.rows.push(row);
+            if (r.rows.length >= limit) break;
+        }
+    }
+
+    return r.rows.slice(0, limit);
 }
 
-async function tool_search_events(args) {
-    const when = args.when || 'tonight';
-    const neighborhoods = args.neighborhoods || [];
-    const limit = Math.min(Math.max(parseInt(args.limit) || 5, 1), 8);
+async function fetchVenuesByIds(ids) {
+    if (!ids || !ids.length) return [];
+    // Validate UUIDs to avoid injection + Postgres errors
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const clean = ids.filter(x => typeof x === 'string' && uuidRegex.test(x));
+    if (!clean.length) return [];
+    const r = await pool.query(
+        `SELECT ${VENUE_SELECT} FROM venues WHERE id = ANY($1::uuid[])`,
+        [clean]
+    );
+    const byId = new Map(r.rows.map(row => [String(row.id), row]));
+    return clean.map(id => byId.get(String(id))).filter(Boolean);
+}
 
-    let dateCond;
-    if (when === 'tonight') dateCond = `start_date::date = CURRENT_DATE`;
-    else if (when === 'tomorrow') dateCond = `start_date::date = (CURRENT_DATE + INTERVAL '1 day')`;
-    else if (when === 'weekend') dateCond = `start_date::date BETWEEN CURRENT_DATE AND (CURRENT_DATE + INTERVAL '7 days') AND EXTRACT(DOW FROM start_date::date) IN (5,6,0)`;
-    else dateCond = `start_date::date BETWEEN CURRENT_DATE AND (CURRENT_DATE + INTERVAL '7 days')`;
-
-    const where = [dateCond];
-    const params = [];
-    if (neighborhoods.length) {
-        const parts = neighborhoods.map(n => { params.push(`%${n}%`); return `neighborhood ILIKE $${params.length}`; });
-        where.push(`(${parts.join(' OR ')})`);
-    }
-    params.push(limit);
-
+async function fetchUserContext(userId) {
+    if (!userId) return null;
     try {
-        const sql = `
-            SELECT id, title, description, start_date, end_date, venue_name, neighborhood,
-                   image_url, cover_image_url, ticket_url, category, price_display
-            FROM events
-            WHERE ${where.join(' AND ')}
-            ORDER BY start_date ASC
-            LIMIT $${params.length}`;
-        const { rows } = await pool.query(sql, params);
-        return rows;
-    } catch (err) {
-        return [];
+        const [prefs, favs, plans] = await Promise.all([
+            pool.query('SELECT display_name, neighborhood, city FROM users WHERE id=$1', [userId]),
+            pool.query(
+                `SELECT v.name, v.neighborhood, v.cuisine, v.type
+                 FROM favorites f JOIN venues v ON f.venue_id = v.id
+                 WHERE f.user_id=$1 ORDER BY f.created_at DESC LIMIT 8`,
+                [userId]
+            ),
+            pool.query(
+                `SELECT name FROM plans WHERE user_id=$1 ORDER BY created_at DESC LIMIT 3`,
+                [userId]
+            )
+        ]);
+        return {
+            displayName: prefs.rows[0]?.display_name || null,
+            homeNeighborhood: prefs.rows[0]?.neighborhood || null,
+            savedVenues: favs.rows.map(r => ({
+                name: r.name,
+                neighborhood: r.neighborhood,
+                cuisine: r.cuisine,
+                type: r.type
+            })),
+            recentPlans: plans.rows.map(p => p.name)
+        };
+    } catch (e) {
+        console.warn('[conciergeAI] fetchUserContext failed:', e.message);
+        return null;
     }
 }
 
-async function tool_build_itinerary(args) {
-    const hood = args.neighborhood || null;
-    const vibe = (args.vibe || '').toLowerCase();
-    const cuisines = args.cuisines || [];
-
-    // Dinner
-    let dinnerVibes = [];
-    if (vibe.includes('upscale')) dinnerVibes.push('upscale');
-    else if (vibe.includes('date') || vibe.includes('romantic')) dinnerVibes.push('romantic');
-    else if (vibe.includes('low-key') || vibe.includes('chill') || vibe.includes('casual')) dinnerVibes.push('casual');
-
-    const dinner = await tool_search_venues({
-        cuisines: cuisines.length ? cuisines : [],
-        vibes: dinnerVibes,
-        neighborhoods: hood ? [hood] : [],
-        venue_type: 'restaurant',
-        limit: 3
-    });
-
-    // Drinks — cocktail bars
-    const drinks = await tool_search_venues({
-        vibes: vibe.includes('lively') ? ['lively', 'cocktail'] : ['cocktail', 'bar'],
-        neighborhoods: hood ? [hood] : [],
-        venue_type: 'bar',
-        limit: 3
-    });
-
-    // Late night
-    const late = await tool_search_venues({
-        vibes: vibe.includes('live') ? ['live music', 'music'] : ['late night', 'nightlife'],
-        neighborhoods: hood ? [hood] : [],
-        venue_type: 'nightlife',
-        limit: 3
-    });
-
+// ═══════════════════════════════════════════════════════════════════════════
+// OPENAI RESPONSES API CALL
+// ═══════════════════════════════════════════════════════════════════════════
+function summarizeVenueForLLM(v) {
     return {
-        dinner: dinner[0] || null,
-        drinks: drinks[0] || null,
-        late: late[0] || null,
-        dinner_alts: dinner.slice(1),
-        drinks_alts: drinks.slice(1),
-        late_alts: late.slice(1)
+        id: v.id,
+        name: v.name,
+        neighborhood: v.neighborhood,
+        type: v.type,
+        category: v.category,
+        cuisine: v.cuisine,
+        rating: v.rating ? Number(v.rating) : null,
+        priceLevel: v.price_level || null,
+        priceLabel: v.price_label || (v.price_level ? '$'.repeat(v.price_level) : null),
+        vibe: v.vibe ? String(v.vibe).slice(0, 140) : null,
+        highlight: v.highlight ? String(v.highlight).slice(0, 140) : null,
+        whyHot: v.why_hot ? String(v.why_hot).slice(0, 180) : null,
+        pairWith: v.pair_with ? String(v.pair_with).slice(0, 140) : null,
+        trending: !!v.trending,
+        featured: !!v.featured
     };
 }
 
-async function executeTool(name, args) {
-    try {
-        if (name === 'search_venues') return await tool_search_venues(args || {});
-        if (name === 'search_events') return await tool_search_events(args || {});
-        if (name === 'build_itinerary') return await tool_build_itinerary(args || {});
-        return { error: `unknown tool: ${name}` };
-    } catch (err) {
-        console.error(`[concierge/tool:${name}]`, err.message);
-        return { error: err.message };
-    }
-}
-
-// ═══════════════════════════════════════════════════════════
-// OPENAI CLIENT (raw fetch — no SDK dep needed)
-// ═══════════════════════════════════════════════════════════
-async function callOpenAI(messages) {
+async function callOpenAI({ message, history, filters, candidates, userContext }) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('OPENAI_API_KEY not set');
 
-    const res = await fetch(OPENAI_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-            model: DEFAULT_MODEL,
-            messages,
-            tools: TOOLS,
-            tool_choice: 'auto',
-            temperature: 0.6,
-            max_tokens: 500
-        })
+    const candidateSummaries = candidates.map(summarizeVenueForLLM);
+
+    const userInput = [
+        `User message: ${message}`,
+        ``,
+        `Parsed filters: ${JSON.stringify({
+            neighborhoods: filters.neighborhoods,
+            vibes: filters.vibes,
+            cuisines: filters.cuisines,
+            priceMax: filters.priceMax,
+            partySize: filters.partySize,
+            venueType: filters.venueType,
+            isPlan: filters.isPlan,
+            isEvent: filters.isEvent
+        })}`,
+        ``,
+        userContext
+            ? `User profile: ${JSON.stringify({
+                  name: userContext.displayName,
+                  home: userContext.homeNeighborhood,
+                  savedVenuesCount: userContext.savedVenues.length,
+                  recentlySaved: userContext.savedVenues.slice(0, 5)
+              })}`
+            : `User: not logged in (general recommendations only, no personalization).`,
+        ``,
+        `Available venues (ONLY recommend from this list — use these exact ids):`,
+        JSON.stringify(candidateSummaries)
+    ].join('\n');
+
+    const input = [];
+    if (Array.isArray(history)) {
+        for (const turn of history.slice(-MAX_CONTEXT_HISTORY)) {
+            if (!turn || !turn.role || !turn.content) continue;
+            if (turn.role === 'user') {
+                input.push({
+                    role: 'user',
+                    content: [{ type: 'input_text', text: String(turn.content).slice(0, 500) }]
+                });
+            } else if (turn.role === 'assistant') {
+                input.push({
+                    role: 'assistant',
+                    content: [{ type: 'output_text', text: String(turn.content).slice(0, 500) }]
+                });
+            }
+        }
+    }
+    input.push({
+        role: 'user',
+        content: [{ type: 'input_text', text: userInput }]
     });
 
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`OpenAI ${res.status}: ${text.slice(0, 300)}`);
+    const body = {
+        model: DEFAULT_MODEL,
+        instructions: SYSTEM_PROMPT,
+        input,
+        max_output_tokens: MAX_OUTPUT_TOKENS,
+        text: {
+            format: {
+                type: 'json_schema',
+                name: 'scenelink_concierge_response',
+                strict: true,
+                schema: RESPONSE_SCHEMA
+            }
+        }
+    };
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    let resp;
+    try {
+        resp = await fetch(OPENAI_URL, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body),
+            signal: controller.signal
+        });
+    } finally {
+        clearTimeout(timer);
     }
-    return await res.json();
+
+    if (!resp.ok) {
+        const errText = await resp.text().catch(() => '');
+        // Never log the key; strip any sk-* token from the snippet before throwing
+        const snippet = errText.slice(0, 300).replace(/sk-[A-Za-z0-9_-]+/g, 'sk-***');
+        const err = new Error(`OpenAI ${resp.status}`);
+        err.status = resp.status;
+        err.snippet = snippet;
+        throw err;
+    }
+
+    return await resp.json();
 }
 
-// ═══════════════════════════════════════════════════════════
-// ORCHESTRATOR — multi-turn tool use loop
-// ═══════════════════════════════════════════════════════════
-async function aiConcierge({ message, history, context }) {
-    const messages = [
-        { role: 'system', content: SYSTEM_PROMPT }
-    ];
-    if (context && context.page) {
-        messages.push({ role: 'system', content: `User is on the ${context.page} page.` });
+function extractStructured(resp) {
+    if (!resp) throw new Error('OpenAI response missing');
+    if (typeof resp.output_text === 'string' && resp.output_text.trim()) {
+        try { return JSON.parse(resp.output_text); } catch (_) {}
     }
-    if (Array.isArray(history) && history.length) {
-        // Limit to last 6 turns to keep tokens in check
-        history.slice(-6).forEach(h => {
-            if (h.role && h.content) messages.push({ role: h.role, content: String(h.content).slice(0, 500) });
-        });
-    }
-    messages.push({ role: 'user', content: message });
-
-    // Collected venues/events from all tool calls (dedup by id)
-    const collectedVenues = new Map();
-    const collectedEvents = new Map();
-    let itinerary = null;
-    let toolsUsed = [];
-
-    for (let i = 0; i < MAX_TOOL_ITERS; i++) {
-        const resp = await callOpenAI(messages);
-        const choice = resp.choices && resp.choices[0];
-        if (!choice) throw new Error('OpenAI returned no choices');
-
-        const msg = choice.message;
-        messages.push(msg);
-
-        if (msg.tool_calls && msg.tool_calls.length) {
-            // Execute every requested tool in parallel
-            const results = await Promise.all(msg.tool_calls.map(async tc => {
-                let args = {};
-                try { args = JSON.parse(tc.function.arguments || '{}'); } catch (_) {}
-                const result = await executeTool(tc.function.name, args);
-                toolsUsed.push({ name: tc.function.name, args });
-
-                if (tc.function.name === 'search_venues' && Array.isArray(result)) {
-                    result.forEach(v => { if (v && v.id) collectedVenues.set(v.id, v); });
-                } else if (tc.function.name === 'search_events' && Array.isArray(result)) {
-                    result.forEach(e => { if (e && e.id) collectedEvents.set(e.id, e); });
-                } else if (tc.function.name === 'build_itinerary' && result && typeof result === 'object' && !result.error) {
-                    itinerary = result;
-                    [result.dinner, result.drinks, result.late].forEach(v => { if (v && v.id) collectedVenues.set(v.id, v); });
+    if (Array.isArray(resp.output)) {
+        for (const item of resp.output) {
+            if (item.type === 'message' && Array.isArray(item.content)) {
+                for (const c of item.content) {
+                    if ((c.type === 'output_text' || c.type === 'text') && typeof c.text === 'string') {
+                        try { return JSON.parse(c.text); } catch (_) {}
+                    }
                 }
-
-                return { tool_call_id: tc.id, content: JSON.stringify(result).slice(0, 6000) };
-            }));
-
-            results.forEach(r => messages.push({ role: 'tool', tool_call_id: r.tool_call_id, content: r.content }));
-            continue;
+            }
         }
+    }
+    throw new Error('Could not parse structured JSON from OpenAI response');
+}
 
-        // Final model reply — done
-        const text = (msg.content || '').trim();
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN ENTRY
+// ═══════════════════════════════════════════════════════════════════════════
+async function runAIConcierge({ message, history = [], context = {}, userId = null }) {
+    const startedAt = Date.now();
+    const filters = parseFilters(message, context);
 
-        const venues = Array.from(collectedVenues.values()).slice(0, 8);
-        const events = Array.from(collectedEvents.values()).slice(0, 6);
-        const actions = buildActions(venues, itinerary);
+    const [candidates, userContext] = await Promise.all([
+        fetchCandidateVenues(filters),
+        fetchUserContext(userId)
+    ]);
 
+    if (!candidates.length) {
         return {
             ok: true,
-            source: 'openai',
-            response: text || "Here's what I found:",
-            venues,
-            events,
-            itinerary,
-            actions,
-            tools_used: toolsUsed.map(t => t.name)
+            source: 'empty',
+            reply: 'No live venue data is available yet. Add venues to the database before Concierge can make real recommendations.',
+            intent: 'other',
+            recommendedPlan: null,
+            recommendedVenues: [],
+            quickReplies: ["Show tonight's picks", 'Explore neighborhoods', 'Browse by cuisine'],
+            candidates: [],
+            filters,
+            tokensUsed: 0,
+            ms: Date.now() - startedAt
         };
     }
 
-    // Ran out of iterations — salvage what we have
-    const venues = Array.from(collectedVenues.values()).slice(0, 8);
-    const events = Array.from(collectedEvents.values()).slice(0, 6);
+    const raw = await callOpenAI({ message, history, filters, candidates, userContext });
+    const structured = extractStructured(raw);
+
+    const allowedIds = new Set(candidates.map(c => String(c.id)));
+
+    if (structured.recommendedPlan && Array.isArray(structured.recommendedPlan.stops)) {
+        structured.recommendedPlan.stops = structured.recommendedPlan.stops.filter(
+            s => s && s.venueId && allowedIds.has(String(s.venueId))
+        );
+        if (!structured.recommendedPlan.stops.length) {
+            structured.recommendedPlan = null;
+        }
+    }
+    if (Array.isArray(structured.recommendedVenues)) {
+        structured.recommendedVenues = structured.recommendedVenues.filter(
+            v => v && v.venueId && allowedIds.has(String(v.venueId))
+        );
+    }
+
+    const tokensUsed =
+        (raw.usage && (raw.usage.total_tokens || raw.usage.output_tokens)) || 0;
+
     return {
         ok: true,
         source: 'openai',
-        response: venues.length ? "Here are my picks:" : "I need a bit more info — what neighborhood or vibe?",
-        venues, events, itinerary,
-        actions: buildActions(venues, itinerary),
-        tools_used: toolsUsed.map(t => t.name)
+        reply: String(structured.reply || '').slice(0, 600),
+        intent: structured.intent || 'other',
+        recommendedPlan: structured.recommendedPlan || null,
+        recommendedVenues: structured.recommendedVenues || [],
+        quickReplies: (structured.quickReplies || []).slice(0, 5),
+        candidates,
+        filters,
+        tokensUsed,
+        ms: Date.now() - startedAt
     };
 }
 
-function buildActions(venues, itinerary) {
-    const actions = [];
-    if (itinerary) {
-        actions.push({ label: 'Add itinerary to plan', type: 'plan_itinerary' });
-    }
-    if (venues.length >= 2) {
-        actions.push({ label: 'Save all to a list', type: 'save_all' });
-        actions.push({ label: 'Plan this with friends', type: 'plan' });
-    } else if (venues.length === 1) {
-        actions.push({ label: 'Book a table', type: 'book' });
-        actions.push({ label: 'Save for later', type: 'save' });
-    }
-    return actions;
-}
-
-module.exports = { aiConcierge, isEnabled: () => !!process.env.OPENAI_API_KEY };
+module.exports = {
+    runAIConcierge,
+    fetchCandidateVenues,
+    fetchVenuesByIds,
+    parseFilters,
+    isEnabled: () => !!process.env.OPENAI_API_KEY
+};
