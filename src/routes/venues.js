@@ -197,45 +197,6 @@ router.get('/slug/:slug', optionalAuth, async (req, res) => {
   }
 });
 
-// GET /api/venues/:id (UUID-based lookup)
-router.get('/:id', optionalAuth, async (req, res) => {
-  try {
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(req.params.id)) {
-      return res.status(400).json({ error: 'Invalid venue ID format' });
-    }
-
-    const result = await pool.query(
-      `SELECT ${VENUE_COLUMNS} FROM venues v WHERE v.id = $1 AND v.is_active = true`,
-      [req.params.id]
-    );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Venue not found' });
-    }
-
-    const venue = result.rows[0];
-
-    const reviews = await pool.query(
-      `SELECT r.id, r.rating, r.content, r.created_at, u.display_name, u.avatar_url
-       FROM reviews r JOIN users u ON r.user_id = u.id
-       WHERE r.venue_id = $1 ORDER BY r.created_at DESC LIMIT 10`,
-      [venue.id]
-    );
-
-    const similar = await pool.query(
-      `SELECT ${VENUE_COLUMNS} FROM venues v WHERE v.type = $1 AND v.id != $2 AND v.is_active = true ORDER BY v.rating DESC LIMIT 4`,
-      [venue.type, venue.id]
-    );
-
-    res.json({ venue, reviews: reviews.rows, similar_venues: similar.rows });
-  } catch (err) {
-    console.error('Venue by ID error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-
 // GET /api/venues/nearby — geospatial search (lat/lng + radius km)
 router.get('/nearby', optionalAuth, async (req, res) => {
   try {
@@ -285,5 +246,46 @@ router.get('/nearby', optionalAuth, async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// GET /api/venues/:id (UUID-based lookup)
+router.get('/:id', optionalAuth, async (req, res) => {
+  try {
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid venue ID format' });
+    }
+
+    const result = await pool.query(
+      `SELECT ${VENUE_COLUMNS} FROM venues v WHERE v.id = $1 AND v.is_active = true`,
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Venue not found' });
+    }
+
+    const venue = result.rows[0];
+
+    const reviews = await pool.query(
+      `SELECT r.id, r.rating, r.content, r.created_at, u.display_name, u.avatar_url
+       FROM reviews r JOIN users u ON r.user_id = u.id
+       WHERE r.venue_id = $1 ORDER BY r.created_at DESC LIMIT 10`,
+      [venue.id]
+    );
+
+    const similar = await pool.query(
+      `SELECT ${VENUE_COLUMNS} FROM venues v WHERE v.type = $1 AND v.id != $2 AND v.is_active = true ORDER BY v.rating DESC LIMIT 4`,
+      [venue.type, venue.id]
+    );
+
+    res.json({ venue, reviews: reviews.rows, similar_venues: similar.rows });
+  } catch (err) {
+    console.error('Venue by ID error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+
 
 module.exports = router;
