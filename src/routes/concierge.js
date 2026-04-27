@@ -254,8 +254,9 @@ router.post('/', optionalAuth, rateLimit, async (req, res) => {
                 const ai = await runAIConcierge({ message, history, context, userId });
                 result = ai;
             } catch (aiErr) {
-                // Never expose the key; log status only
-                console.warn('[concierge] AI path failed:', aiErr.status || '?', aiErr.message, aiErr.snippet || '');
+                // Never expose the key; log status + sanitized snippet on one line
+                const oneLine = String(aiErr.snippet || aiErr.message || '').replace(/\s+/g, ' ').slice(0, 400);
+                console.warn(`[concierge] AI path failed status=${aiErr.status || '?'} msg="${aiErr.message}" body="${oneLine}"`);
                 notice = 'SceneLink Concierge is having trouble connecting, but here are curated picks from live SceneLink venue data.';
             }
         }
