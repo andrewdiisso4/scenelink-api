@@ -10,14 +10,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
-
-function requireAdmin(req, res, next) {
-    const secret = req.headers['x-admin-secret'] || req.query.secret;
-    const ADMIN_SECRET = process.env.ADMIN_SECRET;
-    if (!ADMIN_SECRET) return res.status(503).json({ error: 'Admin not configured' });
-    if (!secret || secret !== ADMIN_SECRET) return res.status(403).json({ error: 'Forbidden' });
-    next();
-}
+const { requireAdmin } = require('../middleware/auth');
 
 // GET /api/admin/stats
 router.get('/stats', requireAdmin, async (req, res) => {
