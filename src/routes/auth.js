@@ -304,4 +304,55 @@ router.get('/username-available', async (req, res) => {
   res.json({ available: r.rows.length === 0 });
 });
 
+// ─── Account deletion (App Store / Play Store compliance) ──────────────────
+// DELETE /api/auth/account
+// Requires: { password, reason? }  — password re-entry for non-OAuth accounts
+// This is a hard delete; CASCADE wipes all user data.
+router.delete('/account', requireAuth, async (req, res) => {
+  try {
+    const { password, reason } = req.body || {};
+    const userId = req.user.id;
+
+    const ur = await pool.query(
+      'SELECT id, email, password_hash, oauth_provider FROM users WHERE id = $1',
+      [userId]
+    );
+    if (ur.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const u = ur.rows[0];
+
+    // Password re-entry required for password accounts.
+    // OAuth accounts (Google/Apple) skip this since they never had a password set.
+    const isOAuth = !!u.oauth_provider;
+    if (!isOAuth) {
+      if (!password || typeof password !== 'string')
+        return res.status(400).json({ error: 'Password required to confirm deletion' });
+      const ok = await bcrypt.compare(password, u.password_hash || '');
+      if (!ok) return res.status(401).json({ error: 'Incorrect password' });
+    }
+
+    // Audit log FIRST (before the cascading delete wipes anything else)
+    const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim();
+    const crypto = require('crypto');
+    const emailHash = crypto.createHash('sha256').update(u.email.toLowerCase()).digest('hex');
+    try {
+      await pool.query(
+        `INSERT INTO user_deletions (user_id, email_hash, deletion_reason, ip_address)
+         VALUES ($1,$2,$3,$4)`,
+        [userId, emailHash, (reason || null), ip || null]
+      );
+    } catch (e) {
+      console.warn('[auth] audit log failed (non-fatal):', e.message);
+    }
+
+    // Hard delete — CASCADE handles all related rows
+    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    console.log('[auth] account deleted:', userId, 'reason:', reason || '(none)');
+    res.json({ ok: true, deleted: true });
+  } catch (e) {
+    console.error('[auth] DELETE /account error', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
