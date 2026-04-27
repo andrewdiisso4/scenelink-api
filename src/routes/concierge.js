@@ -13,6 +13,7 @@
 const express = require('express');
 const pool = require('../config/database');
 const { optionalAuth } = require('../middleware/auth');
+const { aiConcierge, isEnabled: aiEnabled } = require('./conciergeAI');
 
 const router = express.Router();
 
@@ -327,18 +328,61 @@ function generateActions(intent, venues) {
 // MAIN ROUTE: POST /api/concierge
 // ═════════════════════════════════════════════════════════════
 router.post('/', optionalAuth, async (req, res) => {
+    const startedAt = Date.now();
     try {
         const message = (req.body.message || '').trim();
         const context = req.body.context || {};
-        const session_id = req.body.session_id || null;
+        const history = Array.isArray(req.body.history) ? req.body.history : [];
+        const session_id = req.body.session_id || ('sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6));
 
-        if (!message) {
-            return res.status(400).json({ error: 'message required' });
-        }
-        if (message.length > 500) {
-            return res.status(400).json({ error: 'message too long' });
+        if (!message) return res.status(400).json({ error: 'message required' });
+        if (message.length > 500) return res.status(400).json({ error: 'message too long' });
+
+        // ─── Try OpenAI first if enabled ───────────────────────────
+        if (aiEnabled() && req.body.ai !== false) {
+            try {
+                const ai = await aiConcierge({ message, history, context });
+                const intent = classifyIntent(message); // keep for analytics + client hints
+                pool.query(
+                    `INSERT INTO analytics_events (event, user_id, anon, session_id, properties)
+                     VALUES ($1, $2, $3, $4, $5)`,
+                    ['concierge_query', req.user ? req.user.id : null, !req.user, session_id,
+                     JSON.stringify({
+                         message: message.slice(0, 200),
+                         source: 'openai',
+                         tools_used: ai.tools_used,
+                         matches: ai.venues.length,
+                         events: ai.events.length,
+                         ms: Date.now() - startedAt
+                     })]
+                ).catch(()=>{});
+                return res.json({
+                    ok: true,
+                    source: 'openai',
+                    response: ai.response,
+                    venues: ai.venues,
+                    events: ai.events,
+                    itinerary: ai.itinerary || null,
+                    actions: ai.actions,
+                    intent: {
+                        primary: intent.primary,
+                        cuisines: intent.cuisines,
+                        vibes: intent.vibes,
+                        neighborhoods: intent.neighborhoods,
+                        times: intent.times,
+                        is_booking: intent.is_booking,
+                        is_event: intent.is_event
+                    },
+                    tools_used: ai.tools_used,
+                    session_id
+                });
+            } catch (aiErr) {
+                console.warn('[concierge] AI failed, falling back to rule-based:', aiErr.message);
+                // fall through to rule-based
+            }
         }
 
+        // ─── Fallback: rule-based classifier ───────────────────────
         const intent = classifyIntent(message);
         const limit = Math.min(parseInt(req.body.limit) || 5, 10);
 
@@ -346,7 +390,6 @@ router.post('/', optionalAuth, async (req, res) => {
         let events = [];
         if (intent.primary === 'event') {
             events = await queryEvents(intent, limit);
-            // If no events, also fetch matching venues
             if (!events.length) venues = await queryVenues(intent, limit);
         } else if (intent.primary === 'recommend' || intent.primary === 'search' || intent.primary === 'book') {
             venues = await queryVenues(intent, limit);
@@ -355,20 +398,21 @@ router.post('/', optionalAuth, async (req, res) => {
         const response = generateResponse(intent, venues, events);
         const actions = generateActions(intent, venues);
 
-        // Log to analytics (fire and forget)
         pool.query(
             `INSERT INTO analytics_events (event, user_id, anon, session_id, properties)
              VALUES ($1, $2, $3, $4, $5)`,
             ['concierge_query', req.user ? req.user.id : null, !req.user, session_id,
-             JSON.stringify({ message: message.slice(0, 200), intent: intent.primary, matches: venues.length, events: events.length })]
+             JSON.stringify({ message: message.slice(0, 200), source: 'rule-based', intent: intent.primary, matches: venues.length, events: events.length, ms: Date.now() - startedAt })]
         ).catch(()=>{});
 
         res.json({
             ok: true,
-            response: response,
-            venues: venues,
-            events: events,
-            actions: actions,
+            source: 'rule-based',
+            response,
+            venues,
+            events,
+            itinerary: null,
+            actions,
             intent: {
                 primary: intent.primary,
                 cuisines: intent.cuisines,
@@ -378,14 +422,14 @@ router.post('/', optionalAuth, async (req, res) => {
                 is_booking: intent.is_booking,
                 is_event: intent.is_event
             },
-            session_id: session_id || ('sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6))
+            session_id
         });
     } catch (err) {
         console.error('[concierge]', err);
         res.status(500).json({
             ok: false,
             error: 'Concierge service error',
-            response: 'Sorry, I had trouble with that. Try browsing explore or tonight for picks!'
+            response: "Sorry, I had trouble with that. Try browsing Explore or Tonight for picks!"
         });
     }
 });
