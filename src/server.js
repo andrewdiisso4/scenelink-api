@@ -72,6 +72,13 @@ app.use('/api/business', require('./routes/business'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/concierge', require('./routes/concierge'));
 
+// V1 Social
+app.use('/api/users', require('./routes/users'));              // public profile + search
+app.use('/api/friends', require('./routes/friends'));
+app.use('/api/conversations', require('./routes/messages'));
+app.use('/api/posts', require('./routes/posts'));
+app.use('/api/notifications', require('./routes/notifications'));
+
 // Admin: force reseed (requires secret header)
 app.post('/api/admin/reseed', async (req, res) => {
   const secret = req.headers['x-admin-secret'] || req.query.secret;
