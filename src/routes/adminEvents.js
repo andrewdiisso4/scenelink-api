@@ -156,12 +156,12 @@ router.post('/cleanup', async (req, res) => {
 // Requires TICKETMASTER_API_KEY env var. If missing, returns friendly error.
 // ============================================================
 router.post('/import/ticketmaster', async (req, res) => {
-  const KEY = process.env.TICKETMASTER_API_KEY;
+  const KEY = process.env.TICKETMASTER_API_KEY || process.env.SCENELINK_API_CONSUMER_KEY;
   if (!KEY) {
     return res.status(400).json({
       ok: false,
-      error: 'TICKETMASTER_API_KEY not configured',
-      hint: 'Set TICKETMASTER_API_KEY env var in Render. Get a free key at https://developer.ticketmaster.com'
+      error: 'Ticketmaster API key not configured',
+      hint: 'Set TICKETMASTER_API_KEY (or SCENELINK_API_CONSUMER_KEY) env var in Render. Get a free key at https://developer.ticketmaster.com'
     });
   }
   const started = Date.now();
