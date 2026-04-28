@@ -29,25 +29,32 @@ function catMap(tmClass) {
 async function findVenueMatch(name, lat, lng) {
   if (!name) return null;
   try {
-    // Try name-based match first (Boston area only)
+    const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const nn = norm(name);
+    // STRICT: only exact (normalized) name match. No substring matching — too lossy for concert venues.
     const r = await pool.query(
       `SELECT id, name, neighborhood, slug, lat, lng FROM venues
-        WHERE is_active = true AND name ILIKE $1
-        ORDER BY name = $2 DESC
+        WHERE is_active = true
+          AND regexp_replace(lower(name), '[^a-z0-9]', '', 'g') = $1
         LIMIT 1`,
-      [`%${name}%`, name]
+      [nn]
     );
     if (r.rows.length) return r.rows[0];
-    // Fallback: nearest venue within 200m if coords provided
-    if (lat && lng) {
-      const r2 = await pool.query(
-        `SELECT id, name, neighborhood, slug, lat, lng,
-          (6371 * acos(LEAST(1, cos(radians($1))*cos(radians(lat::float))*cos(radians(lng::float)-radians($2)) + sin(radians($1))*sin(radians(lat::float))))) AS km
-          FROM venues WHERE is_active = true AND lat IS NOT NULL AND lng IS NOT NULL
-          ORDER BY km ASC LIMIT 1`,
-        [lat, lng]
-      );
-      if (r2.rows.length && r2.rows[0].km <= 0.2) return r2.rows[0];
+    // Proximity fallback: only TIGHT 50m radius AND require name similarity (first word match)
+    if (lat && lng && name.length >= 3) {
+      const firstWord = name.split(/\s+/)[0].toLowerCase();
+      if (firstWord.length >= 4) {
+        const r2 = await pool.query(
+          `SELECT id, name, neighborhood, slug, lat, lng,
+            (6371 * acos(LEAST(1, cos(radians($1))*cos(radians(lat::float))*cos(radians(lng::float)-radians($2)) + sin(radians($1))*sin(radians(lat::float))))) AS km
+            FROM venues WHERE is_active = true
+              AND lat IS NOT NULL AND lng IS NOT NULL
+              AND lower(name) LIKE $3
+            ORDER BY km ASC LIMIT 1`,
+          [lat, lng, firstWord + '%']
+        );
+        if (r2.rows.length && r2.rows[0].km <= 0.05) return r2.rows[0]; // 50m
+      }
     }
   } catch (e) { console.error('findVenueMatch err:', e.message); }
   return null;
