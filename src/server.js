@@ -54,11 +54,23 @@ app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
 // ==================== RATE LIMITING ====================
+// Custom key generator — Render sits behind both Render's LB and Cloudflare, so
+// Express's default req.ip can rotate. We pin to CF-Connecting-IP when present,
+// otherwise fall back to the first X-Forwarded-For hop, then req.ip.
+function clientIp(req) {
+  const cf = req.headers['cf-connecting-ip'];
+  if (cf) return String(cf).trim();
+  const xff = req.headers['x-forwarded-for'];
+  if (xff) return String(xff).split(',')[0].trim();
+  return req.ip || 'unknown';
+}
+
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: clientIp,
   message: { error: 'Too many auth attempts, please try again later.' },
 });
 const conciergeLimiter = rateLimit({
@@ -66,6 +78,7 @@ const conciergeLimiter = rateLimit({
   max: 15,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: clientIp,
   message: { error: 'Too many concierge requests, please slow down.' },
 });
 const apiLimiter = rateLimit({
@@ -73,6 +86,7 @@ const apiLimiter = rateLimit({
   max: 300,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: clientIp,
   skip: (req) => req.path === '/api/health',
 });
 
