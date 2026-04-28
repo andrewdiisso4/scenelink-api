@@ -345,6 +345,79 @@ router.post('/', optionalAuth, rateLimit, async (req, res) => {
             }));
         }
 
+        // --- 3.5 Fetch related events if the user asked for events ---
+        let recommendedEvents = [];
+        try {
+            const lcMsg = (message || '').toLowerCase();
+            const eventyKeywords = /\b(event|events|concert|concerts|show|shows|live music|dj|gig|perform|playing|this weekend|tonight|tomorrow)\b/;
+            const wantsEvents = !!(result.intent === 'find_event' ||
+                                   (result.recommendedPlan && /\b(night out|date night|tonight|weekend)\b/.test(lcMsg)) ||
+                                   eventyKeywords.test(lcMsg));
+
+            if (wantsEvents) {
+                const refVenueIds = [...referencedIds].filter(Boolean);
+                const filters2 = result.filters || {};
+                const neighborhoods = Array.isArray(filters2.neighborhoods) ? filters2.neighborhoods : [];
+
+                const qParams = [];
+                let qi = 1;
+                const where = [`e.is_active = true`, `e.date >= CURRENT_DATE`];
+
+                const catHints = [];
+                if (/\b(concert|live music|band|gig|show)\b/.test(lcMsg)) catHints.push('Live Music');
+                if (/\b(sport|game|red sox|celtics|bruins|patriots)\b/.test(lcMsg)) catHints.push('Sports');
+                if (/\b(art|gallery|exhibit|theat|broadway)\b/.test(lcMsg)) catHints.push('Arts & Culture');
+                if (/\b(dj|club|dance|nightclub)\b/.test(lcMsg)) catHints.push('Nightlife');
+                if (/\b(food|drink|tasting|wine|beer)\b/.test(lcMsg)) catHints.push('Food & Drink');
+
+                const scoreParts = ['0'];
+                if (refVenueIds.length) {
+                    scoreParts.push(`(CASE WHEN e.venue_id = ANY($${qi}::uuid[]) THEN 3 ELSE 0 END)`);
+                    qParams.push(refVenueIds); qi++;
+                }
+                if (neighborhoods.length) {
+                    scoreParts.push(`(CASE WHEN v.neighborhood = ANY($${qi}::text[]) THEN 2 ELSE 0 END)`);
+                    qParams.push(neighborhoods); qi++;
+                }
+                if (catHints.length) {
+                    scoreParts.push(`(CASE WHEN e.category = ANY($${qi}::text[]) THEN 1 ELSE 0 END)`);
+                    qParams.push(catHints); qi++;
+                }
+
+                const evSql = `
+                    SELECT e.id, e.title, e.description, e.category, e.date, e.start_time, e.end_time,
+                           e.event_url, e.cover_image_url, e.image_url,
+                           e.venue_id, COALESCE(v.name, e.venue_name) AS venue_name,
+                           v.slug AS venue_slug, v.neighborhood AS venue_neighborhood,
+                           (${scoreParts.join(' + ')}) AS score
+                    FROM events e
+                    LEFT JOIN venues v ON v.id = e.venue_id
+                    WHERE ${where.join(' AND ')}
+                    ORDER BY score DESC, e.date ASC
+                    LIMIT 6
+                `;
+                const evRes = await pool.query(evSql, qParams);
+                recommendedEvents = evRes.rows.map(e => ({
+                    id: e.id,
+                    title: e.title,
+                    description: e.description ? String(e.description).slice(0, 200) : null,
+                    category: e.category || null,
+                    date: e.date,
+                    startTime: e.start_time || null,
+                    endTime: e.end_time || null,
+                    eventUrl: e.event_url || null,
+                    imageUrl: e.cover_image_url || e.image_url || null,
+                    venueId: e.venue_id || null,
+                    venueName: e.venue_name || null,
+                    venueSlug: e.venue_slug || null,
+                    venueNeighborhood: e.venue_neighborhood || null
+                }));
+            }
+        } catch (evErr) {
+            console.warn('[concierge] event lookup failed:', evErr.message);
+            recommendedEvents = [];
+        }
+
         // Analytics (async, never blocks response; no key/PII logged)
         pool.query(
             `INSERT INTO analytics_events (event, user_id, anon, session_id, properties)
@@ -372,6 +445,7 @@ router.post('/', optionalAuth, rateLimit, async (req, res) => {
             intent: result.intent,
             recommendedPlan: result.recommendedPlan,
             recommendedVenues: result.recommendedVenues,
+            recommendedEvents,
             venueCards,
             quickReplies: result.quickReplies || [],
             requiresLogin: !isLoggedIn,
