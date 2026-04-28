@@ -337,18 +337,34 @@ router.post('/enrich/neighborhoods', async (req, res) => {
   try {
     // Very rough Boston neighborhood bboxes. Admins can refine later.
     const HOODS = [
-      { name: 'Back Bay',      bbox: [42.346, -71.094, 42.358, -71.069] },
-      { name: 'Seaport',       bbox: [42.340, -71.048, 42.358, -71.020] },
-      { name: 'North End',     bbox: [42.362, -71.060, 42.374, -71.048] },
-      { name: 'Beacon Hill',   bbox: [42.355, -71.075, 42.364, -71.058] },
-      { name: 'Fenway',        bbox: [42.338, -71.108, 42.350, -71.088] },
-      { name: 'South End',     bbox: [42.332, -71.085, 42.346, -71.065] },
-      { name: 'Downtown',      bbox: [42.352, -71.068, 42.362, -71.053] },
-      { name: 'Cambridge',     bbox: [42.361, -71.120, 42.400, -71.080] },
-      { name: 'Allston',       bbox: [42.348, -71.145, 42.365, -71.118] },
-      { name: 'Jamaica Plain', bbox: [42.300, -71.130, 42.325, -71.100] },
-      { name: 'Somerville',    bbox: [42.375, -71.120, 42.405, -71.075] },
-    ];
+        { name: 'Back Bay',       bbox: [42.346, -71.094, 42.358, -71.069] },
+        { name: 'Seaport',        bbox: [42.340, -71.048, 42.358, -71.020] },
+        { name: 'North End',      bbox: [42.362, -71.060, 42.374, -71.048] },
+        { name: 'Beacon Hill',    bbox: [42.355, -71.075, 42.364, -71.058] },
+        { name: 'Fenway',         bbox: [42.338, -71.108, 42.350, -71.088] },
+        { name: 'South End',      bbox: [42.332, -71.085, 42.346, -71.065] },
+        { name: 'Downtown',       bbox: [42.352, -71.068, 42.362, -71.053] },
+        { name: 'Chinatown',      bbox: [42.349, -71.064, 42.354, -71.057] },
+        { name: 'Charlestown',    bbox: [42.370, -71.080, 42.396, -71.050] },
+        { name: 'South Boston',   bbox: [42.325, -71.060, 42.355, -71.020] },
+        { name: 'East Boston',    bbox: [42.360, -71.050, 42.400, -70.980] },
+        { name: 'Dorchester',     bbox: [42.275, -71.090, 42.325, -71.030] },
+        { name: 'Roxbury',        bbox: [42.310, -71.110, 42.340, -71.070] },
+        { name: 'Mission Hill',   bbox: [42.325, -71.110, 42.340, -71.090] },
+        { name: 'Mattapan',       bbox: [42.265, -71.105, 42.290, -71.075] },
+        { name: 'Roslindale',     bbox: [42.275, -71.145, 42.300, -71.115] },
+        { name: 'West Roxbury',   bbox: [42.260, -71.175, 42.295, -71.135] },
+        { name: 'Hyde Park',      bbox: [42.240, -71.145, 42.275, -71.110] },
+        { name: 'Brighton',       bbox: [42.338, -71.175, 42.365, -71.145] },
+        { name: 'Allston',        bbox: [42.348, -71.145, 42.365, -71.118] },
+        { name: 'Jamaica Plain',  bbox: [42.300, -71.130, 42.325, -71.095] },
+        { name: 'Cambridge',      bbox: [42.361, -71.130, 42.405, -71.080] },
+        { name: 'Somerville',     bbox: [42.375, -71.130, 42.420, -71.075] },
+        { name: 'Brookline',      bbox: [42.318, -71.145, 42.355, -71.108] },
+        { name: 'Watertown',      bbox: [42.360, -71.195, 42.385, -71.160] },
+        { name: 'Medford',        bbox: [42.400, -71.135, 42.440, -71.080] },
+        { name: 'Chelsea',        bbox: [42.385, -71.045, 42.410, -71.010] },
+      ];
     let updated = 0;
     for (const h of HOODS) {
       const r = await pool.query(
@@ -365,5 +381,116 @@ router.post('/enrich/neighborhoods', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+// ---- Normalize categories (dedupe café/cafe, etc.) ----
+router.post('/normalize/categories', async (req, res) => {
+  try {
+    const MAP = {
+      // de-accent / case variants
+      'café': 'cafe',
+      'Café': 'cafe',
+      'CAFE': 'cafe',
+      'Cafe': 'cafe',
+      'Bar': 'bar',
+      'BAR': 'bar',
+      'Restaurant': 'restaurant',
+      'RESTAURANT': 'restaurant',
+      'Pub': 'pub',
+      'Night Club': 'nightclub',
+      'Night club': 'nightclub',
+      'night club': 'nightclub',
+      'Nightclub': 'nightclub',
+      'Fast Food': 'fast_food',
+      'fast food': 'fast_food',
+      'Fast-food': 'fast_food',
+      'Ice Cream': 'ice_cream',
+      'ice cream': 'ice_cream',
+      'Ice cream': 'ice_cream',
+      'Bakery': 'bakery',
+      'BAKERY': 'bakery',
+      'Brewery': 'brewery',
+      'Theatre': 'theatre',
+      'Theater': 'theatre',
+      'theater': 'theatre',
+      'Cinema': 'cinema',
+      'CINEMA': 'cinema',
+      'Winery': 'winery',
+      'Wine Bar': 'wine_bar',
+      'wine bar': 'wine_bar',
+      'Coffee Shop': 'cafe',
+      'coffee shop': 'cafe',
+      'Coffee': 'cafe',
+    };
+    let updated = 0;
+    for (const [from, to] of Object.entries(MAP)) {
+      const r = await pool.query(
+        `UPDATE venues SET category = $1, updated_at = NOW() WHERE category = $2`,
+        [to, from]
+      );
+      updated += r.rowCount;
+    }
+    // Also normalize type → Title Case-aware copy to category when missing
+    const r2 = await pool.query(
+      `UPDATE venues SET category = LOWER(type), updated_at = NOW()
+       WHERE (category IS NULL OR category = '') AND type IS NOT NULL AND type != ''`);
+    updated += r2.rowCount;
+    res.json({ ok: true, updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Assign vibe_tags from category + name heuristics ----
+router.post('/enrich/vibes', async (req, res) => {
+  try {
+    // Pull all venues missing vibes
+    const rows = await pool.query(`SELECT id, name, category, type, neighborhood FROM venues
+                                    WHERE (vibe_tags IS NULL OR jsonb_array_length(vibe_tags) = 0)
+                                    LIMIT 5000`);
+    let updated = 0;
+    for (const v of rows.rows) {
+      const tags = new Set();
+      const cat = (v.category || v.type || '').toLowerCase();
+      const nameLC = (v.name || '').toLowerCase();
+      const nhood = (v.neighborhood || '').toLowerCase();
+      // Base vibe from category
+      if (cat.includes('nightclub') || cat.includes('club')) { tags.add('lively'); tags.add('late-night'); tags.add('groups'); }
+      if (cat.includes('bar') || cat === 'pub') { tags.add('drinks'); tags.add('groups'); }
+      if (cat.includes('wine')) { tags.add('date-night'); tags.add('upscale'); tags.add('cocktails'); }
+      if (cat === 'brewery') { tags.add('drinks'); tags.add('groups'); tags.add('casual'); }
+      if (cat === 'cafe' || cat === 'coffee shop') { tags.add('casual'); tags.add('low-key'); tags.add('daytime'); }
+      if (cat === 'restaurant') { tags.add('dinner'); }
+      if (cat === 'theatre' || cat === 'cinema') { tags.add('date-night'); tags.add('groups'); }
+      // Name heuristics
+      if (nameLC.includes('lounge')) { tags.add('upscale'); tags.add('date-night'); tags.add('cocktails'); }
+      if (nameLC.includes('rooftop')) { tags.add('upscale'); tags.add('date-night'); }
+      if (nameLC.includes('sports')) { tags.add('sports-bar'); tags.add('groups'); tags.add('casual'); }
+      if (nameLC.includes('jazz')) { tags.add('live-music'); tags.add('date-night'); tags.add('low-key'); }
+      if (nameLC.includes('irish') || nameLC.includes('pub')) { tags.add('groups'); tags.add('casual'); }
+      if (nameLC.includes('tapas')) { tags.add('date-night'); tags.add('groups'); }
+      if (nameLC.includes('steak') || nameLC.includes('chophouse')) { tags.add('upscale'); tags.add('date-night'); tags.add('dinner'); }
+      if (nameLC.includes('bistro')) { tags.add('date-night'); tags.add('dinner'); }
+      if (nameLC.includes('speakeasy')) { tags.add('cocktails'); tags.add('date-night'); tags.add('upscale'); }
+      if (nameLC.includes('cocktail')) { tags.add('cocktails'); }
+      if (nameLC.includes('diner')) { tags.add('casual'); tags.add('late-night'); }
+      if (nameLC.includes('pizza')) { tags.add('casual'); tags.add('groups'); }
+      // Neighborhood hints
+      if (nhood === 'seaport' || nhood === 'back bay' || nhood === 'beacon hill') tags.add('upscale');
+      if (nhood === 'fenway' || nhood === 'allston') tags.add('groups');
+      if (nhood === 'north end') tags.add('date-night');
+
+      if (tags.size) {
+        await pool.query(`UPDATE venues SET vibe_tags = $1::jsonb, updated_at = NOW() WHERE id = $2`,
+          [JSON.stringify(Array.from(tags)), v.id]);
+        updated++;
+      }
+    }
+    res.json({ ok: true, updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 module.exports = router;
