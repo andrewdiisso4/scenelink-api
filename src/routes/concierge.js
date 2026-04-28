@@ -386,9 +386,10 @@ router.post('/', optionalAuth, rateLimit, async (req, res) => {
 
                 const evSql = `
                     SELECT e.id, e.title, e.description, e.category, e.date, e.start_time, e.end_time,
-                           e.event_url, e.cover_image_url, e.image_url,
+                           e.event_url, e.image_url, e.is_featured,
                            e.venue_id, COALESCE(v.name, e.venue_name) AS venue_name,
-                           v.slug AS venue_slug, v.neighborhood AS venue_neighborhood,
+                           COALESCE(v.slug, e.venue_slug) AS venue_slug,
+                           COALESCE(v.neighborhood, e.venue_neighborhood) AS venue_neighborhood,
                            (${scoreParts.join(' + ')}) AS score
                     FROM events e
                     LEFT JOIN venues v ON v.id = e.venue_id
@@ -406,7 +407,8 @@ router.post('/', optionalAuth, rateLimit, async (req, res) => {
                     startTime: e.start_time || null,
                     endTime: e.end_time || null,
                     eventUrl: e.event_url || null,
-                    imageUrl: e.cover_image_url || e.image_url || null,
+                    imageUrl: e.image_url || null,
+                    featured: !!e.is_featured,
                     venueId: e.venue_id || null,
                     venueName: e.venue_name || null,
                     venueSlug: e.venue_slug || null,
