@@ -60,7 +60,8 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/auth', require('./routes/oauth')); // Google + Apple OAuth
 app.use('/api/admin', require('./routes/admin')); // Admin dashboard API
-app.use('/api/admin/venues', require('./routes/adminVenues')); // Admin venue CSV+OSM import
+app.use('/api/admin/venues', require('./routes/adminVenues'));
+app.use('/api/admin/events', require('./routes/adminEvents')); // Admin events import + automation // Admin venue CSV+OSM import
 app.use('/api/venues', require('./routes/venues'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/activity', require('./routes/activity'));
@@ -156,3 +157,4 @@ app.listen(PORT, async () => {
 });
 
 module.exports = app;
+
