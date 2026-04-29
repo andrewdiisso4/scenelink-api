@@ -8,7 +8,9 @@ const EVENT_COLUMNS = `
   e.id, e.title, e.description, e.category,
   e.venue_id, e.venue_name, e.venue_slug, e.venue_neighborhood,
   e.image_url, e.date, e.start_time, e.end_time, e.price,
-  e.is_featured, e.is_live, e.attending_count, e.rating, e.created_at
+  e.is_featured, e.is_live, e.attending_count, e.rating, e.created_at,
+  e.event_url,
+  v.lat AS venue_lat, v.lng AS venue_lng
 `;
 
 // GET /api/events
@@ -41,7 +43,7 @@ router.get('/', optionalAuth, async (req, res) => {
 
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
     const result = await pool.query(
-      `SELECT ${EVENT_COLUMNS} FROM events e ${where} ORDER BY e.date ASC, e.start_time ASC`,
+      `SELECT ${EVENT_COLUMNS} FROM events e LEFT JOIN venues v ON e.venue_id = v.id ${where} ORDER BY e.date ASC, e.start_time ASC`,
       values
     );
 
@@ -56,7 +58,7 @@ router.get('/', optionalAuth, async (req, res) => {
 router.get('/:id', optionalAuth, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT ${EVENT_COLUMNS} FROM events e WHERE e.id = $1`,
+      `SELECT ${EVENT_COLUMNS} FROM events e LEFT JOIN venues v ON e.venue_id = v.id WHERE e.id = $1`,
       [req.params.id]
     );
     if (result.rows.length === 0) {
