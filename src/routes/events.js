@@ -20,6 +20,12 @@ router.get('/', optionalAuth, async (req, res) => {
     const values = [];
     let idx = 1;
 
+    // Default: only show today & future events (auto-remove past events from feed)
+    // Allow override with ?include_past=true for admin views
+    if (req.query.include_past !== 'true') {
+      conditions.push(`e.date >= CURRENT_DATE`);
+    }
+
     if (req.query.category && req.query.category !== 'all') {
       conditions.push(`e.category ILIKE $${idx++}`);
       values.push(`%${req.query.category}%`);
