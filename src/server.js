@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
+const rateLimit = require('express-rate-limit');
 const pool = require('./config/database');
 const fs = require('fs');
 const path = require('path');
@@ -14,30 +15,95 @@ const PORT = process.env.PORT || 3001;
 
 // ==================== MIDDLEWARE ====================
 
-// CORS — allow frontend origins
+// CORS — strict origin whitelist
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:8080,http://localhost:3000,https://scenelink.app,https://www.scenelink.app')
   .split(',')
   .map(s => s.trim());
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc)
+    // Allow requests with no origin (mobile apps, server-to-server, curl in dev)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.some(o => origin === o || origin.endsWith('.netlify.app'))) {
+    // Allow Netlify preview deploys + configured origins
+    if (
+      allowedOrigins.some(o => origin === o) ||
+      origin.endsWith('.netlify.app') ||
+      (process.env.NODE_ENV !== 'production' && (origin.includes('localhost') || origin.includes('127.0.0.1')))
+    ) {
       return callback(null, true);
     }
-    callback(null, true); // Be permissive in production for now
+    // Block unknown origins in production
+    console.warn(`[CORS] Blocked origin: ${origin}`);
+    callback(new Error('CORS policy: origin not allowed'), false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-secret'],
 }));
 
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+// Security headers
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'", 'https://scenelink.app', 'https://www.scenelink.app'],
+    },
+  },
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+}));
+
 app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '1mb' })); // Reduced from 10mb — prevent payload attacks
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(cookieParser());
+
+// ==================== RATE LIMITING ====================
+
+// Global rate limit — all API routes
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300, // 300 requests per 15 min per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+  skip: (req) => {
+    // Skip rate limiting for health checks
+    return req.path === '/api/health';
+  },
+});
+app.use('/api', globalLimiter);
+
+// Strict rate limit for auth endpoints — prevent brute force
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 login/signup attempts per 15 min per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication attempts. Please wait 15 minutes.' },
+});
+
+// Contact form rate limit — prevent spam
+const contactLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // 5 contact submissions per hour per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many contact submissions. Please wait before submitting again.' },
+});
+
+// Concierge/AI rate limit
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 20, // 20 AI requests per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many AI requests. Please slow down.' },
+});
 
 // ==================== HEALTH CHECK ====================
 app.get('/api/health', async (req, res) => {
@@ -57,9 +123,9 @@ app.get('/api/health', async (req, res) => {
 });
 
 // ==================== API ROUTES ====================
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/auth', require('./routes/oauth')); // Google + Apple OAuth
-app.use('/api/admin', require('./routes/admin')); // Admin dashboard API
+app.use('/api/auth', authLimiter, require('./routes/auth'));     // Auth: 10 req/15min
+app.use('/api/auth', require('./routes/oauth'));                  // OAuth (no strict limit — uses provider tokens)
+app.use('/api/admin', require('./routes/admin'));                 // Admin: protected by secret
 app.use('/api/venues', require('./routes/venues'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/activity', require('./routes/activity'));
@@ -68,10 +134,10 @@ app.use('/api/lists', require('./routes/lists'));
 app.use('/api/plans', require('./routes/plans'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/checkins', require('./routes/checkins'));
-app.use('/api/business', require('./routes/business'));
+app.use('/api/business', authLimiter, require('./routes/business')); // Business login: 10 req/15min
 app.use('/api/analytics', require('./routes/analytics'));
-app.use('/api/concierge', require('./routes/concierge'));
-app.use('/api/contact', require('./routes/contact'));
+app.use('/api/concierge', aiLimiter, require('./routes/concierge')); // AI: 20 req/min
+app.use('/api/contact', contactLimiter, require('./routes/contact')); // Contact: 5 req/hr
 
 // Admin: force reseed (requires secret header)
 app.post('/api/admin/reseed', async (req, res) => {
