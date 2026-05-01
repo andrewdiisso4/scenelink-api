@@ -1,492 +1,492 @@
 /**
- * SceneLink AI Concierge — HTTP routes
- *
- * POST /api/concierge
- *   Body: {
- *     message: string (required, 1..500 chars),
- *     context: { neighborhood?, vibes?[], pageId?, planId? },
- *     history: [{ role: 'user'|'assistant', content: string }],
- *     filters: { neighborhood?, vibe?, priceLevel?, partySize?, cuisines? }, // optional, merged into parsing
- *     ai: boolean (default true; set false to force rule-based)
- *   }
- *   Returns:
- *   {
- *     ok, source ('openai' | 'rule-based' | 'empty'),
- *     reply, intent,
- *     recommendedPlan: { title, summary, stops: [{venueId,...,actions}] } | null,
- *     recommendedVenues: [{ venueId, whyItFits }],
- *     venueCards: [ full venue rows for every venueId referenced above ],
- *     quickReplies: [string],
- *     requiresLogin: boolean,  // true if actions (save/plan) require login
- *     isLoggedIn: boolean,
- *     notice: string | null    // e.g. "SceneLink Concierge is having trouble connecting..."
- *   }
- *
- * GET /api/concierge/suggestions
- *   Returns time-aware starter chips.
+ * SceneLink AI Concierge Backend
+ * 
+ * Intent classifier + real database queries + structured response.
+ * Endpoint: POST /api/concierge
+ * Request: { message, session_id, context }
+ * Response: { response, venues, events, actions, intent, confidence }
+ * 
+ * This is a deterministic rule-based classifier (no external AI API required).
+ * Can be upgraded later to call OpenAI/Claude/etc. by swapping generateResponse().
  */
 
 const express = require('express');
 const pool = require('../config/database');
 const { optionalAuth } = require('../middleware/auth');
-const {
-    runAIConcierge,
-    fetchCandidateVenues,
-    fetchVenuesByIds,
-    parseFilters,
-    isEnabled: aiEnabled
-} = require('./conciergeAI');
+const { aiConcierge, isEnabled: aiEnabled } = require('./conciergeAI');
 
 const router = express.Router();
 
-// ═══════════════════════════════════════════════════════════════════════════
-// RATE LIMITING — simple in-memory, per IP+user
-// ═══════════════════════════════════════════════════════════════════════════
-const RATE_WINDOW_MS = 60 * 1000;
-const RATE_MAX_REQUESTS = parseInt(process.env.CONCIERGE_RATE_MAX || '20', 10);
-const rateMap = new Map(); // key -> { count, resetAt }
+// ═════════════════════════════════════════════════════════════
+// INTENT CLASSIFIER
+// ═════════════════════════════════════════════════════════════
+const CUISINES = {
+    italian: ['italian','pasta','pizza','trattoria','osteria'],
+    japanese: ['japanese','sushi','ramen','izakaya'],
+    mexican: ['mexican','taco','burrito','taqueria'],
+    chinese: ['chinese','dim sum','szechuan'],
+    thai: ['thai','pad thai'],
+    indian: ['indian','curry','tandoor'],
+    french: ['french','brasserie','bistro'],
+    mediterranean: ['mediterranean','greek','lebanese','hummus'],
+    seafood: ['seafood','oyster','lobster','fish','raw bar'],
+    steakhouse: ['steak','steakhouse','chophouse'],
+    american: ['american','burger','diner','grill'],
+    cafe: ['cafe','coffee','espresso','café']
+};
 
-function rateLimit(req, res, next) {
-    const userId = req.user && req.user.id ? req.user.id : null;
-    const ip = (req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim() || 'unknown';
-    const key = userId ? `u:${userId}` : `ip:${ip}`;
-    const now = Date.now();
-    const entry = rateMap.get(key);
-    if (!entry || entry.resetAt <= now) {
-        rateMap.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS });
-        return next();
-    }
-    if (entry.count >= RATE_MAX_REQUESTS) {
-        const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
-        res.setHeader('Retry-After', String(retryAfter));
-        return res.status(429).json({
-            ok: false,
-            error: 'rate_limited',
-            reply: 'Whoa — slow down for a moment. Try again in a few seconds.',
-            retryAfter
-        });
-    }
-    entry.count++;
-    next();
-}
+const VIBES = {
+    romantic: ['date','romantic','anniversary','intimate','date night','dating'],
+    rooftop: ['rooftop','view','skyline','terrace'],
+    cocktail: ['cocktail','speakeasy','mixology','craft drinks'],
+    nightclub: ['club','nightclub','dance','dancing','dj'],
+    livemusic: ['live music','band','concert','jazz','acoustic'],
+    casual: ['casual','chill','relaxed','laid back'],
+    fine: ['fine dining','upscale','fancy','special occasion','tasting menu'],
+    brunch: ['brunch','breakfast','mimosa','eggs benedict'],
+    sports: ['sports bar','sports','game','watch the game'],
+    lgbtq: ['lgbtq','gay','queer','pride'],
+    hiddengem: ['hidden gem','off the beaten','secret','under the radar']
+};
 
-// Cleanup old rate entries every 5 min
-setInterval(() => {
-    const now = Date.now();
-    for (const [k, v] of rateMap.entries()) if (v.resetAt <= now) rateMap.delete(k);
-}, 5 * 60 * 1000).unref?.();
+const NEIGHBORHOODS = [
+    'back bay','south end','north end','seaport','downtown','cambridge','beacon hill',
+    'fort point','fenway','somerville','allston','brookline','jamaica plain','charlestown',
+    'chinatown','west end','east boston','dorchester','roslindale','brighton','hyde park',
+    'mission hill','roxbury','mattapan'
+];
 
-// ═══════════════════════════════════════════════════════════════════════════
-// HYDRATION + ACTION BUILDING
-// ═══════════════════════════════════════════════════════════════════════════
-function buildVenueActions(venue, isLoggedIn) {
-    // Actions are instructions for the frontend, which will wire them to real
-    // app endpoints (/api/favorites/toggle, /api/plans, etc.)
-    return [
-        { key: 'view_details', label: 'View Details', requiresLogin: false, href: `/venue.html?slug=${encodeURIComponent(venue.slug || venue.id)}` },
-        { key: 'save', label: isLoggedIn ? 'Save' : 'Save (log in)', requiresLogin: true, venueId: venue.id },
-        { key: 'add_to_plan', label: isLoggedIn ? 'Add to Plan' : 'Add to Plan (log in)', requiresLogin: true, venueId: venue.id },
-        { key: 'directions', label: 'Directions', requiresLogin: false,
-          href: venue.google_maps_url ||
-                (venue.lat && venue.lng
-                    ? `https://www.google.com/maps/search/?api=1&query=${venue.lat},${venue.lng}`
-                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((venue.name||'') + ' ' + (venue.address||'Boston MA'))}`) },
-        ...(venue.opentable_url || venue.resy_url || venue.reservation_url ? [
-            { key: 'book', label: 'Book a Table', requiresLogin: false,
-              href: venue.opentable_url || venue.resy_url || venue.reservation_url }
-        ] : [])
-    ];
-}
+const TIME_HINTS = {
+    tonight: ['tonight','this evening','right now'],
+    weekend: ['weekend','saturday night','friday night','this weekend'],
+    lunch: ['lunch','midday','noon'],
+    brunch: ['brunch','saturday morning','sunday morning'],
+    latenight: ['late night','after midnight','2am','closing time']
+};
 
-function toVenueCard(v, isLoggedIn) {
-    return {
-        id: v.id,
-        slug: v.slug,
-        name: v.name,
-        type: v.type,
-        category: v.category,
-        cuisine: v.cuisine,
-        neighborhood: v.neighborhood,
-        city: v.city,
-        address: v.address,
-        lat: v.lat ? Number(v.lat) : null,
-        lng: v.lng ? Number(v.lng) : null,
-        rating: v.rating ? Number(v.rating) : null,
-        priceLevel: v.price_level || null,
-        priceLabel: v.price_label || (v.price_level ? '$'.repeat(v.price_level) : null),
-        buzzScore: v.buzz_score ? Number(v.buzz_score) : null,
-        goingCount: v.going_count || 0,
-        imageUrl: v.cover_image_url || v.image_url || null,
-        coverImageUrl: v.cover_image_url || v.image_url || null,
-        shortDesc: v.short_desc,
-        description: v.description,
-        vibe: v.vibe,
-        highlight: v.highlight,
-        whyHot: v.why_hot,
-        pairWith: v.pair_with,
-        trending: !!v.trending,
-        featured: !!v.featured,
-        isOpenNow: !!v.is_open_now,
-        hoursDisplay: v.hours_display,
-        opentableUrl: v.opentable_url,
-        resyUrl: v.resy_url,
-        yelpUrl: v.yelp_url,
-        reservationUrl: v.reservation_url || v.opentable_url || v.resy_url,
-        googleMapsUrl: v.google_maps_url,
-        actions: buildVenueActions(v, isLoggedIn)
+function classifyIntent(message) {
+    const m = (message || '').toLowerCase().trim();
+    const intent = {
+        primary: 'search',
+        cuisines: [],
+        vibes: [],
+        neighborhoods: [],
+        times: [],
+        group_size: null,
+        budget: null,
+        is_booking: false,
+        is_event: false,
+        is_help: false,
+        is_greeting: false,
+        original: message
     };
+
+    // Greeting/help
+    if (/^(hi|hey|hello|what's up|yo|sup)\b/i.test(message)) intent.is_greeting = true;
+    if (/\b(help|how does|what can|who are|what is scenelink)\b/i.test(m)) intent.is_help = true;
+
+    // Cuisine detection
+    Object.keys(CUISINES).forEach(function(key){
+        CUISINES[key].forEach(function(kw){
+            if (m.indexOf(kw) !== -1 && intent.cuisines.indexOf(key) === -1) intent.cuisines.push(key);
+        });
+    });
+
+    // Vibe detection
+    Object.keys(VIBES).forEach(function(key){
+        VIBES[key].forEach(function(kw){
+            if (m.indexOf(kw) !== -1 && intent.vibes.indexOf(key) === -1) intent.vibes.push(key);
+        });
+    });
+
+    // Neighborhood detection
+    NEIGHBORHOODS.forEach(function(n){
+        if (m.indexOf(n) !== -1 && intent.neighborhoods.indexOf(n) === -1) intent.neighborhoods.push(n);
+    });
+
+    // Time detection
+    Object.keys(TIME_HINTS).forEach(function(key){
+        TIME_HINTS[key].forEach(function(kw){
+            if (m.indexOf(kw) !== -1 && intent.times.indexOf(key) === -1) intent.times.push(key);
+        });
+    });
+
+    // Group size - matches "for 4", "table for 6", "party of 8", "4 people", etc.
+    const groupMatch = m.match(/\b(?:for|party of|table for|group of)\s+(\d+)\b/) ||
+                       m.match(/\b(\d+)\s*(people|person|friends?|guys|ppl|of us|top)\b/);
+    if (groupMatch) intent.group_size = parseInt(groupMatch[1]);
+    if (/\bdate\b|\btwo of us\b|\bmy (partner|girlfriend|boyfriend|wife|husband)\b/.test(m)) intent.group_size = intent.group_size || 2;
+
+    // Budget
+    if (/\$\$\$\$|splurge|expensive|upscale/.test(m)) intent.budget = 4;
+    else if (/\$\$\$/.test(m)) intent.budget = 3;
+    else if (/cheap|budget|affordable|\$\$/.test(m)) intent.budget = 2;
+
+    // Event intent
+    if (/\b(event|concert|show|live music|tonight's event|what's happening)\b/.test(m)) intent.is_event = true;
+
+    // Booking intent
+    if (/\b(book|reserve|reservation|table for|make a reservation)\b/.test(m)) intent.is_booking = true;
+
+    // Primary intent
+    if (intent.is_booking) intent.primary = 'book';
+    else if (intent.is_event) intent.primary = 'event';
+    else if (intent.is_help) intent.primary = 'help';
+    else if (intent.is_greeting) intent.primary = 'greet';
+    else if (intent.cuisines.length || intent.vibes.length || intent.neighborhoods.length) intent.primary = 'recommend';
+    else intent.primary = 'search';
+
+    return intent;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// RULE-BASED FALLBACK — uses the same real DB candidates, no fake data
-// ═══════════════════════════════════════════════════════════════════════════
-function generateFallbackReply(filters, hasVenues, noticeMode = false) {
-    if (!hasVenues) {
-        return "I couldn't find live venues matching that. Try a different neighborhood, vibe, or cuisine.";
+// ═════════════════════════════════════════════════════════════
+// VENUE QUERY BUILDER
+// ═════════════════════════════════════════════════════════════
+async function queryVenues(intent, limit) {
+    limit = limit || 5;
+    const conditions = [];
+    const values = [];
+    let i = 1;
+
+    // Cuisine filter
+    if (intent.cuisines.length) {
+        const cs = intent.cuisines.map(function(c){ return '%' + c + '%'; });
+        conditions.push(`(LOWER(cuisine) ILIKE ANY($${i}) OR LOWER(type) ILIKE ANY($${i}))`);
+        values.push(cs);
+        i++;
     }
-    const parts = [];
-    if (filters.cuisines.length) parts.push(filters.cuisines.map(cap).join(' / '));
-    if (filters.vibes.length) parts.push(filters.vibes.join(' / '));
-    const loc = filters.neighborhoods.length ? ` in ${filters.neighborhoods.join(', ')}` : ' in Boston';
-    const descPart = parts.length ? parts.join(' · ') : 'top';
-    const pre = noticeMode
-        ? 'SceneLink Concierge is having trouble connecting — here are curated picks from live SceneLink venue data. '
-        : '';
-    return `${pre}${capFirst(descPart)} spots${loc}:`;
-}
 
-function generateFallback({ filters, candidates, isLoggedIn, noticeMode = false }) {
-    const hasVenues = candidates && candidates.length > 0;
-    const topVenues = (candidates || []).slice(0, 6);
-
-    let recommendedPlan = null;
-    if (filters.isPlan && topVenues.length >= 2) {
-        // Simple heuristic itinerary: split into dinner → drinks → (late night)
-        const dinner = topVenues.find(v => v.type === 'restaurant' || /restaurant/i.test(v.category || '')) || topVenues[0];
-        const bar    = topVenues.find(v => v.id !== dinner.id && (v.type === 'bar' || /bar|cocktail|lounge/i.test(v.category || ''))) || topVenues[1];
-        const late   = topVenues.find(v =>
-            v.id !== dinner.id && (!bar || v.id !== bar.id) &&
-            (v.type === 'nightlife' || /club|nightlife|lounge/i.test(v.category || ''))
-        );
-        const stops = [];
-        if (dinner) stops.push({
-            venueId: dinner.id, name: dinner.name, neighborhood: dinner.neighborhood || '',
-            category: 'Dinner', whyItFits: dinner.why_hot || dinner.highlight || 'A strong match for your vibe.',
-            bestTime: '7:30 PM', priceLevel: dinner.price_label || (dinner.price_level ? '$'.repeat(dinner.price_level) : null),
-            vibeTags: filters.vibes.slice(0, 3)
-        });
-        if (bar) stops.push({
-            venueId: bar.id, name: bar.name, neighborhood: bar.neighborhood || '',
-            category: 'Drinks', whyItFits: bar.why_hot || bar.highlight || 'Great follow-up spot nearby.',
-            bestTime: '9:30 PM', priceLevel: bar.price_label || (bar.price_level ? '$'.repeat(bar.price_level) : null),
-            vibeTags: filters.vibes.slice(0, 3)
-        });
-        if (late) stops.push({
-            venueId: late.id, name: late.name, neighborhood: late.neighborhood || '',
-            category: 'Late Night', whyItFits: late.why_hot || late.highlight || 'To keep the night going.',
-            bestTime: '11:30 PM', priceLevel: late.price_label || (late.price_level ? '$'.repeat(late.price_level) : null),
-            vibeTags: filters.vibes.slice(0, 3)
-        });
-        if (stops.length) {
-            recommendedPlan = {
-                title: filters.neighborhoods[0]
-                    ? `${filters.neighborhoods[0]} Night Out`
-                    : 'Your Boston Night Out',
-                summary: 'A curated flow from dinner into drinks — built from top SceneLink venues.',
-                stops
-            };
-        }
+    // Vibe → type mapping
+    const typeFilters = [];
+    if (intent.vibes.indexOf('rooftop') !== -1) typeFilters.push('rooftop');
+    if (intent.vibes.indexOf('cocktail') !== -1) typeFilters.push('cocktail','bar','lounge');
+    if (intent.vibes.indexOf('nightclub') !== -1) typeFilters.push('nightclub','club');
+    if (intent.vibes.indexOf('livemusic') !== -1) typeFilters.push('live music','music','jazz');
+    if (intent.vibes.indexOf('brunch') !== -1) typeFilters.push('cafe','restaurant');
+    if (intent.vibes.indexOf('sports') !== -1) typeFilters.push('sports bar','bar');
+    if (typeFilters.length) {
+        const tf = typeFilters.map(function(t){ return '%' + t + '%'; });
+        conditions.push(`(LOWER(type) ILIKE ANY($${i}) OR LOWER(subcategory) ILIKE ANY($${i}))`);
+        values.push(tf);
+        i++;
     }
 
-    const recommendedVenues = recommendedPlan
-        ? []
-        : topVenues.slice(0, 5).map(v => ({
-              venueId: v.id,
-              whyItFits: v.why_hot || v.highlight || v.pair_with || `Top-rated ${v.cuisine || v.type || 'spot'} in ${v.neighborhood || 'Boston'}.`
-          }));
+    // Neighborhood filter
+    if (intent.neighborhoods.length) {
+        const nbs = intent.neighborhoods.map(function(n){ return '%' + n + '%'; });
+        conditions.push(`LOWER(neighborhood) ILIKE ANY($${i})`);
+        values.push(nbs);
+        i++;
+    }
 
-    const quickReplies = filters.isPlan
-        ? ['Make it more casual', 'Add a late-night spot', 'Show cheaper options', 'Invite friends']
-        : ['Plan my night', 'Show cheaper options', 'Only upscale spots', 'Different neighborhood'];
+    // Budget filter
+    if (intent.budget) {
+        conditions.push(`(price_level <= $${i} OR price_level IS NULL)`);
+        values.push(intent.budget);
+        i++;
+    }
 
-    return {
-        ok: true,
-        source: noticeMode ? 'rule-based-fallback' : 'rule-based',
-        reply: generateFallbackReply(filters, hasVenues, noticeMode),
-        intent: filters.isPlan ? 'plan_night' : (filters.isEvent ? 'find_event' : 'find_venue'),
-        recommendedPlan,
-        recommendedVenues,
-        quickReplies,
-        candidates: topVenues
-    };
-}
+    // Time: tonight → is_open_now if available
+    if (intent.times.indexOf('tonight') !== -1) {
+        // Soft filter — prefer trending/hot venues for "tonight"
+        conditions.push(`(buzz_score >= 50 OR is_open_now = true OR 1=1)`);
+    }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN ROUTE: POST /api/concierge
-// ═══════════════════════════════════════════════════════════════════════════
-router.post('/', optionalAuth, rateLimit, async (req, res) => {
-    const startedAt = Date.now();
-
-    // ─── Input validation ──────────────────────────────────────────────
-    const body = req.body || {};
-    const rawMessage = typeof body.message === 'string' ? body.message : '';
-    const message = rawMessage.trim();
-    if (!message) return res.status(400).json({ ok: false, error: 'message required' });
-    if (message.length > 500) return res.status(400).json({ ok: false, error: 'message too long (max 500 chars)' });
-
-    const context = (body.context && typeof body.context === 'object') ? body.context : {};
-    const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
-    const session_id = typeof body.session_id === 'string' && body.session_id.length <= 64
-        ? body.session_id
-        : 'sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    const allowAI = body.ai !== false;
-
-    const userId = req.user ? req.user.id : null;
-    const isLoggedIn = !!userId;
-
-    let result = null;
-    let notice = null;
+    const whereClause = conditions.length ? ('WHERE ' + conditions.join(' AND ')) : '';
+    const sql = `
+        SELECT id, slug, name, type, cuisine, category, neighborhood, city, address,
+               rating, price_level, buzz_score, why_hot, pair_with, short_desc, description,
+               cover_image_url, image_url, reservation_url, opentable_url, resy_url, yelp_url,
+               google_maps_url, lat, lng, is_open_now, hours_display,
+               trending, featured, going_count
+        FROM venues
+        ${whereClause}
+        ORDER BY
+            CASE WHEN trending = true THEN 1 ELSE 0 END DESC,
+            COALESCE(buzz_score, 0) DESC,
+            COALESCE(rating, 0) DESC,
+            RANDOM()
+        LIMIT $${i}
+    `;
+    values.push(limit);
 
     try {
-        // ─── 1. Try OpenAI ──────────────────────────────────────────────
-        if (allowAI && aiEnabled()) {
-            try {
-                const ai = await runAIConcierge({ message, history, context, userId });
-                result = ai;
-            } catch (aiErr) {
-                // Never expose the key; log status + sanitized snippet on one line
-                const oneLine = String(aiErr.snippet || aiErr.message || '').replace(/\s+/g, ' ').slice(0, 400);
-                console.warn(`[concierge] AI path failed status=${aiErr.status || '?'} msg="${aiErr.message}" body="${oneLine}"`);
-                notice = 'SceneLink Concierge is having trouble connecting, but here are curated picks from live SceneLink venue data.';
-            }
-        }
+        const result = await pool.query(sql, values);
+        return result.rows;
+    } catch (err) {
+        console.error('[concierge/queryVenues]', err.message);
+        // Fallback: just return top trending venues
+        try {
+            const fb = await pool.query(
+                `SELECT id, slug, name, type, cuisine, neighborhood, rating, price_level, buzz_score,
+                        why_hot, short_desc, cover_image_url, image_url, reservation_url, opentable_url,
+                        resy_url, yelp_url, google_maps_url, lat, lng
+                 FROM venues
+                 ORDER BY COALESCE(buzz_score,0) DESC, COALESCE(rating,0) DESC
+                 LIMIT $1`, [limit]);
+            return fb.rows;
+        } catch(_){ return []; }
+    }
+}
 
-        // ─── 2. Fallback: rule-based using same real DB candidates ─────
-        if (!result) {
-            const filters = parseFilters(message, context);
-            const candidates = await fetchCandidateVenues(filters);
-            if (!candidates.length) {
+// ═════════════════════════════════════════════════════════════
+// EVENT QUERY
+// ═════════════════════════════════════════════════════════════
+async function queryEvents(intent, limit) {
+    limit = limit || 5;
+    try {
+        const now = new Date();
+        const end = new Date();
+        if (intent.times.indexOf('weekend') !== -1) {
+            end.setDate(end.getDate() + 7);
+        } else {
+            end.setDate(end.getDate() + 1); // tonight/tomorrow
+        }
+        const result = await pool.query(
+            `SELECT id, slug, name, description, event_date, start_time, end_time,
+                    venue_name, venue_neighborhood, category, image_url, cover_image_url,
+                    ticket_url, ticket_price, price_range
+             FROM events
+             WHERE event_date >= $1 AND event_date <= $2
+             ORDER BY event_date ASC, start_time ASC
+             LIMIT $3`,
+            [now.toISOString(), end.toISOString(), limit]
+        );
+        return result.rows;
+    } catch (err) {
+        console.error('[concierge/queryEvents]', err.message);
+        return [];
+    }
+}
+
+// ═════════════════════════════════════════════════════════════
+// RESPONSE GENERATION
+// ═════════════════════════════════════════════════════════════
+function generateResponse(intent, venues, events) {
+    if (intent.is_greeting) {
+        return "Hey! I'm your SceneLink AI Concierge. I know every venue in Boston — ask me anything! Try: 'romantic Italian in the North End' or 'rooftop bars open tonight' or 'where's the best sushi in Back Bay?'";
+    }
+    if (intent.is_help) {
+        return "I can help you find the perfect Boston venue for any occasion. I know cuisines, vibes, neighborhoods, and what's trending right now. I can also help you **book a table**, **plan a night with friends**, or **save venues** to your lists. What are you in the mood for?";
+    }
+
+    // Build descriptive intro based on detected intent
+    const parts = [];
+    if (intent.cuisines.length) parts.push(intent.cuisines.map(cap).join('/'));
+    if (intent.vibes.length) parts.push(intent.vibes.map(cap).join('/'));
+    const location = intent.neighborhoods.length
+        ? 'in ' + intent.neighborhoods.map(capWords).join('/')
+        : 'in Boston';
+    const timing = intent.times.length
+        ? (intent.times[0] === 'tonight' ? 'tonight' : intent.times[0] === 'weekend' ? 'this weekend' : intent.times[0])
+        : '';
+
+    if (intent.primary === 'event') {
+        if (!events.length) return `I don't see any events ${timing || 'coming up'} that match. Try browsing the events page or check back soon!`;
+        const s = events.length === 1 ? 'event' : 'events';
+        return `Here ${events.length === 1 ? "'s an" : "are"} ${events.length} ${s} ${timing || 'coming up'}:`;
+    }
+
+    if (!venues.length) {
+        return `I couldn't find exact matches for that. Try a different cuisine, neighborhood, or vibe — I know 520+ venues across Boston.`;
+    }
+
+    const descParts = parts.length ? parts.join(' · ') + ' ' : '';
+    let leadIn;
+    if (intent.is_booking) {
+        leadIn = `Perfect — here are top ${descParts}spots ${location} where you can book a table${timing ? ' ' + timing : ''}:`;
+    } else if (intent.primary === 'recommend') {
+        leadIn = `${venues.length} top ${descParts}spots ${location}${timing ? ' ' + timing : ''}:`;
+    } else {
+        leadIn = `Here's what I found:`;
+    }
+    return leadIn;
+}
+
+// ═════════════════════════════════════════════════════════════
+// SUGGESTED ACTIONS
+// ═════════════════════════════════════════════════════════════
+function generateActions(intent, venues) {
+    const actions = [];
+    if (!venues.length) {
+        actions.push({ label: 'Browse all venues', type: 'link', href: 'explore.html' });
+        actions.push({ label: "Tonight's Picks", type: 'link', href: 'tonight.html' });
+        return actions;
+    }
+    if (intent.is_booking && venues[0] && (venues[0].reservation_url || venues[0].opentable_url || venues[0].resy_url)) {
+        actions.push({ label: 'Book ' + venues[0].name, type: 'book', venue_id: venues[0].id });
+    }
+    actions.push({ label: 'Save all to a list', type: 'save_all' });
+    actions.push({ label: 'Plan this with friends', type: 'plan' });
+    if (intent.cuisines.length === 0 && intent.vibes.length === 0) {
+        actions.push({ label: 'Refine by cuisine', type: 'refine_cuisine' });
+    }
+    return actions;
+}
+
+// ═════════════════════════════════════════════════════════════
+// MAIN ROUTE: POST /api/concierge
+// ═════════════════════════════════════════════════════════════
+router.post('/', optionalAuth, async (req, res) => {
+    const startedAt = Date.now();
+    try {
+        const message = (req.body.message || '').trim();
+        const context = req.body.context || {};
+        const history = Array.isArray(req.body.history) ? req.body.history : [];
+        const session_id = req.body.session_id || ('sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6));
+
+        if (!message) return res.status(400).json({ error: 'message required' });
+        if (message.length > 500) return res.status(400).json({ error: 'message too long' });
+
+        // ─── Try OpenAI first if enabled ───────────────────────────
+        if (aiEnabled() && req.body.ai !== false) {
+            try {
+                const ai = await aiConcierge({ message, history, context });
+                const intent = classifyIntent(message); // keep for analytics + client hints
+                pool.query(
+                    `INSERT INTO analytics_events (event, user_id, anon, session_id, properties)
+                     VALUES ($1, $2, $3, $4, $5)`,
+                    ['concierge_query', req.user ? req.user.id : null, !req.user, session_id,
+                     JSON.stringify({
+                         message: message.slice(0, 200),
+                         source: 'openai',
+                         tools_used: ai.tools_used,
+                         matches: ai.venues.length,
+                         events: ai.events.length,
+                         ms: Date.now() - startedAt
+                     })]
+                ).catch(()=>{});
                 return res.json({
                     ok: true,
-                    source: 'empty',
-                    reply: 'No live venue data is available yet. Add venues to the database before Concierge can make real recommendations.',
-                    intent: 'other',
-                    recommendedPlan: null,
-                    recommendedVenues: [],
-                    venueCards: [],
-                    quickReplies: ["Show tonight's picks", 'Explore neighborhoods', 'Browse by cuisine'],
-                    requiresLogin: !isLoggedIn,
-                    isLoggedIn,
-                    notice,
+                    source: 'openai',
+                    response: ai.response,
+                    venues: ai.venues,
+                    events: ai.events,
+                    itinerary: ai.itinerary || null,
+                    actions: ai.actions,
+                    intent: {
+                        primary: intent.primary,
+                        cuisines: intent.cuisines,
+                        vibes: intent.vibes,
+                        neighborhoods: intent.neighborhoods,
+                        times: intent.times,
+                        is_booking: intent.is_booking,
+                        is_event: intent.is_event
+                    },
+                    tools_used: ai.tools_used,
                     session_id
                 });
-            }
-            result = generateFallback({ filters, candidates, isLoggedIn, noticeMode: !!notice });
-        }
-
-        // ─── 3. Hydrate all referenced venueIds with full DB rows ──────
-        const neededIds = new Set();
-        if (result.recommendedPlan) {
-            for (const s of (result.recommendedPlan.stops || [])) {
-                if (s && s.venueId) neededIds.add(String(s.venueId));
+            } catch (aiErr) {
+                console.warn('[concierge] AI failed, falling back to rule-based:', aiErr.message);
+                // fall through to rule-based
             }
         }
-        for (const v of (result.recommendedVenues || [])) {
-            if (v && v.venueId) neededIds.add(String(v.venueId));
+
+        // ─── Fallback: rule-based classifier ───────────────────────
+        const intent = classifyIntent(message);
+        const limit = Math.min(parseInt(req.body.limit) || 5, 10);
+
+        let venues = [];
+        let events = [];
+        if (intent.primary === 'event') {
+            events = await queryEvents(intent, limit);
+            if (!events.length) venues = await queryVenues(intent, limit);
+        } else if (intent.primary === 'recommend' || intent.primary === 'search' || intent.primary === 'book') {
+            venues = await queryVenues(intent, limit);
         }
 
-        // Try to pull from candidates first (already fetched), then DB for any missing
-        const byId = new Map();
-        for (const c of (result.candidates || [])) byId.set(String(c.id), c);
-        const missing = [...neededIds].filter(id => !byId.has(id));
-        if (missing.length) {
-            const rows = await fetchVenuesByIds(missing);
-            for (const r of rows) byId.set(String(r.id), r);
-        }
+        const response = generateResponse(intent, venues, events);
+        const actions = generateActions(intent, venues);
 
-        // Drop any references that couldn't be hydrated (shouldn't happen after
-        // the allowedIds filter in runAIConcierge, but defensive):
-        if (result.recommendedPlan) {
-            result.recommendedPlan.stops = (result.recommendedPlan.stops || []).filter(
-                s => s && s.venueId && byId.has(String(s.venueId))
-            );
-            if (!result.recommendedPlan.stops.length) result.recommendedPlan = null;
-        }
-        result.recommendedVenues = (result.recommendedVenues || []).filter(
-            v => v && v.venueId && byId.has(String(v.venueId))
-        );
-
-        // If plan has no stops and no venues, surface the candidates so UI still renders
-        if (!result.recommendedPlan && !result.recommendedVenues.length && result.candidates && result.candidates.length) {
-            result.recommendedVenues = result.candidates.slice(0, 5).map(v => ({
-                venueId: v.id,
-                whyItFits: v.why_hot || v.highlight || v.pair_with || `Top pick in ${v.neighborhood || 'Boston'}.`
-            }));
-            for (const v of result.candidates.slice(0, 5)) byId.set(String(v.id), v);
-        }
-
-        // Build venueCards: every venue referenced, fully hydrated
-        const referencedIds = new Set();
-        if (result.recommendedPlan) {
-            for (const s of result.recommendedPlan.stops) referencedIds.add(String(s.venueId));
-        }
-        for (const v of result.recommendedVenues) referencedIds.add(String(v.venueId));
-        const venueCards = [];
-        for (const id of referencedIds) {
-            const row = byId.get(id);
-            if (row) venueCards.push(toVenueCard(row, isLoggedIn));
-        }
-
-        // Enrich stops with actions
-        if (result.recommendedPlan) {
-            result.recommendedPlan.stops = result.recommendedPlan.stops.map(s => ({
-                ...s,
-                actions: ['view_details', 'add_to_plan', 'save', 'directions']
-            }));
-        }
-
-        // --- 3.5 Fetch related events if the user asked for events ---
-        let recommendedEvents = [];
-        try {
-            const lcMsg = (message || '').toLowerCase();
-            const eventyKeywords = /\b(event|events|concert|concerts|show|shows|live music|dj|gig|perform|playing|this weekend|tonight|tomorrow)\b/;
-            const wantsEvents = !!(result.intent === 'find_event' ||
-                                   (result.recommendedPlan && /\b(night out|date night|tonight|weekend)\b/.test(lcMsg)) ||
-                                   eventyKeywords.test(lcMsg));
-
-            if (wantsEvents) {
-                const refVenueIds = [...referencedIds].filter(Boolean);
-                const filters2 = result.filters || {};
-                const neighborhoods = Array.isArray(filters2.neighborhoods) ? filters2.neighborhoods : [];
-
-                const qParams = [];
-                let qi = 1;
-                const where = [`e.is_active = true`, `e.date >= CURRENT_DATE`];
-
-                const catHints = [];
-                if (/\b(concert|live music|band|gig|show)\b/.test(lcMsg)) catHints.push('Live Music');
-                if (/\b(sport|game|red sox|celtics|bruins|patriots)\b/.test(lcMsg)) catHints.push('Sports');
-                if (/\b(art|gallery|exhibit|theat|broadway)\b/.test(lcMsg)) catHints.push('Arts & Culture');
-                if (/\b(dj|club|dance|nightclub)\b/.test(lcMsg)) catHints.push('Nightlife');
-                if (/\b(food|drink|tasting|wine|beer)\b/.test(lcMsg)) catHints.push('Food & Drink');
-
-                const scoreParts = ['0'];
-                if (refVenueIds.length) {
-                    scoreParts.push(`(CASE WHEN e.venue_id = ANY($${qi}::uuid[]) THEN 3 ELSE 0 END)`);
-                    qParams.push(refVenueIds); qi++;
-                }
-                if (neighborhoods.length) {
-                    scoreParts.push(`(CASE WHEN v.neighborhood = ANY($${qi}::text[]) THEN 2 ELSE 0 END)`);
-                    qParams.push(neighborhoods); qi++;
-                }
-                if (catHints.length) {
-                    scoreParts.push(`(CASE WHEN e.category = ANY($${qi}::text[]) THEN 1 ELSE 0 END)`);
-                    qParams.push(catHints); qi++;
-                }
-
-                const evSql = `
-                    SELECT e.id, e.title, e.description, e.category, e.date, e.start_time, e.end_time,
-                           e.event_url, e.image_url, e.is_featured,
-                           e.venue_id, COALESCE(v.name, e.venue_name) AS venue_name,
-                           COALESCE(v.slug, e.venue_slug) AS venue_slug,
-                           COALESCE(v.neighborhood, e.venue_neighborhood) AS venue_neighborhood,
-                           (${scoreParts.join(' + ')}) AS score
-                    FROM events e
-                    LEFT JOIN venues v ON v.id = e.venue_id
-                    WHERE ${where.join(' AND ')}
-                    ORDER BY score DESC, e.date ASC
-                    LIMIT 6
-                `;
-                const evRes = await pool.query(evSql, qParams);
-                recommendedEvents = evRes.rows.map(e => ({
-                    id: e.id,
-                    title: e.title,
-                    description: e.description ? String(e.description).slice(0, 200) : null,
-                    category: e.category || null,
-                    date: e.date,
-                    startTime: e.start_time || null,
-                    endTime: e.end_time || null,
-                    eventUrl: e.event_url || null,
-                    imageUrl: e.image_url || null,
-                    featured: !!e.is_featured,
-                    venueId: e.venue_id || null,
-                    venueName: e.venue_name || null,
-                    venueSlug: e.venue_slug || null,
-                    venueNeighborhood: e.venue_neighborhood || null
-                }));
-            }
-        } catch (evErr) {
-            console.warn('[concierge] event lookup failed:', evErr.message);
-            recommendedEvents = [];
-        }
-
-        // Analytics (async, never blocks response; no key/PII logged)
         pool.query(
             `INSERT INTO analytics_events (event, user_id, anon, session_id, properties)
              VALUES ($1, $2, $3, $4, $5)`,
-            [
-                'concierge_query',
-                userId,
-                !userId,
-                session_id,
-                JSON.stringify({
-                    message: message.slice(0, 200),
-                    source: result.source,
-                    intent: result.intent,
-                    matches: venueCards.length,
-                    ms: Date.now() - startedAt,
-                    tokens: result.tokensUsed || 0
-                })
-            ]
-        ).catch(() => {});
+            ['concierge_query', req.user ? req.user.id : null, !req.user, session_id,
+             JSON.stringify({ message: message.slice(0, 200), source: 'rule-based', intent: intent.primary, matches: venues.length, events: events.length, ms: Date.now() - startedAt })]
+        ).catch(()=>{});
 
-        return res.json({
+        res.json({
             ok: true,
-            source: notice ? 'rule-based-fallback' : result.source,
-            reply: result.reply,
-            intent: result.intent,
-            recommendedPlan: result.recommendedPlan,
-            recommendedVenues: result.recommendedVenues,
-            recommendedEvents,
-            venueCards,
-            quickReplies: result.quickReplies || [],
-            requiresLogin: !isLoggedIn,
-            isLoggedIn,
-            notice,
+            source: 'rule-based',
+            response,
+            venues,
+            events,
+            itinerary: null,
+            actions,
+            intent: {
+                primary: intent.primary,
+                cuisines: intent.cuisines,
+                vibes: intent.vibes,
+                neighborhoods: intent.neighborhoods,
+                times: intent.times,
+                is_booking: intent.is_booking,
+                is_event: intent.is_event
+            },
             session_id
         });
     } catch (err) {
-        console.error('[concierge] unexpected error:', err.message);
-        return res.status(500).json({
+        console.error('[concierge]', err);
+        res.status(500).json({
             ok: false,
             error: 'Concierge service error',
-            reply: "Sorry, I had trouble with that. Try browsing Explore or Tonight for picks!",
-            session_id
+            response: "Sorry, I had trouble with that. Try browsing Explore or Tonight for picks!"
         });
     }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// GET /api/concierge/suggestions — starter chips
-// ═══════════════════════════════════════════════════════════════════════════
-router.get('/suggestions', (req, res) => {
+// ═════════════════════════════════════════════════════════════
+// GET /api/concierge/suggestions — dynamic quick-action chips
+// ═════════════════════════════════════════════════════════════
+router.get('/suggestions', async (req, res) => {
     try {
-        const dow = new Date().getDay();
+        const dow = new Date().getDay(); // 0 Sun – 6 Sat
         const hour = new Date().getHours();
+
+        // Time-aware suggestions
         let suggestions;
         if (hour >= 5 && hour < 11) {
-            suggestions = ['Best brunch in Boston', 'Coffee shops to work from', 'Breakfast near me'];
+            suggestions = [
+                'Best brunch spots in Boston',
+                'Coffee shops to work from',
+                'Breakfast near me'
+            ];
         } else if (hour >= 11 && hour < 15) {
-            suggestions = ['Lunch spots downtown', 'Quick bites in the Seaport', 'Best sandwiches in Boston'];
+            suggestions = [
+                'Lunch spots downtown',
+                'Quick bites in the Seaport',
+                'Best sandwiches in Boston'
+            ];
         } else if (hour >= 15 && hour < 18) {
-            suggestions = ['Rooftop bars open now', 'Happy hour deals', 'Cafes open late'];
+            suggestions = [
+                'Rooftop bars open now',
+                'Happy hour deals',
+                'Cafes open late'
+            ];
         } else if (hour >= 18 && hour < 22) {
-            suggestions = (dow === 5 || dow === 6)
-                ? ['Romantic Italian for date night', 'Trendy cocktail bars tonight', 'Live music this weekend', 'Rooftop with a view']
-                : ['Plan a date night', 'Best sushi in Back Bay', 'Cozy restaurants tonight', 'Dinner then drinks'];
+            // Prime dinner time
+            if (dow === 5 || dow === 6) {
+                suggestions = [
+                    'Romantic Italian for date night',
+                    'Trendy cocktail bars tonight',
+                    'Live music this weekend',
+                    'Rooftop with a view'
+                ];
+            } else {
+                suggestions = [
+                    'Dinner spots tonight',
+                    'Best sushi in Back Bay',
+                    'Cozy restaurants for tonight'
+                ];
+            }
         } else {
-            suggestions = ['Nightclubs open late', 'Bars open past midnight', 'Late night food near me'];
+            // Late night
+            suggestions = [
+                'Nightclubs open late',
+                'Bars open past midnight',
+                'Late night food near me'
+            ];
         }
+
         res.json({ suggestions });
     } catch (err) {
         res.json({
@@ -494,27 +494,14 @@ router.get('/suggestions', (req, res) => {
                 'Romantic Italian in the North End',
                 'Rooftop bars with a view',
                 'Best sushi in Back Bay',
-                'Plan my night'
+                'Where is everyone going tonight?'
             ]
         });
     }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// GET /api/concierge/health — for QA
-// ═══════════════════════════════════════════════════════════════════════════
-router.get('/health', (req, res) => {
-    res.json({
-        ok: true,
-        ai_enabled: aiEnabled(),
-        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-        venues_endpoint: true,
-        rate_limit: { windowMs: RATE_WINDOW_MS, max: RATE_MAX_REQUESTS }
-    });
-});
-
 // Helpers
 function cap(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
-function capFirst(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+function capWords(s){ return s.split(' ').map(cap).join(' '); }
 
 module.exports = router;
