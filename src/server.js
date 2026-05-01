@@ -5,7 +5,6 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
-const rateLimit = require('express-rate-limit');
 const pool = require('./config/database');
 const fs = require('fs');
 const path = require('path');
@@ -13,38 +12,25 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Render proxies; needed for rate-limit to key by real client IP
-app.set('trust proxy', 1);
-
 // ==================== MIDDLEWARE ====================
 
-// CORS — strict allow-list for credentialed requests
+// CORS — allow frontend origins
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:8080,http://localhost:3000,https://scenelink.app,https://www.scenelink.app')
   .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
-
-function isAllowedOrigin(origin) {
-  if (!origin) return true; // same-origin, server-to-server, curl, native apps
-  if (allowedOrigins.some(o => origin === o)) return true;
-  try {
-    const u = new URL(origin);
-    if (u.hostname.endsWith('.netlify.app')) return true;
-    if (u.hostname.endsWith('.scenelink.app')) return true;
-    if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return true;
-  } catch (_) { /* ignore */ }
-  return false;
-}
+  .map(s => s.trim());
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (isAllowedOrigin(origin)) return callback(null, true);
-    // Block credentialed requests from unknown origins
-    return callback(null, false);
+    // Allow requests with no origin (mobile apps, curl, etc)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.some(o => origin === o || origin.endsWith('.netlify.app'))) {
+      return callback(null, true);
+    }
+    callback(null, true); // Be permissive in production for now
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-secret'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
@@ -52,51 +38,6 @@ app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
-
-// ==================== RATE LIMITING ====================
-// Custom key generator — Render sits behind both Render's LB and Cloudflare, so
-// Express's default req.ip can rotate. We pin to CF-Connecting-IP when present,
-// otherwise fall back to the first X-Forwarded-For hop, then req.ip.
-function clientIp(req) {
-  const cf = req.headers['cf-connecting-ip'];
-  if (cf) return String(cf).trim();
-  const xff = req.headers['x-forwarded-for'];
-  if (xff) return String(xff).split(',')[0].trim();
-  return req.ip || 'unknown';
-}
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: clientIp,
-  message: { error: 'Too many auth attempts, please try again later.' },
-});
-const conciergeLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 15,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: clientIp,
-  message: { error: 'Too many concierge requests, please slow down.' },
-});
-const apiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: clientIp,
-  skip: (req) => req.path === '/api/health',
-});
-
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/signup', authLimiter);
-app.use('/api/auth/register', authLimiter);
-app.use('/api/auth/forgot-password', authLimiter);
-app.use('/api/auth/reset-password', authLimiter);
-app.use('/api/concierge', conciergeLimiter);
-app.use('/api', apiLimiter);
 
 // ==================== HEALTH CHECK ====================
 app.get('/api/health', async (req, res) => {
@@ -117,10 +58,8 @@ app.get('/api/health', async (req, res) => {
 
 // ==================== API ROUTES ====================
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/auth', require('./routes/oauth'));
-app.use('/api/admin', require('./routes/admin'));
-app.use('/api/admin/venues', require('./routes/adminVenues'));
-app.use('/api/admin/events', require('./routes/adminEvents'));
+app.use('/api/auth', require('./routes/oauth')); // Google + Apple OAuth
+app.use('/api/admin', require('./routes/admin')); // Admin dashboard API
 app.use('/api/venues', require('./routes/venues'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/activity', require('./routes/activity'));
@@ -132,15 +71,7 @@ app.use('/api/checkins', require('./routes/checkins'));
 app.use('/api/business', require('./routes/business'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/concierge', require('./routes/concierge'));
-
-// V1 Social
-app.use('/api/users', require('./routes/users'));
-app.use('/api/friends', require('./routes/friends'));
-app.use('/api/conversations', require('./routes/messages'));
-app.use('/api/posts', require('./routes/posts'));
-app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api/reports', require('./routes/reports'));
-app.use('/api/push', require('./routes/push'));
+app.use('/api/contact', require('./routes/contact'));
 
 // Admin: force reseed (requires secret header)
 app.post('/api/admin/reseed', async (req, res) => {
@@ -172,23 +103,6 @@ app.get('/api/users/me', require('./middleware/auth').requireAuth, async (req, r
   }
 });
 
-// ==================== JSON 404 HANDLER ====================
-app.use('/api', (req, res) => {
-  res.status(404).json({ error: 'Not Found', path: req.originalUrl });
-});
-
-// ==================== JSON ERROR HANDLER ====================
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-  const status = err.status || err.statusCode || 500;
-  const payload = { error: err.publicMessage || (status >= 500 ? 'Internal server error' : (err.message || 'Request error')) };
-  if (process.env.NODE_ENV !== 'production') payload.detail = err.message;
-  try {
-    console.error('[api:error]', req.method, req.originalUrl, '->', status, err.message);
-  } catch (_) {}
-  res.status(status).json(payload);
-});
-
 // ==================== DATABASE INIT ====================
 async function initDatabase() {
   try {
@@ -197,6 +111,8 @@ async function initDatabase() {
     await pool.query(schema);
     console.log('✅ Database schema initialized');
 
+    // Check if we need to seed. Re-seed if the DB was seeded with the old small dataset
+    // (fewer than 100 venues means we should refresh with the big dataset).
     const venueCount = await pool.query('SELECT COUNT(*) FROM venues');
     const n = parseInt(venueCount.rows[0].count);
     const RESEED_THRESHOLD = parseInt(process.env.SEED_MIN_VENUES || '100', 10);
@@ -211,6 +127,8 @@ async function initDatabase() {
   } catch (err) {
     console.error('❌ Database init error:', err.message || String(err), '| code:', err.code, '| first stack:', (err.stack||'').split('\n')[0]);
     console.error('❌ DATABASE_URL present?', !!process.env.DATABASE_URL, '| length:', (process.env.DATABASE_URL||'').length);
+    // Don't crash — schema might already exist with different extension setup
+    // Try just checking connection
     try {
       await pool.query('SELECT 1');
       console.log('✅ Database connection OK (schema may need manual init)');
