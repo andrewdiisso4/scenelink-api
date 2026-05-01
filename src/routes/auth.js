@@ -104,6 +104,73 @@ router.post('/signup', async (req, res) => {
     const user = result.rows[0];
     const token = generateToken(user);
 
+    // ── Send welcome email + admin notification (non-blocking) ──────────────
+    setImmediate(async () => {
+      try {
+        const appUrl = process.env.APP_URL || 'https://scenelink.app';
+        const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@scenelink.app';
+        const adminEmail = process.env.ADMIN_NOTIFY_EMAIL;
+
+        if (emailTransporter) {
+          // 1) Welcome email to new user
+          await emailTransporter.sendMail({
+            from: fromEmail,
+            to: user.email,
+            subject: '🎵 Welcome to SceneLink — Your Boston nightlife guide',
+            html: `
+              <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#0d0d0d;color:#fff;border-radius:12px">
+                <div style="text-align:center;margin-bottom:28px">
+                  <span style="font-size:26px;font-weight:700;color:#D4AF37">🎵 SceneLink</span>
+                </div>
+                <h2 style="color:#fff;font-size:22px;margin-bottom:12px">Welcome, ${user.display_name}! 🎉</h2>
+                <p style="color:#ccc;font-size:15px;line-height:1.7">You're now part of SceneLink — Boston's smartest guide to dining, nightlife, and events.</p>
+                <ul style="color:#ccc;font-size:14px;line-height:2;padding-left:20px">
+                  <li>🔍 <strong>Explore</strong> 100+ venues across Boston neighborhoods</li>
+                  <li>❤️ <strong>Save favorites</strong> and build custom lists</li>
+                  <li>📅 <strong>Plan nights out</strong> with friends</li>
+                  <li>🤖 <strong>Ask the AI Concierge</strong> for personalized picks</li>
+                  <li>📍 <strong>Check in</strong> to venues and leave reviews</li>
+                </ul>
+                <div style="text-align:center;margin:32px 0">
+                  <a href="${appUrl}/explore.html" style="background:#D4AF37;color:#000;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:15px;display:inline-block">Start Exploring →</a>
+                </div>
+                <p style="color:#555;font-size:12px;text-align:center">Questions? Reply to this email or visit <a href="${appUrl}/contact.html" style="color:#D4AF37">scenelink.app/contact</a></p>
+              </div>`,
+            text: `Welcome to SceneLink, ${user.display_name}!\n\nYou're now part of Boston's smartest nightlife guide.\n\nExplore venues: ${appUrl}/explore.html\n\n— The SceneLink Team`,
+          }).catch(e => console.error('[email] welcome email failed:', e.message));
+
+          // 2) Admin notification of new signup
+          if (adminEmail) {
+            await emailTransporter.sendMail({
+              from: fromEmail,
+              to: adminEmail,
+              subject: `[SceneLink] New signup: ${user.display_name} (${user.email})`,
+              html: `
+                <div style="font-family:sans-serif;max-width:480px;padding:24px;background:#111;color:#fff;border-radius:8px">
+                  <h3 style="color:#D4AF37;margin-top:0">🆕 New User Signup</h3>
+                  <table style="width:100%;font-size:14px;color:#ccc;border-collapse:collapse">
+                    <tr><td style="padding:6px 0;color:#888">Name</td><td><strong style="color:#fff">${user.display_name}</strong></td></tr>
+                    <tr><td style="padding:6px 0;color:#888">Email</td><td><a href="mailto:${user.email}" style="color:#D4AF37">${user.email}</a></td></tr>
+                    <tr><td style="padding:6px 0;color:#888">Username</td><td>@${user.username}</td></tr>
+                    <tr><td style="padding:6px 0;color:#888">User ID</td><td style="font-size:11px">${user.id}</td></tr>
+                    <tr><td style="padding:6px 0;color:#888">Joined</td><td>${new Date(user.created_at).toLocaleString()}</td></tr>
+                  </table>
+                  <div style="margin-top:20px">
+                    <a href="${appUrl}/admin.html" style="background:#D4AF37;color:#000;text-decoration:none;padding:10px 20px;border-radius:6px;font-weight:700;font-size:13px;display:inline-block">View Admin Dashboard</a>
+                  </div>
+                </div>`,
+              text: `New signup: ${user.display_name} (${user.email}) — ID: ${user.id}`,
+            }).catch(e => console.error('[email] admin notify failed:', e.message));
+          }
+        } else {
+          // No SMTP — log to Render console so you can see signups
+          console.log(`[signup] NEW USER: ${user.display_name} <${user.email}> | ID: ${user.id} | ${new Date(user.created_at).toISOString()}`);
+        }
+      } catch (emailErr) {
+        console.error('[signup] email error (non-fatal):', emailErr.message);
+      }
+    });
+
     res.status(201).json({ token, user });
   } catch (err) {
     console.error('Signup error:', err);
@@ -251,106 +318,18 @@ router.get('/me', requireAuth, async (req, res) => {
 // PUT /api/auth/profile
 router.put('/profile', requireAuth, async (req, res) => {
   try {
-    const { display_name, bio, neighborhood, avatar_url, username } = req.body || {};
-
-    // Validate username if provided
-    let nextUsername = null;
-    if (typeof username === 'string' && username.trim()) {
-      const u = username.trim().toLowerCase();
-      if (!/^[a-z0-9_]{3,30}$/.test(u)) {
-        return res.status(400).json({ error: 'Username must be 3–30 chars, letters/numbers/underscore only' });
-      }
-      const clash = await pool.query(
-        `SELECT id FROM users WHERE LOWER(username) = $1 AND id <> $2 LIMIT 1`,
-        [u, req.user.id]
-      );
-      if (clash.rows.length) return res.status(409).json({ error: 'Username already taken' });
-      nextUsername = u;
-    }
-
-    // Validate bio length
-    if (typeof bio === 'string' && bio.length > 500) {
-      return res.status(400).json({ error: 'Bio too long (max 500)' });
-    }
-    // Validate display_name
-    if (typeof display_name === 'string' && display_name.length > 100) {
-      return res.status(400).json({ error: 'Display name too long (max 100)' });
-    }
-
+    const { display_name, bio, neighborhood, avatar_url } = req.body;
     const result = await pool.query(
-      `UPDATE users SET
-         display_name = COALESCE($1, display_name),
-         bio = COALESCE($2, bio),
-         neighborhood = COALESCE($3, neighborhood),
-         avatar_url = COALESCE($4, avatar_url),
-         username = COALESCE($5, username),
-         updated_at = NOW()
-       WHERE id = $6
+      `UPDATE users SET display_name = COALESCE($1, display_name), bio = COALESCE($2, bio),
+       neighborhood = COALESCE($3, neighborhood), avatar_url = COALESCE($4, avatar_url),
+       updated_at = NOW()
+       WHERE id = $5
        RETURNING id, email, display_name, username, avatar_url, bio, neighborhood, city, role, created_at`,
-      [display_name ?? null, bio ?? null, neighborhood ?? null, avatar_url ?? null, nextUsername, req.user.id]
+      [display_name, bio, neighborhood, avatar_url, req.user.id]
     );
     res.json({ user: result.rows[0] });
   } catch (err) {
     console.error('Update profile error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// GET /api/auth/username-available?u=foo  — check availability
-router.get('/username-available', async (req, res) => {
-  const u = String(req.query.u || '').trim().toLowerCase();
-  if (!/^[a-z0-9_]{3,30}$/.test(u)) return res.json({ available: false, reason: 'invalid' });
-  const r = await pool.query('SELECT id FROM users WHERE LOWER(username) = $1 LIMIT 1', [u]);
-  res.json({ available: r.rows.length === 0 });
-});
-
-// ─── Account deletion (App Store / Play Store compliance) ──────────────────
-// DELETE /api/auth/account
-// Requires: { password, reason? }  — password re-entry for non-OAuth accounts
-// This is a hard delete; CASCADE wipes all user data.
-router.delete('/account', requireAuth, async (req, res) => {
-  try {
-    const { password, reason } = req.body || {};
-    const userId = req.user.id;
-
-    const ur = await pool.query(
-      'SELECT id, email, password_hash, oauth_provider FROM users WHERE id = $1',
-      [userId]
-    );
-    if (ur.rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    const u = ur.rows[0];
-
-    // Password re-entry required for password accounts.
-    // OAuth accounts (Google/Apple) skip this since they never had a password set.
-    const isOAuth = !!u.oauth_provider;
-    if (!isOAuth) {
-      if (!password || typeof password !== 'string')
-        return res.status(400).json({ error: 'Password required to confirm deletion' });
-      const ok = await bcrypt.compare(password, u.password_hash || '');
-      if (!ok) return res.status(401).json({ error: 'Incorrect password' });
-    }
-
-    // Audit log FIRST (before the cascading delete wipes anything else)
-    const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim();
-    const crypto = require('crypto');
-    const emailHash = crypto.createHash('sha256').update(u.email.toLowerCase()).digest('hex');
-    try {
-      await pool.query(
-        `INSERT INTO user_deletions (user_id, email_hash, deletion_reason, ip_address)
-         VALUES ($1,$2,$3,$4)`,
-        [userId, emailHash, (reason || null), ip || null]
-      );
-    } catch (e) {
-      console.warn('[auth] audit log failed (non-fatal):', e.message);
-    }
-
-    // Hard delete — CASCADE handles all related rows
-    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
-
-    console.log('[auth] account deleted:', userId, 'reason:', reason || '(none)');
-    res.json({ ok: true, deleted: true });
-  } catch (e) {
-    console.error('[auth] DELETE /account error', e);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
