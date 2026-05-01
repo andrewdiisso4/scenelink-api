@@ -10,7 +10,14 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
-const { requireAdmin } = require('../middleware/auth');
+
+function requireAdmin(req, res, next) {
+    const secret = req.headers['x-admin-secret'] || req.query.secret;
+    const ADMIN_SECRET = process.env.ADMIN_SECRET;
+    if (!ADMIN_SECRET) return res.status(503).json({ error: 'Admin not configured' });
+    if (!secret || secret !== ADMIN_SECRET) return res.status(403).json({ error: 'Forbidden' });
+    next();
+}
 
 // GET /api/admin/stats
 router.get('/stats', requireAdmin, async (req, res) => {
@@ -202,6 +209,56 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
     try {
         await pool.query('UPDATE users SET is_active = false WHERE id = $1', [req.params.id]);
         res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/admin/contacts?limit=50&status=new
+router.get('/contacts', requireAdmin, async (req, res) => {
+    try {
+        const limit = Math.min(200, parseInt(req.query.limit) || 50);
+        const status = req.query.status || null;
+        const where = status ? `WHERE status = $2` : '';
+        const params = status ? [limit, status] : [limit];
+        const result = await pool.query(
+            `SELECT id, name, email, subject, LEFT(message,300) as preview, source, status, created_at
+             FROM contact_messages ${where}
+             ORDER BY created_at DESC LIMIT $1`,
+            params
+        ).catch(() => ({ rows: [] }));
+        const cnt = await pool.query(
+            `SELECT COUNT(*) as total FROM contact_messages ${where}`,
+            status ? [status] : []
+        ).catch(() => ({ rows: [{ total: 0 }] }));
+        res.json({ messages: result.rows, total: parseInt(cnt.rows[0].total) });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PATCH /api/admin/contacts/:id — mark status
+router.patch('/contacts/:id', requireAdmin, async (req, res) => {
+    try {
+        const { status } = req.body || {};
+        if (!['new','read','resolved'].includes(status)) return res.status(400).json({ error: 'invalid status' });
+        await pool.query('UPDATE contact_messages SET status=$1 WHERE id=$2', [status, req.params.id]);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/admin/business — list business users
+router.get('/business', requireAdmin, async (req, res) => {
+    try {
+        const limit = Math.min(200, parseInt(req.query.limit) || 50);
+        const result = await pool.query(
+            `SELECT id, email, venue_name, venue_id, tier, status, phone, website, created_at, last_login
+             FROM business_users ORDER BY created_at DESC LIMIT $1`, [limit]
+        ).catch(() => ({ rows: [] }));
+        const cnt = await pool.query('SELECT COUNT(*) as total FROM business_users').catch(() => ({ rows: [{ total: 0 }] }));
+        res.json({ business_users: result.rows, total: parseInt(cnt.rows[0].total) });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
