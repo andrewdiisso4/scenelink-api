@@ -334,22 +334,34 @@ router.post('/reseed', requireAdmin, async (req, res) => {
 // GET /api/admin/stats — overall platform stats
 router.get('/stats', requireAdmin, async (req, res) => {
     try {
-        const [users, venues, contacts, business, checkins, favorites] = await Promise.all([
-            pool.query('SELECT COUNT(*) as total FROM users').catch(() => ({ rows: [{ total: 0 }] })),
-            pool.query('SELECT COUNT(*) as total FROM venues').catch(() => ({ rows: [{ total: 0 }] })),
-            pool.query('SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status=\'new\') as new_count FROM contact_messages').catch(() => ({ rows: [{ total: 0, new_count: 0 }] })),
-            pool.query('SELECT COUNT(*) as total FROM business_users').catch(() => ({ rows: [{ total: 0 }] })),
-            pool.query('SELECT COUNT(*) as total FROM checkins').catch(() => ({ rows: [{ total: 0 }] })),
-            pool.query('SELECT COUNT(*) as total FROM favorites').catch(() => ({ rows: [{ total: 0 }] })),
+        const safeCount = async (query) => {
+            try {
+                const r = await pool.query(query);
+                return r.rows[0];
+            } catch (e) {
+                return { total: 0, new_count: 0 };
+            }
+        };
+
+        const [users, venues, contacts, business, checkins, favorites, subscribers] = await Promise.all([
+            safeCount('SELECT COUNT(*) as total FROM users'),
+            safeCount('SELECT COUNT(*) as total FROM venues'),
+            safeCount("SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status='new') as new_count FROM contact_messages"),
+            safeCount('SELECT COUNT(*) as total FROM business_users'),
+            safeCount('SELECT COUNT(*) as total FROM checkins'),
+            safeCount('SELECT COUNT(*) as total FROM favorites'),
+            safeCount("SELECT COUNT(*) as total FROM newsletter_subscribers WHERE status='active'"),
         ]);
+
         res.json({
-            users: parseInt(users.rows[0].total),
-            venues: parseInt(venues.rows[0].total),
-            contacts: parseInt(contacts.rows[0].total),
-            contacts_new: parseInt(contacts.rows[0].new_count || 0),
-            business_users: parseInt(business.rows[0].total),
-            checkins: parseInt(checkins.rows[0].total),
-            favorites: parseInt(favorites.rows[0].total),
+            users: parseInt(users.total || 0),
+            venues: parseInt(venues.total || 0),
+            contacts: parseInt(contacts.total || 0),
+            contacts_new: parseInt(contacts.new_count || 0),
+            business_users: parseInt(business.total || 0),
+            checkins: parseInt(checkins.total || 0),
+            favorites: parseInt(favorites.total || 0),
+            newsletter_subscribers: parseInt(subscribers.total || 0),
             generated_at: new Date().toISOString(),
         });
     } catch (err) {
