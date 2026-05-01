@@ -139,6 +139,55 @@ app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/concierge', aiLimiter, require('./routes/concierge')); // AI: 20 req/min
 app.use('/api/contact', contactLimiter, require('./routes/contact')); // Contact: 5 req/hr
 
+// Admin: test email configuration
+app.post('/api/admin/test-email', async (req, res) => {
+  const secret = req.headers['x-admin-secret'] || req.query.secret;
+  const ADMIN_SECRET = process.env.ADMIN_SECRET;
+  if (!ADMIN_SECRET || secret !== ADMIN_SECRET) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const { to } = req.body;
+  if (!to) return res.status(400).json({ error: 'Provide "to" email address in body' });
+
+  // Check SMTP config
+  const smtpConfigured = !!(
+    (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) ||
+    process.env.SENDGRID_API_KEY
+  );
+
+  if (!smtpConfigured) {
+    return res.status(200).json({
+      ok: false,
+      smtp_configured: false,
+      message: 'No SMTP credentials set. Add SMTP_HOST, SMTP_USER, SMTP_PASS (or SENDGRID_API_KEY) to Render env vars.',
+      env_vars_needed: ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM', 'ADMIN_NOTIFY_EMAIL']
+    });
+  }
+
+  try {
+    const nodemailer = require('nodemailer');
+    let transporter;
+    if (process.env.SENDGRID_API_KEY) {
+      transporter = nodemailer.createTransport({ host: 'smtp.sendgrid.net', port: 587, auth: { user: 'apikey', pass: process.env.SENDGRID_API_KEY } });
+    } else {
+      transporter = nodemailer.createTransport({ host: process.env.SMTP_HOST, port: parseInt(process.env.SMTP_PORT || '587'), secure: process.env.SMTP_SECURE === 'true', auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } });
+    }
+
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: to,
+      subject: '✅ SceneLink Email Test — SMTP Working',
+      text: 'This is a test email from SceneLink backend. Your SMTP configuration is working correctly!',
+      html: `<div style="font-family:sans-serif;max-width:480px;padding:24px;background:#111;color:#fff;border-radius:8px"><h3 style="color:#D4AF37">✅ SceneLink Email Test</h3><p>Your SMTP configuration is working correctly!</p><p style="color:#888;font-size:12px">Sent from: ${process.env.SMTP_HOST || 'SendGrid'} | ${new Date().toISOString()}</p></div>`
+    });
+
+    res.json({ ok: true, smtp_configured: true, message: `Test email sent to ${to}` });
+  } catch (err) {
+    res.status(500).json({ ok: false, smtp_configured: true, error: err.message, hint: 'Check SMTP credentials. For Gmail, use App Password (not regular password).' });
+  }
+});
+
 // Admin: force reseed (requires secret header)
 app.post('/api/admin/reseed', async (req, res) => {
   const secret = req.headers['x-admin-secret'] || req.query.secret;
