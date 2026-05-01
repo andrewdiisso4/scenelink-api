@@ -72,6 +72,7 @@ app.use('/api/business', require('./routes/business'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/concierge', require('./routes/concierge'));
 app.use('/api/contact', require('./routes/contact'));
+app.use('/api/newsletter', require('./routes/newsletter')); // Newsletter subscriptions
 
 // Admin: force reseed (requires secret header)
 app.post('/api/admin/reseed', async (req, res) => {
