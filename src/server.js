@@ -73,6 +73,7 @@ app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/concierge', require('./routes/concierge'));
 app.use('/api/contact', require('./routes/contact'));
 app.use('/api/newsletter', require('./routes/newsletter')); // Newsletter subscriptions
+app.use('/api/support', require('./routes/support')); // Dedicated contact support AI (separate from /api/concierge)
 
 // Admin: force reseed (requires secret header)
 app.post('/api/admin/reseed', async (req, res) => {
