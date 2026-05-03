@@ -169,12 +169,16 @@ router.get('/activity', requireAdmin, async (req, res) => {
 router.get('/venues/summary', requireAdmin, async (req, res) => {
     try {
         const total = await pool.query('SELECT COUNT(*) FROM venues');
-        const active = await pool.query("SELECT COUNT(*) FROM venues WHERE status = 'active' OR status IS NULL");
-        const featured = await pool.query('SELECT COUNT(*) FROM venues WHERE is_featured = true');
-        const trending = await pool.query('SELECT COUNT(*) FROM venues WHERE is_trending = true');
+        let active = { rows: [{ count: 0 }] };
+        let featured = { rows: [{ count: 0 }] };
+        let trending = { rows: [{ count: 0 }] };
+        try { active = await pool.query("SELECT COUNT(*) FROM venues WHERE is_active = true OR is_active IS NULL"); } catch(_) {}
+        try { featured = await pool.query('SELECT COUNT(*) FROM venues WHERE featured = true'); } catch(_) {}
+        try { trending = await pool.query('SELECT COUNT(*) FROM venues WHERE trending = true'); } catch(_) {}
+
         let missingImage = 0, missingNeighborhood = 0, missingWebsite = 0;
         try {
-            missingImage = parseInt((await pool.query("SELECT COUNT(*) FROM venues WHERE image IS NULL OR image = ''")).rows[0].count);
+            missingImage = parseInt((await pool.query("SELECT COUNT(*) FROM venues WHERE image_url IS NULL OR image_url = ''")).rows[0].count);
         } catch(_) {}
         try {
             missingNeighborhood = parseInt((await pool.query("SELECT COUNT(*) FROM venues WHERE neighborhood IS NULL OR neighborhood = ''")).rows[0].count);
@@ -210,7 +214,7 @@ router.get('/venues/list', requireAdmin, async (req, res) => {
             where = `(LOWER(name) LIKE LOWER($${params.length}) OR LOWER(neighborhood) LIKE LOWER($${params.length}))`;
         }
         const rows = await pool.query(
-            `SELECT id, name, neighborhood, type, cuisine, rating, image, website, is_featured, is_trending, status, created_at
+            `SELECT id, name, neighborhood, type, cuisine, rating, image_url AS image, website, featured AS is_featured, trending AS is_trending, is_active, created_at
              FROM venues
              WHERE ${where}
              ORDER BY created_at DESC
