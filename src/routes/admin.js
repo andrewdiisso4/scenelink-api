@@ -149,16 +149,93 @@ router.get('/venues', requireAdmin, async (req, res) => {
 router.get('/activity', requireAdmin, async (req, res) => {
     try {
         const limit = Math.min(200, parseInt(req.query.limit) || 50);
+        // Use SELECT * to be resilient to schema differences across environments
         const result = await pool.query(
-            `SELECT id, user_name, user_display_name, type, venue_name, venue_neighborhood,
-                    content, rating, likes, comments, created_at
-             FROM activity
-             ORDER BY created_at DESC LIMIT $1`,
+            `SELECT * FROM activity ORDER BY created_at DESC LIMIT $1`,
             [limit]
         );
         res.json({ activity: result.rows, total: result.rows.length });
     } catch (err) {
+        // Graceful degradation if activity table doesn't exist yet
+        if (err.code === '42P01') {
+            return res.json({ activity: [], total: 0, note: 'activity table not yet created' });
+        }
         res.status(500).json({ error: err.message });
+    }
+});
+
+// ────────────── Admin-portal compatibility aliases ──────────────
+// GET /api/admin/venues/summary — simple venue summary for admin dashboard
+router.get('/venues/summary', requireAdmin, async (req, res) => {
+    try {
+        const total = await pool.query('SELECT COUNT(*) FROM venues');
+        const active = await pool.query("SELECT COUNT(*) FROM venues WHERE status = 'active' OR status IS NULL");
+        const featured = await pool.query('SELECT COUNT(*) FROM venues WHERE is_featured = true');
+        const trending = await pool.query('SELECT COUNT(*) FROM venues WHERE is_trending = true');
+        let missingImage = 0, missingNeighborhood = 0, missingWebsite = 0;
+        try {
+            missingImage = parseInt((await pool.query("SELECT COUNT(*) FROM venues WHERE image IS NULL OR image = ''")).rows[0].count);
+        } catch(_) {}
+        try {
+            missingNeighborhood = parseInt((await pool.query("SELECT COUNT(*) FROM venues WHERE neighborhood IS NULL OR neighborhood = ''")).rows[0].count);
+        } catch(_) {}
+        try {
+            missingWebsite = parseInt((await pool.query("SELECT COUNT(*) FROM venues WHERE website IS NULL OR website = ''")).rows[0].count);
+        } catch(_) {}
+
+        res.json({
+            total: parseInt(total.rows[0].count),
+            active: parseInt(active.rows[0].count),
+            featured: parseInt(featured.rows[0].count),
+            trending: parseInt(trending.rows[0].count),
+            missing_image: missingImage,
+            missing_neighborhood: missingNeighborhood,
+            missing_website: missingWebsite
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/admin/venues/list — admin venue list (alias for portal compatibility)
+router.get('/venues/list', requireAdmin, async (req, res) => {
+    try {
+        const limit = Math.min(500, parseInt(req.query.limit) || 50);
+        const offset = parseInt(req.query.offset) || 0;
+        const q = req.query.q || '';
+        const params = [limit, offset];
+        let where = '1=1';
+        if (q) {
+            params.push('%' + q + '%');
+            where = `(LOWER(name) LIKE LOWER($${params.length}) OR LOWER(neighborhood) LIKE LOWER($${params.length}))`;
+        }
+        const rows = await pool.query(
+            `SELECT id, name, neighborhood, type, cuisine, rating, image, website, is_featured, is_trending, status, created_at
+             FROM venues
+             WHERE ${where}
+             ORDER BY created_at DESC
+             LIMIT $1 OFFSET $2`,
+            params
+        );
+        const countRes = await pool.query(`SELECT COUNT(*) FROM venues WHERE ${where}`, params.slice(2));
+        res.json({ venues: rows.rows, total: parseInt(countRes.rows[0].count), limit, offset });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/admin/venues/imports — list of CSV imports (stub, returns empty until feature added)
+router.get('/venues/imports', requireAdmin, async (req, res) => {
+    try {
+        // Try to read from admin_imports table if it exists
+        const r = await pool.query(
+            "SELECT * FROM information_schema.tables WHERE table_name='admin_imports'"
+        );
+        if (r.rows.length === 0) return res.json({ imports: [], total: 0 });
+        const data = await pool.query('SELECT * FROM admin_imports ORDER BY created_at DESC LIMIT 50');
+        res.json({ imports: data.rows, total: data.rows.length });
+    } catch (err) {
+        res.json({ imports: [], total: 0 });
     }
 });
 
