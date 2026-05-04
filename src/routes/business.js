@@ -52,7 +52,13 @@ function requireBusiness(req, res, next) {
 // ═══════════════════════════════════════════════════════════════════
 router.post('/claim', async (req, res) => {
     try {
-        const { venue_name, email, password, tier, phone, website } = req.body || {};
+        const body = req.body || {};
+        const venue_name = body.venue_name || body.venueName;
+        const email = body.email;
+        const password = body.password;
+        const tier = body.tier;
+        const phone = body.phone;
+        const website = body.website;
         if (!venue_name || !email || !password) {
             return res.status(400).json({ error: 'venue_name, email, and password are required' });
         }
@@ -241,6 +247,11 @@ router.post('/venue', requireAuth, requireBusiness, async (req, res) => {
 
         if (!name) return res.status(400).json({ error: 'name is required' });
 
+        // Coerce tags into text[] format
+        let tagsArr = null;
+        if (Array.isArray(tags)) tagsArr = tags.map(String);
+        else if (typeof tags === 'string' && tags.trim()) tagsArr = tags.split(',').map(s => s.trim()).filter(Boolean);
+
         const slug = slugify(name);
         const insertRes = await pool.query(
             `INSERT INTO venues
@@ -260,7 +271,7 @@ router.post('/venue', requireAuth, requireBusiness, async (req, res) => {
                 lat || null, lng || null, phone || null, website || null,
                 price_level || null, price_label || null,
                 cover_image_url || null, image_url || null,
-                hours_display || null, tags || null
+                hours_display || null, tagsArr
             ]
         );
         const venue = insertRes.rows[0];
@@ -303,8 +314,22 @@ async function handleVenueUpdate(req, res) {
         let idx = 1;
         for (const key of allowed) {
             if (req.body[key] !== undefined) {
+                let val = req.body[key];
+                // Coerce tags into text[] format expected by PG
+                if (key === 'tags') {
+                    if (Array.isArray(val)) {
+                        val = val.map(String);
+                    } else if (typeof val === 'string') {
+                        val = val.split(',').map(s => s.trim()).filter(Boolean);
+                    }
+                }
+                // Coerce numeric fields
+                if (['price_level', 'lat', 'lng'].includes(key) && val !== null && val !== '') {
+                    val = Number(val);
+                    if (Number.isNaN(val)) continue;
+                }
                 updates.push(`${key} = $${idx++}`);
-                values.push(req.body[key]);
+                values.push(val);
             }
         }
         if (!updates.length) return res.status(400).json({ error: 'No valid fields to update' });
