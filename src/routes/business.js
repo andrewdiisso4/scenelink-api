@@ -289,7 +289,8 @@ router.post('/venue', requireAuth, requireBusiness, async (req, res) => {
         const {
             name, description, address, neighborhood, city,
             type, cuisine, phone, website, price_level, price_label,
-            cover_image_url, image_url, lat, lng, hours_display, tags
+            cover_image_url, image_url, lat, lng, hours_display, tags,
+            reservation_url, opentable_url, resy_url
         } = req.body || {};
 
         if (!name) return res.status(400).json({ error: 'name is required' });
@@ -305,11 +306,13 @@ router.post('/venue', requireAuth, requireBusiness, async (req, res) => {
              (slug, name, type, cuisine, description, address, neighborhood, city, state,
               lat, lng, phone, website, price_level, price_label,
               cover_image_url, image_url, hours_display, tags,
+              reservation_url, opentable_url, resy_url,
               rating, review_count, is_active, is_claimed, created_at, updated_at)
              VALUES
              ($1, $2, $3, $4, $5, $6, $7, COALESCE($8,'Boston'), 'MA',
               $9, $10, $11, $12, $13, $14,
               $15, $16, $17, $18,
+              $19, $20, $21,
               0, 0, true, true, NOW(), NOW())
              RETURNING *`,
             [
@@ -318,7 +321,8 @@ router.post('/venue', requireAuth, requireBusiness, async (req, res) => {
                 lat || null, lng || null, phone || null, website || null,
                 price_level || null, price_label || null,
                 cover_image_url || null, image_url || null,
-                hours_display || null, tagsJson
+                hours_display || null, tagsJson,
+                reservation_url || null, opentable_url || null, resy_url || null
             ]
         );
         const venue = insertRes.rows[0];
