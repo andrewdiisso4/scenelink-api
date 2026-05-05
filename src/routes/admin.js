@@ -10,13 +10,32 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'scenelink-prod-secret-change-me';
 
 function requireAdmin(req, res, next) {
+    // Path 1: JWT with role=admin (logged-in admin user)
+    const authHeader = req.headers['authorization'] || '';
+    if (authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice(7);
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            if (decoded && decoded.role === 'admin') {
+                req.user = decoded;
+                return next();
+            }
+        } catch (_) { /* fall through to secret check */ }
+    }
+
+    // Path 2: Admin secret header (ops / automation fallback)
     const secret = req.headers['x-admin-secret'] || req.query.secret;
     const ADMIN_SECRET = process.env.ADMIN_SECRET;
-    if (!ADMIN_SECRET) return res.status(503).json({ error: 'Admin not configured' });
-    if (!secret || secret !== ADMIN_SECRET) return res.status(403).json({ error: 'Forbidden' });
-    next();
+    if (ADMIN_SECRET && secret && secret === ADMIN_SECRET) {
+        req.user = { role: 'admin', via: 'secret' };
+        return next();
+    }
+
+    return res.status(403).json({ error: 'Forbidden' });
 }
 
 // GET /api/admin/stats
