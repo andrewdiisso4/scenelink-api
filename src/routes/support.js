@@ -7,17 +7,10 @@
 // ============================================================================
 
 const express = require('express');
-const rateLimit = require('express-rate-limit');
 const router = express.Router();
 
-// Rate limit: 30 messages per 15 minutes per IP
-const supportLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 30,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Too many support messages. Please wait a few minutes.' }
-});
+// Use shared AI rate limiter (falls back to no-op if express-rate-limit unavailable)
+const { aiLimiter: supportLimiter } = require('../middleware/rateLimits');
 
 // Dedicated system prompt for support — NOT nightlife concierge
 const SUPPORT_SYSTEM_PROMPT = `You are the SceneLink Support Assistant — a dedicated help/support chatbot for the SceneLink app (Boston nightlife & dining discovery).
