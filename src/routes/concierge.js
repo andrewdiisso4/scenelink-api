@@ -16,6 +16,7 @@ const { optionalAuth } = require('../middleware/auth');
 const { aiConcierge, isEnabled: aiEnabled } = require('./conciergeAI');
 
 const router = express.Router();
+const { aiLimiter } = require('../middleware/rateLimits');
 
 // ═════════════════════════════════════════════════════════════
 // INTENT CLASSIFIER
@@ -327,7 +328,7 @@ function generateActions(intent, venues) {
 // ═════════════════════════════════════════════════════════════
 // MAIN ROUTE: POST /api/concierge
 // ═════════════════════════════════════════════════════════════
-router.post('/', optionalAuth, async (req, res) => {
+router.post('/', aiLimiter, optionalAuth, async (req, res) => {
     const startedAt = Date.now();
     try {
         const message = (req.body.message || '').trim();
