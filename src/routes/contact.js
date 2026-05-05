@@ -8,6 +8,7 @@ const express = require('express');
 const pool = require('../config/database');
 const { optionalAuth } = require('../middleware/auth');
 const router = express.Router();
+const { contactLimiter } = require('../middleware/rateLimits');
 
 // ── Email transporter (reuse SMTP config from auth.js pattern) ──────────────
 let transporter = null;
@@ -139,7 +140,7 @@ async function sendUserConfirmation(msg) {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/contact — submit a contact message
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/', optionalAuth, async (req, res) => {
+router.post('/', contactLimiter, optionalAuth, async (req, res) => {
   try {
     // Ensure table exists
     await pool.query(`
