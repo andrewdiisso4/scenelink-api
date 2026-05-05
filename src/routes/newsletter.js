@@ -8,6 +8,7 @@ const express = require('express');
 const pool = require('../config/database');
 const { optionalAuth } = require('../middleware/auth');
 const router = express.Router();
+const { contactLimiter } = require('../middleware/rateLimits');
 
 // Ensure subscribers table exists
 async function ensureTable() {
@@ -26,7 +27,7 @@ async function ensureTable() {
 ensureTable();
 
 // POST /api/newsletter/subscribe
-router.post('/subscribe', optionalAuth, async (req, res) => {
+router.post('/subscribe', contactLimiter, optionalAuth, async (req, res) => {
     try {
         const { email, name, source } = req.body || {};
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
