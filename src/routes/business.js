@@ -5,6 +5,9 @@ const { generateToken, requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Rate limiters for sensitive endpoints
+const { authLimiter, passwordResetLimiter } = require('../middleware/rateLimits');
+
 // ═══════════════════════════════════════════════════════════════════
 // Ensure business_users table exists (idempotent)
 // ═══════════════════════════════════════════════════════════════════
@@ -104,7 +107,7 @@ function requireBusiness(req, res, next) {
 // ═══════════════════════════════════════════════════════════════════
 // POST /api/business/claim — create business account + link/create venue
 // ═══════════════════════════════════════════════════════════════════
-router.post('/claim', async (req, res) => {
+router.post('/claim', authLimiter, async (req, res) => {
     try {
         const body = req.body || {};
         const venue_name = body.venue_name || body.venueName;
@@ -174,7 +177,7 @@ router.post('/claim', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════
 // POST /api/business/login
 // ═══════════════════════════════════════════════════════════════════
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
     try {
         const { email, password } = req.body || {};
         if (!email || !password) {
@@ -898,7 +901,7 @@ async function sendBusinessResetEmail(toEmail, resetToken, venueName) {
 }
 
 // POST /api/business/forgot-password
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
     try {
         await ensureBusinessTables();
         const { email } = req.body || {};
@@ -953,7 +956,7 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 // POST /api/business/reset-password
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', passwordResetLimiter, async (req, res) => {
     try {
         await ensureBusinessTables();
         const { token, password } = req.body || {};
