@@ -27,6 +27,13 @@ async function ensureBusinessTables() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_bu_email ON business_users(email);`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_bu_venue ON business_users(venue_id);`);
 
+    // Ensure reset-token columns exist (idempotent)
+    try {
+        await pool.query(`ALTER TABLE business_users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(128);`);
+        await pool.query(`ALTER TABLE business_users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ;`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_bu_reset_token ON business_users(reset_token);`);
+    } catch (e) { /* ignore */ }
+
     // Multi-venue join table (enterprise tier supports many)
     await pool.query(`
         CREATE TABLE IF NOT EXISTS business_venues (
@@ -833,6 +840,143 @@ router.delete('/promos/:id', requireAuth, requireBusiness, async (req, res) => {
     } catch (err) {
         console.error('[business/promos DELETE]', err);
         res.status(500).json({ error: 'Failed to delete promotion' });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PASSWORD RESET (Business)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Lightweight email transporter (same env vars as user auth)
+let bizEmailTransporter = null;
+try {
+    const nodemailer = require('nodemailer');
+    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+        bizEmailTransporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT || '587'),
+            secure: process.env.SMTP_SECURE === 'true',
+            auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+        });
+    } else if (process.env.SENDGRID_API_KEY) {
+        bizEmailTransporter = nodemailer.createTransport({
+            host: 'smtp.sendgrid.net', port: 587,
+            auth: { user: 'apikey', pass: process.env.SENDGRID_API_KEY }
+        });
+    }
+} catch(_) { /* nodemailer optional */ }
+
+async function sendBusinessResetEmail(toEmail, resetToken, venueName) {
+    const appUrl = process.env.APP_URL || 'https://scenelink.app';
+    const resetUrl = `${appUrl}/business.html?reset_token=${resetToken}`;
+    const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@scenelink.app';
+    const subject = 'Reset your SceneLink business account password';
+    const text = `Hi,\n\nYou requested a password reset for your SceneLink business account${venueName ? ' for ' + venueName : ''}.\n\nClick the link below to reset your password (expires in 1 hour):\n\n${resetUrl}\n\nIf you didn't request this, you can safely ignore this email.\n\n— The SceneLink Team`;
+    const html = `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#0d0d0d;color:#fff;border-radius:12px">
+            <div style="text-align:center;margin-bottom:24px">
+                <span style="font-size:22px;font-weight:700;color:#D4AF37">🎵 SceneLink for Business</span>
+            </div>
+            <h2 style="color:#fff;font-size:20px;margin-bottom:12px">Reset your password</h2>
+            <p style="color:#aaa;font-size:14px;line-height:1.6">
+                You requested a password reset for your business account${venueName ? ` <strong style="color:#D4AF37">(${venueName})</strong>` : ''}.
+                Click the button below to choose a new password. This link expires in 1 hour.
+            </p>
+            <div style="text-align:center;margin:28px 0">
+                <a href="${resetUrl}" style="background:#D4AF37;color:#000;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:15px;display:inline-block">Reset Password</a>
+            </div>
+            <p style="color:#666;font-size:12px;text-align:center">If you didn't request this, ignore this email. Your password won't change.</p>
+        </div>`;
+
+    if (bizEmailTransporter) {
+        await bizEmailTransporter.sendMail({ from: fromEmail, to: toEmail, subject, text, html });
+        console.log(`[business/forgot-password] Email sent to ${toEmail}`);
+        return true;
+    }
+    console.log(`[business/forgot-password] RESET LINK (no SMTP configured): ${resetUrl}`);
+    return false;
+}
+
+// POST /api/business/forgot-password
+router.post('/forgot-password', async (req, res) => {
+    try {
+        await ensureBusinessTables();
+        const { email } = req.body || {};
+        if (!email) return res.status(400).json({ error: 'Email is required' });
+
+        const result = await pool.query(
+            'SELECT id, venue_name FROM business_users WHERE LOWER(email)=LOWER($1)',
+            [email]
+        );
+
+        // Always return success to prevent email enumeration
+        if (result.rows.length === 0) {
+            return res.json({
+                ok: true,
+                message: 'If that email is registered, you will receive a reset link shortly.'
+            });
+        }
+
+        const user = result.rows[0];
+        const crypto = require('crypto');
+        const token = crypto.randomBytes(32).toString('hex');
+        const expires = new Date(Date.now() + 3600000); // 1 hour
+
+        await pool.query(
+            'UPDATE business_users SET reset_token=$1, reset_token_expires=$2 WHERE id=$3',
+            [token, expires, user.id]
+        );
+
+        let emailSent = false;
+        try {
+            emailSent = await sendBusinessResetEmail(email, token, user.venue_name);
+        } catch (emailErr) {
+            console.error('[business/forgot-password] Email send failed:', emailErr.message);
+        }
+
+        const isDev = process.env.NODE_ENV !== 'production';
+        res.json({
+            ok: true,
+            message: emailSent
+                ? 'A password reset link has been sent to your email. Please check your inbox (and spam folder).'
+                : "If that email is registered, a reset link will be sent. If you don't receive it within a few minutes, please contact support.",
+            email_sent: emailSent,
+            ...(isDev && !emailSent && {
+                debug_token: token,
+                debug_reset_url: `${process.env.APP_URL || 'https://scenelink.app'}/business.html?reset_token=${token}`
+            })
+        });
+    } catch (err) {
+        console.error('[business/forgot-password]', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// POST /api/business/reset-password
+router.post('/reset-password', async (req, res) => {
+    try {
+        await ensureBusinessTables();
+        const { token, password } = req.body || {};
+        if (!token || !password) return res.status(400).json({ error: 'Token and new password are required' });
+        if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+
+        const result = await pool.query(
+            'SELECT id, email FROM business_users WHERE reset_token=$1 AND reset_token_expires > NOW()',
+            [token]
+        );
+        const user = result.rows[0];
+        if (!user) return res.status(400).json({ error: 'Invalid or expired reset token' });
+
+        const password_hash = await bcrypt.hash(password, 12);
+        await pool.query(
+            'UPDATE business_users SET password_hash=$1, reset_token=NULL, reset_token_expires=NULL WHERE id=$2',
+            [password_hash, user.id]
+        );
+
+        res.json({ ok: true, message: 'Password reset successfully. You can now log in.' });
+    } catch (err) {
+        console.error('[business/reset-password]', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
