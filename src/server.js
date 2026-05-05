@@ -12,6 +12,10 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust Render / Cloudflare proxy headers so rate-limiting + logging see real client IPs.
+// Render terminates TLS and forwards via X-Forwarded-For.
+app.set('trust proxy', 1);
+
 // ==================== MIDDLEWARE ====================
 
 // CORS — allow frontend origins
@@ -21,19 +25,34 @@ const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:8080,http:
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc)
+    // Allow server-to-server / curl / mobile apps (no Origin header)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.some(o => origin === o || origin.endsWith('.netlify.app'))) {
+    // Approved list: env-configured origins + Netlify preview subdomains
+    if (allowedOrigins.some(o => origin === o) || /^https:\/\/[a-z0-9-]+--[a-z0-9-]+\.netlify\.app$/i.test(origin)) {
       return callback(null, true);
     }
-    callback(null, true); // Be permissive in production for now
+    console.warn('[cors] blocked origin:', origin);
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Secret'],
 }));
 
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+// Helmet — sets HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, etc.
+// CSP is disabled here because we serve only JSON (no HTML); the frontend CSP
+// is enforced by Netlify. Permissions-Policy is set explicitly below.
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: false,
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
+}));
+app.use((req, res, next) => {
+    // Explicit Permissions-Policy + tighter defaults
+    res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(), microphone=(), interest-cohort=()');
+    next();
+});
 app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json({ limit: '10mb' }));
@@ -139,6 +158,23 @@ async function initDatabase() {
     }
   }
 }
+
+// ==================== ERROR HANDLING ====================
+// 404 handler for unknown API routes (after all routes are mounted)
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'Endpoint not found', path: req.originalUrl });
+});
+
+// Production-safe global error handler — never leaks stack traces to clients
+app.use((err, req, res, next) => {
+  const isProd = process.env.NODE_ENV === 'production';
+  // Log full detail server-side (Render logs), but NEVER in the response
+  console.error('[unhandled error]', req.method, req.originalUrl, '|', err && err.message, isProd ? '' : (err && err.stack));
+  if (res.headersSent) return next(err);
+  res.status(err.status || 500).json({
+    error: isProd ? 'Internal server error' : (err.message || 'Internal server error'),
+  });
+});
 
 // ==================== START SERVER ====================
 app.listen(PORT, async () => {
