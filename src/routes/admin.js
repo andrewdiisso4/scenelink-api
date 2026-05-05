@@ -450,4 +450,193 @@ router.get('/stats', requireAdmin, async (req, res) => {
     }
 });
 
+// ═══════════════════════════════════════════════════════════════════════
+// EVENTS CURATION (admin-only)
+// ═══════════════════════════════════════════════════════════════════════
+
+// Ensure events table has expected columns (idempotent, safe on restart)
+async function ensureEventsTable() {
+    try {
+        await pool.query(`CREATE TABLE IF NOT EXISTS events (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            title TEXT NOT NULL,
+            description TEXT,
+            category TEXT,
+            venue_id UUID REFERENCES venues(id) ON DELETE SET NULL,
+            venue_name TEXT,
+            venue_slug TEXT,
+            venue_neighborhood TEXT,
+            image_url TEXT,
+            date DATE,
+            start_time TEXT,
+            end_time TEXT,
+            price TEXT,
+            is_featured BOOLEAN DEFAULT false,
+            is_live BOOLEAN DEFAULT false,
+            attending_count INTEGER DEFAULT 0,
+            rating NUMERIC(2,1),
+            event_url TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS events_date_idx ON events(date);`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS events_featured_idx ON events(is_featured) WHERE is_featured = true;`);
+    } catch (err) {
+        console.error('[admin/ensureEventsTable]', err.message);
+    }
+}
+ensureEventsTable();
+
+// GET /api/admin/events  — full list (includes past events)
+router.get('/events', requireAdmin, async (req, res) => {
+    try {
+        const q = await pool.query(`
+            SELECT e.*, v.lat AS venue_lat, v.lng AS venue_lng
+            FROM events e
+            LEFT JOIN venues v ON e.venue_id = v.id
+            ORDER BY e.date DESC NULLS LAST, e.created_at DESC
+            LIMIT 200
+        `);
+        res.json({ ok: true, events: q.rows, total: q.rows.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/admin/events  — create an event
+router.post('/events', requireAdmin, async (req, res) => {
+    try {
+        const b = req.body || {};
+        if (!b.title) return res.status(400).json({ error: 'title is required' });
+        if (!b.date) return res.status(400).json({ error: 'date is required (YYYY-MM-DD)' });
+
+        // If venue_id given, hydrate name/slug/neighborhood from venues
+        let venueName = b.venue_name || null;
+        let venueSlug = b.venue_slug || null;
+        let venueNeighborhood = b.venue_neighborhood || null;
+        if (b.venue_id) {
+            const vq = await pool.query('SELECT name, slug, neighborhood FROM venues WHERE id=$1', [b.venue_id]);
+            if (vq.rows.length) {
+                venueName = venueName || vq.rows[0].name;
+                venueSlug = venueSlug || vq.rows[0].slug;
+                venueNeighborhood = venueNeighborhood || vq.rows[0].neighborhood;
+            }
+        }
+
+        const ins = await pool.query(`
+            INSERT INTO events
+            (title, description, category, venue_id, venue_name, venue_slug, venue_neighborhood,
+             image_url, date, start_time, end_time, price, is_featured, is_live,
+             attending_count, rating, event_url, created_at, updated_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,NOW(),NOW())
+            RETURNING *
+        `, [
+            b.title, b.description || null, b.category || null,
+            b.venue_id || null, venueName, venueSlug, venueNeighborhood,
+            b.image_url || null, b.date, b.start_time || null, b.end_time || null,
+            b.price || null, !!b.is_featured, !!b.is_live,
+            parseInt(b.attending_count) || 0,
+            b.rating ? Number(b.rating) : null,
+            b.event_url || null
+        ]);
+        res.json({ ok: true, event: ins.rows[0] });
+    } catch (err) {
+        console.error('[admin/events POST]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PATCH /api/admin/events/:id  — update an event
+router.patch('/events/:id', requireAdmin, async (req, res) => {
+    try {
+        const allowed = [
+            'title', 'description', 'category', 'venue_id', 'venue_name',
+            'venue_slug', 'venue_neighborhood', 'image_url', 'date', 'start_time',
+            'end_time', 'price', 'is_featured', 'is_live', 'attending_count',
+            'rating', 'event_url'
+        ];
+        const updates = [];
+        const values = [];
+        let idx = 1;
+        for (const key of allowed) {
+            if (req.body[key] !== undefined) {
+                let val = req.body[key];
+                if (['is_featured', 'is_live'].includes(key)) val = !!val;
+                if (['attending_count'].includes(key)) val = parseInt(val) || 0;
+                if (['rating'].includes(key)) val = val === null || val === '' ? null : Number(val);
+                updates.push(`${key}=$${idx++}`);
+                values.push(val);
+            }
+        }
+        if (!updates.length) return res.status(400).json({ error: 'Nothing to update' });
+        updates.push('updated_at=NOW()');
+        values.push(req.params.id);
+        const q = await pool.query(
+            `UPDATE events SET ${updates.join(', ')} WHERE id=$${idx} RETURNING *`,
+            values
+        );
+        if (!q.rows.length) return res.status(404).json({ error: 'Not found' });
+        res.json({ ok: true, event: q.rows[0] });
+    } catch (err) {
+        console.error('[admin/events PATCH]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE /api/admin/events/:id
+router.delete('/events/:id', requireAdmin, async (req, res) => {
+    try {
+        const q = await pool.query('DELETE FROM events WHERE id=$1 RETURNING id', [req.params.id]);
+        if (!q.rows.length) return res.status(404).json({ error: 'Not found' });
+        res.json({ ok: true, deleted: q.rows[0].id });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// REVIEW MODERATION
+// ═══════════════════════════════════════════════════════════════════════
+
+// PATCH /api/admin/reviews/:id  — hide or unhide a review
+router.patch('/reviews/:id', requireAdmin, async (req, res) => {
+    try {
+        const { is_hidden } = req.body || {};
+        // Ensure column exists
+        try {
+            await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT false`);
+        } catch (_) {}
+        const q = await pool.query(
+            'UPDATE reviews SET is_hidden=$1 WHERE id=$2 RETURNING *',
+            [!!is_hidden, req.params.id]
+        );
+        if (!q.rows.length) return res.status(404).json({ error: 'Not found' });
+        res.json({ ok: true, review: q.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// BUSINESS ACCOUNT MODERATION
+// ═══════════════════════════════════════════════════════════════════════
+
+// PATCH /api/admin/business-users/:id  — enable/disable business account
+router.patch('/business-users/:id', requireAdmin, async (req, res) => {
+    try {
+        const { status } = req.body || {};
+        if (!['active', 'disabled', 'pending'].includes(status)) {
+            return res.status(400).json({ error: 'status must be active | disabled | pending' });
+        }
+        const q = await pool.query(
+            'UPDATE business_users SET status=$1 WHERE id=$2 RETURNING id, email, venue_name, status',
+            [status, req.params.id]
+        );
+        if (!q.rows.length) return res.status(404).json({ error: 'Not found' });
+        res.json({ ok: true, business_user: q.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
