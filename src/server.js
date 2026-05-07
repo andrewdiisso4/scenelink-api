@@ -89,6 +89,7 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/auth', require('./routes/oauth')); // Google + Apple OAuth
 app.use('/api/admin', require('./routes/admin')); // Admin dashboard API
+app.use('/api/admin', require('./routes/demo'));  // Demo/reviewer account seed (admin-gated)
 app.use('/api/venues', require('./routes/venues'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/activity', require('./routes/activity'));
