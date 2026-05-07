@@ -9,8 +9,18 @@ const pool = require('./config/database');
 const fs = require('fs');
 const path = require('path');
 
+// Initialize Sentry BEFORE the Express app and BEFORE any routes.
+// Reads SENTRY_DSN, SENTRY_ENV, SENTRY_TRACES_SAMPLE_RATE from env.
+// Fails safe — if DSN is missing or SDK unavailable, this is a no-op.
+const sentry = require('./sentry');
+sentry.init();
+
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Sentry request + tracing handlers MUST be the first middleware so they
+// wrap every downstream handler.
+sentry.attachRequestHandlers(app);
 
 // Trust Render / Cloudflare proxy headers so rate-limiting + logging see real client IPs.
 // Render terminates TLS and forwards via X-Forwarded-For.
@@ -159,13 +169,30 @@ async function initDatabase() {
   }
 }
 
+// ==================== SENTRY QA TEST ROUTE (gated) ====================
+// Triggers a controlled server-side exception so we can verify Sentry is wired.
+// Gated by X-Admin-Secret header; safe to leave in production (requires secret).
+app.get('/api/_sentry-test', (req, res, next) => {
+  const secret = req.headers['x-admin-secret'] || req.query.secret;
+  if (!process.env.ADMIN_SECRET || secret !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  const err = new Error('Sentry backend QA test ' + new Date().toISOString());
+  err.status = 500;
+  return next(err);
+});
+
 // ==================== ERROR HANDLING ====================
 // 404 handler for unknown API routes (after all routes are mounted)
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Endpoint not found', path: req.originalUrl });
 });
 
-// Production-safe global error handler — never leaks stack traces to clients
+// Sentry error handler MUST come BEFORE our own error handler so 5xx errors
+// are reported before the response is formatted.
+sentry.attachErrorHandler(app);
+
+// Production-safe global error handler never leaks stack traces to clients
 app.use((err, req, res, next) => {
   const isProd = process.env.NODE_ENV === 'production';
   // Log full detail server-side (Render logs), but NEVER in the response
