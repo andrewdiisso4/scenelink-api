@@ -96,6 +96,22 @@ CREATE TABLE IF NOT EXISTS venues (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Enrichment columns (added by Google Places enrichment phase 1)
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS google_place_id VARCHAR(255);
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS google_photo_names JSONB DEFAULT '[]';
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS has_real_photo BOOLEAN DEFAULT false;
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS website_live BOOLEAN;
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS reservation_live BOOLEAN;
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS reservation_provider VARCHAR(50);
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS business_status VARCHAR(50);
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS needs_manual_review BOOLEAN DEFAULT false;
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS review_reasons JSONB DEFAULT '[]';
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS data_quality_score INTEGER DEFAULT 0;
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS enriched_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_venues_google_place_id ON venues(google_place_id);
+CREATE INDEX IF NOT EXISTS idx_venues_business_status ON venues(business_status);
+CREATE INDEX IF NOT EXISTS idx_venues_needs_review    ON venues(needs_manual_review);
 CREATE INDEX IF NOT EXISTS idx_venues_slug ON venues(slug);
 CREATE INDEX IF NOT EXISTS idx_venues_type ON venues(type);
 CREATE INDEX IF NOT EXISTS idx_venues_neighborhood ON venues(neighborhood);
@@ -283,3 +299,57 @@ CREATE TABLE IF NOT EXISTS contact_messages (
 CREATE INDEX IF NOT EXISTS idx_contact_email ON contact_messages(email);
 CREATE INDEX IF NOT EXISTS idx_contact_status ON contact_messages(status);
 CREATE INDEX IF NOT EXISTS idx_contact_created ON contact_messages(created_at DESC);
+
+-- ==================== PERFORMANCE INDEXES (2026-05-08 perf pass) ====================
+-- Venue lookup + list/sort paths
+CREATE INDEX IF NOT EXISTS idx_venues_category      ON venues(category);
+CREATE INDEX IF NOT EXISTS idx_venues_rating        ON venues(rating DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_venues_buzz_score    ON venues(buzz_score DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_venues_dqscore       ON venues(data_quality_score DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_venues_spotlight     ON venues(spotlight);
+CREATE INDEX IF NOT EXISTS idx_venues_is_active     ON venues(is_active);
+CREATE INDEX IF NOT EXISTS idx_venues_is_open_now   ON venues(is_open_now);
+CREATE INDEX IF NOT EXISTS idx_venues_has_real_photo ON venues(has_real_photo);
+CREATE INDEX IF NOT EXISTS idx_venues_reservation_live ON venues(reservation_live);
+
+-- Geospatial: composite lat/lng for bounding-box queries used by /api/venues/map
+-- (PostGIS would be ideal; btree composite is a reliable fallback that Render free tier supports)
+CREATE INDEX IF NOT EXISTS idx_venues_latlng        ON venues(lat, lng) WHERE is_active = true;
+
+-- Composite for very common filter patterns
+CREATE INDEX IF NOT EXISTS idx_venues_active_rating ON venues(is_active, rating DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_venues_active_buzz   ON venues(is_active, buzz_score DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_venues_active_neigh  ON venues(is_active, neighborhood);
+
+-- Normalised name for dedupe/search (skip if column absent)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='venues' AND column_name='normalized_name') THEN
+    CREATE INDEX IF NOT EXISTS idx_venues_normalized_name ON venues(normalized_name);
+  END IF;
+END$$;
+
+-- User-scoped indexes
+CREATE INDEX IF NOT EXISTS idx_favorites_user_venue ON favorites(user_id, venue_id);
+CREATE INDEX IF NOT EXISTS idx_lists_updated        ON lists(user_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_plans_updated        ON plans(user_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_checkins_venue_time  ON checkins(venue_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_checkins_user_time   ON checkins(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reviews_venue_time   ON reviews(venue_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reviews_user_time    ON reviews(user_id, created_at DESC);
+
+-- Messages / threads (create index conditionally)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='messages') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='thread_id') THEN
+      CREATE INDEX IF NOT EXISTS idx_messages_thread_time ON messages(thread_id, created_at DESC);
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='user_id') THEN
+      CREATE INDEX IF NOT EXISTS idx_messages_user_time ON messages(user_id, created_at DESC);
+    END IF;
+  END IF;
+END$$;
+
+-- ANALYZE venues to let the planner pick the right index
+ANALYZE venues;
