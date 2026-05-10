@@ -104,6 +104,7 @@ app.use('/api/concierge', require('./routes/concierge'));
 app.use('/api/contact', require('./routes/contact'));
 app.use('/api/newsletter', require('./routes/newsletter')); // Newsletter subscriptions
 app.use('/api/support', require('./routes/support')); // Dedicated contact support AI (separate from /api/concierge)
+app.use('/api/photo', require('./routes/photo_proxy')); // Google Places photo proxy (keeps API key server-side)
 
 // Admin: force reseed (requires secret header)
 app.post('/api/admin/reseed', async (req, res) => {
