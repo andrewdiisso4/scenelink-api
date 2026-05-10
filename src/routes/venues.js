@@ -4,7 +4,92 @@ const { optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Helper: build WHERE clause from query params
+/**
+ * ------------------------------------------------------------------
+ * Payload tiers (performance optimisation pass 2026-05-08)
+ * ------------------------------------------------------------------
+ *  - CARD_COLUMNS     ~400 B/venue  — list/grid views
+ *  - MAP_COLUMNS      ~120 B/venue  — map markers (bounded queries)
+ *  - DETAIL_COLUMNS   ~2 KB/venue   — venue-details page only
+ *
+ * The legacy /api/venues route returns CARD tier by default; passing
+ * ?view=detail keeps backwards compatibility for pages that still read
+ * the full object.
+ * ------------------------------------------------------------------
+ */
+
+// Thumbnail (single best photo) — derived from google_photo_names[0] when present,
+// else a non-stock image_url, else null so the client falls back to category SVG.
+const THUMB_EXPR = `
+  CASE
+    WHEN v.google_photo_names IS NOT NULL
+         AND jsonb_array_length(v.google_photo_names) > 0
+      THEN '/api/photo?name=' ||
+           (v.google_photo_names->>0)
+           || '&w=600'
+    WHEN v.image_url IS NOT NULL
+         AND v.image_url NOT LIKE '%unsplash.com%'
+         AND v.image_url NOT LIKE '%pexels.com%'
+      THEN v.image_url
+    ELSE NULL
+  END AS thumbnail_url
+`;
+
+// Card payload — ONLY fields needed to render a list/grid card
+const CARD_COLUMNS = `
+  v.id, v.slug, v.name,
+  v.type, v.category, v.cuisine,
+  v.neighborhood,
+  v.price_level, v.price_label,
+  v.rating, v.review_count,
+  v.lat, v.lng,
+  v.is_open_now,
+  v.has_real_photo,
+  v.trending, v.featured, v.spotlight,
+  v.reservation_url, v.reservation_live, v.reservation_provider,
+  v.website,
+  ${THUMB_EXPR}
+`;
+
+// Map-marker payload — bare minimum for clustering + popup
+const MAP_COLUMNS = `
+  v.id, v.slug, v.name,
+  v.type, v.category,
+  v.lat, v.lng,
+  v.rating, v.buzz_score
+`;
+
+// Full venue detail (used only by /api/venues/:id and ?view=detail)
+const DETAIL_COLUMNS = `
+  v.id, v.slug, v.name, v.type, v.category, v.cuisine, v.genre,
+  v.address, v.neighborhood, v.city, v.state, v.zip_code,
+  v.lat, v.lng, v.description, v.short_desc, v.phone, v.website, v.email,
+  v.price_level, v.price_label, v.hours_json, v.hours_display, v.is_open_now,
+  v.image_url, v.image_urls, v.cover_image_url,
+  v.rating, v.review_count, v.buzz_score, v.going_count, v.friends_going,
+  v.cover_charge, v.dress_code, v.tags, v.badges, v.features,
+  v.vibe, v.vibe_tags, v.highlight, v.why_hot, v.pair_with,
+  v.spotlight, v.trending, v.featured, v.time_slot,
+  v.is_active, v.is_claimed,
+  v.reservation_url, v.opentable_url, v.resy_url, v.yelp_url,
+  v.google_maps_url, v.place_id, v.source,
+  v.google_place_id, v.google_photo_names, v.has_real_photo,
+  v.website_live, v.reservation_live, v.reservation_provider,
+  v.business_status, v.needs_manual_review, v.review_reasons, v.data_quality_score,
+  v.enriched_at,
+  v.created_at, v.updated_at,
+  ${THUMB_EXPR}
+`;
+
+function columnsForView(view) {
+  if (view === 'detail') return DETAIL_COLUMNS;
+  if (view === 'map')    return MAP_COLUMNS;
+  return CARD_COLUMNS;
+}
+
+// ------------------------------------------------------------------
+// Filters
+// ------------------------------------------------------------------
 function buildVenueFilters(query) {
   const conditions = [];
   const values = [];
@@ -41,57 +126,85 @@ function buildVenueFilters(query) {
     idx++;
   }
 
+  // Geospatial bounding box for map views: "sw_lat,sw_lng,ne_lat,ne_lng"
+  const bbox = query.bbox;
+  if (bbox) {
+    const parts = String(bbox).split(',').map(parseFloat);
+    if (parts.length === 4 && parts.every(n => Number.isFinite(n))) {
+      conditions.push(`v.lat BETWEEN $${idx} AND $${idx + 1}`);
+      values.push(parts[0], parts[2]); idx += 2;
+      conditions.push(`v.lng BETWEEN $${idx} AND $${idx + 1}`);
+      values.push(parts[1], parts[3]); idx += 2;
+    }
+  }
+
   conditions.push('v.is_active = true');
-  return { where: conditions.length ? 'WHERE ' + conditions.join(' AND ') : 'WHERE v.is_active = true', values };
+  return {
+    where: conditions.length ? 'WHERE ' + conditions.join(' AND ') : 'WHERE v.is_active = true',
+    values
+  };
 }
 
-const VENUE_COLUMNS = `
-  v.id, v.slug, v.name, v.type, v.category, v.cuisine, v.genre,
-  v.address, v.neighborhood, v.city, v.state, v.zip_code,
-  v.lat, v.lng, v.description, v.short_desc, v.phone, v.website, v.email,
-  v.price_level, v.price_label, v.hours_json, v.hours_display, v.is_open_now,
-  v.image_url, v.image_urls, v.cover_image_url,
-  v.rating, v.review_count, v.buzz_score, v.going_count, v.friends_going,
-  v.cover_charge, v.dress_code, v.tags, v.badges, v.features,
-  v.vibe, v.highlight, v.why_hot, v.pair_with,
-  v.spotlight, v.trending, v.featured, v.time_slot,
-  v.is_active, v.is_claimed,
-  v.reservation_url, v.opentable_url, v.resy_url, v.yelp_url, v.google_maps_url, v.place_id, v.source,
-  v.osm_id, v.osm_type, v.data_quality, v.data_quality_score, v.vibe_tags, v.external_id,
-  v.created_at, v.updated_at
-`;
+function sendCached(res, seconds = 60) {
+  res.setHeader('Cache-Control', `public, max-age=${seconds}, s-maxage=${seconds}, stale-while-revalidate=30`);
+}
 
-// GET /api/venues
+// ------------------------------------------------------------------
+// Routes (ordered — specific routes BEFORE /:id)
+// ------------------------------------------------------------------
+
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const { where, values } = buildVenueFilters(req.query);
-    const limit = Math.min(parseInt(req.query.limit) || 100, 200);
+    const view = req.query.view === 'detail' ? 'detail' : 'card';
+    const columns = columnsForView(view);
+    const limit = Math.min(parseInt(req.query.limit) || 30, 100);
     const offset = parseInt(req.query.offset) || 0;
 
-    const countQ = await pool.query(`SELECT COUNT(*) FROM venues v ${where}`, values);
-    const total = parseInt(countQ.rows[0].count);
-
+    const countPromise = pool.query(`SELECT COUNT(*) FROM venues v ${where}`, values);
     values.push(limit, offset);
-    const result = await pool.query(
-      `SELECT ${VENUE_COLUMNS} FROM venues v ${where} ORDER BY v.rating DESC, v.buzz_score DESC LIMIT $${values.length - 1} OFFSET $${values.length}`,
+    const rowsPromise = pool.query(
+      `SELECT ${columns} FROM venues v ${where} ORDER BY v.rating DESC NULLS LAST, v.buzz_score DESC NULLS LAST LIMIT $${values.length - 1} OFFSET $${values.length}`,
       values
     );
+    const [countQ, result] = await Promise.all([countPromise, rowsPromise]);
+    const total = parseInt(countQ.rows[0].count);
 
-    res.json({ venues: result.rows, total, limit, offset });
+    sendCached(res, 60);
+    res.json({ venues: result.rows, total, limit, offset, view });
   } catch (err) {
     console.error('Venues list error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// GET /api/venues/tonight
+router.get('/map', optionalAuth, async (req, res) => {
+  try {
+    const { where, values } = buildVenueFilters(req.query);
+    const limit = Math.min(parseInt(req.query.limit) || 500, 1000);
+    values.push(limit);
+    const result = await pool.query(
+      `SELECT ${MAP_COLUMNS} FROM venues v ${where} AND v.lat IS NOT NULL AND v.lng IS NOT NULL ORDER BY v.buzz_score DESC NULLS LAST LIMIT $${values.length}`,
+      values
+    );
+    sendCached(res, 120);
+    res.json({ venues: result.rows, total: result.rows.length });
+  } catch (err) {
+    console.error('Map error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.get('/tonight', optionalAuth, async (req, res) => {
   try {
     const { where, values } = buildVenueFilters(req.query);
+    const limit = Math.min(parseInt(req.query.limit) || 24, 60);
+    values.push(limit);
     const result = await pool.query(
-      `SELECT ${VENUE_COLUMNS} FROM venues v ${where} ORDER BY v.buzz_score DESC, v.rating DESC`,
+      `SELECT ${CARD_COLUMNS} FROM venues v ${where} AND (v.trending = true OR v.featured = true OR v.spotlight = true OR v.buzz_score >= 50) ORDER BY v.buzz_score DESC NULLS LAST, v.rating DESC NULLS LAST LIMIT $${values.length}`,
       values
     );
+    sendCached(res, 60);
     res.json({ venues: result.rows, total: result.rows.length });
   } catch (err) {
     console.error('Tonight error:', err);
@@ -99,48 +212,54 @@ router.get('/tonight', optionalAuth, async (req, res) => {
   }
 });
 
-// GET /api/venues/explore
 router.get('/explore', optionalAuth, async (req, res) => {
   try {
     const { where, values } = buildVenueFilters(req.query);
+    const limit = Math.min(parseInt(req.query.limit) || 30, 100);
+    const offset = parseInt(req.query.offset) || 0;
+    values.push(limit, offset);
     const result = await pool.query(
-      `SELECT ${VENUE_COLUMNS} FROM venues v ${where} ORDER BY v.rating DESC, v.review_count DESC`,
+      `SELECT ${CARD_COLUMNS} FROM venues v ${where} ORDER BY v.rating DESC NULLS LAST, v.review_count DESC NULLS LAST LIMIT $${values.length - 1} OFFSET $${values.length}`,
       values
     );
-    res.json({ venues: result.rows, total: result.rows.length });
+    sendCached(res, 60);
+    res.json({ venues: result.rows, total: result.rows.length, limit, offset });
   } catch (err) {
     console.error('Explore error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// GET /api/venues/nightlife
 router.get('/nightlife', optionalAuth, async (req, res) => {
   try {
     const baseFilters = buildVenueFilters(req.query);
-    // Add nightlife type filter
     const nightlifeTypes = ['bar', 'nightclub', 'lounge', 'cocktail_bar', 'brewery', 'beer_hall', 'dive_bar', 'rooftop_bar'];
     const typePlaceholders = nightlifeTypes.map((_, i) => `$${baseFilters.values.length + i + 1}`).join(',');
     const where = baseFilters.where + ` AND v.type IN (${typePlaceholders})`;
     const values = [...baseFilters.values, ...nightlifeTypes];
-
+    const limit = Math.min(parseInt(req.query.limit) || 30, 100);
+    const offset = parseInt(req.query.offset) || 0;
+    values.push(limit, offset);
     const result = await pool.query(
-      `SELECT ${VENUE_COLUMNS} FROM venues v ${where} ORDER BY v.buzz_score DESC, v.rating DESC`,
+      `SELECT ${CARD_COLUMNS} FROM venues v ${where} ORDER BY v.buzz_score DESC NULLS LAST, v.rating DESC NULLS LAST LIMIT $${values.length - 1} OFFSET $${values.length}`,
       values
     );
-    res.json({ venues: result.rows, total: result.rows.length });
+    sendCached(res, 60);
+    res.json({ venues: result.rows, total: result.rows.length, limit, offset });
   } catch (err) {
     console.error('Nightlife error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// GET /api/venues/featured
 router.get('/featured', optionalAuth, async (req, res) => {
   try {
+    const limit = Math.min(parseInt(req.query.limit) || 12, 30);
     const result = await pool.query(
-      `SELECT ${VENUE_COLUMNS} FROM venues v WHERE v.is_active = true AND (v.featured = true OR v.trending = true OR v.spotlight = true) ORDER BY v.rating DESC`,
+      `SELECT ${CARD_COLUMNS} FROM venues v WHERE v.is_active = true AND (v.featured = true OR v.trending = true OR v.spotlight = true) ORDER BY v.rating DESC NULLS LAST LIMIT $1`,
+      [limit]
     );
+    sendCached(res, 120);
     res.json({ venues: result.rows, total: result.rows.length });
   } catch (err) {
     console.error('Featured error:', err);
@@ -148,14 +267,16 @@ router.get('/featured', optionalAuth, async (req, res) => {
   }
 });
 
-// GET /api/venues/search
 router.get('/search', optionalAuth, async (req, res) => {
   try {
     const { where, values } = buildVenueFilters(req.query);
+    const limit = Math.min(parseInt(req.query.limit) || 30, 100);
+    values.push(limit);
     const result = await pool.query(
-      `SELECT ${VENUE_COLUMNS} FROM venues v ${where} ORDER BY v.rating DESC LIMIT 50`,
+      `SELECT ${CARD_COLUMNS} FROM venues v ${where} ORDER BY v.rating DESC NULLS LAST LIMIT $${values.length}`,
       values
     );
+    sendCached(res, 30);
     res.json({ venues: result.rows, total: result.rows.length });
   } catch (err) {
     console.error('Search error:', err);
@@ -163,129 +284,34 @@ router.get('/search', optionalAuth, async (req, res) => {
   }
 });
 
-// GET /api/venues/slug/:slug
 router.get('/slug/:slug', optionalAuth, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT ${VENUE_COLUMNS} FROM venues v WHERE v.slug = $1 AND v.is_active = true`,
+      `SELECT ${DETAIL_COLUMNS} FROM venues v WHERE v.slug = $1 AND v.is_active = true LIMIT 1`,
       [req.params.slug]
     );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Venue not found' });
-    }
-
-    const venue = result.rows[0];
-
-    // Get reviews
-    const reviews = await pool.query(
-      `SELECT r.id, r.rating, r.content, r.created_at, u.display_name, u.avatar_url
-       FROM reviews r JOIN users u ON r.user_id = u.id
-       WHERE r.venue_id = $1 ORDER BY r.created_at DESC LIMIT 10`,
-      [venue.id]
-    );
-
-    // Get similar venues (same type, different venue)
-    const similar = await pool.query(
-      `SELECT ${VENUE_COLUMNS} FROM venues v WHERE v.type = $1 AND v.id != $2 AND v.is_active = true ORDER BY v.rating DESC LIMIT 4`,
-      [venue.type, venue.id]
-    );
-
-    res.json({ venue, reviews: reviews.rows, similar_venues: similar.rows });
+    if (!result.rows[0]) return res.status(404).json({ error: 'Venue not found' });
+    sendCached(res, 300);
+    res.json(result.rows[0]);
   } catch (err) {
-    console.error('Venue detail error:', err);
+    console.error('Venue slug error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// GET /api/venues/nearby — geospatial search (lat/lng + radius km)
-router.get('/nearby', optionalAuth, async (req, res) => {
-  try {
-    const lat = parseFloat(req.query.lat);
-    const lng = parseFloat(req.query.lng);
-    const radius = Math.min(parseFloat(req.query.radius_km) || 2, 25); // km, capped
-    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      return res.status(400).json({ error: 'lat & lng are required numbers' });
-    }
-    // Bounding box prefilter (degrees) for index usage
-    const dlat = radius / 111;
-    const dlng = radius / (111 * Math.cos(lat * Math.PI/180));
-    const south = lat - dlat, north = lat + dlat, west = lng - dlng, east = lng + dlng;
-
-    // Haversine distance in km via SQL
-    const q = `
-      SELECT ${VENUE_COLUMNS},
-             v.vibe_tags, v.data_quality, v.data_quality_score,
-             (6371 * acos(
-                LEAST(1, GREATEST(-1,
-                  cos(radians($1)) * cos(radians(v.lat::float)) *
-                  cos(radians(v.lng::float) - radians($2)) +
-                  sin(radians($1)) * sin(radians(v.lat::float))
-                ))
-             )) AS distance_km
-      FROM venues v
-      WHERE v.is_active = true
-        AND v.lat IS NOT NULL AND v.lng IS NOT NULL
-        AND v.lat BETWEEN $3 AND $4
-        AND v.lng BETWEEN $5 AND $6
-      ORDER BY distance_km ASC
-      LIMIT $7
-    `;
-    const r = await pool.query(q, [lat, lng, south, north, west, east, limit]);
-    // Filter again precisely by radius
-    const venues = r.rows.filter(v => (v.distance_km || 0) <= radius);
-    res.json({
-      venues,
-      total: venues.length,
-      origin: { lat, lng },
-      radius_km: radius,
-      attribution: 'Includes data © OpenStreetMap contributors (ODbL) where source=openstreetmap'
-    });
-  } catch (err) {
-    console.error('Venues nearby error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// GET /api/venues/:id (UUID-based lookup)
 router.get('/:id', optionalAuth, async (req, res) => {
   try {
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(req.params.id)) {
-      return res.status(400).json({ error: 'Invalid venue ID format' });
-    }
-
     const result = await pool.query(
-      `SELECT ${VENUE_COLUMNS} FROM venues v WHERE v.id = $1 AND v.is_active = true`,
+      `SELECT ${DETAIL_COLUMNS} FROM venues v WHERE v.id = $1 AND v.is_active = true LIMIT 1`,
       [req.params.id]
     );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Venue not found' });
-    }
-
-    const venue = result.rows[0];
-
-    const reviews = await pool.query(
-      `SELECT r.id, r.rating, r.content, r.created_at, u.display_name, u.avatar_url
-       FROM reviews r JOIN users u ON r.user_id = u.id
-       WHERE r.venue_id = $1 ORDER BY r.created_at DESC LIMIT 10`,
-      [venue.id]
-    );
-
-    const similar = await pool.query(
-      `SELECT ${VENUE_COLUMNS} FROM venues v WHERE v.type = $1 AND v.id != $2 AND v.is_active = true ORDER BY v.rating DESC LIMIT 4`,
-      [venue.type, venue.id]
-    );
-
-    res.json({ venue, reviews: reviews.rows, similar_venues: similar.rows });
+    if (!result.rows[0]) return res.status(404).json({ error: 'Venue not found' });
+    sendCached(res, 300);
+    res.json(result.rows[0]);
   } catch (err) {
-    console.error('Venue by ID error:', err);
+    console.error('Venue id error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-
-
-
 
 module.exports = router;
