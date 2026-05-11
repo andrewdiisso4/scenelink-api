@@ -161,13 +161,18 @@ router.get('/', optionalAuth, async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 30, 100);
     const offset = parseInt(req.query.offset) || 0;
 
-    const countPromise = pool.query(`SELECT COUNT(*) FROM venues v ${where}`, values);
-    values.push(limit, offset);
-    const rowsPromise = pool.query(
-      `SELECT ${columns} FROM venues v ${where} ORDER BY v.rating DESC NULLS LAST, v.buzz_score DESC NULLS LAST LIMIT $${values.length - 1} OFFSET $${values.length}`,
-      values
-    );
-    const [countQ, result] = await Promise.all([countPromise, rowsPromise]);
+    // Snapshot values for count query BEFORE pushing pagination params
+    const countValues = [...values];
+    const rowValues  = [...values, limit, offset];
+    const pIdx = rowValues.length;
+
+    const [countQ, result] = await Promise.all([
+      pool.query(`SELECT COUNT(*) FROM venues v ${where}`, countValues),
+      pool.query(
+        `SELECT ${columns} FROM venues v ${where} ORDER BY v.rating DESC NULLS LAST, v.buzz_score DESC NULLS LAST LIMIT $${pIdx - 1} OFFSET $${pIdx}`,
+        rowValues
+      ),
+    ]);
     const total = parseInt(countQ.rows[0].count);
 
     sendCached(res, 60);
@@ -301,15 +306,19 @@ router.get('/slug/:slug', optionalAuth, async (req, res) => {
 
 router.get('/:id', optionalAuth, async (req, res) => {
   try {
+    const idOrSlug = req.params.id;
+    // Accept UUID or slug — frontend passes slugs, admin may pass UUIDs
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+    const whereClause = isUuid ? 'v.id = $1' : 'v.slug = $1';
     const result = await pool.query(
-      `SELECT ${DETAIL_COLUMNS} FROM venues v WHERE v.id = $1 AND v.is_active = true LIMIT 1`,
-      [req.params.id]
+      `SELECT ${DETAIL_COLUMNS} FROM venues v WHERE ${whereClause} AND v.is_active = true LIMIT 1`,
+      [idOrSlug]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'Venue not found' });
     sendCached(res, 300);
     res.json(result.rows[0]);
   } catch (err) {
-    console.error('Venue id error:', err);
+    console.error('Venue detail error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
