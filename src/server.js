@@ -106,6 +106,16 @@ app.use('/api/newsletter', require('./routes/newsletter')); // Newsletter subscr
 app.use('/api/support', require('./routes/support')); // Dedicated contact support AI (separate from /api/concierge)
 app.use('/api/photo', require('./routes/photo_proxy')); // Google Places photo proxy (keeps API key server-side)
 
+// Phase 3: Social + messaging (route files present but previously not mounted).
+// Tables already exist in prod: conversations, conversation_participants, messages,
+// friendships, notifications, posts, post_likes, post_comments.
+app.use('/api/conversations', require('./routes/messages'));   // DM conversations
+app.use('/api/friends',       require('./routes/friends'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/posts',         require('./routes/posts'));
+app.use('/api/reports',       require('./routes/reports'));    // Content moderation reports
+app.use('/api/push',          require('./routes/push'));       // Push token registration
+
 // Admin: force reseed (requires secret header)
 app.post('/api/admin/reseed', async (req, res) => {
   const secret = req.headers['x-admin-secret'] || req.query.secret;
@@ -135,6 +145,10 @@ app.get('/api/users/me', require('./middleware/auth').requireAuth, async (req, r
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// /api/users/search + /api/users/:identifier — mounted AFTER the inline /api/users/me
+// so the inline handler still wins for that specific path.
+app.use('/api/users', require('./routes/users'));
 
 // ==================== DATABASE INIT ====================
 async function initDatabase() {

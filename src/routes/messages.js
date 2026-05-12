@@ -27,6 +27,32 @@ async function resolveTargetUserId(body) {
   return null;
 }
 
+// GET /api/conversations/unread-count
+// Total unread messages across all my conversations. Drives nav-bar badge.
+// Registered BEFORE router.get('/') so it is not captured by other handlers.
+router.get('/unread-count', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.id;
+    const r = await pool.query(
+      `SELECT COALESCE(SUM(u.c), 0)::int AS unread
+         FROM (
+           SELECT COUNT(m.id) AS c
+             FROM conversation_participants cp
+             JOIN messages m ON m.conversation_id = cp.conversation_id
+            WHERE cp.user_id = $1
+              AND m.sender_id <> $1
+              AND (cp.last_read_at IS NULL OR m.created_at > cp.last_read_at)
+            GROUP BY cp.conversation_id
+         ) u`,
+      [me]
+    );
+    res.json({ unread: (r.rows[0] && r.rows[0].unread) || 0 });
+  } catch (err) {
+    console.error('[messages] unread-count error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GET /api/conversations — list my conversations
 router.get('/', requireAuth, async (req, res) => {
   try {
