@@ -2,69 +2,26 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('../config/database');
 const { generateToken, requireAuth } = require('../middleware/auth');
+const mailer = require('../services/mailer');
 
-// ── Email transporter (optional — only sends if SMTP env vars are configured) ──
-let emailTransporter = null;
-try {
-  const nodemailer = require('nodemailer');
-  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    emailTransporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-    console.log('[email] SMTP transporter configured via SMTP_HOST');
-  } else if (process.env.SENDGRID_API_KEY) {
-    // SendGrid via nodemailer-sendgrid (or plain SMTP relay)
-    emailTransporter = nodemailer.createTransport({
-      host: 'smtp.sendgrid.net',
-      port: 587,
-      auth: {
-        user: 'apikey',
-        pass: process.env.SENDGRID_API_KEY,
-      },
-    });
-    console.log('[email] SendGrid transporter configured');
-  } else {
-    console.log('[email] No SMTP config found — password reset emails will be logged only');
-  }
-} catch (e) {
-  console.warn('[email] nodemailer not available:', e.message);
-}
+// Phase 5D-C1: ad-hoc Gmail/SendGrid SMTP setup removed in favor of
+// /services/mailer.js — single GoDaddy-compatible transport using
+// EMAIL_PROVIDER + SMTP_* env vars. Sender is now info@scenelink.app.
 
-async function sendPasswordResetEmail(toEmail, resetToken) {
-  const appUrl = process.env.APP_URL || 'https://scenelink-v2.netlify.app';
+async function sendPasswordResetEmail(toEmail, resetToken, displayName) {
+  const appUrl = process.env.APP_BASE_URL || 'https://scenelink.app';
   const resetUrl = `${appUrl}/profile.html?reset_token=${resetToken}`;
-  const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@scenelink.app';
-
-  const subject = 'Reset your SceneLink password';
-  const text = `Hi,\n\nYou requested a password reset for your SceneLink account.\n\nClick the link below to reset your password (expires in 1 hour):\n\n${resetUrl}\n\nIf you didn't request this, you can safely ignore this email.\n\n— The SceneLink Team`;
-  const html = `
-    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#0d0d0d;color:#fff;border-radius:12px">
-      <div style="text-align:center;margin-bottom:24px">
-        <span style="font-size:22px;font-weight:700;color:#D4AF37">🎵 SceneLink</span>
-      </div>
-      <h2 style="color:#fff;font-size:20px;margin-bottom:12px">Reset your password</h2>
-      <p style="color:#aaa;font-size:14px;line-height:1.6">You requested a password reset. Click the button below to choose a new password. This link expires in 1 hour.</p>
-      <div style="text-align:center;margin:28px 0">
-        <a href="${resetUrl}" style="background:#D4AF37;color:#000;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:15px;display:inline-block">Reset Password</a>
-      </div>
-      <p style="color:#666;font-size:12px;text-align:center">If you didn't request this, ignore this email. Your password won't change.</p>
-    </div>`;
-
-  if (emailTransporter) {
-    await emailTransporter.sendMail({ from: fromEmail, to: toEmail, subject, text, html });
-    console.log(`[email] Password reset email sent to ${toEmail}`);
-    return true;
-  } else {
-    // No email configured — log the reset link so admins can retrieve it
-    console.log(`[forgot-password] RESET LINK (no email configured): ${resetUrl}`);
+  const tpl = mailer.passwordResetEmail({ name: displayName, resetUrl });
+  const r = await mailer.sendMail({ to: toEmail, ...tpl });
+  if (!r.ok) {
+    // Never expose the reset URL in API logs as a credential — but admins
+    // running Render console need a fallback when SMTP is unconfigured.
+    if (r.skipped) console.log(`[forgot-password] mailer disabled — reset link logged: ${resetUrl}`);
+    else console.error(`[forgot-password] send failed: ${r.error}`);
     return false;
   }
+  console.log(`[forgot-password] email queued → ${toEmail}`);
+  return true;
 }
 
 const router = express.Router();
@@ -107,69 +64,37 @@ router.post('/signup', authLimiter, async (req, res) => {
     const user = result.rows[0];
     const token = generateToken(user);
 
-    // ── Send welcome email + admin notification (non-blocking) ──────────────
+    // ── Send welcome email + admin notification (non-blocking, Phase 5D-C1) ──
     setImmediate(async () => {
       try {
-        const appUrl = process.env.APP_URL || 'https://scenelink.app';
-        const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@scenelink.app';
-        const adminEmail = process.env.ADMIN_NOTIFY_EMAIL;
+        const adminEmail = process.env.ADMIN_NOTIFY_EMAIL || mailer.SUPPORT_EMAIL;
 
-        if (emailTransporter) {
-          // 1) Welcome email to new user
-          await emailTransporter.sendMail({
-            from: fromEmail,
-            to: user.email,
-            subject: '🎵 Welcome to SceneLink — Your Boston nightlife guide',
-            html: `
-              <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#0d0d0d;color:#fff;border-radius:12px">
-                <div style="text-align:center;margin-bottom:28px">
-                  <span style="font-size:26px;font-weight:700;color:#D4AF37">🎵 SceneLink</span>
-                </div>
-                <h2 style="color:#fff;font-size:22px;margin-bottom:12px">Welcome, ${user.display_name}! 🎉</h2>
-                <p style="color:#ccc;font-size:15px;line-height:1.7">You're now part of SceneLink — Boston's smartest guide to dining, nightlife, and events.</p>
-                <ul style="color:#ccc;font-size:14px;line-height:2;padding-left:20px">
-                  <li>🔍 <strong>Explore</strong> 100+ venues across Boston neighborhoods</li>
-                  <li>❤️ <strong>Save favorites</strong> and build custom lists</li>
-                  <li>📅 <strong>Plan nights out</strong> with friends</li>
-                  <li>🤖 <strong>Ask the AI Concierge</strong> for personalized picks</li>
-                  <li>📍 <strong>Check in</strong> to venues and leave reviews</li>
-                </ul>
-                <div style="text-align:center;margin:32px 0">
-                  <a href="${appUrl}/explore.html" style="background:#D4AF37;color:#000;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:15px;display:inline-block">Start Exploring →</a>
-                </div>
-                <p style="color:#555;font-size:12px;text-align:center">Questions? Reply to this email or visit <a href="${appUrl}/contact.html" style="color:#D4AF37">scenelink.app/contact</a></p>
+        // 1) Welcome email to new user (from info@scenelink.app via mailer)
+        const welcome = mailer.welcomeEmail(user);
+        const r = await mailer.sendMail({ to: user.email, ...welcome });
+        if (r.skipped) {
+          console.log(`[signup] mailer disabled — NEW USER: ${user.display_name} <${user.email}> | ID: ${user.id}`);
+        }
+
+        // 2) Admin notification of new signup
+        if (adminEmail) {
+          await mailer.sendMail({
+            to: adminEmail,
+            subject: `[SceneLink] New signup: ${user.display_name} (${user.email})`,
+            html: `<div style="font-family:sans-serif;max-width:480px;padding:24px;background:#111;color:#fff;border-radius:8px">
+                <h3 style="color:#D4AF37;margin-top:0">New User Signup</h3>
+                <table style="width:100%;font-size:14px;color:#ccc;border-collapse:collapse">
+                  <tr><td style="padding:6px 0;color:#888">Name</td><td><strong style="color:#fff">${user.display_name}</strong></td></tr>
+                  <tr><td style="padding:6px 0;color:#888">Email</td><td><a href="mailto:${user.email}" style="color:#D4AF37">${user.email}</a></td></tr>
+                  <tr><td style="padding:6px 0;color:#888">Username</td><td>@${user.username}</td></tr>
+                  <tr><td style="padding:6px 0;color:#888">User ID</td><td style="font-size:11px">${user.id}</td></tr>
+                  <tr><td style="padding:6px 0;color:#888">Joined</td><td>${new Date(user.created_at).toLocaleString()}</td></tr>
+                </table>
               </div>`,
-            text: `Welcome to SceneLink, ${user.display_name}!\n\nYou're now part of Boston's smartest nightlife guide.\n\nExplore venues: ${appUrl}/explore.html\n\n— The SceneLink Team`,
-          }).catch(e => console.error('[email] welcome email failed:', e.message));
-
-          // 2) Admin notification of new signup
-          if (adminEmail) {
-            await emailTransporter.sendMail({
-              from: fromEmail,
-              to: adminEmail,
-              subject: `[SceneLink] New signup: ${user.display_name} (${user.email})`,
-              html: `
-                <div style="font-family:sans-serif;max-width:480px;padding:24px;background:#111;color:#fff;border-radius:8px">
-                  <h3 style="color:#D4AF37;margin-top:0">🆕 New User Signup</h3>
-                  <table style="width:100%;font-size:14px;color:#ccc;border-collapse:collapse">
-                    <tr><td style="padding:6px 0;color:#888">Name</td><td><strong style="color:#fff">${user.display_name}</strong></td></tr>
-                    <tr><td style="padding:6px 0;color:#888">Email</td><td><a href="mailto:${user.email}" style="color:#D4AF37">${user.email}</a></td></tr>
-                    <tr><td style="padding:6px 0;color:#888">Username</td><td>@${user.username}</td></tr>
-                    <tr><td style="padding:6px 0;color:#888">User ID</td><td style="font-size:11px">${user.id}</td></tr>
-                    <tr><td style="padding:6px 0;color:#888">Joined</td><td>${new Date(user.created_at).toLocaleString()}</td></tr>
-                  </table>
-                  <div style="margin-top:20px">
-                    <a href="${appUrl}/admin.html" style="background:#D4AF37;color:#000;text-decoration:none;padding:10px 20px;border-radius:6px;font-weight:700;font-size:13px;display:inline-block">View Admin Dashboard</a>
-                  </div>
-                </div>`,
-              text: `New signup: ${user.display_name} (${user.email}) — ID: ${user.id}`,
-            }).catch(e => console.error('[email] admin notify failed:', e.message));
-          }
-        } else {
-          // No SMTP — log to Render console so you can see signups
-          console.log(`[signup] NEW USER: ${user.display_name} <${user.email}> | ID: ${user.id} | ${new Date(user.created_at).toISOString()}`);
+          });
         }
       } catch (emailErr) {
+        // Email failure must not break signup.
         console.error('[signup] email error (non-fatal):', emailErr.message);
       }
     });
@@ -244,12 +169,17 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
       console.log('[forgot-password] reset_token column not available, skipping token store');
     }
 
-    console.log(`[forgot-password] Reset requested for ${email}, token: ${token}`);
+    console.log(`[forgot-password] Reset requested for ${email}`);
 
-    // Attempt to send email
+    // Attempt to send email (display_name from user lookup if available)
     let emailSent = false;
     try {
-      emailSent = await sendPasswordResetEmail(email, token);
+      let displayName = '';
+      try {
+        const u = await pool.query('SELECT display_name FROM users WHERE email=$1', [email]);
+        displayName = u.rows[0]?.display_name || '';
+      } catch(_) {}
+      emailSent = await sendPasswordResetEmail(email, token, displayName);
     } catch (emailErr) {
       console.error('[forgot-password] Email send failed:', emailErr.message);
     }

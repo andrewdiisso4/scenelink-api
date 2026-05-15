@@ -850,54 +850,43 @@ router.delete('/promos/:id', requireAuth, requireBusiness, async (req, res) => {
 // PASSWORD RESET (Business)
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Lightweight email transporter (same env vars as user auth)
-let bizEmailTransporter = null;
-try {
-    const nodemailer = require('nodemailer');
-    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-        bizEmailTransporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST,
-            port: parseInt(process.env.SMTP_PORT || '587'),
-            secure: process.env.SMTP_SECURE === 'true',
-            auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-        });
-    } else if (process.env.SENDGRID_API_KEY) {
-        bizEmailTransporter = nodemailer.createTransport({
-            host: 'smtp.sendgrid.net', port: 587,
-            auth: { user: 'apikey', pass: process.env.SENDGRID_API_KEY }
-        });
-    }
-} catch(_) { /* nodemailer optional */ }
+// Phase 5D-C1: legacy bizEmailTransporter replaced with centralized mailer.
+const mailer = require('../services/mailer');
 
 async function sendBusinessResetEmail(toEmail, resetToken, venueName) {
-    const appUrl = process.env.APP_URL || 'https://scenelink.app';
+    const appUrl = process.env.APP_BASE_URL || 'https://scenelink.app';
     const resetUrl = `${appUrl}/business.html?reset_token=${resetToken}`;
-    const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@scenelink.app';
-    const subject = 'Reset your SceneLink business account password';
-    const text = `Hi,\n\nYou requested a password reset for your SceneLink business account${venueName ? ' for ' + venueName : ''}.\n\nClick the link below to reset your password (expires in 1 hour):\n\n${resetUrl}\n\nIf you didn't request this, you can safely ignore this email.\n\n— The SceneLink Team`;
-    const html = `
-        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#0d0d0d;color:#fff;border-radius:12px">
-            <div style="text-align:center;margin-bottom:24px">
-                <span style="font-size:22px;font-weight:700;color:#D4AF37">🎵 SceneLink for Business</span>
+    const tpl = {
+        subject: 'Reset your SceneLink business account password',
+        html: `<div style="font-family:Inter,Helvetica,sans-serif;background:#000;padding:24px 0">
+            <div style="max-width:560px;margin:0 auto;padding:32px 28px;background:#0d0d0d;color:#fff;border-radius:14px">
+                <div style="text-align:center;margin-bottom:24px">
+                    <span style="font-size:24px;font-weight:700;color:#D4AF37">SceneLink for Business</span>
+                </div>
+                <h2 style="color:#fff;font-size:22px;margin:0 0 12px">Reset your password</h2>
+                <p style="color:#ccc;font-size:15px;line-height:1.7">You requested a password reset for your business account${venueName ? ` <strong style="color:#D4AF37">(${venueName})</strong>` : ''}.</p>
+                <p style="color:#ccc;font-size:15px;line-height:1.7">Click the button below to set a new password. The link expires in 1 hour.</p>
+                <div style="text-align:center;margin:32px 0">
+                    <a href="${resetUrl}" style="background:#D4AF37;color:#000;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:15px;display:inline-block">Reset password →</a>
+                </div>
+                <p style="color:#666;font-size:12px;text-align:center">If you didn't request this, you can safely ignore this email.</p>
+                <hr style="border:0;border-top:1px solid #1a1a1a;margin:28px 0 20px"/>
+                <div style="color:#666;font-size:11px;text-align:center">
+                    <a href="${appUrl}/privacy.html" style="color:#888;text-decoration:none;margin:0 8px">Privacy</a>·
+                    <a href="${appUrl}/terms.html" style="color:#888;text-decoration:none;margin:0 8px">Terms</a>·
+                    <a href="${appUrl}/contact.html" style="color:#888;text-decoration:none;margin:0 8px">Contact</a>
+                </div>
             </div>
-            <h2 style="color:#fff;font-size:20px;margin-bottom:12px">Reset your password</h2>
-            <p style="color:#aaa;font-size:14px;line-height:1.6">
-                You requested a password reset for your business account${venueName ? ` <strong style="color:#D4AF37">(${venueName})</strong>` : ''}.
-                Click the button below to choose a new password. This link expires in 1 hour.
-            </p>
-            <div style="text-align:center;margin:28px 0">
-                <a href="${resetUrl}" style="background:#D4AF37;color:#000;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:15px;display:inline-block">Reset Password</a>
-            </div>
-            <p style="color:#666;font-size:12px;text-align:center">If you didn't request this, ignore this email. Your password won't change.</p>
-        </div>`;
-
-    if (bizEmailTransporter) {
-        await bizEmailTransporter.sendMail({ from: fromEmail, to: toEmail, subject, text, html });
-        console.log(`[business/forgot-password] Email sent to ${toEmail}`);
-        return true;
+        </div>`,
+    };
+    const r = await mailer.sendMail({ to: toEmail, ...tpl });
+    if (!r.ok) {
+        if (r.skipped) console.log(`[business/forgot-password] mailer disabled — reset link logged: ${resetUrl}`);
+        else console.error(`[business/forgot-password] send failed: ${r.error}`);
+        return false;
     }
-    console.log(`[business/forgot-password] RESET LINK (no SMTP configured): ${resetUrl}`);
-    return false;
+    console.log(`[business/forgot-password] email queued → ${toEmail}`);
+    return true;
 }
 
 // POST /api/business/forgot-password
@@ -980,6 +969,176 @@ router.post('/reset-password', passwordResetLimiter, async (req, res) => {
     } catch (err) {
         console.error('[business/reset-password]', err);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// PHASE 5D-C3 — VENUE SEARCH (for claim flow)
+// GET /api/business/venues/search?q=name
+// Public — used by the "Claim your venue" flow to find an existing listing.
+// ══════════════════════════════════════════════════════════════════════════
+router.get('/venues/search', async (req, res) => {
+    try {
+        const q = String(req.query.q || '').trim();
+        if (q.length < 2) return res.json({ venues: [] });
+        const result = await pool.query(
+            `SELECT v.id, v.slug, v.name, v.type, v.neighborhood, v.address,
+                    EXISTS(SELECT 1 FROM business_users bu WHERE bu.venue_id=v.id AND bu.status='active') AS claimed
+               FROM venues v
+              WHERE v.name ILIKE $1
+                 OR v.neighborhood ILIKE $1
+              ORDER BY (v.name ILIKE $2) DESC, v.name ASC
+              LIMIT 20`,
+            [`%${q}%`, `${q}%`]
+        );
+        res.json({ venues: result.rows });
+    } catch (err) {
+        console.error('[business/venues/search]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// PHASE 5D-C3 — UPGRADE INTEREST FORM
+// POST /api/business/upgrade-interest
+// No fake checkout. Captures a sales-interest message and forwards to info@.
+// ══════════════════════════════════════════════════════════════════════════
+router.post('/upgrade-interest', contactLimiter, async (req, res) => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS business_upgrade_interest (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                business_user_id UUID REFERENCES business_users(id) ON DELETE SET NULL,
+                email VARCHAR(255) NOT NULL,
+                venue_name VARCHAR(255),
+                desired_tier VARCHAR(64),
+                message TEXT,
+                status VARCHAR(32) DEFAULT 'new',
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        `).catch(() => {});
+
+        const { email, venue_name, desired_tier, message, business_user_id } = req.body || {};
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+            return res.status(400).json({ error: 'A valid email is required' });
+        }
+
+        const cleanEmail = String(email).trim().toLowerCase();
+        const result = await pool.query(
+            `INSERT INTO business_upgrade_interest (business_user_id, email, venue_name, desired_tier, message)
+             VALUES ($1,$2,$3,$4,$5)
+             RETURNING id, created_at`,
+            [
+                business_user_id || null,
+                cleanEmail,
+                String(venue_name || '').trim().slice(0, 255) || null,
+                String(desired_tier || '').trim().slice(0, 64) || null,
+                String(message || '').trim().slice(0, 5000) || null,
+            ]
+        );
+
+        // Forward to sales (info@scenelink.app) — non-blocking
+        setImmediate(async () => {
+            try {
+                const mailer = require('../services/mailer');
+                await mailer.sendMail({
+                    to: mailer.CONTACT_FORWARD_TO,
+                    replyTo: cleanEmail,
+                    subject: `[Business Upgrade] ${venue_name || cleanEmail} → ${desired_tier || 'tier inquiry'}`,
+                    html: `<div style="font-family:sans-serif;max-width:520px;padding:24px;background:#0d0d0d;color:#fff;border-radius:12px">
+                        <h3 style="color:#D4AF37;margin:0 0 12px">New business upgrade interest</h3>
+                        <table style="width:100%;color:#ccc;font-size:14px;border-collapse:collapse">
+                          <tr><td style="padding:6px 0;color:#888">Email</td><td><a href="mailto:${cleanEmail}" style="color:#D4AF37">${cleanEmail}</a></td></tr>
+                          <tr><td style="padding:6px 0;color:#888">Venue</td><td>${venue_name || '(not provided)'}</td></tr>
+                          <tr><td style="padding:6px 0;color:#888">Desired tier</td><td>${desired_tier || '(not specified)'}</td></tr>
+                        </table>
+                        ${message ? `<div style="margin-top:16px;padding:14px;background:#111;border:1px solid #1a1a1a;border-radius:8px;color:#fff;line-height:1.6;white-space:pre-wrap">${String(message).replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</div>` : ''}
+                      </div>`,
+                });
+                // Send acknowledgment to requester
+                await mailer.sendMail({
+                    to: cleanEmail,
+                    subject: 'We got your SceneLink Business upgrade request',
+                    html: `<div style="font-family:sans-serif;max-width:520px;padding:24px;background:#0d0d0d;color:#fff;border-radius:12px">
+                        <h2 style="color:#D4AF37;margin:0 0 12px">Thanks — we'll be in touch.</h2>
+                        <p style="color:#ccc;line-height:1.6">Our business team will review your request and reach out within 1–2 business days. In the meantime, you can keep using your current SceneLink Business account at <a href="https://scenelink.app/business.html" style="color:#D4AF37">scenelink.app/business.html</a>.</p>
+                      </div>`,
+                });
+            } catch (e) {
+                console.warn('[business/upgrade-interest] email failed:', e.message);
+            }
+        });
+
+        res.json({
+            ok: true,
+            id: result.rows[0].id,
+            message: "Thanks — our business team will review your request and reach out within 1–2 business days.",
+        });
+    } catch (err) {
+        console.error('[business/upgrade-interest]', err);
+        res.status(500).json({ error: 'Failed to submit upgrade request' });
+    }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// PHASE 5D-C3 — PER-LISTING ANALYTICS (owner-scoped, real events)
+// GET /api/business/listings/:id/analytics
+// Returns real event counts from analytics_events table for owned listing.
+// Uses honest empty state when no events recorded yet.
+// ══════════════════════════════════════════════════════════════════════════
+router.get('/listings/:id/analytics', requireAuth, requireBusiness, async (req, res) => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS analytics_events (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                user_id UUID,
+                venue_id UUID,
+                event_type VARCHAR(64) NOT NULL,
+                metadata JSONB,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        `).catch(() => {});
+        await pool.query('CREATE INDEX IF NOT EXISTS idx_analytics_venue_type ON analytics_events(venue_id, event_type)').catch(()=>{});
+
+        // Verify ownership
+        const venueId = req.params.id;
+        const ownership = await pool.query(
+            'SELECT 1 FROM business_users WHERE id=$1 AND venue_id=$2 AND status=\'active\'',
+            [req.user.id, venueId]
+        );
+        if (!ownership.rows.length) {
+            return res.status(403).json({ error: 'You do not own this listing' });
+        }
+
+        const days = Math.min(90, Math.max(1, parseInt(req.query.days) || 30));
+        const result = await pool.query(
+            `SELECT event_type, COUNT(*)::int AS count
+               FROM analytics_events
+              WHERE venue_id=$1 AND created_at >= NOW() - ($2 || ' days')::interval
+              GROUP BY event_type`,
+            [venueId, String(days)]
+        );
+
+        // Fold into a known shape so the dashboard always has the keys it expects.
+        const counts = { view: 0, save: 0, call_click: 0, website_click: 0, direction_click: 0, plan_add: 0 };
+        for (const row of result.rows) {
+            if (counts.hasOwnProperty(row.event_type)) counts[row.event_type] = row.count;
+        }
+        const total = Object.values(counts).reduce((a, b) => a + b, 0);
+
+        res.json({
+            ok: true,
+            venue_id: venueId,
+            window_days: days,
+            counts,
+            total,
+            empty_state: total === 0
+                ? 'Analytics begin once your listing is approved and viewed.'
+                : null,
+        });
+    } catch (err) {
+        console.error('[business/listings/:id/analytics]', err);
+        res.status(500).json({ error: err.message });
     }
 });
 
