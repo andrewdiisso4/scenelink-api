@@ -6,7 +6,7 @@ const { generateToken, requireAuth } = require('../middleware/auth');
 const router = express.Router();
 
 // Rate limiters for sensitive endpoints
-const { authLimiter, passwordResetLimiter } = require('../middleware/rateLimits');
+const { authLimiter, passwordResetLimiter, contactLimiter } = require('../middleware/rateLimits');
 
 // ═══════════════════════════════════════════════════════════════════
 // Ensure business_users table exists (idempotent)
