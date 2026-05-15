@@ -1088,19 +1088,7 @@ router.post('/upgrade-interest', contactLimiter, async (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════
 router.get('/listings/:id/analytics', requireAuth, requireBusiness, async (req, res) => {
     try {
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS analytics_events (
-                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-                user_id UUID,
-                venue_id UUID,
-                event_type VARCHAR(64) NOT NULL,
-                metadata JSONB,
-                created_at TIMESTAMPTZ DEFAULT NOW()
-            )
-        `).catch(() => {});
-        await pool.query('CREATE INDEX IF NOT EXISTS idx_analytics_venue_type ON analytics_events(venue_id, event_type)').catch(()=>{});
-
-        // Verify ownership
+        // Verify ownership FIRST (before any analytics work)
         const venueId = req.params.id;
         const ownership = await pool.query(
             'SELECT 1 FROM business_users WHERE id=$1 AND venue_id=$2 AND status=\'active\'',
@@ -1111,20 +1099,59 @@ router.get('/listings/:id/analytics', requireAuth, requireBusiness, async (req, 
         }
 
         const days = Math.min(90, Math.max(1, parseInt(req.query.days) || 30));
-        const result = await pool.query(
-            `SELECT event_type, COUNT(*)::int AS count
-               FROM analytics_events
-              WHERE venue_id=$1 AND created_at >= NOW() - ($2 || ' days')::interval
-              GROUP BY event_type`,
-            [venueId, String(days)]
-        );
 
-        // Fold into a known shape so the dashboard always has the keys it expects.
-        const counts = { view: 0, save: 0, call_click: 0, website_click: 0, direction_click: 0, plan_add: 0 };
-        for (const row of result.rows) {
-            if (counts.hasOwnProperty(row.event_type)) counts[row.event_type] = row.count;
+        // Determine if analytics_events exists and what shape it has.
+        // We support two known shapes:
+        //   (a) (venue_id, event_type, created_at)
+        //   (b) (venue_id, action, created_at)  — older shape
+        // If the table doesn't exist, we create the (a) shape and continue with empty results.
+        const colCheck = await pool.query(`
+            SELECT column_name
+              FROM information_schema.columns
+             WHERE table_schema='public' AND table_name='analytics_events'
+        `);
+        const cols = new Set(colCheck.rows.map(r => r.column_name));
+
+        if (cols.size === 0) {
+            // Table missing — create canonical shape and return empty
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS analytics_events (
+                    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                    user_id UUID,
+                    venue_id UUID,
+                    event_type VARCHAR(64) NOT NULL,
+                    metadata JSONB,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            `).catch(() => {});
+            await pool.query('CREATE INDEX IF NOT EXISTS idx_analytics_venue_type ON analytics_events(venue_id, event_type)').catch(()=>{});
         }
-        const total = Object.values(counts).reduce((a, b) => a + b, 0);
+
+        const eventCol = cols.has('event_type') ? 'event_type'
+                       : cols.has('action')     ? 'action'
+                       : null;
+
+        let counts = { view: 0, save: 0, call_click: 0, website_click: 0, direction_click: 0, plan_add: 0 };
+        let total = 0;
+
+        if (eventCol && cols.has('venue_id') && cols.has('created_at')) {
+            try {
+                const result = await pool.query(
+                    `SELECT ${eventCol} AS event_type, COUNT(*)::int AS count
+                       FROM analytics_events
+                      WHERE venue_id=$1 AND created_at >= NOW() - ($2 || ' days')::interval
+                      GROUP BY ${eventCol}`,
+                    [venueId, String(days)]
+                );
+                for (const row of result.rows) {
+                    if (counts.hasOwnProperty(row.event_type)) counts[row.event_type] = row.count;
+                }
+                total = Object.values(counts).reduce((a, b) => a + b, 0);
+            } catch (e) {
+                // Schema drift — fall back to empty without 500
+                console.warn('[business/analytics] query failed, returning empty:', e.message);
+            }
+        }
 
         res.json({
             ok: true,
@@ -1138,7 +1165,7 @@ router.get('/listings/:id/analytics', requireAuth, requireBusiness, async (req, 
         });
     } catch (err) {
         console.error('[business/listings/:id/analytics]', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Failed to load analytics' });
     }
 });
 
