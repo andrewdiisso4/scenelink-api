@@ -78,6 +78,61 @@ let transport = null;
 let transportReady = false;
 let transportError = null;
 
+// ── In-process mailer concurrency cap (Phase 5G) ──────────────────────────
+// Microsoft 365 enforces a ~3-concurrent-connections cap per authenticated
+// SMTP user (`432 4.3.2 Concurrent connections limit exceeded`). To stay
+// safely under that limit we serialise outbound sends through a tiny
+// async semaphore with a configurable concurrency cap (default: 2).
+//
+// All callers go through `sendMail()` which acquires before transport
+// activity and releases in a `finally`. The cap NEVER blocks the HTTP
+// request thread because routes already invoke the mailer from
+// `setImmediate` / `await` continuations in the background.
+//
+// Override via env: MAILER_MAX_CONCURRENCY (integer, default "2").
+const MAILER_MAX_CONCURRENCY = (() => {
+  const n = parseInt(process.env.MAILER_MAX_CONCURRENCY || '2', 10);
+  return Number.isFinite(n) && n >= 1 && n <= 10 ? n : 2;
+})();
+
+let _inflight = 0;
+const _waiters = []; // FIFO queue of resolve()s
+
+function _acquireSlot() {
+  if (_inflight < MAILER_MAX_CONCURRENCY) {
+    _inflight++;
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => _waiters.push(resolve));
+}
+
+function _releaseSlot() {
+  if (_waiters.length > 0) {
+    const next = _waiters.shift();
+    // _inflight stays the same — we hand the slot directly to the next waiter
+    next();
+  } else {
+    _inflight = Math.max(0, _inflight - 1);
+  }
+}
+
+// Sleep helper for retry backoff.
+function _sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+// Detect M365 "432 4.3.2 Concurrent connections limit exceeded" and similar
+// transient SMTP errors that benefit from a short backoff + retry.
+function _isTransientSmtp(err) {
+  if (!err) return false;
+  const msg = String(err.message || err.response || '').toLowerCase();
+  if (err.responseCode === 432) return true;
+  if (/4\.3\.2.*concurrent connections/i.test(err.response || '')) return true;
+  if (msg.includes('concurrent connections limit')) return true;
+  if (msg.includes('too many concurrent')) return true;
+  // 421 4.7.x (server busy / try again) is also transient
+  if (err.responseCode === 421) return true;
+  return false;
+}
+
 function initTransport() {
   if (!nodemailer) return;
   const opts = buildTransportOptions();
@@ -93,7 +148,7 @@ function initTransport() {
     transport = nodemailer.createTransport(opts);
     transportReady = true;
     // NEVER log SMTP_PASS. Log host/port/user only.
-    console.log(`[mailer] ready — provider=${process.env.EMAIL_PROVIDER || 'smtp'} host=${opts.host} port=${opts.port} secure=${opts.secure} user=${opts.auth.user}`);
+    console.log(`[mailer] ready — provider=${process.env.EMAIL_PROVIDER || 'smtp'} host=${opts.host} port=${opts.port} secure=${opts.secure} user=${opts.auth.user} maxConcurrency=${MAILER_MAX_CONCURRENCY}`);
   } catch (e) {
     transportError = e.message;
     console.error('[mailer] init failed:', e.message);
@@ -127,21 +182,45 @@ async function sendMail(opts) {
   }
   const fromEmail = opts.from || FROM_EMAIL;
   const fromName  = opts.fromName || FROM_NAME;
+
+  // Acquire concurrency slot (Phase 5G — caps M365 outbound parallelism).
+  await _acquireSlot();
+
+  // Up to 2 retries on transient 432 4.3.2 / 421 errors with exponential backoff.
+  const maxAttempts = 3;
+  let lastErr = null;
   try {
-    const info = await transport.sendMail({
-      from: `"${fromName}" <${fromEmail}>`,
-      to: opts.to,
-      subject: opts.subject,
-      html: opts.html,
-      text: opts.text || stripHtml(opts.html || ''),
-      replyTo: opts.replyTo || undefined,
-    });
-    // Don't log full message id stack; just confirm.
-    console.log(`[mailer] sent → ${Array.isArray(opts.to) ? opts.to.join(',') : opts.to} subject="${opts.subject}"`);
-    return { ok: true, messageId: info.messageId };
-  } catch (e) {
-    console.error(`[mailer] send failed → ${opts.to}: ${e.message}`);
-    return { ok: false, error: e.message };
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const info = await transport.sendMail({
+          from: `"${fromName}" <${fromEmail}>`,
+          to: opts.to,
+          subject: opts.subject,
+          html: opts.html,
+          text: opts.text || stripHtml(opts.html || ''),
+          replyTo: opts.replyTo || undefined,
+        });
+        // Don't log full message id stack; just confirm.
+        console.log(`[mailer] sent → ${Array.isArray(opts.to) ? opts.to.join(',') : opts.to} subject="${opts.subject}"${attempt > 1 ? ` (attempt ${attempt})` : ''}`);
+        return { ok: true, messageId: info.messageId, attempts: attempt };
+      } catch (e) {
+        lastErr = e;
+        if (attempt < maxAttempts && _isTransientSmtp(e)) {
+          // Backoff: 250ms, 750ms, 2.25s ...  (250 * 3^(attempt-1))
+          const backoffMs = 250 * Math.pow(3, attempt - 1);
+          console.warn(`[mailer] transient SMTP error (attempt ${attempt}/${maxAttempts}) — retry in ${backoffMs}ms: ${e.message}`);
+          await _sleep(backoffMs);
+          continue;
+        }
+        // Non-transient or out of attempts.
+        console.error(`[mailer] send failed → ${opts.to}: ${e.message}`);
+        return { ok: false, error: e.message, attempts: attempt };
+      }
+    }
+    // Should never reach here, but be defensive.
+    return { ok: false, error: lastErr ? lastErr.message : 'unknown', attempts: maxAttempts };
+  } finally {
+    _releaseSlot();
   }
 }
 
@@ -277,4 +356,10 @@ module.exports = {
   contactNotifyAdminEmail, contactAckEmail, passwordResetEmail,
   // constants
   APP_BASE_URL, FROM_EMAIL, FROM_NAME, SUPPORT_EMAIL, CONTACT_FORWARD_TO,
+  // Phase 5G — observability for the in-process queue (no PII, no creds).
+  queueStats: () => ({
+    inflight: _inflight,
+    waiting: _waiters.length,
+    maxConcurrency: MAILER_MAX_CONCURRENCY,
+  }),
 };
