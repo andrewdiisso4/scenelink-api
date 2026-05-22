@@ -90,6 +90,18 @@ router.post('/request', requireAuth, async (req, res) => {
     if (!targetId) return res.status(400).json({ error: 'user_id or username required' });
     if (targetId === me) return res.status(400).json({ error: "Can't friend yourself" });
 
+    // Phase 6E: refuse the request if either side has blocked the other.
+    const blockCheck = await pool.query(
+      `SELECT 1 FROM user_blocks
+        WHERE (blocker_id = $1 AND blocked_id = $2)
+           OR (blocker_id = $2 AND blocked_id = $1)
+        LIMIT 1`,
+      [me, targetId]
+    );
+    if (blockCheck.rows.length) {
+      return res.status(403).json({ error: 'Cannot send request' });
+    }
+
     const { a, b } = canonicalPair(me, targetId);
 
     // Existing row?

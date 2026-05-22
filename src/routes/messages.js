@@ -98,6 +98,18 @@ router.post('/', requireAuth, async (req, res) => {
     if (!target) return res.status(400).json({ error: 'user_id or username required' });
     if (target === me) return res.status(400).json({ error: "Can't DM yourself" });
 
+    // Phase 6E: refuse if either side has blocked the other.
+    const blockCheck = await pool.query(
+      `SELECT 1 FROM user_blocks
+        WHERE (blocker_id = $1 AND blocked_id = $2)
+           OR (blocker_id = $2 AND blocked_id = $1)
+        LIMIT 1`,
+      [me, target]
+    );
+    if (blockCheck.rows.length) {
+      return res.status(403).json({ error: 'Cannot start conversation' });
+    }
+
     // Reuse existing 1:1 convo if any
     const existing = await pool.query(
       `SELECT c.id FROM conversations c

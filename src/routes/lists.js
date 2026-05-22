@@ -96,6 +96,74 @@ router.delete('/:listId/venues/:venueId', requireAuth, async (req, res) => {
   }
 });
 
+// PATCH /api/lists/:listId — Phase 6E: rename/edit list (owner-only)
+// Body: { name?: string, description?: string }
+router.patch('/:listId', requireAuth, async (req, res) => {
+  try {
+    const { name, description } = req.body || {};
+    const userId = req.user.id;
+    const { listId } = req.params;
+
+    // Confirm ownership before mutation
+    const owns = await pool.query(
+      'SELECT id FROM lists WHERE id = $1 AND user_id = $2',
+      [listId, userId]
+    );
+    if (owns.rows.length === 0) {
+      return res.status(404).json({ error: 'List not found' });
+    }
+
+    const sets = [];
+    const vals = [];
+    let i = 1;
+
+    if (name !== undefined) {
+      if (typeof name !== 'string') return res.status(400).json({ error: 'name must be a string' });
+      const trimmed = name.trim();
+      if (trimmed.length === 0) return res.status(400).json({ error: 'name cannot be empty' });
+      if (trimmed.length > 80) return res.status(400).json({ error: 'name too long (max 80 characters)' });
+
+      const dup = await pool.query(
+        'SELECT id FROM lists WHERE user_id = $1 AND LOWER(name) = LOWER($2) AND id <> $3',
+        [userId, trimmed, listId]
+      );
+      if (dup.rows.length) return res.status(409).json({ error: 'You already have a list with that name' });
+
+      sets.push(`name = $${i++}`);
+      vals.push(trimmed);
+    }
+
+    if (description !== undefined) {
+      if (description !== null && typeof description !== 'string') {
+        return res.status(400).json({ error: 'description must be a string' });
+      }
+      const desc = description == null ? '' : String(description).slice(0, 500);
+      sets.push(`description = $${i++}`);
+      vals.push(desc);
+    }
+
+    if (sets.length === 0) {
+      return res.status(400).json({ error: 'Provide name and/or description' });
+    }
+
+    sets.push(`updated_at = NOW()`);
+    vals.push(listId);
+    vals.push(userId);
+
+    const result = await pool.query(
+      `UPDATE lists SET ${sets.join(', ')}
+         WHERE id = $${i++} AND user_id = $${i}
+       RETURNING id, name, description, is_public, created_at, updated_at`,
+      vals
+    );
+
+    res.json({ list: result.rows[0] });
+  } catch (err) {
+    console.error('[lists] PATCH error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // DELETE /api/lists/:listId
 router.delete('/:listId', requireAuth, async (req, res) => {
   try {

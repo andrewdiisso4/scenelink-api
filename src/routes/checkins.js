@@ -44,9 +44,49 @@ router.post('/', requireAuth, async (req, res) => {
   }
 });
 
+// DELETE /api/checkins/:id — Phase 6E: delete own check-in
+// Verifies ownership, decrements venue.going_count (clamped at 0), returns 404 if not owned.
+router.delete('/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // UUID format guard — Postgres will throw 22P02 on a malformed UUID.
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return res.status(404).json({ error: 'Check-in not found' });
+    }
+
+    const owns = await pool.query(
+      'SELECT id, venue_id FROM checkins WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    if (owns.rows.length === 0) {
+      return res.status(404).json({ error: 'Check-in not found' });
+    }
+
+    const venueId = owns.rows[0].venue_id;
+
+    await pool.query('DELETE FROM checkins WHERE id = $1 AND user_id = $2', [id, userId]);
+    await pool.query(
+      'UPDATE venues SET going_count = GREATEST(0, going_count - 1) WHERE id = $1',
+      [venueId]
+    );
+
+    res.json({ success: true, deleted_id: id });
+  } catch (err) {
+    console.error('[checkins] DELETE error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GET /api/checkins/tonight-stats
-// Aggregates live tonight-in-Boston stats: people out, trending venues, hot spots, avg wait.
+// Aggregates live tonight-in-Boston stats: people out, trending venues, hot spots.
 // No auth required — this is a public widget.
+//
+// PHASE 6E TRUTH-CLEANUP: previously this endpoint padded the response with
+// Math.random() baselines so the UI never showed zeros. That was hidden fake
+// data. We now return raw counts + a `source` flag, and the frontend
+// truth-gates display when source !== 'live'.
 router.get('/tonight-stats', async (req, res) => {
   try {
     // "People out tonight" = distinct users who checked in in the last 4 hours
@@ -64,43 +104,36 @@ router.get('/tonight-stats', async (req, res) => {
        ) t`
     );
 
-    // "Hot spots" = venues with going_count >= 20 in last 24 h
+    // "Hot spots" = venues with going_count >= 20
     const hotQ = await pool.query(
       `SELECT COUNT(*)::int AS count FROM venues WHERE going_count >= 20`
     );
 
-    // Graceful baseline floor so the UI never shows zeros on a quiet night.
-    // The displayed number is max(real, baseline) — it's always at least realistic.
-    const hour = new Date().getHours();
-    const nightBoost = (hour >= 19 || hour < 3) ? 1.0 : 0.45; // higher baseline at night
-    const baselinePeople = Math.floor(800 * nightBoost) + Math.floor(Math.random() * 120);
-    const baselineTrending = 4 + Math.floor(Math.random() * 5);
-    const baselineHot = 3 + Math.floor(Math.random() * 3);
+    const peopleOut = peopleOutQ.rows[0].count || 0;
+    const trendingCount = trendingQ.rows[0].count || 0;
+    const hotSpots = hotQ.rows[0].count || 0;
 
-    const peopleOut = Math.max(peopleOutQ.rows[0].count || 0, baselinePeople);
-    const trendingCount = Math.max(trendingQ.rows[0].count || 0, baselineTrending);
-    const hotSpots = Math.max(hotQ.rows[0].count || 0, baselineHot);
-    const avgWait = 12 + Math.floor(Math.random() * 15); // minutes
+    // 'live' only when there is actual measured activity in the last 4 hours.
+    // Frontend truth-gate hides the widget when source !== 'live'.
+    const source = peopleOut > 0 ? 'live' : 'quiet';
 
     res.set('Cache-Control', 'public, max-age=60'); // cache 60 s
     res.json({
       peopleOut,
       trendingCount,
       hotSpots,
-      avgWait,
       lastUpdated: new Date().toISOString(),
-      source: (peopleOutQ.rows[0].count || 0) > baselinePeople ? 'live' : 'estimated'
+      source
     });
   } catch (err) {
     console.error('tonight-stats error:', err);
-    // Fail soft — always return usable numbers so the UI isn't broken
-    res.json({
-      peopleOut: 1247,
-      trendingCount: 8,
-      hotSpots: 5,
-      avgWait: 15,
+    // Fail closed — return zeros with source='error' so the UI hides the widget.
+    res.status(200).json({
+      peopleOut: 0,
+      trendingCount: 0,
+      hotSpots: 0,
       lastUpdated: new Date().toISOString(),
-      source: 'estimated'
+      source: 'error'
     });
   }
 });
