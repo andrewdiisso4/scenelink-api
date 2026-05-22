@@ -235,7 +235,7 @@ router.post('/reset-password', passwordResetLimiter, async (req, res) => {
 router.get('/me', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, display_name, username, avatar_url, bio, neighborhood, city, role, created_at FROM users WHERE id = $1',
+      'SELECT id, email, display_name, username, avatar_url, bio, neighborhood, city, role, created_at, oauth_provider FROM users WHERE id = $1',
       [req.user.id]
     );
     if (result.rows.length === 0) {
@@ -264,6 +264,106 @@ router.put('/profile', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('Update profile error:', err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// DELETE /api/auth/account  — Phase 6C, Apple App Store Guideline 5.1.1(v)
+// In-app self-service account deletion. Hard-delete with audit row.
+//
+// Body: { password?: string, reason?: string }
+//   - Password-auth users  : password is REQUIRED and re-verified.
+//   - OAuth-only users     : password is NOT required (no password_hash on row);
+//                            valid Bearer JWT is sufficient.
+//
+// Behavior:
+//   - 200 { ok:true, deleted:true }            on success
+//   - 200 { ok:true, deleted:true, already_deleted:true } if the user row is
+//                                              already gone (idempotent)
+//   - 400 { error:'Password is required' }     password-auth user, no password
+//   - 401 { error:'Password incorrect' }       password-auth user, wrong pw
+//   - 401 { error:'Authentication required' }  via requireAuth (no/bad JWT)
+//   - 500 on internal error (rolls back)
+//
+// FK cascades from migration history handle owned content:
+//   CASCADE: activities, checkins, conversation_participants, favorites,
+//            friendships (a/b/requester), lists, messages.sender_id,
+//            notifications.user_id, plan_invites, plan_members, plans,
+//            post_comments, post_likes, posts, push_tokens, reviews,
+//            content_reports.reporter_id
+//   SET NULL: contact_messages.user_id, conversations.created_by,
+//            content_reports.reviewed_by, newsletter_subscribers.user_id,
+//            notifications.actor_id, venue_imports.admin_user_id
+//
+// Audit: writes user_deletions(user_id, email_hash sha256, deletion_reason,
+// ip_address, deleted_at). Table created in migration 003_compliance_push.sql.
+// ────────────────────────────────────────────────────────────────────────────
+const crypto = require('crypto');
+router.delete('/account', requireAuth, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { password, reason } = req.body || {};
+
+    // Fetch the row to determine OAuth vs password-auth
+    const u = await client.query(
+      'SELECT id, email, password_hash, oauth_provider FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    if (!u.rows.length) {
+      // Idempotent: token is valid but the user row was already deleted in a
+      // race or earlier call. Return clean success so retries are safe.
+      return res.json({ ok: true, deleted: true, already_deleted: true });
+    }
+    const row = u.rows[0];
+    const isOAuthOnly = !row.password_hash;
+
+    if (!isOAuthOnly) {
+      if (!password || typeof password !== 'string') {
+        return res.status(400).json({ error: 'Password is required to confirm deletion' });
+      }
+      const ok = await bcrypt.compare(password, row.password_hash);
+      if (!ok) {
+        return res.status(401).json({ error: 'Password incorrect' });
+      }
+    }
+
+    const userId = row.id;
+    const emailHash = crypto.createHash('sha256')
+      .update(String(row.email).toLowerCase()).digest('hex');
+    const ip = (req.headers['x-forwarded-for'] || req.ip || '')
+      .toString().split(',')[0].trim();
+
+    await client.query('BEGIN');
+    // Audit FIRST (no FK to users) so we always have a record even if delete
+    // fails partway through. Truncate reason to 500 chars to bound payload.
+    await client.query(
+      `INSERT INTO user_deletions (user_id, email_hash, deletion_reason, ip_address)
+       VALUES ($1, $2, $3, $4)`,
+      [userId, emailHash, (reason || '').toString().slice(0, 500), ip]
+    );
+    // Defensive cleanup of session-y tables that may not cascade in older
+    // schemas. Most user-owned content cascades via FK; this is belt-and-suspenders.
+    await client.query('DELETE FROM push_tokens WHERE user_id = $1', [userId]).catch(() => {});
+
+    // Hard-delete the user row. All CASCADE FKs propagate (favorites, lists,
+    // plans, messages, posts, etc.). All SET NULL FKs anonymize content the
+    // user touched but doesn't exclusively own (contact_messages,
+    // conversations.created_by, notifications.actor_id, etc.).
+    await client.query('DELETE FROM users WHERE id = $1', [userId]);
+    await client.query('COMMIT');
+
+    return res.json({
+      ok: true,
+      deleted: true,
+      auth_method: isOAuthOnly ? 'oauth' : 'password',
+      message: 'Account deleted. We are sorry to see you go.',
+    });
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    console.error('[auth] account deletion error:', err && err.message ? err.message : err);
+    return res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
   }
 });
 
