@@ -43,7 +43,15 @@ const CARD_COLUMNS = `
   v.price_level, v.price_label,
   v.rating, v.review_count,
   v.lat, v.lng,
-  v.is_open_now,
+  -- Phase 7A: hours_json is at 0% coverage in production, so `is_open_now` from the
+  -- DB is unreliable (it was randomly seeded by merge_venues.js). Force NULL until
+  -- real hours data is ingested system-wide. This guarantees the FE never shows an
+  -- "Open Now" pill backed by random data, even by accident.
+  CASE
+    WHEN v.hours_json IS NOT NULL AND v.hours_json::text NOT IN ('null','{}','[]','""')
+      THEN v.is_open_now
+    ELSE NULL
+  END AS is_open_now,
   v.has_real_photo,
   v.trending, v.featured, v.spotlight,
   v.reservation_url, v.reservation_live, v.reservation_provider,
@@ -64,7 +72,12 @@ const DETAIL_COLUMNS = `
   v.id, v.slug, v.name, v.type, v.category, v.cuisine, v.genre,
   v.address, v.neighborhood, v.city, v.state, v.zip_code,
   v.lat, v.lng, v.description, v.short_desc, v.phone, v.website, v.email,
-  v.price_level, v.price_label, v.hours_json, v.hours_display, v.is_open_now,
+  v.price_level, v.price_label, v.hours_json, v.hours_display,
+  CASE
+    WHEN v.hours_json IS NOT NULL AND v.hours_json::text NOT IN ('null','{}','[]','""')
+      THEN v.is_open_now
+    ELSE NULL
+  END AS is_open_now,
   v.image_url, v.image_urls, v.cover_image_url,
   v.rating, v.review_count, v.buzz_score, v.going_count, v.friends_going,
   v.cover_charge, v.dress_code, v.tags, v.badges, v.features,

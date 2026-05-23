@@ -87,7 +87,7 @@ const out = merged.map(v => ({
   city: v.city || 'Boston',
   state: v.state || 'MA',
   is_active: true,
-  is_open_now: Math.random() > 0.3, // Roughly 70% "open"
+  is_open_now: null, // Phase 7A: never seed random open-status; only set when real hours_json arrives
 }));
 
 const outPath = path.join(dataDir, 'venues.json');
