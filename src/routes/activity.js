@@ -5,6 +5,11 @@ const { optionalAuth } = require('../middleware/auth');
 const router = express.Router();
 
 // GET /api/activity
+// Phase 7A truth fix: only return activities tied to a real, signed-up user.
+// Previously this endpoint returned seed rows with user_id IS NULL, which
+// surfaced as fabricated "friend activity" in the social feed. The directive
+// forbids fake users / seed activity. Frontend has a polished empty state
+// when activities=[].
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 30, 100);
@@ -14,11 +19,12 @@ router.get('/', optionalAuth, async (req, res) => {
               a.venue_image, a.venue_rating, a.content, a.rating, a.likes, a.comments,
               a.created_at
        FROM activities a
+       WHERE a.user_id IS NOT NULL
        ORDER BY a.created_at DESC
        LIMIT $1`,
       [limit]
     );
-    res.json({ activities: result.rows, total: result.rows.length });
+    res.json({ activities: result.rows, total: result.rows.length, source: 'real-users-only' });
   } catch (err) {
     console.error('Activity feed error:', err);
     res.status(500).json({ error: 'Internal server error' });
