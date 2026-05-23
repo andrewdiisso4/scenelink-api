@@ -43,10 +43,10 @@ const CARD_COLUMNS = `
   v.price_level, v.price_label,
   v.rating, v.review_count,
   v.lat, v.lng,
-  -- Phase 7A: hours_json is at 0% coverage in production, so `is_open_now` from the
+  -- Phase 7A: hours_json is at 0% coverage in production, so is_open_now from the
   -- DB is unreliable (it was randomly seeded by merge_venues.js). Force NULL until
   -- real hours data is ingested system-wide. This guarantees the FE never shows an
-  -- "Open Now" pill backed by random data, even by accident.
+  -- Open Now pill backed by random data, even by accident.
   CASE
     WHEN v.hours_json IS NOT NULL AND v.hours_json::text NOT IN ('null','{}','[]','""')
       THEN v.is_open_now
