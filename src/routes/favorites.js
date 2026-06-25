@@ -3,6 +3,7 @@ const pool = require('../config/database');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // GET /api/favorites
 router.get('/', requireAuth, async (req, res) => {
@@ -28,8 +29,11 @@ router.get('/', requireAuth, async (req, res) => {
 // POST /api/favorites/toggle
 router.post('/toggle', requireAuth, async (req, res) => {
   try {
-    const { venue_id } = req.body;
-    if (!venue_id) return res.status(400).json({ error: 'venue_id is required' });
+    const { venue_id } = req.body || {};
+    if (!venue_id || !UUID_RE.test(String(venue_id))) return res.status(400).json({ error: 'A valid venue_id is required' });
+
+    const venue = await pool.query('SELECT id FROM venues WHERE id = $1 AND is_active = true LIMIT 1', [venue_id]);
+    if (!venue.rows.length) return res.status(404).json({ error: 'Venue not found' });
 
     // Check if already favorited
     const existing = await pool.query(
@@ -51,6 +55,37 @@ router.post('/toggle', requireAuth, async (req, res) => {
     }
   } catch (err) {
     console.error('Toggle favorite error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/favorites/:venueId — explicit save endpoint for launch QA
+router.post('/:venueId', requireAuth, async (req, res) => {
+  try {
+    const venueId = req.params.venueId;
+    if (!UUID_RE.test(String(venueId))) return res.status(400).json({ error: 'A valid venue id is required' });
+    const exists = await pool.query('SELECT id FROM venues WHERE id = $1 AND is_active = true', [venueId]);
+    if (!exists.rows.length) return res.status(404).json({ error: 'Venue not found' });
+    await pool.query(
+      'INSERT INTO favorites (user_id, venue_id) VALUES ($1, $2) ON CONFLICT (user_id, venue_id) DO NOTHING',
+      [req.user.id, venueId]
+    );
+    res.json({ ok: true, favorited: true, venue_id: venueId });
+  } catch (err) {
+    console.error('[favorites] save error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// DELETE /api/favorites/:venueId — explicit unsave endpoint for launch QA
+router.delete('/:venueId', requireAuth, async (req, res) => {
+  try {
+    const venueId = req.params.venueId;
+    if (!UUID_RE.test(String(venueId))) return res.status(400).json({ error: 'A valid venue id is required' });
+    await pool.query('DELETE FROM favorites WHERE user_id = $1 AND venue_id = $2', [req.user.id, venueId]);
+    res.json({ ok: true, favorited: false, venue_id: venueId });
+  } catch (err) {
+    console.error('[favorites] unsave error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

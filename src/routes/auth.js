@@ -26,25 +26,107 @@ async function sendPasswordResetEmail(toEmail, resetToken, displayName) {
 
 const router = express.Router();
 
+
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function normalizeUsername(username) {
+  return String(username || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 24);
+}
+
+function isValidUsername(username) {
+  return /^[a-z0-9_]{3,24}$/.test(username);
+}
+
+async function usernameExists(username) {
+  const r = await pool.query('SELECT 1 FROM users WHERE LOWER(username) = LOWER($1) LIMIT 1', [username]);
+  return r.rows.length > 0;
+}
+
+async function makeUniqueUsername(email, requested) {
+  const baseFromRequest = normalizeUsername(requested);
+  const baseFromEmail = normalizeUsername(String(email || '').split('@')[0]);
+  const base = (baseFromRequest || baseFromEmail || 'scenelink_user').slice(0, 20);
+  let candidate = base;
+  let suffix = 0;
+  while (await usernameExists(candidate)) {
+    suffix += 1;
+    const tail = '_' + suffix;
+    candidate = base.slice(0, Math.max(3, 24 - tail.length)) + tail;
+    if (suffix > 9999) candidate = 'scenelink_' + Date.now().toString(36).slice(-10);
+  }
+  return candidate;
+}
+
 // Rate limiters
 const { authLimiter, passwordResetLimiter } = require('../middleware/rateLimits');
+
+
+// GET /api/auth/username-available?u=handle
+router.get('/username-available', async (req, res) => {
+  try {
+    const username = normalizeUsername(req.query.u || req.query.username || '');
+    if (!username || !isValidUsername(username)) {
+      return res.json({ available: false, valid: false, username, reason: 'Username must be 3–24 characters: letters, numbers, and underscores only.' });
+    }
+    const exists = await usernameExists(username);
+    res.json({ available: !exists, valid: true, username });
+  } catch (err) {
+    console.error('[auth] username availability error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/auth/logout
+// JWT is stateless; client clears token. This endpoint gives QA/native wrappers a real logout target.
+router.post('/logout', requireAuth, async (req, res) => {
+  res.json({ ok: true, logged_out: true });
+});
 
 // POST /api/auth/signup
 router.post('/signup', authLimiter, async (req, res) => {
   try {
-    const { email, password, display_name } = req.body;
+    const email = normalizeEmail(req.body && req.body.email);
+    const password = String((req.body && req.body.password) || '');
+    const display_name = String((req.body && req.body.display_name) || '').trim().slice(0, 80);
+    const requestedUsername = normalizeUsername(req.body && req.body.username);
+
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'A valid email is required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+    if (requestedUsername && !isValidUsername(requestedUsername)) {
+      return res.status(400).json({ error: 'Username must be 3–24 characters: letters, numbers, and underscores only' });
+    }
 
-    // Check if user exists
-    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
-    if (existing.rows.length > 0) {
+    const existingEmail = await pool.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1', [email]);
+    if (existingEmail.rows.length > 0) {
       return res.status(409).json({ error: 'Email already registered' });
     }
 
+    let username = requestedUsername;
+    if (username) {
+      if (await usernameExists(username)) {
+        return res.status(409).json({ error: 'Username already taken' });
+      }
+    } else {
+      username = await makeUniqueUsername(email);
+    }
+
     const password_hash = await bcrypt.hash(password, 12);
-    const username = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const safeDisplayName = display_name || username || email.split('@')[0];
 
     const result = await pool.query(
       `INSERT INTO users (email, password_hash, display_name, username, avatar_url, bio, neighborhood)
@@ -53,9 +135,9 @@ router.post('/signup', authLimiter, async (req, res) => {
       [
         email,
         password_hash,
-        display_name || email.split('@')[0],
+        safeDisplayName,
         username,
-        `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(display_name || email)}`,
+        `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(safeDisplayName)}`,
         '',
         'Back Bay',
       ]
@@ -101,6 +183,11 @@ router.post('/signup', authLimiter, async (req, res) => {
 
     res.status(201).json({ token, user });
   } catch (err) {
+    if (err && err.code === '23505') {
+      const detail = String(err.detail || '').toLowerCase();
+      if (detail.includes('username')) return res.status(409).json({ error: 'Username already taken' });
+      if (detail.includes('email')) return res.status(409).json({ error: 'Email already registered' });
+    }
     console.error('Signup error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -109,13 +196,14 @@ router.post('/signup', authLimiter, async (req, res) => {
 // POST /api/auth/login
 router.post('/login', authLimiter, async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = normalizeEmail(req.body && req.body.email);
+    const password = String((req.body && req.body.password) || '');
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
     const result = await pool.query(
-      'SELECT id, email, password_hash, display_name, username, avatar_url, bio, neighborhood, city, role, created_at FROM users WHERE email = $1',
+      'SELECT id, email, password_hash, display_name, username, avatar_url, bio, neighborhood, city, role, created_at FROM users WHERE LOWER(email) = LOWER($1)',
       [email]
     );
 
@@ -142,10 +230,10 @@ router.post('/login', authLimiter, async (req, res) => {
 // POST /api/auth/forgot-password
 router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = normalizeEmail(req.body && req.body.email);
     if (!email) return res.status(400).json({ error: 'Email is required' });
 
-    const result = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    const result = await pool.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email]);
 
     // Always return success to prevent email enumeration
     if (result.rows.length === 0) {
@@ -161,7 +249,7 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
     // For now we use a simple approach: store in users table if column exists
     try {
       await pool.query(
-        'UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE email = $3',
+        'UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE LOWER(email) = LOWER($3)',
         [token, expires, email]
       );
     } catch(colErr) {
@@ -176,7 +264,7 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
     try {
       let displayName = '';
       try {
-        const u = await pool.query('SELECT display_name FROM users WHERE email=$1', [email]);
+        const u = await pool.query('SELECT display_name FROM users WHERE LOWER(email)=LOWER($1)', [email]);
         displayName = u.rows[0]?.display_name || '';
       } catch(_) {}
       emailSent = await sendPasswordResetEmail(email, token, displayName);
@@ -186,11 +274,10 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
 
     const isDev = process.env.NODE_ENV !== 'production';
     res.json({
-      message: emailSent
-        ? 'A password reset link has been sent to your email. Please check your inbox (and spam folder).'
-        : 'If that email is registered, a reset link will be sent. If you don\'t receive it within a few minutes, please contact support.',
-      email_sent: emailSent,
-      ...(isDev && !emailSent && { debug_token: token, debug_reset_url: `${process.env.APP_URL || 'https://scenelink-v2.netlify.app'}/profile.html?reset_token=${token}` })
+      ok: true,
+      message: 'If that email is registered, you will receive a reset link shortly.',
+      ...(isDev && { email_sent: emailSent }),
+      ...(isDev && !emailSent && { debug_token: token, debug_reset_url: `${process.env.APP_BASE_URL || 'https://scenelink.app'}/profile.html?reset_token=${token}` })
     });
   } catch (err) {
     console.error('Forgot password error:', err);
@@ -203,7 +290,7 @@ router.post('/reset-password', passwordResetLimiter, async (req, res) => {
   try {
     const { token, password } = req.body;
     if (!token || !password) return res.status(400).json({ error: 'Token and new password are required' });
-    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
     let user;
     try {

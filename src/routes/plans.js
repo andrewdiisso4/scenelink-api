@@ -1,8 +1,8 @@
 /**
  * SceneLink — Plans v2
  * Back-compat preserved:
- *   GET    /api/plans                 — list own plans (now includes stops + invited+accepted members)
- *   POST   /api/plans                 — { name, date } create plan (auto-owner member)
+ *   GET    /api/plans                 — list own plans (includes description, stops + invited+accepted members)
+ *   POST   /api/plans                 — { name, date, description } create plan (auto-owner member)
  *   POST   /api/plans/:id/venues      — { venue_id } (legacy: adds a plan_venue AND mirrors to plan_stops)
  *   DELETE /api/plans/:id             — delete own plan
  *
@@ -63,7 +63,7 @@ async function resolveUserIdFromBody(body) {
 }
 async function fetchPlanFull(planId) {
   const p = await pool.query(
-    `SELECT id, user_id, name, date, status, created_at, updated_at FROM plans WHERE id=$1`,
+    `SELECT id, user_id, name, date, description, status, created_at, updated_at FROM plans WHERE id=$1`,
     [planId]
   );
   if (!p.rows.length) return null;
@@ -144,13 +144,14 @@ router.post('/', requireAuth, async (req, res) => {
     const me = req.user.id;
     const name = String((req.body && req.body.name) || '').trim();
     const date = (req.body && req.body.date) || null;
+    const description = String((req.body && req.body.description) || '').trim().slice(0, 1000) || null;
     if (!name) return res.status(400).json({ error: 'Plan name is required' });
     if (name.length > 200) return res.status(400).json({ error: 'name too long' });
 
     const r = await pool.query(
-      `INSERT INTO plans (user_id, name, date) VALUES ($1,$2,$3)
-         RETURNING id, user_id, name, date, status, created_at, updated_at`,
-      [me, name, date]
+      `INSERT INTO plans (user_id, name, date, description) VALUES ($1,$2,$3,$4)
+         RETURNING id, user_id, name, date, description, status, created_at, updated_at`,
+      [me, name, date, description]
     );
     await pool.query(
       `INSERT INTO plan_members (plan_id, user_id, role) VALUES ($1, $2, 'owner')`,
@@ -223,6 +224,8 @@ router.post('/:planId/venues', requireAuth, async (req, res) => {
     const { venue_id } = req.body || {};
     if (!UUID_RE.test(planId)) return res.status(400).json({ error: 'Invalid plan id' });
     if (!venue_id || !UUID_RE.test(venue_id)) return res.status(400).json({ error: 'venue_id required' });
+    const venue = await pool.query('SELECT id FROM venues WHERE id=$1 AND is_active=true LIMIT 1', [venue_id]);
+    if (!venue.rows.length) return res.status(404).json({ error: 'Venue not found' });
     if (!(await userIsOwnerOrMember(planId, me))) return res.status(404).json({ error: 'Plan not found' });
 
     await pool.query(
@@ -262,6 +265,8 @@ router.post('/:id/stops', requireAuth, async (req, res) => {
     const { venue_id, arrival_time, notes, sort_order } = req.body || {};
     if (!UUID_RE.test(id)) return res.status(400).json({ error: 'Invalid plan id' });
     if (!venue_id || !UUID_RE.test(venue_id)) return res.status(400).json({ error: 'venue_id required' });
+    const venue = await pool.query('SELECT id FROM venues WHERE id=$1 AND is_active=true LIMIT 1', [venue_id]);
+    if (!venue.rows.length) return res.status(404).json({ error: 'Venue not found' });
     if (!(await userIsOwnerOrMember(id, me))) return res.status(404).json({ error: 'Plan not found' });
 
     const mx = await pool.query(

@@ -105,6 +105,7 @@ app.use('/api/contact', require('./routes/contact'));
 app.use('/api/newsletter', require('./routes/newsletter')); // Newsletter subscriptions
 app.use('/api/support', require('./routes/support')); // Dedicated contact support AI (separate from /api/concierge)
 app.use('/api/photo', require('./routes/photo_proxy')); // Google Places photo proxy (keeps API key server-side)
+app.use('/api/search', require('./routes/search')); // Universal header search across venues, neighborhoods, users
 
 // Phase 3: Social + messaging (route files present but previously not mounted).
 // Tables already exist in prod: conversations, conversation_participants, messages,
@@ -115,6 +116,7 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/posts',         require('./routes/posts'));
 app.use('/api/reports',       require('./routes/reports'));    // Content moderation reports
 app.use('/api/push',          require('./routes/push'));       // Push token registration
+app.use('/api/social',        require('./routes/social'));     // Social summary/badges
 
 // Admin: force reseed (requires secret header)
 app.post('/api/admin/reseed', async (req, res) => {
@@ -150,6 +152,60 @@ app.get('/api/users/me', require('./middleware/auth').requireAuth, async (req, r
 // so the inline handler still wins for that specific path.
 app.use('/api/users', require('./routes/users'));
 
+
+// ==================== DATABASE MIGRATIONS ====================
+async function runSqlMigrations() {
+  const candidates = [
+    path.join(__dirname, '..', 'migrations'),
+    path.join(__dirname, 'migrations'),
+  ];
+  const seen = new Set();
+  for (const dir of candidates) {
+    if (!fs.existsSync(dir)) continue;
+    const files = fs.readdirSync(dir)
+      .filter(f => f.endsWith('.sql'))
+      .sort();
+    for (const file of files) {
+      const key = path.join(dir, file);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const sql = fs.readFileSync(key, 'utf8');
+      if (!sql.trim()) continue;
+      await pool.query(sql);
+      console.log(`✅ Migration applied: ${file}`);
+    }
+  }
+}
+
+
+async function applySqlMigrations() {
+  const dirs = [
+    path.join(__dirname, '..', 'migrations'),
+    path.join(__dirname, 'migrations')
+  ];
+  const files = [];
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) continue;
+    for (const file of fs.readdirSync(dir)) {
+      if (file.endsWith('.sql')) files.push(path.join(dir, file));
+    }
+  }
+  files.sort((a, b) => path.basename(a).localeCompare(path.basename(b)) || a.localeCompare(b));
+  const runAll = process.env.RUN_ALL_SQL_MIGRATIONS === 'true';
+  const selected = runAll ? files : files.filter((file) => /^(002_|003_|004_|005_).*\.sql$/i.test(path.basename(file)));
+  for (const file of selected) {
+    try {
+      const sql = fs.readFileSync(file, 'utf8');
+      if (!sql.trim()) continue;
+      await pool.query(sql);
+      console.log(`✅ Migration applied/verified: ${path.relative(path.join(__dirname, '..'), file)}`);
+    } catch (err) {
+      console.error(`❌ Migration failed: ${file}`, err.message || String(err));
+      throw err;
+    }
+  }
+}
+
 // ==================== DATABASE INIT ====================
 async function initDatabase() {
   try {
@@ -157,6 +213,7 @@ async function initDatabase() {
     const schema = fs.readFileSync(schemaPath, 'utf8');
     await pool.query(schema);
     console.log('✅ Database schema initialized');
+    await applySqlMigrations();
 
     // Check if we need to seed. Re-seed if the DB was seeded with the old small dataset
     // (fewer than 100 venues means we should refresh with the big dataset).

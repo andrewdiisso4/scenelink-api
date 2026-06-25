@@ -209,11 +209,13 @@ CREATE TABLE IF NOT EXISTS plans (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   date DATE,
+  description TEXT,
   status VARCHAR(20) DEFAULT 'draft',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS description TEXT;
 CREATE INDEX IF NOT EXISTS idx_plans_user ON plans(user_id);
 
 CREATE TABLE IF NOT EXISTS plan_venues (

@@ -3,6 +3,7 @@ const pool = require('../config/database');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // GET /api/lists
 router.get('/', requireAuth, async (req, res) => {
@@ -35,13 +36,18 @@ router.get('/', requireAuth, async (req, res) => {
 // POST /api/lists
 router.post('/', requireAuth, async (req, res) => {
   try {
-    const { name, description } = req.body;
-    if (!name) return res.status(400).json({ error: 'List name is required' });
+    const { name, description } = req.body || {};
+    const cleanName = String(name || '').trim();
+    if (!cleanName) return res.status(400).json({ error: 'List name is required' });
+    if (cleanName.length > 80) return res.status(400).json({ error: 'List name too long (max 80 characters)' });
+
+    const dup = await pool.query('SELECT id FROM lists WHERE user_id=$1 AND LOWER(name)=LOWER($2) LIMIT 1', [req.user.id, cleanName]);
+    if (dup.rows.length) return res.status(409).json({ error: 'You already have a list with that name' });
 
     const result = await pool.query(
       `INSERT INTO lists (user_id, name, description) VALUES ($1, $2, $3)
        RETURNING id, name, description, is_public, created_at, updated_at`,
-      [req.user.id, name, description || '']
+      [req.user.id, cleanName, String(description || '').slice(0, 500)]
     );
 
     res.status(201).json({ list: { ...result.rows[0], venue_count: 0, venues: [] } });
@@ -54,8 +60,11 @@ router.post('/', requireAuth, async (req, res) => {
 // POST /api/lists/:listId/venues
 router.post('/:listId/venues', requireAuth, async (req, res) => {
   try {
-    const { venue_id } = req.body;
-    if (!venue_id) return res.status(400).json({ error: 'venue_id is required' });
+    const { venue_id } = req.body || {};
+    if (!venue_id || !UUID_RE.test(String(venue_id))) return res.status(400).json({ error: 'A valid venue_id is required' });
+
+    const venue = await pool.query('SELECT id FROM venues WHERE id=$1 AND is_active=true LIMIT 1', [venue_id]);
+    if (!venue.rows.length) return res.status(404).json({ error: 'Venue not found' });
 
     // Verify list belongs to user
     const listCheck = await pool.query(
@@ -85,11 +94,15 @@ router.post('/:listId/venues', requireAuth, async (req, res) => {
 // DELETE /api/lists/:listId/venues/:venueId
 router.delete('/:listId/venues/:venueId', requireAuth, async (req, res) => {
   try {
+    const owns = await pool.query('SELECT id FROM lists WHERE id = $1 AND user_id = $2', [req.params.listId, req.user.id]);
+    if (!owns.rows.length) return res.status(404).json({ error: 'List not found' });
+
     await pool.query(
       'DELETE FROM list_venues WHERE list_id = $1 AND venue_id = $2',
       [req.params.listId, req.params.venueId]
     );
-    res.json({ success: true });
+    await pool.query('UPDATE lists SET updated_at = NOW() WHERE id = $1', [req.params.listId]);
+    res.json({ success: true, list_id: req.params.listId, venue_id: req.params.venueId });
   } catch (err) {
     console.error('Remove venue from list error:', err);
     res.status(500).json({ error: 'Internal server error' });

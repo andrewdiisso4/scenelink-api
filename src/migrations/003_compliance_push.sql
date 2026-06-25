@@ -1,6 +1,8 @@
 -- Migration 003: App Store Compliance + Push Notifications
 -- Adds: content_reports, push_tokens, user_deletions (audit log)
 
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 BEGIN;
 
 -- ─── Content Reports (UGC moderation) ────────────────────────────────────

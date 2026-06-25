@@ -7,7 +7,9 @@
     "start": "node src/server.js",
     "dev": "node src/server.js",
     "seed": "node src/seeds/seed.js",
-    "health": "curl -s http://localhost:3001/api/health | node -e \"process.stdin.on('data',d=>console.log(JSON.parse(d)))\""
+    "health": "curl -s http://localhost:3001/api/health | node -e \"process.stdin.on('data',d=>console.log(JSON.parse(d)))\"",
+    "check": "node --check src/server.js && find src/routes -name \"*.js\" -maxdepth 1 -print0 | xargs -0 -n1 node --check",
+    "migrate": "node src/server.js"
   },
   "engines": {
     "node": "20.x"
