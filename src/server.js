@@ -91,6 +91,7 @@ app.use('/api/auth', require('./routes/oauth')); // Google + Apple OAuth
 app.use('/api/admin', require('./routes/admin')); // Admin dashboard API
 app.use('/api/admin', require('./routes/demo'));  // Demo/reviewer account seed (admin-gated)
 app.use('/api/venues', require('./routes/venues'));
+app.use('/api/events', require('./routes/events_stream')); // Phase 9A SSE realtime (mounts /api/events/stream)
 app.use('/api/events', require('./routes/events'));
 app.use('/api/activity', require('./routes/activity'));
 app.use('/api/favorites', require('./routes/favorites'));
@@ -117,6 +118,7 @@ app.use('/api/posts',         require('./routes/posts'));
 app.use('/api/reports',       require('./routes/reports'));    // Content moderation reports
 app.use('/api/push',          require('./routes/push'));       // Push token registration
 app.use('/api/social',        require('./routes/social'));     // Social summary/badges
+app.use('/api/media',         require('./routes/media'));      // Phase 9A media upload (capability-gated)
 
 // Admin: force reseed (requires secret header)
 app.post('/api/admin/reseed', async (req, res) => {
@@ -192,7 +194,7 @@ async function applySqlMigrations() {
   }
   files.sort((a, b) => path.basename(a).localeCompare(path.basename(b)) || a.localeCompare(b));
   const runAll = process.env.RUN_ALL_SQL_MIGRATIONS === 'true';
-  const selected = runAll ? files : files.filter((file) => /^(002_|003_|004_|005_).*\.sql$/i.test(path.basename(file)));
+  const selected = runAll ? files : files.filter((file) => /^(002_|003_|004_|005_|006_).*\.sql$/i.test(path.basename(file)));
   for (const file of selected) {
     try {
       const sql = fs.readFileSync(file, 'utf8');

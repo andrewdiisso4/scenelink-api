@@ -37,9 +37,15 @@ router.get('/feed', optionalAuth, async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit, 10) || 30, 100);
     const viewer = req.user && req.user.id;
 
+    // Phase 9A: cursor pagination — fetch rows strictly older than ?cursor (ISO ts).
+    const cursor = req.query.cursor ? new Date(req.query.cursor) : null;
+    const validCursor = cursor && !isNaN(cursor.getTime()) ? cursor.toISOString() : null;
+    const cursorClause = validCursor ? `AND {col} < $2` : '';
+    const params = validCursor ? [limit, validCursor] : [limit];
+
     // 1) Real posts
     const postsR = await pool.query(
-      `SELECT p.id, p.user_id, p.body, p.venue_id, p.image_url, p.like_count, p.comment_count,
+      `SELECT p.id, p.user_id, p.body, p.venue_id, p.image_url, p.thumb_url, p.like_count, p.comment_count,
               p.created_at,
               'post' AS kind,
               u.username, u.display_name, u.avatar_url,
@@ -47,15 +53,15 @@ router.get('/feed', optionalAuth, async (req, res) => {
          FROM posts p
          JOIN users u ON u.id = p.user_id
          LEFT JOIN venues v ON v.id = p.venue_id
-        WHERE p.is_public = true
+        WHERE p.is_public = true ${cursorClause.replace('{col}', 'p.created_at')}
         ORDER BY p.created_at DESC
         LIMIT $1`,
-      [limit]
+      params
     );
 
     // 2) Real checkins
     const ciR = await pool.query(
-      `SELECT c.id, c.user_id, c.note AS body, c.venue_id, NULL::text AS image_url,
+      `SELECT c.id, c.user_id, c.note AS body, c.venue_id, NULL::text AS image_url, NULL::text AS thumb_url,
               0 AS like_count, 0 AS comment_count, c.created_at,
               'checkin' AS kind,
               u.username, u.display_name, u.avatar_url,
@@ -63,14 +69,15 @@ router.get('/feed', optionalAuth, async (req, res) => {
          FROM checkins c
          JOIN users u ON u.id = c.user_id
          JOIN venues v ON v.id = c.venue_id
+        WHERE 1=1 ${cursorClause.replace('{col}', 'c.created_at')}
         ORDER BY c.created_at DESC
         LIMIT $1`,
-      [limit]
+      params
     );
 
     // 3) Real reviews (only real users — excludes any purged synthetic ones)
     const rvR = await pool.query(
-      `SELECT r.id, r.user_id, r.content AS body, r.venue_id, NULL::text AS image_url,
+      `SELECT r.id, r.user_id, r.content AS body, r.venue_id, NULL::text AS image_url, NULL::text AS thumb_url,
               0 AS like_count, 0 AS comment_count, r.created_at,
               'review' AS kind, r.rating,
               u.username, u.display_name, u.avatar_url,
@@ -78,10 +85,10 @@ router.get('/feed', optionalAuth, async (req, res) => {
          FROM reviews r
          JOIN users u ON u.id = r.user_id
          JOIN venues v ON v.id = r.venue_id
-        WHERE u.email NOT LIKE 'seed_reviewer_%@scenelink.app'
+        WHERE u.email NOT LIKE 'seed_reviewer_%@scenelink.app' ${cursorClause.replace('{col}', 'r.created_at')}
         ORDER BY r.created_at DESC
         LIMIT $1`,
-      [limit]
+      params
     );
 
     const merged = [...postsR.rows, ...ciR.rows, ...rvR.rows]
@@ -96,7 +103,10 @@ router.get('/feed', optionalAuth, async (req, res) => {
     const postsById = new Map(postsDecorated.map(p => [p.id, p]));
     const out = merged.map(x => x.kind === 'post' ? postsById.get(x.id) : { ...x, liked_by_me: false });
 
-    res.json({ items: out, total: out.length });
+    // next cursor = created_at of last item if we filled the page
+    const nextCursor = out.length === limit ? out[out.length - 1].created_at : null;
+
+    res.json({ items: out, total: out.length, next_cursor: nextCursor, has_more: !!nextCursor });
   } catch (err) {
     console.error('[posts] feed error:', err);
     res.status(500).json({ error: 'Internal server error' });

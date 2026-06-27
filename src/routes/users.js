@@ -76,6 +76,57 @@ router.get('/search', optionalAuth, async (req, res) => {
   }
 });
 
+// GET /api/users/suggestions — Phase 9A: people you may know
+// Friends-of-friends first, then recently-active users; excludes self, existing
+// friends/pending, and blocked relationships. Real data only.
+router.get('/suggestions', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.id;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 10, 30);
+    const r = await pool.query(
+      `WITH my_friends AS (
+         SELECT CASE WHEN user_a_id = $1 THEN user_b_id ELSE user_a_id END AS fid
+           FROM friendships
+          WHERE status = 'accepted' AND (user_a_id = $1 OR user_b_id = $1)
+       ),
+       related AS (
+         -- friends-of-friends
+         SELECT CASE WHEN f.user_a_id IN (SELECT fid FROM my_friends) THEN f.user_b_id
+                     ELSE f.user_a_id END AS uid,
+                2 AS score
+           FROM friendships f
+          WHERE f.status = 'accepted'
+            AND (f.user_a_id IN (SELECT fid FROM my_friends) OR f.user_b_id IN (SELECT fid FROM my_friends))
+       ),
+       candidates AS (
+         SELECT uid, MAX(score) AS score FROM related GROUP BY uid
+       )
+       SELECT u.id, u.username, u.display_name, u.avatar_url, u.neighborhood,
+              COALESCE(c.score, 1) AS score
+         FROM users u
+         LEFT JOIN candidates c ON c.uid = u.id
+        WHERE u.id <> $1
+          AND u.is_active = true
+          AND u.id NOT IN (SELECT fid FROM my_friends)
+          AND u.id NOT IN (
+                SELECT CASE WHEN user_a_id = $1 THEN user_b_id ELSE user_a_id END
+                  FROM friendships
+                 WHERE (user_a_id = $1 OR user_b_id = $1) AND status IN ('pending','declined','blocked')
+              )
+          AND u.id NOT IN (SELECT blocked_id FROM user_blocks WHERE blocker_id = $1)
+          AND u.id NOT IN (SELECT blocker_id FROM user_blocks WHERE blocked_id = $1)
+          AND u.email NOT LIKE 'seed_reviewer_%@scenelink.app'
+        ORDER BY score DESC, u.created_at DESC
+        LIMIT $2`,
+      [me, limit]
+    );
+    res.json({ suggestions: r.rows });
+  } catch (err) {
+    console.error('[users] suggestions error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GET /api/users/blocked — Phase 6E: list users the caller has blocked
 router.get('/blocked', requireAuth, async (req, res) => {
   try {

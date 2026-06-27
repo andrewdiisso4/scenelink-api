@@ -1,6 +1,6 @@
 const express = require('express');
 const pool = require('../config/database');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -184,6 +184,59 @@ router.delete('/:listId', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Delete list error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/lists/:listId/share — Phase 9A: share an owned list as a post
+router.post('/:listId/share', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.id;
+    const { listId } = req.params;
+    const own = await pool.query('SELECT id, name FROM lists WHERE id=$1 AND user_id=$2', [listId, me]);
+    if (!own.rows.length) return res.status(404).json({ error: 'List not found or not yours' });
+    // Make it at least friends-visible by marking public when shared (owner opt-in via this action)
+    await pool.query('UPDATE lists SET is_public = true WHERE id=$1 AND user_id=$2', [listId, me]);
+    const body = `Check out my list: ${own.rows[0].name}`;
+    const post = await pool.query(
+      `INSERT INTO posts (user_id, body, ref_type, ref_id)
+       VALUES ($1,$2,'list_share',$3)
+       RETURNING id, user_id, body, ref_type, ref_id, created_at`,
+      [me, body, listId]
+    );
+    res.status(201).json({ post: post.rows[0] });
+  } catch (err) {
+    console.error('[lists] share error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/lists/:listId — Phase 9A: view a list (owner always; others only if public)
+router.get('/:listId', optionalAuth, async (req, res) => {
+  try {
+    const me = req.user && req.user.id;
+    const { listId } = req.params;
+    const r = await pool.query(
+      `SELECT l.id, l.user_id, l.name, l.description, l.is_public, l.created_at, l.updated_at,
+              u.username, u.display_name, u.avatar_url
+         FROM lists l JOIN users u ON u.id = l.user_id
+        WHERE l.id = $1`,
+      [listId]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'List not found' });
+    const list = r.rows[0];
+    if (!list.is_public && list.user_id !== me) {
+      return res.status(403).json({ error: 'This list is private' });
+    }
+    const venues = await pool.query(
+      `SELECT v.id, v.slug, v.name, v.type, v.image_url, v.rating, v.neighborhood, v.price_label
+         FROM list_venues lv JOIN venues v ON lv.venue_id = v.id
+        WHERE lv.list_id = $1 ORDER BY lv.added_at DESC`,
+      [listId]
+    );
+    res.json({ list: { ...list, venues: venues.rows, is_owner: list.user_id === me } });
+  } catch (err) {
+    console.error('[lists] detail error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

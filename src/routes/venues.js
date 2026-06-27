@@ -336,4 +336,60 @@ router.get('/:id', optionalAuth, async (req, res) => {
   }
 });
 
+// GET /api/venues/:id/activity — Phase 9A: real social activity at a venue
+// Returns recent check-ins + posts + reviews tied to this venue (real users only).
+// If caller is authenticated, flags which actors are their friends.
+router.get('/:id/activity', optionalAuth, async (req, res) => {
+  try {
+    const idOrSlug = req.params.id;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+    const vR = await pool.query(
+      `SELECT id FROM venues WHERE ${isUuid ? 'id' : 'slug'} = $1 AND is_active = true LIMIT 1`,
+      [idOrSlug]
+    );
+    if (!vR.rows[0]) return res.status(404).json({ error: 'Venue not found' });
+    const venueId = vR.rows[0].id;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+    const me = req.user && req.user.id;
+
+    const ci = await pool.query(
+      `SELECT c.id, 'checkin' AS kind, c.note AS body, c.created_at,
+              u.id AS user_id, u.username, u.display_name, u.avatar_url
+         FROM checkins c JOIN users u ON u.id = c.user_id
+        WHERE c.venue_id = $1
+        ORDER BY c.created_at DESC LIMIT $2`,
+      [venueId, limit]
+    );
+    const po = await pool.query(
+      `SELECT p.id, 'post' AS kind, p.body, p.created_at,
+              u.id AS user_id, u.username, u.display_name, u.avatar_url
+         FROM posts p JOIN users u ON u.id = p.user_id
+        WHERE p.venue_id = $1 AND p.is_public = true
+        ORDER BY p.created_at DESC LIMIT $2`,
+      [venueId, limit]
+    );
+
+    let friendIds = new Set();
+    if (me) {
+      const fr = await pool.query(
+        `SELECT CASE WHEN user_a_id=$1 THEN user_b_id ELSE user_a_id END AS fid
+           FROM friendships WHERE status='accepted' AND (user_a_id=$1 OR user_b_id=$1)`,
+        [me]
+      );
+      friendIds = new Set(fr.rows.map(r => r.fid));
+    }
+
+    const items = [...ci.rows, ...po.rows]
+      .map(x => ({ ...x, is_friend: friendIds.has(x.user_id) }))
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, limit);
+
+    const friendsHere = items.filter(x => x.is_friend);
+    res.json({ venue_id: venueId, items, friends_active: friendsHere.length, total: items.length });
+  } catch (err) {
+    console.error('[venues] activity error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
