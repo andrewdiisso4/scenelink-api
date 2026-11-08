@@ -1,0 +1,90 @@
+/* Logo Header Size - FINAL AUTHORITY - loaded last */
+/* Canonical header logo sizing: 72px consistent with all pages */
+
+.logo-main,
+img.logo-main,
+a .logo-main,
+.logo-container .logo-main,
+.logo-container img.logo-main,
+.nav-enhanced .logo-container .logo-main,
+.nav-enhanced .logo-container img.logo-main,
+.header-enhanced .logo-container .logo-main,
+.header-enhanced .logo-container img.logo-main,
+header .logo-main,
+header img.logo-main,
+header .logo-container .logo-main,
+header .logo-container img.logo-main,
+#mainHeader .logo-main,
+#mainHeader img.logo-main,
+#mainHeader .logo-container .logo-main,
+nav .logo-main,
+nav .logo-container .logo-main,
+nav .logo-container img.logo-main,
+.sl-explore-logo,
+img.sl-explore-logo {
+    height: 80px !important;
+    width: auto !important;
+    max-height: 80px !important;
+    min-height: 0 !important;
+    max-width: 200px !important;
+    object-fit: contain !important;
+    display: block !important;
+    transition: transform 0.3s ease !important;
+}
+
+.logo-container:hover .logo-main,
+.logo-container:hover img.logo-main {
+    transform: scale(1.05) !important;
+}
+
+/* Footer logo override (keep footer larger) */
+footer .logo-main,
+footer img.logo-main,
+.footer-logo,
+img.footer-logo,
+.footer-logo-img,
+img.footer-logo-img {
+    height: 100px !important;
+    max-height: 100px !important;
+    min-height: 0 !important;
+    width: auto !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .logo-main,
+    img.logo-main,
+    .logo-container .logo-main,
+    .logo-container img.logo-main,
+    .nav-enhanced .logo-container .logo-main,
+    .header-enhanced .logo-container .logo-main,
+    header .logo-main,
+    header .logo-container .logo-main,
+    #mainHeader .logo-main,
+    nav .logo-main,
+    nav .logo-container .logo-main,
+    .sl-explore-logo {
+        height: 80px !important;
+        max-height: 80px !important;
+        min-height: 0 !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .logo-main,
+    img.logo-main,
+    .logo-container .logo-main,
+    .logo-container img.logo-main,
+    .nav-enhanced .logo-container .logo-main,
+    .header-enhanced .logo-container .logo-main,
+    header .logo-main,
+    header .logo-container .logo-main,
+    #mainHeader .logo-main,
+    nav .logo-main,
+    nav .logo-container .logo-main,
+    .sl-explore-logo {
+        height: 80px !important;
+        max-height: 80px !important;
+        min-height: 0 !important;
+    }
+}

@@ -1,7 +1,9 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('../config/database');
-const { generateToken, requireAuth } = require('../middleware/auth');
+const { generateBusinessToken: generateToken, requireBusinessAuth: requireAuth } = require('../middleware/auth');
+const H = require('../launch/shared');
+const identity = require('../launch/identity');
 
 const router = express.Router();
 
@@ -84,7 +86,8 @@ async function ensureBusinessTables() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_promo_venue ON venue_promos(venue_id, is_active);`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_promo_dates ON venue_promos(starts_at, ends_at);`);
 }
-ensureBusinessTables().catch(e => console.error('[business] table init:', e.message));
+// Called after schema migrations and awaited before accepting traffic.
+router.initialize = ensureBusinessTables;
 
 // ─── Helpers ──────────────────────────────────────────────────────
 function slugify(name) {
@@ -119,16 +122,16 @@ router.post('/claim', authLimiter, async (req, res) => {
         if (!venue_name || !email || !password) {
             return res.status(400).json({ error: 'venue_name, email, and password are required' });
         }
-        if (String(password).length < 6) {
-            return res.status(400).json({ error: 'Password must be at least 6 characters' });
-        }
+        identity.password(password);
+        identity.email(email);
+        H.text(venue_name, 'venue name', 255, {required:true});
 
         const existing = await pool.query('SELECT id FROM business_users WHERE LOWER(email)=LOWER($1)', [email]);
         if (existing.rows.length) {
             return res.status(409).json({ error: 'This email is already registered. Please sign in instead.' });
         }
 
-        const password_hash = await bcrypt.hash(password, 10);
+        const password_hash = await bcrypt.hash(password, 12);
 
         // Best-effort: match existing venue by name
         let venue_id = null;
@@ -146,17 +149,17 @@ router.post('/claim', authLimiter, async (req, res) => {
 
         const insert = await pool.query(
             `INSERT INTO business_users (email, password_hash, venue_name, venue_id, tier, phone, website, status)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,'active')
+             VALUES ($1,$2,$3,$4,$5,$6,$7,'pending')
              RETURNING id, email, venue_name, venue_id, tier, status, created_at`,
             [email, password_hash, venue_name, venue_id, tier || 'starter', phone || null, website || null]
         );
 
         const user = insert.rows[0];
-        const token = generateToken({ id: user.id, email: user.email, role: 'business' });
-
-        res.json({
+        // Matching a public venue name is not proof of ownership.
+        res.status(202).json({
             ok: true,
-            token,
+            pending_review: true,
+            message: 'Your claim was received. Venue access begins after ownership review.',
             user: {
                 id: user.id,
                 email: user.email,
@@ -169,6 +172,7 @@ router.post('/claim', authLimiter, async (req, res) => {
             }
         });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/claim]', err);
         res.status(500).json({ error: 'Failed to claim venue', detail: err.message });
     }
@@ -185,7 +189,7 @@ router.post('/login', authLimiter, async (req, res) => {
         }
 
         const result = await pool.query(
-            `SELECT id, email, password_hash, venue_name, venue_id, tier, status FROM business_users WHERE LOWER(email)=LOWER($1)`,
+            `SELECT id, email, password_hash, venue_name, venue_id, tier, status, auth_version FROM business_users WHERE LOWER(email)=LOWER($1)`,
             [email]
         );
         if (!result.rows.length) {
@@ -193,6 +197,8 @@ router.post('/login', authLimiter, async (req, res) => {
         }
 
         const user = result.rows[0];
+        if (user.status !== 'active') return res.status(403).json({error:'Venue access requires an approved, active account'});
+        if (typeof password !== 'string' || Buffer.byteLength(password) > 72) return res.status(401).json({error:'Invalid email or password'});
         const ok = await bcrypt.compare(password, user.password_hash);
         if (!ok) {
             return res.status(401).json({ error: 'Invalid email or password' });
@@ -211,7 +217,7 @@ router.post('/login', authLimiter, async (req, res) => {
             } catch (_) {}
         }
 
-        const token = generateToken({ id: user.id, email: user.email, role: 'business' });
+        const token = generateToken(user);
 
         res.json({
             ok: true,
@@ -228,17 +234,19 @@ router.post('/login', authLimiter, async (req, res) => {
             }
         });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/login]', err);
         res.status(500).json({ error: 'Login failed', detail: err.message });
     }
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// POST /api/business/logout — lightweight endpoint; client clears token
+// POST /api/business/logout — revoke this operator session before client cleanup
 // ═══════════════════════════════════════════════════════════════════
-router.post('/logout', (req, res) => {
-    res.json({ ok: true, message: 'Signed out' });
-});
+router.post('/logout', requireAuth, H.noStore, H.wrap(async (req, res) => {
+    await pool.query('INSERT INTO business_auth_revocations(token_hash,business_user_id,expires_at) VALUES($1,$2,to_timestamp($3)) ON CONFLICT(token_hash) DO NOTHING',[req.authTokenHash,req.user.id,req.authExpires]);
+    res.json({ ok:true, revoked:true });
+}));
 
 // ═══════════════════════════════════════════════════════════════════
 // GET /api/business/me — current business user + linked venue
@@ -261,6 +269,7 @@ router.get('/me', requireAuth, requireBusiness, async (req, res) => {
         }
         res.json({ user: { ...user, role: 'business', venue } });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/me]', err);
         res.status(500).json({ error: 'Failed to fetch business profile' });
     }
@@ -279,6 +288,7 @@ router.get('/venue', requireAuth, requireBusiness, async (req, res) => {
         if (!v.rows.length) return res.status(404).json({ error: 'Venue not found' });
         res.json({ ok: true, venue: v.rows[0] });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venue GET]', err);
         res.status(500).json({ error: 'Failed to fetch venue' });
     }
@@ -345,6 +355,7 @@ router.post('/venue', requireAuth, requireBusiness, async (req, res) => {
 
         res.json({ ok: true, venue, message: 'Listing created and linked to your account' });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venue POST]', err);
         res.status(500).json({ error: 'Failed to create listing', detail: err.message });
     }
@@ -360,7 +371,7 @@ async function handleVenueUpdate(req, res) {
         if (!bu.rows.length || !bu.rows[0].venue_id) {
             return res.status(404).json({ error: 'No linked venue. Use POST /api/business/venue to create one.' });
         }
-        const venue_id = bu.rows[0].venue_id;
+        const venue_id = await resolveActiveVenueId(req);
 
         const allowed = [
             'name', 'description', 'address', 'neighborhood', 'city',
@@ -408,6 +419,7 @@ async function handleVenueUpdate(req, res) {
 
         res.json({ ok: true, venue: result.rows[0] });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venue UPDATE]', err);
         res.status(500).json({ error: 'Failed to update venue', detail: err.message });
     }
@@ -465,6 +477,7 @@ router.get('/analytics', requireAuth, requireBusiness, async (req, res) => {
             venue_id
         });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/analytics]', err);
         res.status(500).json({ error: 'Failed to fetch analytics' });
     }
@@ -493,6 +506,7 @@ router.get('/reviews', requireAuth, requireBusiness, async (req, res) => {
         ).catch(()=>({ rows: [] }));
         res.json({ reviews: result.rows, linked: true });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/reviews]', err);
         res.status(500).json({ error: 'Failed to fetch reviews' });
     }
@@ -506,6 +520,7 @@ router.get('/health', async (req, res) => {
         const r = await pool.query('SELECT COUNT(*)::int AS n FROM business_users');
         res.json({ ok: true, service: 'business', accounts: r.rows[0].n });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         res.status(500).json({ ok: false, error: err.message });
     }
 });
@@ -523,7 +538,10 @@ async function resolveActiveVenueId(req) {
     );
     const ids = owned.rows.map(r => r.venue_id).filter(Boolean);
     if (!ids.length) return null;
-    if (reqId && ids.includes(reqId)) return reqId;
+    if (reqId) {
+        if (!ids.includes(reqId)) throw new H.HttpError(403,'You do not own this venue');
+        return reqId;
+    }
     // Prefer the primary/business_users.venue_id
     const primary = await pool.query('SELECT venue_id FROM business_users WHERE id=$1', [req.user.id]);
     if (primary.rows[0] && primary.rows[0].venue_id) return primary.rows[0].venue_id;
@@ -553,6 +571,7 @@ router.get('/venues', requireAuth, requireBusiness, async (req, res) => {
         );
         res.json({ venues: r.rows, count: r.rows.length });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venues list]', err);
         res.status(500).json({ error: 'Failed to list venues' });
     }
@@ -585,7 +604,11 @@ router.post('/venues/add', requireAuth, requireBusiness, async (req, res) => {
 
         let venue;
         if (existing_venue_id) {
-            // Claim an existing venue (no duplicate rows)
+            // Paid tier is not proof of ownership. Existing records need an
+            // administrator-approved association before an operator can add them.
+            const owned = await pool.query(`SELECT venue_id FROM business_users WHERE id=$1 AND venue_id=$2
+              UNION SELECT venue_id FROM business_venues WHERE business_user_id=$1 AND venue_id=$2`,[req.user.id,existing_venue_id]);
+            if (!owned.rows.length) return res.status(403).json({error:'Ownership review is required before adding this venue'});
             const v = await pool.query('SELECT * FROM venues WHERE id=$1', [existing_venue_id]);
             if (!v.rows.length) return res.status(404).json({ error: 'Venue not found' });
             venue = v.rows[0];
@@ -621,6 +644,7 @@ router.post('/venues/add', requireAuth, requireBusiness, async (req, res) => {
 
         res.json({ ok: true, venue, message: 'Venue added to your account' });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venues add]', err);
         res.status(500).json({ error: 'Failed to add venue', detail: err.message });
     }
@@ -658,6 +682,7 @@ router.post('/venues/switch', requireAuth, requireBusiness, async (req, res) => 
 
         res.json({ ok: true, active_venue_id: venue_id });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venues switch]', err);
         res.status(500).json({ error: 'Failed to switch venue' });
     }
@@ -680,6 +705,7 @@ router.get('/photos', requireAuth, requireBusiness, async (req, res) => {
         );
         res.json({ photos: r.rows, linked: true, venue_id });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/photos GET]', err);
         res.status(500).json({ error: 'Failed to load photos' });
     }
@@ -708,6 +734,7 @@ router.post('/photos', requireAuth, requireBusiness, async (req, res) => {
         );
         res.json({ ok: true, photo: r.rows[0] });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/photos POST]', err);
         res.status(500).json({ error: 'Failed to add photo', detail: err.message });
     }
@@ -736,6 +763,7 @@ router.patch('/photos/:id', requireAuth, requireBusiness, async (req, res) => {
         );
         res.json({ ok: true, photo: r.rows[0] });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/photos PATCH]', err);
         res.status(500).json({ error: 'Failed to update photo' });
     }
@@ -754,6 +782,7 @@ router.delete('/photos/:id', requireAuth, requireBusiness, async (req, res) => {
         if (!r.rows.length) return res.status(404).json({ error: 'Photo not found' });
         res.json({ ok: true, deleted: r.rows[0].id });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/photos DELETE]', err);
         res.status(500).json({ error: 'Failed to delete photo' });
     }
@@ -774,6 +803,7 @@ router.get('/promos', requireAuth, requireBusiness, async (req, res) => {
         );
         res.json({ promos: r.rows, linked: true, venue_id });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/promos GET]', err);
         res.status(500).json({ error: 'Failed to load promotions' });
     }
@@ -797,6 +827,7 @@ router.post('/promos', requireAuth, requireBusiness, async (req, res) => {
         );
         res.json({ ok: true, promo: r.rows[0] });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/promos POST]', err);
         res.status(500).json({ error: 'Failed to create promotion', detail: err.message });
     }
@@ -823,6 +854,7 @@ router.patch('/promos/:id', requireAuth, requireBusiness, async (req, res) => {
         );
         res.json({ ok: true, promo: r.rows[0] });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/promos PATCH]', err);
         res.status(500).json({ error: 'Failed to update promotion' });
     }
@@ -841,6 +873,7 @@ router.delete('/promos/:id', requireAuth, requireBusiness, async (req, res) => {
         if (!r.rows.length) return res.status(404).json({ error: 'Promo not found' });
         res.json({ ok: true, deleted: r.rows[0].id });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/promos DELETE]', err);
         res.status(500).json({ error: 'Failed to delete promotion' });
     }
@@ -853,124 +886,31 @@ router.delete('/promos/:id', requireAuth, requireBusiness, async (req, res) => {
 // Phase 5D-C1: legacy bizEmailTransporter replaced with centralized mailer.
 const mailer = require('../services/mailer');
 
-async function sendBusinessResetEmail(toEmail, resetToken, venueName) {
-    const appUrl = process.env.APP_BASE_URL || 'https://scenelink.app';
-    const resetUrl = `${appUrl}/business.html?reset_token=${resetToken}`;
-    const tpl = {
-        subject: 'Reset your SceneLink business account password',
-        html: `<div style="font-family:Inter,Helvetica,sans-serif;background:#000;padding:24px 0">
-            <div style="max-width:560px;margin:0 auto;padding:32px 28px;background:#0d0d0d;color:#fff;border-radius:14px">
-                <div style="text-align:center;margin-bottom:24px">
-                    <span style="font-size:24px;font-weight:700;color:#D4AF37">SceneLink for Business</span>
-                </div>
-                <h2 style="color:#fff;font-size:22px;margin:0 0 12px">Reset your password</h2>
-                <p style="color:#ccc;font-size:15px;line-height:1.7">You requested a password reset for your business account${venueName ? ` <strong style="color:#D4AF37">(${venueName})</strong>` : ''}.</p>
-                <p style="color:#ccc;font-size:15px;line-height:1.7">Click the button below to set a new password. The link expires in 1 hour.</p>
-                <div style="text-align:center;margin:32px 0">
-                    <a href="${resetUrl}" style="background:#D4AF37;color:#000;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:15px;display:inline-block">Reset password →</a>
-                </div>
-                <p style="color:#666;font-size:12px;text-align:center">If you didn't request this, you can safely ignore this email.</p>
-                <hr style="border:0;border-top:1px solid #1a1a1a;margin:28px 0 20px"/>
-                <div style="color:#666;font-size:11px;text-align:center">
-                    <a href="${appUrl}/privacy.html" style="color:#888;text-decoration:none;margin:0 8px">Privacy</a>·
-                    <a href="${appUrl}/terms.html" style="color:#888;text-decoration:none;margin:0 8px">Terms</a>·
-                    <a href="${appUrl}/contact.html" style="color:#888;text-decoration:none;margin:0 8px">Contact</a>
-                </div>
-            </div>
-        </div>`,
-    };
-    const r = await mailer.sendMail({ to: toEmail, ...tpl });
-    if (!r.ok) {
-        if (r.skipped) console.log(`[business/forgot-password] mailer disabled — reset link logged: ${resetUrl}`);
-        else console.error(`[business/forgot-password] send failed: ${r.error}`);
-        return false;
-    }
-    console.log(`[business/forgot-password] email queued → ${toEmail}`);
-    return true;
-}
-
 // POST /api/business/forgot-password
-router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
-    try {
-        await ensureBusinessTables();
-        const { email } = req.body || {};
-        if (!email) return res.status(400).json({ error: 'Email is required' });
-
-        const result = await pool.query(
-            'SELECT id, venue_name FROM business_users WHERE LOWER(email)=LOWER($1)',
-            [email]
-        );
-
-        // Always return success to prevent email enumeration
-        if (result.rows.length === 0) {
-            return res.json({
-                ok: true,
-                message: 'If that email is registered, you will receive a reset link shortly.'
-            });
-        }
-
-        const user = result.rows[0];
-        const crypto = require('crypto');
-        const token = crypto.randomBytes(32).toString('hex');
-        const expires = new Date(Date.now() + 3600000); // 1 hour
-
-        await pool.query(
-            'UPDATE business_users SET reset_token=$1, reset_token_expires=$2 WHERE id=$3',
-            [token, expires, user.id]
-        );
-
-        let emailSent = false;
-        try {
-            emailSent = await sendBusinessResetEmail(email, token, user.venue_name);
-        } catch (emailErr) {
-            console.error('[business/forgot-password] Email send failed:', emailErr.message);
-        }
-
-        const isDev = process.env.NODE_ENV !== 'production';
-        res.json({
-            ok: true,
-            message: emailSent
-                ? 'A password reset link has been sent to your email. Please check your inbox (and spam folder).'
-                : "If that email is registered, a reset link will be sent. If you don't receive it within a few minutes, please contact support.",
-            email_sent: emailSent,
-            ...(isDev && !emailSent && {
-                debug_token: token,
-                debug_reset_url: `${process.env.APP_URL || 'https://scenelink.app'}/business.html?reset_token=${token}`
-            })
-        });
-    } catch (err) {
-        console.error('[business/forgot-password]', err);
-        res.status(500).json({ error: 'Internal server error' });
+router.post('/forgot-password', passwordResetLimiter, H.noStore, H.wrap(async (req,res) => {
+    const email = identity.email(req.body?.email);
+    const mailer = require('../services/mailer');
+    if (!mailer.isReady()) throw new H.HttpError(503,'Password recovery email is not configured');
+    const crypto = require('node:crypto');
+    const raw = crypto.randomBytes(32).toString('hex');
+    const result = await pool.query("UPDATE business_users SET reset_token=$1,reset_token_expires=NOW()+INTERVAL '1 hour' WHERE lower(email)=$2 AND status='active' RETURNING email,venue_name",[identity.digest(raw),email]);
+    if(result.rows.length) {
+        const base = new URL(process.env.APP_BASE_URL || 'https://scenelink.app');
+        if (base.protocol !== 'https:' && process.env.NODE_ENV === 'production') throw new H.HttpError(503,'Password recovery origin is misconfigured');
+        const link = new URL('/business-reset-password.html',base);link.hash='token='+raw;
+        try { const sent = await mailer.sendMail({to:email,...mailer.passwordResetEmail({name:result.rows[0].venue_name,resetUrl:link.href})});if(!sent.ok)console.error('[business] reset-mail-not-delivered'); }
+        catch (_) { console.error('[business] reset-mail-failed'); }
     }
-});
-
-// POST /api/business/reset-password
-router.post('/reset-password', passwordResetLimiter, async (req, res) => {
-    try {
-        await ensureBusinessTables();
-        const { token, password } = req.body || {};
-        if (!token || !password) return res.status(400).json({ error: 'Token and new password are required' });
-        if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
-
-        const result = await pool.query(
-            'SELECT id, email FROM business_users WHERE reset_token=$1 AND reset_token_expires > NOW()',
-            [token]
-        );
-        const user = result.rows[0];
-        if (!user) return res.status(400).json({ error: 'Invalid or expired reset token' });
-
-        const password_hash = await bcrypt.hash(password, 12);
-        await pool.query(
-            'UPDATE business_users SET password_hash=$1, reset_token=NULL, reset_token_expires=NULL WHERE id=$2',
-            [password_hash, user.id]
-        );
-
-        res.json({ ok: true, message: 'Password reset successfully. You can now log in.' });
-    } catch (err) {
-        console.error('[business/reset-password]', err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
+    res.status(202).json({ok:true,message:'If this account is eligible, a password reset email has been requested.'});
+}));
+router.post('/reset-password', passwordResetLimiter, H.noStore, H.wrap(async (req,res) => {
+    const token=H.text(req.body?.token,'reset token',64,{required:true});
+    if(!/^[0-9a-f]{64}$/.test(token))throw new H.HttpError(400,'Invalid or expired reset link');
+    const hash=await bcrypt.hash(identity.password(req.body?.password),12);
+    const result=await pool.query("UPDATE business_users SET password_hash=$1,reset_token=NULL,reset_token_expires=NULL,auth_version=auth_version+1 WHERE reset_token=$2 AND reset_token_expires>NOW() AND status='active' RETURNING id",[hash,identity.digest(token)]);
+    if(!result.rows.length)throw new H.HttpError(400,'Invalid or expired reset link');
+    res.json({ok:true,message:'Password updated. Sign in again.'});
+}));
 
 // ══════════════════════════════════════════════════════════════════════════
 // PHASE 5D-C3 — VENUE SEARCH (for claim flow)
@@ -993,6 +933,7 @@ router.get('/venues/search', async (req, res) => {
         );
         res.json({ venues: result.rows });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venues/search]', err);
         res.status(500).json({ error: err.message });
     }
@@ -1075,6 +1016,7 @@ router.post('/upgrade-interest', contactLimiter, async (req, res) => {
             message: "Thanks — our business team will review your request and reach out within 1–2 business days.",
         });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/upgrade-interest]', err);
         res.status(500).json({ error: 'Failed to submit upgrade request' });
     }
@@ -1164,6 +1106,7 @@ router.get('/listings/:id/analytics', requireAuth, requireBusiness, async (req, 
                 : null,
         });
     } catch (err) {
+        if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/listings/:id/analytics]', err);
         res.status(500).json({ error: 'Failed to load analytics' });
     }

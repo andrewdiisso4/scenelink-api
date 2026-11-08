@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/sl-connected-api.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-connected-actions.js?v=connected-20261108-6" defer></script>
+<link rel="stylesheet" href="/css/sl-connected.css?v=connected-20261108-6"><!-- sl-preconnect-added -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- sl-observability:v1 -->
+  <script src="/env.js"></script>
+  <script src="/js/sl-avatar.js?v=connected-20261108-6"></script>
+  <script src="/js/sl-social-core.js?v=connected-20261108-6" defer></script>
+  <!-- Phase 7A perf -->
+  <script src="/js/sl-fetch-guard.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-perf-loader.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-observability.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-version-marker.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-stale-version-detector.js?v=connected-20261108-6" defer></script>
+
+    <script src="js/sl-bundle-7d.js?v=connected-20261108-6" defer></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>Tonight's Picks - SceneLink</title>
+
+    <!-- Base Styles -->
+    <link rel="stylesheet" href="css/sl-bundle-7d.css?v=connected-20261108-6">
+        <link rel="stylesheet" href="css/sl-phase8-launch.css?v=connected-20261108-6">
+<!-- Phase 7A perf: ai-concierge CSS lazy-loaded -->
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"><noscript><link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"></noscript>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css?v=connected-20261108-6" crossorigin="anonymous" referrerpolicy="no-referrer">
+
+    <!-- Tonight v2 — single authoritative stylesheet -->
+    <link rel="stylesheet" href="css/tonight-v2.css?v=connected-20261108-6">
+
+    <link rel="icon" type="image/png" href="images/logo-transparent.png">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SceneLink">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="SceneLink">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="57x57" href="/icons/apple-touch-icon-57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="/icons/apple-touch-icon-60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="/icons/apple-touch-icon-72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="/icons/apple-touch-icon-76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="/icons/apple-touch-icon-114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-touch-icon-120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="/icons/apple-touch-icon-144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png">
+<meta property="og:site_name" content="SceneLink">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/icons/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/icons/icon-512.png">
+  <!-- SceneLink unified auth bundle -->
+
+  <!-- SceneLink unified auth bundle -->
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="css/sl-phase8-home.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-universal-search.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8d-hotfix.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8f-polish.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="/css/sl-recovery-truthfulness.css?v=connected-20261108-6">
+</head>
+<body>
+
+    <!-- Universal Header -->
+    <header class="header-enhanced" id="mainHeader">
+        <nav class="nav-enhanced">
+            <div class="nav-left">
+                <a class='logo-container' href='/'>
+                    <img loading="eager" fetchpriority="high" width="180" height="48" src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" class="logo-main">
+                </a>
+            </div>
+            <ul class="nav-center">
+                <li><a class='nav-link' data-page='home' href='/'>Home</a></li>
+                <li><a class='nav-link' data-page='explore' href='/explore'>Explore</a></li>
+                <li><a class='nav-link' data-page='nightlife' href='/nightlife'>Nightlife</a></li>
+                <li><a class='nav-link active' data-page='tonights-picks' href='/tonight'>Tonight's Picks</a></li>
+                    <li><a href='/events'>Events</a></li>
+                <li><a class='nav-link' data-page='social' href='/social-feed'>Social</a></li>
+                <li><a class='nav-link' data-page='my-lists' href='/my-lists'>My Lists</a></li>
+                <li><a href="/" class="nav-link" data-ai-concierge-nav="1" data-sl-concierge="Plan my night in Boston" onclick="event.preventDefault();"><i class="fas fa-magic" style="color:#D4AF37;margin-right:4px;"></i>Ask AI</a></li>
+            </ul>
+            <div class="nav-right">
+                <button class="btn-header-primary sl-auth-trigger">Log in / Sign up</button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════
+         TONIGHT v2 PAGE
+    ═══════════════════════════════════════════════ -->
+    <div class="tv2-page">
+
+        <!-- ── Hero ───────────────────────────────── -->
+        <section class="tv2-hero">
+            <div class="tv2-hero-badge">
+                <span class="tv2-hero-dot"></span>
+                Tonight in Boston
+            </div>
+            <h1>Tonight in Boston</h1>
+            <p class="tv2-hero-sub">Find the best places to eat, drink, dance, and explore tonight.</p>
+
+            <!-- Ask AI hero CTA -->
+            <div class="tv2-hero-cta">
+                <button type="button" class="tv2-ask-ai-btn" data-sl-concierge="Plan my night">
+                    <span class="tv2-ask-ai-pulse"></span>
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    Ask SceneLink Concierge — Plan my night
+                </button>
+            </div>
+
+            <!-- Time Toggles -->
+            <div class="tv2-time-bar">
+                <button class="tv2-time-btn active" data-time="all">
+                    <i class="fa fa-moon"></i> All venue ideas
+                </button>
+                <button class="tv2-time-btn" data-time="dinner">
+                    <i class="fa fa-utensils"></i> Dinner ideas
+                </button>
+                <button class="tv2-time-btn" data-time="late">
+                    <i class="fa fa-star"></i> Late Night
+                </button>
+            </div>
+        </section>
+
+        <!-- ── Stats Bar ───────────────────────────── -->
+        <div class="tv2-stats" id="tv2-stats">
+            <!-- Rendered by JS: renderStats() -->
+        </div>
+
+        <!-- ── Filter Bar ──────────────────────────── -->
+        <div class="tv2-filters">
+
+            <!-- TYPE row -->
+            <div class="tv2-filter-row">
+                <span class="tv2-filter-label">TYPE</span>
+                <button class="tv2-chip" data-type="restaurants"><i class="fa fa-utensils"></i> Restaurants</button>
+                <button class="tv2-chip" data-type="bars"><i class="fa fa-cocktail"></i> Bars</button>
+                <button class="tv2-chip" data-type="events"><i class="fa fa-calendar-alt"></i> Events</button>
+                <button class="tv2-chip" data-type="nightlife"><i class="fa fa-music"></i> Nightlife</button>
+            </div>
+
+            <!-- VIBE row -->
+            <div class="tv2-filter-row">
+                <span class="tv2-filter-label">VIBE</span>
+                <button class="tv2-chip" data-vibe="lively"><i class="fa fa-fire"></i> Lively</button>
+                <button class="tv2-chip" data-vibe="romantic"><i class="fa fa-heart"></i> Date Night</button>
+                <button class="tv2-chip" data-vibe="chill"><i class="fa fa-coffee"></i> Low-Key</button>
+                <button class="tv2-chip" data-vibe="classy"><i class="fa fa-gem"></i> Upscale</button>
+                <button class="tv2-chip" data-vibe="energetic"><i class="fa fa-bolt"></i> Groups</button>
+                
+            </div>
+
+            <!-- PRICE row -->
+            <div class="tv2-filter-row">
+                <span class="tv2-filter-label">PRICE</span>
+                <button class="tv2-chip" data-price="$">$ Budget</button>
+                <button class="tv2-chip" data-price="$$">$$ Mid-range</button>
+                <button class="tv2-chip" data-price="$$$">$$$ Upscale</button>
+                <button class="tv2-chip" data-price="$$$$">$$$$ Luxury</button>
+            </div>
+
+            <!-- Search -->
+            <div class="tv2-search-wrap">
+                <i class="fa fa-search tv2-search-icon"></i>
+                <input type="text" id="tv2-search" class="tv2-search" placeholder="Search venues, vibes, neighborhoods…" autocomplete="off">
+            </div>
+
+        </div>
+
+        <!-- ── Social Proof Bar ────────────────────── -->
+        <div class="tv2-social-bar" id="tv2-social-bar">
+            <!-- Rendered by JS: renderSocialProof() -->
+        </div>
+
+        <!-- ── Main Content ────────────────────────── -->
+        <div class="tv2-content">
+
+            <!-- Spotlight -->
+            <div id="tv2-spotlight">
+                <!-- Rendered by JS: renderSpotlight() -->
+            </div>
+
+            <!-- Why It's Hot / Best Next Move Insights -->
+            <div id="tv2-insights">
+                <!-- Rendered by JS: renderInsights() -->
+            </div>
+
+            <!-- Venue Sections -->
+            <div id="tv2-sections">
+                <!-- Rendered by JS: renderSections() -->
+            </div>
+
+            <!-- Build My Night — AI-powered 2-3 stop plan (replaces Inner Circle CTA) -->
+            <div class="tv2-build-night" id="tv2-build-night">
+                <div class="tv2-build-night-head">
+                    <h3><i class="fas fa-wand-magic-sparkles" style="color:var(--tv2-gold);margin-right:8px"></i>Build My Night</h3>
+                    <p>Tell the Concierge what you&rsquo;re in the mood for &mdash; we&rsquo;ll plan a 2&ndash;3 stop night across Boston across the Boston venues we recommend tonight.</p>
+                </div>
+                <div class="tv2-build-night-presets" id="tv2-build-night-presets">
+                    <button type="button" class="tv2-chip" data-sl-concierge="Plan a date night tonight in Boston: a romantic dinner spot, then drinks somewhere intimate.">
+                        <i class="fa fa-heart"></i> Date Night
+                    </button>
+                    <button type="button" class="tv2-chip" data-sl-concierge="Plan a group friendly night tonight in Boston: an upbeat dinner spot, then a lively bar, then late-night.">
+                        <i class="fa fa-users"></i> Group Night
+                    </button>
+                    <button type="button" class="tv2-chip" data-sl-concierge="Plan a low-key night tonight in Boston: a cozy dinner spot and one chill drink stop nearby.">
+                        <i class="fa fa-coffee"></i> Low-Key
+                    </button>
+                    <button type="button" class="tv2-chip" data-sl-concierge="Plan a rooftop and live music night tonight in Boston: rooftop drinks, then live music venue.">
+                        <i class="fa fa-music"></i> Rooftop & Live Music
+                    </button>
+                    <button type="button" class="tv2-chip" data-sl-concierge="Plan a late-night Boston run: best late-night food and a late-close bar.">
+                        <i class="fa fa-moon"></i> Late Night
+                    </button>
+                </div>
+                <button type="button" class="tv2-build-night-cta" data-sl-concierge="Plan my night in Boston with 2 to 3 stops based on tonight&rsquo;s recommended Boston venues">
+                    <i class="fas fa-wand-magic-sparkles"></i> Build My Night with AI
+                </button>
+                <p class="tv2-build-night-note">Browse Boston venue listings. Confirm details with the venue. Free &middot; no signup required.</p>
+            </div>
+
+        </div><!-- /.tv2-content -->
+
+    </div><!-- /.tv2-page -->
+
+    <!-- ── Modal Overlay ──────────────────────────── -->
+    <div class="tv2-modal-overlay" id="tv2-modal-overlay" onclick="if(event.target===this) TV2 && TV2.closeModal()">
+        <!-- Rendered by JS: openModal() -->
+    </div>
+
+    <!-- ── Plan Strip (fixed bottom) ──────────────── -->
+    <div class="tv2-plan-strip" id="tv2-plan-strip">
+        <i class="fa fa-map-marked-alt" style="color:var(--tv2-gold)"></i>
+        <span class="tv2-strip-label">Your Night Plan</span>
+        <span class="tv2-strip-count" id="tv2-plan-count">0</span>
+        <button class="tv2-strip-btn" onclick="window.TV2 && TV2.openPlanDrawer()">
+            <i class="fa fa-eye"></i> View Plan
+        </button>
+    </div>
+
+    <!-- Plan Drawer (slide-up) -->
+    <div class="tv2-plan-drawer" id="tv2-plan-drawer" aria-hidden="true">
+        <div class="tv2-plan-drawer-backdrop" onclick="window.TV2 && TV2.closePlanDrawer()"></div>
+        <div class="tv2-plan-drawer-panel" role="dialog" aria-labelledby="tv2-plan-drawer-title">
+            <div class="tv2-plan-drawer-header">
+                <div>
+                    <h3 id="tv2-plan-drawer-title"><i class="fa fa-map-marked-alt"></i> Your Night Plan</h3>
+                    <p id="tv2-plan-drawer-subtitle">Build your night &mdash; Dinner, Drinks, Late Night.</p>
+                </div>
+                <button class="tv2-plan-drawer-close" onclick="window.TV2 && TV2.closePlanDrawer()" aria-label="Close"><i class="fa fa-times"></i></button>
+            </div>
+            <div class="tv2-plan-drawer-body" id="tv2-plan-drawer-body"></div>
+            <div class="tv2-plan-drawer-footer">
+                <button class="tv2-plan-btn-outline" onclick="window.TV2 && TV2.sharePlan()"><i class="fa fa-share-alt"></i> Share</button>
+                <button class="tv2-plan-btn-outline" onclick="window.TV2 && TV2.invitePlanFriends()"><i class="fa fa-user-friends"></i> Invite Friends</button>
+                <button class="tv2-plan-btn-primary" onclick="window.TV2 && TV2.getDirectionsPlan()"><i class="fa fa-route"></i> Get Directions</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Toast Container ────────────────────────── -->
+    <div class="tv2-toast-container" id="tv2-toast-container"></div>
+
+    <!-- Footer -->
+    <footer class="footer-unified">
+        <div class="footer-newsletter-bar">
+            <div class="footer-newsletter-inner">
+                <div class="footer-newsletter-text">
+                    <h4>Stay in the Scene</h4>
+                    <p>Get weekly picks, exclusive events & hidden gems delivered to your inbox.</p>
+                </div>
+                <form class="footer-newsletter-form" data-sl-newsletter="1">
+                    <input type="email" name="email" placeholder="Enter your email address" required>
+                    <button type="submit">Subscribe</button>
+                </form>
+            </div>
+        </div>
+        <div class="footer-main-content">
+            <div class="footer-brand-col">
+                <a class='footer-logo-link' href='/'>
+                    <img loading="lazy" src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" class="footer-logo-img">
+                </a>
+                <p class="footer-brand-tagline">Eat. Drink. Discover.</p>
+                <p class="footer-brand-desc">Your social guide to the best restaurants, bars, events, and nightlife experiences in Boston.</p>
+                <div class="footer-social-icons">
+                    <a href="https://www.facebook.com/SceneLinkApp/" target="_blank" rel="noopener" class="social-facebook" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="https://www.instagram.com/scenelink.app" target="_blank" rel="noopener" class="social-instagram" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="https://x.com/Scenelinkapp" target="_blank" rel="noopener" class="social-twitter" aria-label="X"><i class="fab fa-twitter"></i></a>
+                    <a href="https://www.youtube.com/@SceneLinkapp" target="_blank" rel="noopener" class="social-youtube" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                </div>
+                <div class="footer-app-badges">
+                    <a href="/" class="footer-webapp-badge" style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:#D4AF37;color:#0a0a0a;border-radius:8px;font-weight:600;text-decoration:none;font-size:14px;"><i class="fas fa-globe"></i><span>Open Web App</span></a></div>
+            </div>
+            <div class="footer-link-col">
+                <h5>Discover</h5>
+                <ul>
+                    <li><a href='/explore'>Restaurants</a></li>
+                    <li><a href='/nightlife'>Bars & Nightlife</a></li>
+                    <li><a href='/tonight'>Tonight's Picks</a></li>
+                </ul>
+            </div>
+            <div class="footer-link-col">
+                <h5>Plan</h5>
+                <ul>
+                    <li><a href='/my-lists'>My Lists</a></li>
+                    <li><a href='/plan-with-friends'>Plan Builder — Beta</a></li>
+                    <li><a href='/profile'>My Profile</a></li>
+                    <li><a href='/' data-sl-concierge='Plan my night in Boston' onclick='event.preventDefault();'>Ask AI Concierge</a></li>
+                </ul>
+            </div>
+            <div class="footer-link-col">
+                <h5>Company</h5>
+                <ul>
+                    <li><a href='/about'>About Us</a></li>
+                    <li><a href='/contact'>Contact</a></li>
+                    <li><a href='/business'>For Business</a></li>
+                </ul>
+            </div>
+            <div class="footer-link-col">
+                <h5>Legal</h5>
+                <ul>
+                    <li><a href='/privacy'>Privacy Policy</a></li>
+                    <li><a href='/terms'>Terms of Service</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom-bar">
+            <div class="footer-bottom-inner">
+                <p class="footer-copyright">&copy; 2026 <a href='/'>SceneLink</a>. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href='/privacy'>Privacy</a>
+                    <a href='/terms'>Terms</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ── Scripts ──────────────────────────────────
+         Load order: config → shared infra → tonight-v2
+    ─────────────────────────────────────────────── -->
+    <script src="js/lists-system.js?v=connected-20261108-6" defer></script>
+    <script src="js/lists-integration.js?v=connected-20261108-6" defer></script>
+    <!-- Phase 7A perf: ai-concierge-v5.js lazy-loaded -->
+
+
+
+
+
+
+
+
+
+    <!-- Phase 7A perf: sl-social-feed.js removed (not a social page) -->
+    <script src="js/sl-bundle-7d-ui.js?v=connected-20261108-6" defer></script>
+
+    <!-- Tonight v2 — single authoritative script -->
+    <!-- SL-POLISH-SCRIPTS -->
+
+<script src="js/tonight-v2.js?v=connected-20261108-6" defer></script>
+
+
+
+
+
+
+
+  <script src="js/sl-phase8-launch.js?v=connected-20261108-6" defer></script>
+<script src="js/sl-phase8-completion.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-universal-search.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-social-network.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-phase8d-recovery.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-social-integration-9a.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-venue-activity-9a.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-verification-banner.js?v=connected-20261108-6" defer></script>
+</body>
+</html>

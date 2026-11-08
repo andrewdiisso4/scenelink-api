@@ -1,0 +1,340 @@
+/* Enhanced Venue Cards for Tonight's Picks */
+.featured-section {
+    padding: 3rem 0;
+    background: linear-gradient(135deg, #f8f9ff 0%, #fff 100%);
+}
+
+.featured-card {
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.featured-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+.featured-card-header {
+    position: relative;
+    height: 250px;
+    overflow: hidden;
+}
+
+.featured-card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.featured-card:hover .featured-card-image {
+    transform: scale(1.05);
+}
+
+.featured-card-badge {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+    z-index: 2;
+}
+
+.featured-card-actions {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    z-index: 2;
+}
+
+.featured-card-action-btn {
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.featured-card-action-btn:hover {
+    background: white;
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.featured-card-action-btn.saved {
+    background: #ff6b6b;
+    color: white;
+}
+
+.featured-card-action-btn i {
+    font-size: 1rem;
+}
+
+.featured-card-body {
+    padding: 2rem;
+}
+
+.featured-card-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #333;
+    margin: 0 0 0.5rem 0;
+    line-height: 1.2;
+}
+
+.featured-card-category {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.featured-card-description {
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+}
+
+.featured-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.featured-card-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.featured-card-meta-item i {
+    color: #667eea;
+    font-size: 1rem;
+}
+
+.featured-card-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f8f9ff;
+    border-radius: 12px;
+}
+
+.featured-card-stat {
+    text-align: center;
+}
+
+.featured-card-stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #333;
+    display: block;
+}
+
+.featured-card-stat-label {
+    font-size: 0.75rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.featured-card-footer {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.featured-card-btn {
+    flex: 1;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.featured-card-btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.featured-card-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.featured-card-btn-secondary {
+    background: #f0f0f0;
+    color: #666;
+}
+
+.featured-card-btn-secondary:hover {
+    background: #e0e0e0;
+}
+
+.featured-card-rating {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 1rem;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 20px;
+    font-weight: 600;
+    color: #333;
+}
+
+.featured-card-rating i {
+    color: #feca57;
+    font-size: 0.9rem;
+}
+
+/* Additional Venue Cards Grid */
+.venue-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.venue-card {
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.venue-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+.venue-card-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+.venue-card-body {
+    padding: 1.5rem;
+}
+
+.venue-card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 0.5rem 0;
+}
+
+.venue-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.venue-card-description {
+    color: #666;
+    line-height: 1.5;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.venue-card-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.venue-card-action {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.venue-card-action-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    flex: 1;
+}
+
+.venue-card-action-secondary {
+    background: #f0f0f0;
+    color: #666;
+    padding: 0.5rem;
+    min-width: 40px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .featured-section {
+        padding: 2rem 0;
+    }
+    
+    .featured-card-body {
+        padding: 1.5rem;
+    }
+    
+    .featured-card-title {
+        font-size: 1.25rem;
+    }
+    
+    .featured-card-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+    
+    .venue-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .featured-card-actions {
+        top: 0.5rem;
+        right: 0.5rem;
+    }
+    
+    .featured-card-badge {
+        top: 0.5rem;
+        left: 0.5rem;
+    }
+}

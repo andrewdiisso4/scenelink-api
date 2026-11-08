@@ -1,0 +1,1204 @@
+/* ================================================================
+   SCENELINK PRODUCTION PASS — Final Launch CSS
+   ================================================================ */
+
+/* ===== HOMEPAGE HERO — FINAL AUTHORITATIVE BACKGROUND FIX ===== */
+/* This is the LAST CSS loaded — overrides polish-final.css, polish-round2.css, etc. */
+
+/* Step 1: Set actual element background to scenelinkbghero.png */
+.hero-v2 {
+    background: url('../images/scenelinkbghero.png') center center / cover no-repeat !important;
+    background-color: #060608 !important;
+    position: relative !important;
+    min-height: 92vh !important;
+    overflow: hidden !important;
+    animation: none !important;
+}
+
+/* Step 2: ::before must ONLY be a gradient overlay — NO image, NO Unsplash, NO animation */
+.hero-v2::before {
+    content: '' !important;
+    position: absolute !important;
+    inset: 0 !important;
+    background: linear-gradient(180deg,
+        rgba(0,0,0,0.40) 0%,
+        rgba(0,0,0,0.15) 40%,
+        rgba(0,0,0,0.55) 100%) !important;
+    background-image: none !important;
+    background-size: auto !important;
+    transform: none !important;
+    animation: none !important;
+    z-index: 1 !important;
+}
+
+/* Step 3: ::after — completely disabled */
+.hero-v2::after {
+    content: none !important;
+    display: none !important;
+    background: none !important;
+    background-image: none !important;
+}
+
+/* Step 4: .hero-overlay div — light gradient for text readability */
+.hero-v2 .hero-overlay {
+    background: linear-gradient(180deg, 
+        rgba(0,0,0,0.20) 0%, 
+        rgba(0,0,0,0.15) 40%, 
+        rgba(10,10,10,0.65) 100%) !important;
+    background-image: none !important;
+    position: absolute !important;
+    top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+    z-index: 1 !important;
+}
+
+.hero-v2 .hero-content-wrapper {
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+/* ===== HOMEPAGE TEARDROP PINS — FINAL AUTHORITATIVE STYLES ===== */
+.sl-home-pin {
+    z-index: 2 !important;
+    cursor: pointer !important;
+    transition: transform 0.3s !important;
+    position: absolute !important;
+}
+.sl-home-pin .sl-pin-body {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% 50% 50% 4px !important;
+    transform: rotate(-45deg) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5) !important;
+    position: relative !important;
+    border: 2px solid rgba(255,255,255,0.4) !important;
+    animation: sl-home-pin-glow 3s ease-in-out infinite !important;
+}
+.sl-home-pin .sl-pin-body i {
+    transform: rotate(45deg) !important;
+    font-size: 13px !important;
+    color: #fff !important;
+    display: block !important;
+}
+.sl-home-pin:hover {
+    transform: scale(1.2) !important;
+    z-index: 10 !important;
+}
+.sl-home-pin:hover .sl-pin-body {
+    filter: brightness(1.2) !important;
+}
+/* Pin category colors */
+.sl-home-pin.cat-hot .sl-pin-body { background: linear-gradient(135deg, #ef4444, #dc2626) !important; }
+.sl-home-pin.cat-bar .sl-pin-body { background: linear-gradient(135deg, #D4AF37, #b8962e) !important; }
+.sl-home-pin.cat-music .sl-pin-body { background: linear-gradient(135deg, #22c55e, #16a34a) !important; }
+.sl-home-pin.cat-featured .sl-pin-body { background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important; }
+
+/* Ensure hero text is crisp and readable - enhanced text pop */
+.hero-v2 .hero-subtitle-main {
+    text-shadow: 0 2px 16px rgba(0,0,0,0.9), 0 1px 4px rgba(0,0,0,0.7) !important;
+    letter-spacing: 0.01em !important;
+}
+
+.hero-v2 .hero-title-main {
+    text-shadow: 0 3px 24px rgba(0,0,0,0.8), 0 1px 6px rgba(0,0,0,0.6) !important;
+    letter-spacing: 0.02em !important;
+}
+
+/* Hero Favicon Icon above slogan */
+.hero-favicon-icon {
+    display: block !important;
+    width: 80px !important;
+    height: 80px !important;
+    margin: 0 auto 16px auto !important;
+    filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.5)) !important;
+    object-fit: contain !important;
+}
+
+/* Show phone mockup on homepage (scenelink.app style) */
+.hero-phone-mockup {
+    display: block !important;
+}
+
+/* ===== TONIGHT HERO ELEMENTS — Hidden on Homepage ===== */
+/* These are injected by product-evolution.js; hide if they leak */
+.tonight-hero {
+    display: none !important;
+}
+
+.tonight-feed {
+    padding-top: 20px !important;
+    max-width: 1200px !important;
+    margin: 0 auto !important;
+}
+
+.evo-shortcuts {
+    max-width: 900px !important;
+    margin: 0 auto 0 !important;
+    padding: 0 20px !important;
+    position: relative;
+    z-index: 10;
+}
+
+.out-tonight-bar {
+    max-width: 900px !important;
+    margin: 0 auto 20px !important;
+    padding: 0 20px !important;
+}
+
+/* ===== EXPLORE PAGE FIXES ===== */
+/* Fix "Discover" overlapping list cards */
+.sl-list-view {
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+.sl-list-view .sl-list-header {
+    position: sticky;
+    top: 0;
+    z-index: 11;
+    background: rgba(10, 10, 10, 0.98);
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(212,175,55,0.1);
+    backdrop-filter: blur(10px);
+}
+
+.sl-list-view .sl-list-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 2px;
+}
+
+.sl-list-view .sl-list-count {
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+}
+
+/* List cards spacing fix */
+/* ===== EXPLORE PAGE - 3-Column Grid List View (matches reference) ===== */
+#slListCards {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 20px !important;
+    padding: 16px 24px 40px !important;
+}
+
+#slListCards .sl-list-card {
+    border-radius: 16px !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    overflow: hidden !important;
+    background: #1a1a1a !important;
+    transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s !important;
+    margin-bottom: 0 !important;
+    border-bottom: none !important;
+}
+
+#slListCards .sl-list-card:hover {
+    transform: translateY(-4px) !important;
+    border-color: rgba(212,175,55,0.25) !important;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.35) !important;
+}
+
+/* When list view is active, ensure it shows above map */
+.sl-list-view.active {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 1200 !important;
+    background: #0a0a0a !important;
+    overflow-y: auto !important;
+}
+.sl-list-view:not(.active) {
+    display: none !important;
+}
+
+/* Discover header */
+.sl-list-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    background: rgba(10,10,10,0.95) !important;
+    backdrop-filter: blur(12px) !important;
+    padding: 16px 24px !important;
+    border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+/* Hide injected energy meters and extra Save buttons on explore list cards */
+#slListCards .sl-energy-meter,
+#slListCards .sl-list-card > .sl-energy-meter {
+    display: none !important;
+}
+#slListCards .sl-list-card .sl-save-btn {
+    display: none !important;
+}
+
+/* Responsive: 2-col on medium screens, 1-col on mobile */
+@media (max-width: 1100px) {
+    #slListCards {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+@media (max-width: 700px) {
+    #slListCards {
+        grid-template-columns: 1fr !important;
+        padding: 12px 12px 40px !important;
+    }
+}
+
+/* ===== NIGHTLIFE PAGE FIXES ===== */
+/* Sticky map - prevent scroll from moving map */
+.nl-map-hero {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 5 !important;
+}
+
+.nl-map-hero #nlMap,
+.nl-map-hero .nl-map-container {
+    position: sticky !important;
+    top: 0;
+    height: 55vh !important;
+    min-height: 400px;
+    z-index: 1;
+}
+
+/* Nightlife venue listings section */
+.nightlife-venue-listings-section {
+    position: relative;
+    z-index: 5;
+    background: #0a0a0a;
+    border-top: 1px solid rgba(212,175,55,0.08);
+    padding-top: 10px;
+}
+
+/* Browse Venues divider - more visible */
+.nl-browse-divider,
+.nl-browse-toggle {
+    text-align: center;
+    padding: 16px 0 !important;
+    border-top: 1px solid rgba(212,175,55,0.1);
+    border-bottom: 1px solid rgba(212,175,55,0.1);
+    background: rgba(212,175,55,0.03);
+    margin: 0 !important;
+}
+
+.nl-browse-divider button,
+.nl-browse-toggle button,
+button.nl-browse-btn {
+    background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(212,175,55,0.05)) !important;
+    border: 1px solid rgba(212,175,55,0.3) !important;
+    color: #D4AF37 !important;
+    padding: 12px 32px !important;
+    border-radius: 50px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+}
+
+.nl-browse-divider button:hover,
+.nl-browse-toggle button:hover,
+button.nl-browse-btn:hover {
+    background: rgba(212,175,55,0.2) !important;
+    border-color: rgba(212,175,55,0.5) !important;
+}
+
+/* Nightlife list view - better spacing */
+.nightlife-venue-listings-section .venue-card-enhanced,
+.nightlife-venue-listings-section .nl-venue-card {
+    margin-bottom: 16px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.nightlife-venue-listings-section .venue-card-enhanced:hover,
+.nightlife-venue-listings-section .nl-venue-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(212,175,55,0.15);
+}
+
+/* Browse Venues section below map */
+.nl-venue-listings,
+.nl-browse-section {
+    position: relative !important;
+    z-index: 10 !important;
+    background: #0a0a0a !important;
+}
+
+/* Nightlife venue cards */
+.nl-venue-card {
+    transition: all 0.2s ease !important;
+}
+
+.nl-venue-card:hover {
+    transform: translateY(-2px) !important;
+    border-color: rgba(212,175,55,0.2) !important;
+}
+
+/* ===== GLOBAL UI POLISH ===== */
+/* Smooth animations */
+* {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Gold accent consistency */
+.btn-explore-now,
+.btn-join-scene {
+    transition: all 0.25s ease !important;
+}
+
+.btn-explore-now:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(212,175,55,0.3);
+}
+
+.btn-join-scene:hover {
+    transform: translateY(-2px);
+    background: rgba(212,175,55,0.1);
+    border-color: rgba(212,175,55,0.4);
+}
+
+/* Toast notification polish */
+.evo-toast {
+    border-radius: 12px !important;
+    backdrop-filter: blur(12px) !important;
+}
+
+/* Social button behavior indicator */
+.nav-icon-btn[href="social-feed.html"]::after {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #D4AF37;
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* ===== TONIGHT IN BOSTON — Explore Page Enhancement ===== */
+.tonight-boston-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, rgba(15,15,20,0.95), rgba(20,15,5,0.95));
+    border: 1px solid rgba(212,175,55,0.15);
+    border-radius: 16px;
+    padding: 16px 24px;
+    margin-bottom: 20px;
+    backdrop-filter: blur(10px);
+}
+
+.tonight-boston-bar .tbb-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tonight-boston-bar .tbb-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #fff;
+}
+
+.tonight-boston-bar .tbb-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(239,68,68,0.15);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: #ef4444;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 50px;
+}
+
+.tonight-boston-bar .tbb-live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ef4444;
+    animation: tbbBlink 1.5s infinite;
+}
+
+@keyframes tbbBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.tonight-boston-bar .tbb-stats {
+    display: flex;
+    gap: 20px;
+}
+
+.tonight-boston-bar .tbb-stat {
+    text-align: center;
+}
+
+.tonight-boston-bar .tbb-stat-val {
+    font-size: 18px;
+    font-weight: 800;
+    color: #D4AF37;
+    display: block;
+}
+
+.tonight-boston-bar .tbb-stat-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Venue card crowd/energy badges */
+.sl-venue-crowd-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    margin-right: 6px;
+}
+
+.sl-venue-crowd-badge.packed {
+    background: rgba(239,68,68,0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239,68,68,0.25);
+}
+
+.sl-venue-crowd-badge.busy {
+    background: rgba(245,158,11,0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245,158,11,0.25);
+}
+
+.sl-venue-crowd-badge.filling {
+    background: rgba(34,197,94,0.15);
+    color: #22c55e;
+    border: 1px solid rgba(34,197,94,0.25);
+}
+
+.sl-venue-crowd-badge.chill {
+    background: rgba(99,102,241,0.15);
+    color: #6366f1;
+    border: 1px solid rgba(99,102,241,0.25);
+}
+
+/* Energy meter bar */
+.sl-energy-meter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.sl-energy-meter .energy-label {
+    font-size: 10px;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    min-width: 42px;
+}
+
+.sl-energy-meter .energy-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.sl-energy-meter .energy-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s ease;
+}
+
+.sl-energy-meter .energy-fill.high {
+    background: linear-gradient(90deg, #ef4444, #f97316);
+}
+
+.sl-energy-meter .energy-fill.medium {
+    background: linear-gradient(90deg, #f59e0b, #eab308);
+}
+
+.sl-energy-meter .energy-fill.low {
+    background: linear-gradient(90deg, #22c55e, #10b981);
+}
+
+.sl-energy-meter .energy-val {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.7);
+    min-width: 24px;
+    text-align: right;
+}
+
+/* FOMO text on cards */
+.sl-fomo-text {
+    font-size: 11px;
+    color: #ef4444;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.sl-fomo-text i {
+    font-size: 10px;
+}
+
+/* Friends-here indicator */
+.sl-friends-here {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: #D4AF37;
+    font-weight: 600;
+}
+
+.sl-friends-here .friend-dots {
+    display: flex;
+    gap: -4px;
+}
+
+.sl-friends-here .friend-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #0a0a0a;
+    margin-left: -6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 800;
+    color: #0a0a0a;
+}
+
+.sl-friends-here .friend-dot:first-child {
+    margin-left: 0;
+}
+
+/* ===== SOCIAL PAGE — Feature Showcase (Logged Out) ===== */
+.social-showcase {
+    padding: 60px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.social-showcase-hero {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.social-showcase-hero h1 {
+    font-size: clamp(32px, 5vw, 48px);
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #fff, #D4AF37);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.social-showcase-hero p {
+    font-size: 18px;
+    color: rgba(255,255,255,0.6);
+    max-width: 600px;
+    margin: 0 auto 32px;
+}
+
+.social-showcase-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    margin-bottom: 40px;
+}
+
+.social-feature-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 20px;
+    padding: 32px;
+    transition: all 0.3s ease;
+}
+
+.social-feature-card:hover {
+    border-color: rgba(212,175,55,0.2);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+}
+
+.social-feature-card .sfc-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(212,175,55,0.05));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: #D4AF37;
+}
+
+.social-feature-card h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+.social-feature-card p {
+    font-size: 14px;
+    color: rgba(255,255,255,0.5);
+    line-height: 1.7;
+}
+
+.social-showcase-cta {
+    text-align: center;
+    padding: 40px 0;
+}
+
+.social-showcase-cta .btn-join-social {
+    background: linear-gradient(135deg, #D4AF37, #b8962e);
+    color: #0a0a0a;
+    border: none;
+    padding: 16px 40px;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.social-showcase-cta .btn-join-social:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(212,175,55,0.4);
+}
+
+/* ===== PROFILE PAGE — Auth Gate ===== */
+.profile-auth-gate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.profile-auth-gate .gate-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(212,175,55,0.05));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    font-size: 32px;
+    color: #D4AF37;
+}
+
+.profile-auth-gate h2 {
+    font-size: 28px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 12px;
+}
+
+.profile-auth-gate p {
+    font-size: 16px;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 32px;
+    max-width: 400px;
+}
+
+.profile-auth-gate .btn-gate-login {
+    background: linear-gradient(135deg, #D4AF37, #b8962e);
+    color: #0a0a0a;
+    border: none;
+    padding: 14px 36px;
+    border-radius: 50px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.profile-auth-gate .btn-gate-login:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(212,175,55,0.4);
+}
+/* ===== PROFILE AUTH GATE ===== */
+#profile-auth-gate {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%) !important;
+    z-index: 99999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 100vh !important;
+}
+
+.profile-auth-gate-content {
+    text-align: center !important;
+    padding: 60px 40px !important;
+    max-width: 480px !important;
+    width: 90% !important;
+}
+
+.profile-auth-gate-icon {
+    width: 120px !important;
+    height: 120px !important;
+    margin: 0 auto 32px !important;
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 50%, #D4AF37 100%) !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 8px 32px rgba(212, 175, 55, 0.3) !important;
+}
+
+.profile-auth-gate-icon svg {
+    stroke: #0a0a0a !important;
+}
+
+.profile-auth-gate-title {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    color: #fff !important;
+    margin: 0 0 16px !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+.profile-auth-gate-subtitle {
+    font-size: 16px !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    line-height: 1.6 !important;
+    margin: 0 0 32px !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+.profile-auth-gate-actions {
+    display: flex !important;
+    gap: 16px !important;
+    justify-content: center !important;
+    margin-bottom: 32px !important;
+}
+
+.profile-auth-gate-btn {
+    padding: 14px 32px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    border: none !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+.profile-auth-gate-btn.primary {
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%) !important;
+    color: #0a0a0a !important;
+}
+
+.profile-auth-gate-btn.primary:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 24px rgba(212, 175, 55, 0.4) !important;
+}
+
+.profile-auth-gate-btn.secondary {
+    background: transparent !important;
+    color: #D4AF37 !important;
+    border: 2px solid #D4AF37 !important;
+}
+
+.profile-auth-gate-btn.secondary:hover {
+    background: rgba(212, 175, 55, 0.1) !important;
+}
+
+.profile-auth-gate-benefits {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    justify-content: center !important;
+    margin-bottom: 32px !important;
+}
+
+.profile-auth-gate-benefits span {
+    background: rgba(212, 175, 55, 0.1) !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+    padding: 8px 16px !important;
+    border-radius: 20px !important;
+    font-size: 13px !important;
+    border: 1px solid rgba(212, 175, 55, 0.2) !important;
+}
+
+.profile-auth-gate-back {
+    color: rgba(255, 255, 255, 0.5) !important;
+    text-decoration: none !important;
+    font-size: 14px !important;
+    transition: color 0.2s ease !important;
+}
+
+.profile-auth-gate-back:hover {
+    color: #D4AF37 !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+    .profile-auth-gate-content {
+        padding: 40px 24px !important;
+    }
+    
+    .profile-auth-gate-icon {
+        width: 80px !important;
+        height: 80px !important;
+        margin-bottom: 24px !important;
+    }
+    
+    .profile-auth-gate-icon svg {
+        width: 40px !important;
+        height: 40px !important;
+    }
+    
+    .profile-auth-gate-title {
+        font-size: 22px !important;
+    }
+    
+    .profile-auth-gate-actions {
+        flex-direction: column !important;
+    }
+    
+    .profile-auth-gate-btn {
+        width: 100% !important;
+    }
+}
+
+/* ===== PROFILE GATED CONTENT - Hide when not logged in ===== */
+body.profile-gated > *:not(#profile-auth-gate):not(.sl-auth-modal):not(#v2AuthModal) {
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+body.profile-gated #profile-auth-gate {
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* ===== SOCIAL FEATURE SHOWCASE (Logged Out View) ===== */
+body.social-feature-showcase > .social-feed-content {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+#social-feature-showcase {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+    padding: 80px 20px 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.social-showcase-content {
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.social-showcase-header {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.social-showcase-icon {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 24px;
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 50%, #D4AF37 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(212, 175, 55, 0.3);
+}
+
+.social-showcase-icon svg {
+    stroke: #0a0a0a;
+}
+
+.social-showcase-title {
+    font-size: 42px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.social-showcase-subtitle {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.7);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+.social-features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    margin-bottom: 60px;
+}
+
+.social-feature-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    border-radius: 16px;
+    padding: 32px;
+    transition: all 0.3s ease;
+}
+
+.social-feature-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(212, 175, 55, 0.3);
+    transform: translateY(-4px);
+}
+
+.social-feature-card .feature-icon {
+    font-size: 36px;
+    margin-bottom: 16px;
+}
+
+.social-feature-card h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #D4AF37;
+    margin: 0 0 12px;
+}
+
+.social-feature-card p {
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.social-showcase-cta {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.social-showcase-cta .cta-text {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0 0 24px;
+}
+
+.social-showcase-cta .cta-buttons {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+}
+
+.social-showcase-cta .cta-btn {
+    padding: 16px 36px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.social-showcase-cta .cta-btn.primary {
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+    color: #0a0a0a;
+}
+
+.social-showcase-cta .cta-btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(212, 175, 55, 0.4);
+}
+
+.social-showcase-cta .cta-btn.secondary {
+    background: transparent;
+    color: #D4AF37;
+    border: 2px solid #D4AF37;
+}
+
+.social-showcase-cta .cta-btn.secondary:hover {
+    background: rgba(212, 175, 55, 0.1);
+}
+
+.social-preview-section {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 40px;
+}
+
+.social-preview-section h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #fff;
+    text-align: center;
+    margin: 0 0 32px;
+}
+
+.social-preview-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.preview-activity {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+}
+
+.preview-avatar {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #0a0a0a;
+    flex-shrink: 0;
+}
+
+.preview-content {
+    flex: 1;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.preview-name {
+    font-weight: 600;
+    color: #fff;
+}
+
+.preview-venue {
+    color: #D4AF37;
+    font-weight: 500;
+}
+
+.preview-time {
+    display: block;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 4px;
+}
+
+.preview-note {
+    text-align: center;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .social-showcase-title {
+        font-size: 28px;
+    }
+    
+    .social-showcase-subtitle {
+        font-size: 16px;
+    }
+    
+    .social-features-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .social-showcase-cta .cta-buttons {
+        flex-direction: column;
+    }
+    
+    .social-showcase-cta .cta-btn {
+        width: 100%;
+    }
+    
+    .social-preview-section {
+        padding: 24px;
+    }
+}
+
+/* Fix for social showcase - position at top with high z-index */
+#social-feature-showcase {
+    position: relative;
+    z-index: 100;
+}
+
+/* Hide social feed content when showcase is active */
+body.social-feature-showcase .social-feed-hero,
+body.social-feature-showcase .social-feed-content,
+body.social-feature-showcase .social-feed-layout,
+body.social-feature-showcase .social-sidebar,
+body.social-feature-showcase .social-feed-main-enhanced,
+body.social-feature-showcase .social-right-sidebar {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+/* Social showcase - full viewport overlay */
+#social-feature-showcase {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+    z-index: 9999 !important;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%) !important;
+}
+
+/* Hide ALL page content except showcase when in showcase mode */
+body.social-feature-showcase > *:not(#social-feature-showcase):not(header):not(script) {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* Make sure header stays visible but with lower z-index */
+body.social-feature-showcase header {
+    z-index: 9998 !important;
+}
+
+/* Push showcase content below header */
+.social-showcase-content {
+    padding-top: 100px !important;
+}

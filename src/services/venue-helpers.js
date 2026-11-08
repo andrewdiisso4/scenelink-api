@@ -3,6 +3,75 @@
  * Pure functions where possible; DB-touching functions take a pool client.
  */
 
+/** A stored URL is a navigation link, never evidence of inventory or a booking.
+ * These helpers do not fetch URLs or claim that a provider currently accepts bookings.
+ * Keep them shared by discovery and both concierge paths so page choice cannot revive
+ * legacy seeded metrics or misleading reservation_live flags.
+ */
+function safePublicHttps(value) {
+  if (typeof value !== 'string') return null;
+  const text = value.trim();
+  if (!text || text.length > 2048 || /[\u0000-\u0020\u007f\\]/.test(text)) return null;
+  let url;
+  try { url = new URL(text); } catch (_) { return null; }
+  const host = url.hostname.toLowerCase().replace(/\.$/, '');
+  if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) return null;
+  if (!host.includes('.') || host.includes(':') || /^[\d.]+$/.test(host) || /(?:^|\.)(?:localhost|local|internal|test|invalid)$/.test(host)) return null;
+  return url.href;
+}
+function publicVenueImage(value) {
+  // The only relative image route emitted by the canonical catalog is its own
+  // Google-photo proxy. Do not accept arbitrary protocol-relative/local URLs.
+  if (typeof value === 'string' && /^\/api\/photo\?/.test(value) && !/[\u0000-\u0020\u007f\\]/.test(value)) return value;
+  const safe = safePublicHttps(value);
+  if (!safe) return null;
+  const host = new URL(safe).hostname.toLowerCase().replace(/\.$/, '');
+  if (['unsplash.com','pexels.com'].some(domain => host === domain || host.endsWith('.' + domain))) return null;
+  return safe;
+}
+function bookingLink(row = {}) {
+  const url = ['reservation_url','opentable_url','resy_url'].map(key => safePublicHttps(row[key])).find(Boolean) || null;
+  let provider = null;
+  if (url) {
+    const host = new URL(url).hostname.toLowerCase().replace(/\.$/, '');
+    const matches = domain => host === domain || host.endsWith('.' + domain);
+    provider = matches('opentable.com') ? 'OpenTable' : matches('resy.com') ? 'Resy' : 'External site';
+  }
+  return {status:url ? 'external_link' : 'not_available',url,provider,
+    requires_external_confirmation:true,reservation_confirmed:false};
+}
+function availableVenueSQL(alias = 'v') {
+  const column = key => alias ? alias + '.' + key : key;
+  return `${column('is_active')} IS TRUE AND COALESCE(${column('business_status')},'') NOT ILIKE 'CLOSED%'
+    AND lower(COALESCE(${column('business_status')},'')) NOT IN ('temporarily_closed','permanently_closed')`;
+}
+function publicVenue(row) {
+  const venue = {...row};
+  for (const key of ['website','reservation_url','opentable_url','resy_url','yelp_url','google_maps_url']) {
+    if (Object.hasOwn(venue,key)) venue[key] = safePublicHttps(venue[key]);
+  }
+  for (const key of ['image_url','cover_image_url','venue_image','thumbnail_url']) {
+    if (Object.hasOwn(venue,key)) venue[key] = publicVenueImage(venue[key]);
+  }
+  if (Object.hasOwn(venue,'image_urls')) venue.image_urls = Array.isArray(venue.image_urls) ? venue.image_urls.map(publicVenueImage).filter(Boolean) : [];
+  if (Object.hasOwn(venue,'has_real_photo') && ![venue.image_url,venue.cover_image_url,venue.thumbnail_url,venue.venue_image].some(Boolean)) venue.has_real_photo = false;
+  const booking = bookingLink(venue);
+  // Legacy imports manufactured these values. Until a separately reviewed factual
+  // aggregate exists, neither consumers nor recommendation models receive them.
+  return {...venue,rating:null,review_count:null,buzz_score:null,going_count:null,friends_going:null,
+    trending:null,featured:null,spotlight:null,why_hot:null,score:null,is_open_now:null,
+    metrics_status:'unverified',source_verification_status:venue.source ? 'source_record_unverified' : 'unknown',
+    reservation_url:booking.url,reservation_provider:booking.provider,reservation_live:null,
+    reservation_is_confirmed:false,booking};
+}
+
+/** Keep saved identities visible even when a catalog entry has been withdrawn. */
+function savedVenue(row) {
+  const available = row.venue_available === true;
+  const venue = publicVenue({...row,...(!available ? {reservation_url:null,opentable_url:null,resy_url:null,website:null} : {})});
+  return {...venue,venue_rating:null,venue_available:available,venue_status:available ? 'available' : 'unavailable'};
+}
+
 function slugify(s) {
   return String(s || '').toLowerCase()
     .replace(/['"]/g, '')
@@ -26,7 +95,7 @@ function toBool(v) {
 }
 
 function toNum(v) {
-  if (v == null || v === '') return null;
+  if (v == null || (typeof v === 'string' && !v.trim())) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
@@ -60,8 +129,8 @@ function normalizeCsvRow(row) {
 
   const name = String(pick('name','venue','title') || '').trim();
   const address = String(pick('address','street') || '').trim();
-  const city = String(pick('city') || 'Boston').trim();
-  const state = String(pick('state') || 'MA').trim();
+  const city = String(pick('city') || '').trim();
+  const state = String(pick('state') || '').trim();
   const neighborhood = String(pick('neighborhood','nbhd') || '').trim() || null;
   const category = String(pick('category','type') || '').trim() || null;
   const description = String(pick('description','desc') || '').trim() || null;
@@ -126,7 +195,7 @@ function computeQuality(v) {
   if (v.vibe_tags && v.vibe_tags.length) score += 5;
 
   let status = 'complete';
-  if (!v.lat || !v.lng) status = 'needs_coordinates';
+  if (v.lat == null || v.lng == null) status = 'needs_coordinates';
   else if (!v.category) status = 'needs_category';
   else if (!v.image_url) status = 'needs_image';
   else if (!v.neighborhood) status = 'needs_neighborhood';
@@ -139,7 +208,7 @@ function computeQuality(v) {
  * Upsert a venue row. Dedupe strategy (in order):
  *   1. osm_id + osm_type
  *   2. source + external_id
- *   3. name + city + (address OR neighborhood)
+ *   3. exact nonempty name + city + street address (never empty neighborhood)
  * Returns { action: 'inserted'|'updated'|'skipped', id, slug }
  */
 async function upsertVenue(pool, v, opts = {}) {
@@ -162,18 +231,15 @@ async function upsertVenue(pool, v, opts = {}) {
     const r = await pool.query('SELECT id, slug FROM venues WHERE external_id=$1 AND source=$2 LIMIT 1', [v.external_id, v.source]);
     existing = r.rows[0] || null;
   }
-  // 3. Fuzzy match by name + city + (neighborhood or address)
-  if (!existing && v.name) {
+  // 3. Same-brand branches must not merge merely because neighborhoods match.
+  if (!existing && v.name && String(v.city || '').trim() && String(v.address || '').trim()) {
     const r = await pool.query(
       `SELECT id, slug FROM venues
-       WHERE LOWER(name) = LOWER($1)
-         AND LOWER(COALESCE(city,'')) = LOWER(COALESCE($2,''))
-         AND (
-           (LOWER(COALESCE(address,'')) = LOWER(COALESCE($3,'')))
-           OR (LOWER(COALESCE(neighborhood,'')) = LOWER(COALESCE($4,'')))
-         )
+       WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))
+         AND LOWER(TRIM(COALESCE(city,''))) = LOWER(TRIM($2))
+         AND LOWER(TRIM(COALESCE(address,''))) = LOWER(TRIM($3))
        LIMIT 1`,
-      [v.name, v.city || '', v.address || '', v.neighborhood || '']
+      [v.name, v.city, v.address]
     );
     existing = r.rows[0] || null;
   }
@@ -243,11 +309,11 @@ async function upsertVenue(pool, v, opts = {}) {
      RETURNING id, slug`,
     [
       slug, v.name, v.type || 'restaurant', v.category || null,
-      v.address || null, v.neighborhood || null, v.city || 'Boston', v.state || 'MA',
+      v.address || null, v.neighborhood || null, v.city || null, v.state || null,
       v.lat, v.lng, v.description || null, v.phone || null, v.website || null,
       v.reservation_url || null, v.image_url || null,
       hours_display, hours_json,
-      v.price_level || 2, JSON.stringify(vibe), v.source || 'csv', v.external_id || null,
+      v.price_level ?? null, JSON.stringify(vibe), v.source || 'csv', v.external_id || null,
       v.osm_id || null, v.osm_type || null,
       v.osm_tags ? JSON.stringify(v.osm_tags) : null,
       quality.status, quality.score
@@ -257,6 +323,7 @@ async function upsertVenue(pool, v, opts = {}) {
 }
 
 module.exports = {
+  safePublicHttps, publicVenueImage, bookingLink, publicVenue, savedVenue, availableVenueSQL,
   slugify, uniqueSlug, toBool, toNum, parseVibeTags,
   normalizeCsvRow, validateVenue, computeQuality, upsertVenue, inferType
 };

@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/sl-connected-api.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-connected-actions.js?v=connected-20261108-6" defer></script>
+<link rel="stylesheet" href="/css/sl-connected.css?v=connected-20261108-6"><!-- sl-preconnect-added -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- sl-observability:v1 -->
+  <script src="/env.js"></script>
+  <script src="/js/sl-avatar.js?v=connected-20261108-6"></script>
+  <script src="/js/sl-social-core.js?v=connected-20261108-6" defer></script>
+  <!-- Phase 7A perf -->
+  <script src="/js/sl-fetch-guard.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-perf-loader.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-observability.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-version-marker.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-stale-version-detector.js?v=connected-20261108-6" defer></script>
+
+    <script src="js/sl-bundle-7d.js?v=connected-20261108-6" defer></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>My Lists - SceneLink</title>
+    <meta name="description" content="Save, organize, and share your favorite restaurants, bars, and nightlife spots in Boston.">
+    <link rel="stylesheet" href="css/sl-bundle-7d.css?v=connected-20261108-6">
+        <link rel="stylesheet" href="css/sl-phase8-launch.css?v=connected-20261108-6">
+<link rel="stylesheet" href="css/product-evolution.css?v=connected-20261108-6">
+    <link rel="stylesheet" href="css/launch-polish.css?v=connected-20261108-6">
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"><noscript><link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"></noscript>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css?v=connected-20261108-6" crossorigin="anonymous" referrerpolicy="no-referrer">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/logo-transparent.png">
+    <style>
+        :root {
+            --sl-gold: #D4AF37;
+            --sl-gold-light: #f5d670;
+            --sl-dark: #0a0a0a;
+            --sl-card: #111111;
+            --sl-surface: #1a1a1a;
+            --sl-border: rgba(212,175,55,0.10);
+            --sl-border-light: rgba(255,255,255,0.06);
+            --sl-text-dim: rgba(255,255,255,0.6);
+            --sl-text-muted: rgba(255,255,255,0.35);
+            --sl-radius: 16px;
+            --sl-radius-sm: 10px;
+        }
+        * { box-sizing: border-box; }
+        body { background: var(--sl-dark); }
+
+        /* ===== Logged Out State ===== */
+        .lists-logged-out {
+            min-height: 60vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 120px 24px 80px;
+        }
+        .lists-logged-out.hidden { display: none !important; }
+        .lists-lo-icon {
+            width: 80px; height: 80px;
+            border-radius: 24px;
+            background: rgba(212,175,55,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: var(--sl-gold);
+            margin-bottom: 28px;
+        }
+        .lists-lo-title {
+            font-size: 32px;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -0.03em;
+            margin-bottom: 12px;
+        }
+        .lists-lo-desc {
+            font-size: 16px;
+            color: var(--sl-text-dim);
+            max-width: 480px;
+            line-height: 1.65;
+            margin-bottom: 32px;
+        }
+        .lists-lo-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--sl-gold), var(--sl-gold-light));
+            color: #000;
+            font-weight: 700;
+            font-size: 15px;
+            padding: 15px 36px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .lists-lo-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(212,175,55,0.3); }
+
+        /* ===== Logged In State ===== */
+        .lists-app { display: none; min-height: 100vh; padding: 100px 0 60px; }
+        .lists-app.active { display: block; }
+
+        .lists-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Page Header */
+        .lists-page-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .lists-page-header h1 {
+            font-size: 32px;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            margin: 0;
+        }
+        .lists-page-header h1 span { color: var(--sl-gold); }
+        .lists-page-subtitle {
+            font-size: 14px;
+            color: var(--sl-text-dim);
+            margin-top: 6px;
+        }
+
+        /* Stats Row */
+        .lists-stats-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+        }
+        .lists-stat-chip {
+            background: var(--sl-card);
+            border: 1px solid var(--sl-border-light);
+            border-radius: var(--sl-radius-sm);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 140px;
+        }
+        .lists-stat-chip i {
+            font-size: 18px;
+            color: var(--sl-gold);
+        }
+        .lists-stat-num {
+            font-size: 22px;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1;
+        }
+        .lists-stat-label {
+            font-size: 12px;
+            color: var(--sl-text-muted);
+            font-weight: 500;
+        }
+
+        /* Tabs & Actions */
+        .lists-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .lists-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--sl-surface);
+            border-radius: var(--sl-radius-sm);
+            padding: 4px;
+        }
+        .lists-tab {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: none;
+            color: var(--sl-text-dim);
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.25s;
+            font-family: 'Inter', sans-serif;
+        }
+        .lists-tab.active { background: var(--sl-gold); color: #000; }
+        .lists-new-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, var(--sl-gold), var(--sl-gold-light));
+            color: #000;
+            font-weight: 700;
+            font-size: 13px;
+            padding: 10px 24px;
+            border-radius: var(--sl-radius-sm);
+            border: none;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+        .lists-new-btn:hover { box-shadow: 0 4px 16px rgba(212,175,55,0.3); }
+
+        /* ===== Lists Grid ===== */
+        .lists-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+        @media (max-width: 600px) { .lists-grid { grid-template-columns: 1fr; } }
+
+        /* List Card */
+        .list-card {
+            background: var(--sl-card);
+            border: 1px solid var(--sl-border-light);
+            border-radius: var(--sl-radius);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .list-card:hover {
+            border-color: var(--sl-border);
+            transform: translateY(-4px);
+            box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+        }
+        .list-card-images {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            height: 140px;
+            gap: 2px;
+            background: var(--sl-surface);
+        }
+        .list-card-images img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .list-card-images.single { grid-template-columns: 1fr; }
+        .list-card-images .lci-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--sl-surface);
+            color: var(--sl-text-muted);
+            font-size: 24px;
+        }
+        .list-card-body { padding: 18px 20px; }
+        .list-card-name {
+            font-size: 17px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .list-card-name .list-icon {
+            color: var(--sl-gold);
+            font-size: 14px;
+        }
+        .list-card-meta {
+            font-size: 12px;
+            color: var(--sl-text-muted);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .list-card-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+        .list-card-tag {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: rgba(212,175,55,0.08);
+            color: var(--sl-gold);
+        }
+        .list-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            border-top: 1px solid var(--sl-border-light);
+        }
+        .list-card-action {
+            background: none;
+            border: none;
+            color: var(--sl-text-muted);
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .list-card-action:hover { color: var(--sl-gold); background: rgba(212,175,55,0.08); }
+
+        /* ===== Saved Venues Section ===== */
+        .saved-section {
+            margin-top: 40px;
+        }
+        .saved-section-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .saved-section-title i { color: var(--sl-gold); }
+
+        .saved-venues-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        @media (max-width: 600px) { .saved-venues-grid { grid-template-columns: 1fr; } }
+
+        .saved-venue-card {
+            background: var(--sl-card);
+            border: 1px solid var(--sl-border-light);
+            border-radius: var(--sl-radius);
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        .saved-venue-card:hover {
+            border-color: var(--sl-border);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 36px rgba(0,0,0,0.35);
+        }
+        .saved-venue-img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            display: block;
+        }
+        .saved-venue-body { padding: 16px 18px; }
+        .saved-venue-name { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+        .saved-venue-meta {
+            font-size: 12px;
+            color: var(--sl-text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .saved-venue-rating { color: var(--sl-gold); font-weight: 600; }
+        .saved-venue-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px 14px;
+        }
+        .saved-venue-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+        .saved-venue-btn.primary {
+            background: linear-gradient(135deg, var(--sl-gold), var(--sl-gold-light));
+            color: #000;
+        }
+        .saved-venue-btn.primary:hover { box-shadow: 0 4px 12px rgba(212,175,55,0.3); }
+        .saved-venue-btn.secondary {
+            background: rgba(255,255,255,0.06);
+            color: var(--sl-text-dim);
+            border: 1px solid var(--sl-border-light);
+        }
+        .saved-venue-btn.secondary:hover { border-color: rgba(255,255,255,0.15); color: #fff; }
+        .saved-venue-btn.remove {
+            background: none;
+            color: var(--sl-text-muted);
+            flex: 0;
+            padding: 10px 12px;
+        }
+        .saved-venue-btn.remove:hover { color: #ff6b6b; }
+
+        /* Empty State */
+        .lists-empty {
+            text-align: center;
+            padding: 60px 24px;
+            background: var(--sl-card);
+            border: 1px dashed rgba(255,255,255,0.1);
+            border-radius: var(--sl-radius);
+        }
+        .lists-empty i {
+            font-size: 40px;
+            color: var(--sl-text-muted);
+            margin-bottom: 16px;
+        }
+        .lists-empty h3 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .lists-empty p {
+            font-size: 14px;
+            color: var(--sl-text-dim);
+            margin-bottom: 24px;
+        }
+        .lists-empty a {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, var(--sl-gold), var(--sl-gold-light));
+            color: #000;
+            font-weight: 700;
+            font-size: 14px;
+            padding: 12px 28px;
+            border-radius: 10px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .lists-empty a:hover { box-shadow: 0 4px 16px rgba(212,175,55,0.3); }
+
+        /* Create List Modal */
+        .create-list-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            z-index: 6000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .create-list-modal.active { display: flex; }
+        .create-list-panel {
+            background: var(--sl-card);
+            border: 1px solid var(--sl-border);
+            border-radius: 20px;
+            padding: 32px;
+            width: 100%;
+            max-width: 480px;
+            position: relative;
+        }
+        .create-list-panel h3 {
+            font-size: 22px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 24px;
+        }
+        .clm-close {
+            position: absolute;
+            top: 16px; right: 16px;
+            background: rgba(255,255,255,0.06);
+            border: none;
+            color: var(--sl-text-dim);
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .clm-close:hover { background: rgba(255,255,255,0.12); color: #fff; }
+        .clm-field { margin-bottom: 18px; }
+        .clm-label { font-size: 13px; font-weight: 600; color: var(--sl-text-dim); margin-bottom: 6px; display: block; }
+        .clm-input {
+            width: 100%;
+            background: var(--sl-surface);
+            border: 1px solid var(--sl-border-light);
+            border-radius: var(--sl-radius-sm);
+            padding: 12px 16px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s;
+        }
+        .clm-input:focus { border-color: var(--sl-gold); }
+        .clm-row { display: flex; gap: 12px; }
+        .clm-chip-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .clm-chip {
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--sl-border-light);
+            color: var(--sl-text-dim);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .clm-chip.active { background: rgba(212,175,55,0.12); border-color: var(--sl-gold); color: var(--sl-gold); }
+        .clm-submit {
+            width: 100%;
+            background: linear-gradient(135deg, var(--sl-gold), var(--sl-gold-light));
+            color: #000;
+            font-weight: 700;
+            font-size: 15px;
+            padding: 14px;
+            border-radius: var(--sl-radius-sm);
+            border: none;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            margin-top: 8px;
+            transition: all 0.2s;
+        }
+        .clm-submit:hover { box-shadow: 0 4px 16px rgba(212,175,55,0.3); }
+
+        /* Tonight Itinerary Widget */
+        .itinerary-section { margin-top: 40px; }
+        .itinerary-card {
+            background: var(--sl-card);
+            border: 1px solid var(--sl-border);
+            border-radius: var(--sl-radius);
+            padding: 24px;
+        }
+        .itinerary-card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .itinerary-card h3 i { color: var(--sl-gold); }
+        .itinerary-empty { font-size: 14px; color: var(--sl-text-dim); }
+        .itinerary-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 0;
+        }
+        .itinerary-item + .itinerary-item { border-top: 1px solid var(--sl-border-light); }
+        .itinerary-num {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: rgba(212,175,55,0.12);
+            color: var(--sl-gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .itinerary-name { font-size: 14px; font-weight: 600; color: #fff; }
+        .itinerary-type { font-size: 12px; color: var(--sl-text-muted); }
+        .itinerary-remove {
+            margin-left: auto;
+            background: none; border: none;
+            color: var(--sl-text-muted);
+            cursor: pointer; font-size: 14px;
+            padding: 4px 8px; border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .itinerary-remove:hover { color: #ff6b6b; }
+    </style>
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SceneLink">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="SceneLink">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="57x57" href="/icons/apple-touch-icon-57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="/icons/apple-touch-icon-60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="/icons/apple-touch-icon-72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="/icons/apple-touch-icon-76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="/icons/apple-touch-icon-114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-touch-icon-120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="/icons/apple-touch-icon-144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png">
+
+    <meta property="og:title" content="My Lists | SceneLink">
+    <meta property="og:description" content="Organize your favorite Boston spots into custom lists.">
+    <meta property="og:url" content="https://scenelink.app/my-lists.html">
+    <meta name="twitter:title" content="My Lists | SceneLink">
+    <meta name="twitter:description" content="Organize your favorite Boston spots into custom lists.">
+    <link rel="canonical" href="https://scenelink.app/my-lists.html">
+    <meta property="og:site_name" content="SceneLink">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/icons/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/icons/icon-512.png">
+  <!-- SceneLink unified auth bundle -->
+
+  <!-- SceneLink unified auth bundle -->
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="css/sl-phase8-home.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-universal-search.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8d-hotfix.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8f-polish.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="/css/sl-recovery-truthfulness.css?v=connected-20261108-6">
+</head>
+<body data-sl-requires-auth="My Lists" data-sl-page="requires-auth" data-sl-page-label="Your saved lists">
+
+<!-- Universal Header -->
+<header class="header-enhanced" id="mainHeader">
+    <nav class="nav-enhanced">
+        <div class="nav-left">
+            <a class='logo-container' href='/'>
+                <img loading="eager" fetchpriority="high" width="180" height="48" src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" class="logo-main">
+            </a>
+        </div>
+        <ul class="nav-center">
+            <li><a class='nav-link' href='/'>Home</a></li>
+            <li><a class='nav-link' href='/explore'>Explore</a></li>
+            <li><a class='nav-link' href='/nightlife'>Nightlife</a></li>
+            <li><a class='nav-link' href='/tonight'>Tonight's Picks</a></li>
+                <li><a class='nav-link' href='/social-feed'>Social</a></li>
+                <li><a href="/" class="nav-link" data-ai-concierge-nav="1" data-sl-concierge="Plan my night in Boston" onclick="event.preventDefault();"><i class="fas fa-magic" style="color:#D4AF37;margin-right:4px;"></i>Ask AI</a></li>
+        </ul>
+        <div class="nav-right">
+            <button class="btn-header-primary sl-auth-trigger">Log in / Sign up</button>
+        </div>
+        <button class="mobile-menu-btn" id="mobileMenuBtn">
+            <span></span><span></span><span></span>
+        </button>
+    </nav>
+</header>
+
+<!-- Logged Out State -->
+<div class="lists-logged-out" id="listsLoggedOut">
+    <div class="lists-lo-icon"><i class="fas fa-heart"></i></div>
+    <h2 class="lists-lo-title">Your Saved Places</h2>
+    <p class="lists-lo-desc">Sign in to save your favorite restaurants, bars, and nightlife spots, and organize them into custom lists.</p>
+    <button class="lists-lo-btn sl-auth-trigger"><i class="fas fa-arrow-right"></i> Sign In to Get Started</button>
+</div>
+
+<!-- Logged In State -->
+<div class="lists-app" id="listsApp">
+    <div class="lists-container">
+        <!-- Page Header -->
+        <div class="lists-page-header">
+            <div>
+                <h1>My <span>Lists</span></h1>
+                <p class="lists-page-subtitle">Your curated collection of Boston's best spots</p>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="lists-stats-row">
+            <div class="lists-stat-chip">
+                <i class="fas fa-heart"></i>
+                <div>
+                    <div class="lists-stat-num" id="statSavedCount">0</div>
+                    <div class="lists-stat-label">Saved</div>
+                </div>
+            </div>
+            <div class="lists-stat-chip">
+                <i class="fas fa-layer-group"></i>
+                <div>
+                    <div class="lists-stat-num" id="statListsCount">0</div>
+                    <div class="lists-stat-label">Lists</div>
+                </div>
+            </div>
+            <div class="lists-stat-chip">
+                <i class="fas fa-calendar-check"></i>
+                <div>
+                    <div class="lists-stat-num" id="statItineraryCount">0</div>
+                    <div class="lists-stat-label">Tonight</div>
+                </div>
+            </div>
+            <div class="lists-stat-chip">
+                <i class="fas fa-share-nodes"></i>
+                <div>
+                    <div class="lists-stat-num">0</div>
+                    <div class="lists-stat-label">Shared</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="lists-toolbar">
+            <div class="lists-tabs">
+                <button class="lists-tab active" data-tab="all">All</button>
+                <button class="lists-tab" data-tab="favorites">Favorites</button>
+                <button class="lists-tab" data-tab="custom">My Lists</button>
+                <button class="lists-tab" data-tab="itinerary">Tonight</button>
+            </div>
+            <button class="lists-new-btn" id="btnNewList"><i class="fas fa-plus"></i> New List</button>
+        </div>
+
+        <!-- Content: Custom Lists -->
+        <div id="listsGrid" class="lists-grid">
+            <!-- Rendered by JS -->
+        </div>
+
+        <!-- Content: Saved Venues (Favorites) -->
+        <div class="saved-section" id="savedSection">
+            <h2 class="saved-section-title"><i class="fas fa-heart"></i> Saved Venues</h2>
+            <div class="saved-venues-grid" id="savedVenuesGrid">
+                <!-- Rendered by JS -->
+            </div>
+        </div>
+
+        <!-- Content: Tonight's Itinerary -->
+        <div class="itinerary-section" id="itinerarySection" style="display:none">
+            <div class="itinerary-card">
+                <h3><i class="fas fa-route"></i> Tonight's Itinerary</h3>
+                <div id="itineraryContent">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create List Modal -->
+<div class="create-list-modal" id="createListModal">
+    <div class="create-list-panel">
+        <button class="clm-close" id="clmClose">&times;</button>
+        <h3>Create New List</h3>
+        <div class="clm-field">
+            <label class="clm-label">List Name</label>
+            <input class="clm-input" id="clmName" placeholder="e.g., Date Night Spots">
+        </div>
+        <div class="clm-field">
+            <label class="clm-label">Description (optional)</label>
+            <input class="clm-input" id="clmDesc" placeholder="A short description...">
+        </div>
+        <div class="clm-field">
+            <label class="clm-label">Category</label>
+            <div class="clm-chip-group" id="clmChips">
+                <button class="clm-chip active" data-cat="general"><i class="fas fa-star"></i> General</button>
+                <button class="clm-chip" data-cat="dining"><i class="fas fa-utensils"></i> Dining</button>
+                <button class="clm-chip" data-cat="nightlife"><i class="fas fa-moon"></i> Nightlife</button>
+                <button class="clm-chip" data-cat="datenight"><i class="fas fa-heart"></i> Date Night</button>
+                <button class="clm-chip" data-cat="brunch"><i class="fas fa-sun"></i> Brunch</button>
+            </div>
+        </div>
+        <div class="clm-field">
+            <label class="clm-label">Visibility</label>
+            <div class="clm-row">
+                <button class="clm-chip active" data-vis="private"><i class="fas fa-lock"></i> Private</button>
+                <button class="clm-chip" data-vis="friends"><i class="fas fa-users"></i> Friends</button>
+                <button class="clm-chip" data-vis="public"><i class="fas fa-globe"></i> Public</button>
+            </div>
+        </div>
+        <button class="clm-submit" id="clmSubmit">Create List</button>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="footer-unified">
+    <div class="footer-newsletter-bar">
+        <div class="footer-newsletter-inner">
+            <div class="footer-newsletter-text">
+                <h4>Stay in the Scene</h4>
+                <p>Get weekly picks, exclusive events & hidden gems delivered to your inbox.</p>
+            </div>
+            <form class="footer-newsletter-form" data-sl-newsletter="1">
+                <input type="email" name="email" placeholder="Enter your email address" required>
+                <button type="submit">Subscribe</button>
+            </form>
+        </div>
+    </div>
+    <div class="footer-main-content">
+        <div class="footer-brand-col">
+            <a class='footer-logo-link' href='/'>
+                <img loading="lazy" src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" class="footer-logo-img">
+            </a>
+            <p class="footer-brand-tagline">Eat. Drink. Discover.</p>
+            <p class="footer-brand-desc">Your social guide to the best restaurants, bars, events, and nightlife experiences in Boston.</p>
+            <div class="footer-social-icons">
+                <a href="https://www.facebook.com/SceneLinkApp/" target="_blank" rel="noopener" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                <a href="https://www.instagram.com/scenelink.app" target="_blank" rel="noopener" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="https://x.com/Scenelinkapp" target="_blank" rel="noopener" class="fab fa-twitter" aria-label="X"><i class="fab fa-twitter"></i></a>
+                <a href="https://www.youtube.com/@SceneLinkapp" target="_blank" rel="noopener" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+            </div>
+        </div>
+        <div class="footer-link-col">
+            <h5>Discover</h5>
+            <ul>
+                <li><a href='/explore'>Restaurants</a></li>
+                <li><a href='/nightlife'>Bars & Nightlife</a></li>
+                <li><a href='/tonight'>Tonight's Picks</a></li>
+                <li><a href='/events'>Events</a></li>
+            </ul>
+        </div>
+        <div class="footer-link-col">
+            <h5>Plan</h5>
+            <ul>
+                <li><a href='/my-lists'>My Lists</a></li>
+                <li><a href='/plan-with-friends'>Plan Builder — Beta</a></li>
+                <li><a href='/profile'>My Profile</a></li>
+                <li><a href="/" data-sl-concierge="Plan my night in Boston" onclick="event.preventDefault();">Ask AI Concierge</a></li>
+            </ul>
+        </div>
+        <div class="footer-link-col">
+            <h5>Company</h5>
+            <ul>
+                <li><a href='/about'>About Us</a></li>
+                <li><a href='/contact'>Contact</a></li>
+                <li><a href='/business'>For Business</a></li>
+            </ul>
+        </div>
+        <div class="footer-link-col">
+            <h5>Legal</h5>
+            <ul>
+                <li><a href='/privacy'>Privacy Policy</a></li>
+                <li><a href='/terms'>Terms of Service</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer-bottom-bar">
+        <div class="footer-bottom-inner">
+            <p class="footer-copyright">&copy; 2026 <a href='/'>SceneLink</a>. All rights reserved.</p>
+            <div class="footer-bottom-links">
+                <a href='/privacy'>Privacy</a>
+                <a href='/terms'>Terms</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+
+
+
+
+
+
+
+
+    <!-- Phase 7A perf: sl-social-feed.js removed (not a social page) -->
+
+
+
+    <!-- SL-POLISH-SCRIPTS -->
+    <script src="js/sl-bundle-7d-ui.js?v=connected-20261108-6" defer></script>
+
+
+
+<script>
+(function() {
+    'use strict';
+
+    // Venue data lookup for saved venues
+    var venueDB = {
+        'yvonnes': { name: "Yvonne's", type: 'Cocktail Lounge', area: 'Downtown Crossing', rating: '4.9', img: '/assets/img/placeholder-venue.svg' },
+        'contessa': { name: 'Contessa', type: 'Italian Restaurant', area: 'Newbury Street', rating: '4.8', img: '/assets/img/placeholder-venue.svg' },
+        'bijou': { name: 'Bijou Nightclub', type: 'Nightclub', area: 'Theater District', rating: '4.6', img: '/assets/img/placeholder-venue.svg' },
+        'saltie-girl': { name: 'Saltie Girl', type: 'Seafood Bar', area: 'Back Bay', rating: '4.9', img: '/assets/img/placeholder-venue.svg' },
+        'the-grand': { name: 'The Grand', type: 'Live Music', area: 'Seaport', rating: '4.7', img: '/assets/img/placeholder-event.svg' },
+        'lookout-rooftop': { name: 'Lookout Rooftop', type: 'Rooftop Bar', area: 'Seaport', rating: '4.8', img: '/assets/img/placeholder-venue.svg' },
+        'nautilus': { name: 'Nautilus Pier 4', type: 'Seafood', area: 'Seaport', rating: '4.8', img: '/assets/img/placeholder-venue.svg' },
+        'mariel': { name: 'Mariel', type: 'Cuban Restaurant', area: 'Back Bay', rating: '4.7', img: '/assets/img/placeholder-venue.svg' }
+    };
+
+    // Default lists
+    var defaultLists = [
+        { id: 'favorites', name: 'My Favorites', icon: 'fas fa-heart', desc: 'Your saved venues', category: 'general', visibility: 'private', editable: false },
+        { id: 'date-night', name: 'Date Night', icon: 'fas fa-heart', desc: 'Perfect romantic spots', category: 'datenight', visibility: 'private', editable: true },
+        { id: 'group-outings', name: 'Group Outings', icon: 'fas fa-users', desc: 'Best for big groups', category: 'general', visibility: 'friends', editable: true }
+    ];
+
+    var currentTab = 'all';
+
+    // ── Auth Check ──
+    function checkAuth() {
+        var loggedOut = document.getElementById('listsLoggedOut');
+        var app = document.getElementById('listsApp');
+
+        // Check via SLApi token (primary), or sl_current_user (legacy), or if there are saved venues (guest mode)
+        var isLoggedIn = (window.SLApi && window.SLApi.isLoggedIn());
+        if (!isLoggedIn) {
+            try { isLoggedIn = !!JSON.parse(localStorage.getItem('sl_current_user')); } catch(e) {}
+        }
+        // Also allow guest access if user has saved venues (show their saves even without login)
+        var hasSaved = Object.keys(getSaved()).length > 0;
+
+        if (isLoggedIn || hasSaved) {
+            if (loggedOut) loggedOut.classList.add('hidden');
+            if (app) { app.classList.add('active'); }
+            initLists();
+        } else {
+            if (loggedOut) loggedOut.classList.remove('hidden');
+            if (app) app.classList.remove('active');
+        }
+    }
+
+    // ── Init ──
+    function initLists() {
+        updateStats();
+        renderAll();
+        setupTabs();
+        setupCreateList();
+    }
+
+    // ── Stats ──
+    function updateStats() {
+        var saved = getSaved();
+        var lists = getCustomLists();
+        var itinerary = getItinerary();
+
+        var el1 = document.getElementById('statSavedCount');
+        var el2 = document.getElementById('statListsCount');
+        var el3 = document.getElementById('statItineraryCount');
+        if (el1) el1.textContent = Object.keys(saved).length;
+        if (el2) el2.textContent = lists.length + defaultLists.length;
+        if (el3) el3.textContent = itinerary.length;
+    }
+
+    // ── Data Access (prefer unified SLState) ──
+    function getSaved() {
+        if (window.SLState && typeof SLState.getFavorites === 'function') {
+            try {
+                var favs = SLState.getFavorites();
+                if (Array.isArray(favs)) {
+                    // Convert array to map keyed by id for back-compat with this page's renderer
+                    var map = {};
+                    favs.forEach(function (v) {
+                        var id = v.id || v.venue_id;
+                        if (id) map[id] = v;
+                    });
+                    return map;
+                }
+                return favs || {};
+            } catch(_) {}
+        }
+        try { return JSON.parse(localStorage.getItem('sl_saved_venues') || '{}'); } catch(e) { return {}; }
+    }
+    function getCustomLists() {
+        if (window.SLState && typeof SLState.getLists === 'function') {
+            try {
+                var ls = SLState.getLists();
+                if (Array.isArray(ls) && ls.length) return ls;
+            } catch(_) {}
+        }
+        try { return JSON.parse(localStorage.getItem('sl_custom_lists') || '[]'); } catch(e) { return []; }
+    }
+    function getItinerary() {
+        if (window.SLState && typeof SLState.getActivePlan === 'function') {
+            try {
+                var p = SLState.getActivePlan();
+                if (p && Array.isArray(p.venues) && p.venues.length) return p.venues;
+            } catch(_) {}
+        }
+        try { return JSON.parse(localStorage.getItem('sl_itinerary') || '[]'); } catch(e) { return []; }
+    }
+
+    // ── Render Everything ──
+    function renderAll() {
+        renderLists();
+        renderSavedVenues();
+        renderItinerary();
+        updateTabVisibility();
+    }
+
+    // ── Tab Visibility ──
+    function updateTabVisibility() {
+        var listsGrid = document.getElementById('listsGrid');
+        var savedSection = document.getElementById('savedSection');
+        var itinSection = document.getElementById('itinerarySection');
+
+        if (currentTab === 'all') {
+            listsGrid.style.display = 'grid';
+            savedSection.style.display = 'block';
+            itinSection.style.display = 'block';
+        } else if (currentTab === 'favorites') {
+            listsGrid.style.display = 'none';
+            savedSection.style.display = 'block';
+            itinSection.style.display = 'none';
+        } else if (currentTab === 'custom') {
+            listsGrid.style.display = 'grid';
+            savedSection.style.display = 'none';
+            itinSection.style.display = 'none';
+        } else if (currentTab === 'itinerary') {
+            listsGrid.style.display = 'none';
+            savedSection.style.display = 'none';
+            itinSection.style.display = 'block';
+        }
+    }
+
+    // ── Render Lists ──
+    function renderLists() {
+        var container = document.getElementById('listsGrid');
+        if (!container) return;
+
+        var allLists = defaultLists.concat(getCustomLists());
+        var saved = getSaved();
+        var savedCount = Object.keys(saved).length;
+
+        // Generate list card images from saved venues
+        var savedImages = Object.keys(saved).map(function(key) {
+            var v = venueDB[key];
+            return v ? v.img : null;
+        }).filter(Boolean);
+
+        container.innerHTML = allLists.map(function(list) {
+            var imgs = list.id === 'favorites' ? savedImages : savedImages.slice(0, 4);
+            // Phase 7E: never fabricate counts. Show real saved count for the favorites
+            // list; for custom lists, show the real venue count from the list itself
+            // when the backend provides one, otherwise omit the count entirely.
+            var realCount = (typeof list.venue_count === 'number') ? list.venue_count
+                          : (Array.isArray(list.venues) ? list.venues.length : null);
+            var count = list.id === 'favorites' ? savedCount : realCount;
+            var visIcon = list.visibility === 'public' ? 'fa-globe' : list.visibility === 'friends' ? 'fa-users' : 'fa-lock';
+
+            var imgHtml = '';
+            if (imgs.length >= 4) {
+                imgHtml = '<div class="list-card-images">' +
+                    imgs.slice(0, 4).map(function(i) { return '<img src="' + i + '" loading="lazy">'; }).join('') +
+                '</div>';
+            } else if (imgs.length >= 1) {
+                imgHtml = '<div class="list-card-images single"><img src="' + imgs[0] + '" loading="lazy"></div>';
+            } else {
+                imgHtml = '<div class="list-card-images single"><div class="lci-placeholder"><i class="fas fa-layer-group"></i></div></div>';
+            }
+
+            return '<div class="list-card" data-id="' + list.id + '">' +
+                imgHtml +
+                '<div class="list-card-body">' +
+                    '<div class="list-card-name"><i class="' + (list.icon || 'fas fa-list') + ' list-icon"></i> ' + list.name + '</div>' +
+                    '<div class="list-card-meta">' +
+                        ((count !== null && count !== undefined)
+                          ? '<span><i class="fas fa-map-pin" style="margin-right:4px"></i>' + count + ' places</span>'
+                          : '') +
+                        '<span><i class="fas ' + visIcon + '" style="margin-right:4px"></i>' + list.visibility + '</span>' +
+                    '</div>' +
+                    (list.category ? '<div class="list-card-tags"><span class="list-card-tag">' + list.category + '</span></div>' : '') +
+                '</div>' +
+                '<div class="list-card-footer">' +
+                    '<button class="list-card-action"><i class="fas fa-pen"></i> Edit</button>' +
+                    (list.editable !== false ? '<button class="list-card-action list-delete-btn" data-id="' + list.id + '"><i class="fas fa-trash"></i></button>' : '') +
+                '</div>' +
+            '</div>';
+        }).join('');
+
+        // Delete list handler
+        container.addEventListener('click', function(e) {
+            var delBtn = e.target.closest('.list-delete-btn');
+            if (delBtn) {
+                e.stopPropagation();
+                var id = delBtn.getAttribute('data-id');
+                var lists = getCustomLists().filter(function(l) { return l.id !== id; });
+                localStorage.setItem('sl_custom_lists', JSON.stringify(lists));
+                renderAll();
+                updateStats();
+                if (window.SLLists && window.SLLists.showToast) window.SLLists.showToast('List deleted');
+            }
+        });
+    }
+
+    // ── Render Saved Venues ──
+    function renderSavedVenues() {
+        var container = document.getElementById('savedVenuesGrid');
+        if (!container) return;
+
+        var saved = getSaved();
+        var keys = Object.keys(saved);
+
+        if (keys.length === 0) {
+            container.innerHTML = '<div class="lists-empty" style="grid-column:1/-1">' +
+                '<i class="far fa-heart"></i>' +
+                '<h3>No Saved Venues Yet</h3>' +
+                '<p>Start exploring and tap the heart icon to save venues you love.</p>' +
+                '<a href="explore.html"><i class="fas fa-compass"></i> Explore Venues</a>' +
+            '</div>';
+            return;
+        }
+
+        container.innerHTML = keys.map(function(key) {
+            var data = saved[key];
+            // Use full data stored by improved save functions, fall back to venueDB then defaults
+            var v = {
+                name: data.name || venueDB[key] && venueDB[key].name || key,
+                type: data.type || venueDB[key] && venueDB[key].type || 'Venue',
+                area: data.area || venueDB[key] && venueDB[key].area || (data.neighborhood || data.city || 'Boston'),
+                rating: data.rating || venueDB[key] && venueDB[key].rating || '—',
+                img: data.img || venueDB[key] && venueDB[key].img || '/assets/img/placeholder-venue.svg',
+                slug: data.slug || ''
+            };
+            var detailKey = v.slug || key;
+
+            return '<div class="saved-venue-card" data-id="' + key + '" data-detail-key="' + detailKey + '">' +
+                '<img class="saved-venue-img" src="' + v.img + '" alt="' + v.name + '" loading="lazy" onerror="SL_IMG_FALLBACK(this,\'venue\')">' +
+                '<div class="saved-venue-body">' +
+                    '<div class="saved-venue-name">' + v.name + '</div>' +
+                    '<div class="saved-venue-meta">' +
+                        '<span>' + v.type + '</span><span>·</span><span>' + v.area + '</span>' +
+                        (v.rating && v.rating !== '—' ? '<span class="saved-venue-rating"><i class="fas fa-star"></i> ' + v.rating + '</span>' : '') +
+                    '</div>' +
+                    (data.list && data.list !== 'favorites' ? '<div style="font-size:11px;color:#D4AF37;margin-top:4px;"><i class="fas fa-layer-group"></i> ' + data.list + '</div>' : '') +
+                '</div>' +
+                '<div class="saved-venue-actions">' +
+                    '<button class="saved-venue-btn primary sv-view-btn" data-detail-key="' + detailKey + '"><i class="fas fa-eye"></i> View</button>' +
+                    '<button class="saved-venue-btn secondary sv-plan-btn"><i class="fas fa-calendar-plus"></i> Plan</button>' +
+                    '<button class="saved-venue-btn remove sv-remove-btn" data-id="' + key + '" title="Remove"><i class="fas fa-trash-alt"></i></button>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+
+        // Click handler for saved venue cards
+        container.addEventListener('click', function(e) {
+            // View venue button
+            var viewBtn = e.target.closest('.sv-view-btn');
+            if (viewBtn) {
+                e.stopPropagation();
+                var detailKey = viewBtn.getAttribute('data-detail-key');
+                if (detailKey && window.SLVenueDetail) {
+                    window.SLVenueDetail.open(detailKey);
+                }
+                return;
+            }
+
+            // Remove button
+            var rmBtn = e.target.closest('.sv-remove-btn');
+            if (rmBtn) {
+                e.stopPropagation();
+                var id = rmBtn.getAttribute('data-id');
+                var s = getSaved();
+                delete s[id];
+                localStorage.setItem('sl_saved_venues', JSON.stringify(s));
+                window.dispatchEvent(new Event('sl-lists-changed'));
+                // Also unsave from API
+                if (window.SLApi && window.SLApi.isLoggedIn()) {
+                    window.SLApi.toggleFavorite(id).catch(function(){});
+                }
+                renderAll();
+                updateStats();
+                mlToast('Venue removed');
+                return;
+            }
+
+            // Plan button
+            var planBtn = e.target.closest('.sv-plan-btn');
+            if (planBtn) {
+                e.stopPropagation();
+                var card = planBtn.closest('.saved-venue-card');
+                var vid = card ? card.getAttribute('data-id') : null;
+                if (!vid) return;
+                var savedData = getSaved();
+                var vData = savedData[vid] || {};
+                var vName = vData.name || venueDB[vid] && venueDB[vid].name || vid;
+                var vType = vData.type || venueDB[vid] && venueDB[vid].type || 'Venue';
+                var itinerary = getItinerary();
+                if (!itinerary.find(function(x) { return x.id === vid; })) {
+                    itinerary.push({ id: vid, name: vName, type: vType, order: itinerary.length + 1 });
+                    localStorage.setItem('sl_itinerary', JSON.stringify(itinerary));
+                    renderItinerary();
+                    updateStats();
+                    mlToast('✅ Added ' + vName + ' to tonight\'s plan!');
+                } else {
+                    mlToast('Already in your plan');
+                }
+                return;
+            }
+
+            // Click card body → open venue detail
+            var venueCard = e.target.closest('.saved-venue-card');
+            if (venueCard && !e.target.closest('button')) {
+                var dKey = venueCard.getAttribute('data-detail-key');
+                if (dKey && window.SLVenueDetail) {
+                    window.SLVenueDetail.open(dKey);
+                }
+            }
+        });
+    }
+
+    function mlToast(msg) {
+        var t = document.createElement('div');
+        t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(212,175,55,0.95);color:#0a0a0a;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:700;z-index:999999;pointer-events:none;white-space:nowrap;';
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity 0.3s'; }, 2200);
+        setTimeout(function(){ if(t.parentNode) t.remove(); }, 2500);
+    }
+
+    // ── Render Itinerary ──
+    function renderItinerary() {
+        var container = document.getElementById('itineraryContent');
+        var section = document.getElementById('itinerarySection');
+        if (!container) return;
+
+        var itinerary = getItinerary();
+        if (currentTab !== 'itinerary' && itinerary.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+        section.style.display = 'block';
+
+        if (itinerary.length === 0) {
+            container.innerHTML = '<p class="itinerary-empty">No venues planned for tonight. Save venues and add them to your plan!</p>';
+            return;
+        }
+
+        container.innerHTML = itinerary.map(function(item, idx) {
+            return '<div class="itinerary-item">' +
+                '<div class="itinerary-num">' + (idx + 1) + '</div>' +
+                '<div>' +
+                    '<div class="itinerary-name">' + item.name + '</div>' +
+                    '<div class="itinerary-type">' + (item.type || 'Venue') + '</div>' +
+                '</div>' +
+                '<button class="itinerary-remove itin-remove-btn" data-id="' + item.id + '" title="Remove"><i class="fas fa-times"></i></button>' +
+            '</div>';
+        }).join('');
+
+        // Remove handler
+        container.addEventListener('click', function(e) {
+            var btn = e.target.closest('.itin-remove-btn');
+            if (!btn) return;
+            var id = btn.getAttribute('data-id');
+            var itin = getItinerary().filter(function(x) { return x.id !== id; });
+            localStorage.setItem('sl_itinerary', JSON.stringify(itin));
+            renderItinerary();
+            updateStats();
+            if (window.SLLists && window.SLLists.showToast) window.SLLists.showToast('Removed from plan');
+        });
+    }
+
+    // ── Tabs ──
+    function setupTabs() {
+        document.querySelectorAll('.lists-tab').forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.lists-tab').forEach(function(t) { t.classList.remove('active'); });
+                this.classList.add('active');
+                currentTab = this.getAttribute('data-tab');
+                updateTabVisibility();
+                renderItinerary();
+            });
+        });
+    }
+
+    // ── Create List Modal ──
+    function setupCreateList() {
+        var modal = document.getElementById('createListModal');
+        var openBtn = document.getElementById('btnNewList');
+        var closeBtn = document.getElementById('clmClose');
+        var submitBtn = document.getElementById('clmSubmit');
+
+        if (openBtn) openBtn.addEventListener('click', function() { modal.classList.add('active'); });
+        if (closeBtn) closeBtn.addEventListener('click', function() { modal.classList.remove('active'); });
+        modal.addEventListener('click', function(e) { if (e.target === modal) modal.classList.remove('active'); });
+
+        // Chip toggles
+        var catChips = document.querySelectorAll('#clmChips .clm-chip');
+        catChips.forEach(function(c) {
+            c.addEventListener('click', function() {
+                catChips.forEach(function(x) { x.classList.remove('active'); });
+                c.classList.add('active');
+            });
+        });
+
+        var visChips = document.querySelectorAll('[data-vis]');
+        visChips.forEach(function(c) {
+            c.addEventListener('click', function() {
+                visChips.forEach(function(x) { x.classList.remove('active'); });
+                c.classList.add('active');
+            });
+        });
+
+        if (submitBtn) submitBtn.addEventListener('click', function() {
+            var name = document.getElementById('clmName').value.trim();
+            if (!name) { document.getElementById('clmName').style.borderColor = '#ff6b6b'; return; }
+            var desc = document.getElementById('clmDesc').value.trim();
+            var cat = document.querySelector('#clmChips .clm-chip.active');
+            var vis = document.querySelector('[data-vis].active');
+
+            var lists = getCustomLists();
+            lists.push({
+                id: 'list-' + Date.now(),
+                name: name,
+                desc: desc,
+                icon: 'fas fa-list',
+                category: cat ? cat.getAttribute('data-cat') : 'general',
+                visibility: vis ? vis.getAttribute('data-vis') : 'private',
+                editable: true,
+                created: Date.now()
+            });
+            localStorage.setItem('sl_custom_lists', JSON.stringify(lists));
+            modal.classList.remove('active');
+            document.getElementById('clmName').value = '';
+            document.getElementById('clmDesc').value = '';
+            renderAll();
+            updateStats();
+            if (window.SLLists && window.SLLists.showToast) window.SLLists.showToast('List "' + name + '" created!');
+        });
+    }
+
+    // ── Listen ──
+    window.addEventListener('storage', checkAuth);
+    document.addEventListener('sl-auth-change', checkAuth);
+    window.addEventListener('sl-auth-change', checkAuth);
+    window.addEventListener('sl-lists-changed', function() { if (document.getElementById('listsApp').classList.contains('active')) { renderAll(); updateStats(); } });
+    // React to unified state changes (from Save/Plan buttons anywhere)
+    window.addEventListener('sl-state-change', function() { var app = document.getElementById('listsApp'); if (app && app.classList.contains('active')) { renderAll(); updateStats(); } });
+    document.addEventListener('sl-state-change', function() { var app = document.getElementById('listsApp'); if (app && app.classList.contains('active')) { renderAll(); updateStats(); } });
+    // Re-render on auth changes (server hydration)
+    window.addEventListener('sl-auth-change', function() { setTimeout(function(){ var app = document.getElementById('listsApp'); if (app && app.classList.contains('active')) { renderAll(); updateStats(); } }, 500); });
+    document.addEventListener('DOMContentLoaded', checkAuth);
+    setTimeout(checkAuth, 300);
+    setTimeout(checkAuth, 800);
+    setTimeout(checkAuth, 1500);
+})();
+</script>
+
+
+
+
+    <script defer src="js/ai-concierge-v5.js?v=connected-20261108-6"></script>
+  <script src="js/sl-phase8-launch.js?v=connected-20261108-6" defer></script>
+<script src="js/sl-phase8-completion.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-universal-search.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-social-network.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-phase8d-recovery.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-social-integration-9a.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-verification-banner.js?v=connected-20261108-6" defer></script>
+</body>
+</html>

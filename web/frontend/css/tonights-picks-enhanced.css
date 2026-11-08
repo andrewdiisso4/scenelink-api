@@ -1,0 +1,327 @@
+/* Tonight's Picks Enhanced Styles */
+
+/* Tonight Section Base */
+.tonight-section {
+    padding: 60px 0;
+    margin-bottom: 40px;
+}
+
+.tonight-section .section-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.tonight-section .section-header h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 12px;
+}
+
+.tonight-section .section-header p {
+    font-size: 1.1rem;
+    color: #666;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* For You Tonight */
+.for-you-tonight {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.for-you-tonight .section-header h2,
+.for-you-tonight .section-header p {
+    color: white;
+}
+
+.tonight-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    margin-top: 40px;
+}
+
+/* Trending Tonight */
+.trending-tonight {
+    background: #fff8f0;
+    position: relative;
+}
+
+.trending-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #ff6b35;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    margin-top: 16px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.tonight-carousel {
+    display: flex;
+    overflow-x: auto;
+    gap: 20px;
+    padding: 20px 0;
+    scroll-snap-type: x mandatory;
+}
+
+.tonight-carousel .venue-card {
+    min-width: 280px;
+    scroll-snap-align: start;
+}
+
+/* Great for Groups */
+.great-for-groups {
+    background: #f0f8ff;
+}
+
+.group-options {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.group-size-selector {
+    display: inline-flex;
+    background: white;
+    border-radius: 12px;
+    padding: 4px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.size-btn {
+    padding: 12px 24px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.size-btn.active {
+    background: #667eea;
+    color: white;
+}
+
+.size-btn:hover:not(.active) {
+    background: #f8f9fa;
+}
+
+/* Last-Minute Reservations */
+.last-minute {
+    background: #fff0f5;
+}
+
+.urgency-timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #dc3545;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    margin-top: 16px;
+}
+
+.last-minute-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.urgency-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 4px solid #dc3545;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+.urgency-card:hover {
+    transform: translateX(8px);
+}
+
+.urgency-info {
+    flex: 1;
+}
+
+.urgency-info h4 {
+    margin-bottom: 4px;
+    color: #1a1a1a;
+}
+
+.urgency-info p {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.urgency-time {
+    text-align: right;
+}
+
+.time-left {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #dc3545;
+}
+
+.book-now-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.3s ease;
+}
+
+.book-now-btn:hover {
+    background: #218838;
+}
+
+/* Compare Tonight */
+.compare-tonight {
+    background: #f8f9fa;
+}
+
+.compare-toggle-btn {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    margin-top: 16px;
+    transition: background 0.3s ease;
+}
+
+.compare-toggle-btn:hover {
+    background: #5a6fd8;
+}
+
+.compare-container {
+    margin-top: 32px;
+}
+
+.compare-table {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.compare-row {
+    display: grid;
+    grid-template-columns: 200px repeat(auto-fit, minmax(150px, 1fr));
+    border-bottom: 1px solid #e9ecef;
+}
+
+.compare-row:last-child {
+    border-bottom: none;
+}
+
+.compare-header {
+    background: #667eea;
+    color: white;
+    font-weight: 600;
+    padding: 16px;
+}
+
+.compare-cell {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.compare-label {
+    font-weight: 600;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    padding: 16px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .tonight-section {
+        padding: 40px 0;
+    }
+    
+    .tonight-section .section-header h2 {
+        font-size: 2rem;
+    }
+    
+    .tonight-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .group-size-selector {
+        flex-direction: column;
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .size-btn {
+        width: 100%;
+    }
+    
+    .urgency-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+    
+    .urgency-time {
+        text-align: left;
+        width: 100%;
+    }
+    
+    .compare-row {
+        grid-template-columns: 120px repeat(2, 1fr);
+    }
+    
+    .compare-cell {
+        font-size: 0.9rem;
+    }
+}
+
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn 0.6s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-in {
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}

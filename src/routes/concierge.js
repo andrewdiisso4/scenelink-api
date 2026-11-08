@@ -12,8 +12,10 @@
 
 const express = require('express');
 const pool = require('../config/database');
+const {publicVenue,availableVenueSQL} = require('../services/venue-helpers');
+const {PUBLIC_EVENT,EVENT_COLUMNS,publicEvent} = require('../launch/events');
 const { optionalAuth } = require('../middleware/auth');
-const { aiConcierge, isEnabled: aiEnabled } = require('./conciergeAI');
+const { runAIConcierge, isEnabled: aiEnabled } = require('./conciergeAI');
 
 const router = express.Router();
 const { aiLimiter } = require('../middleware/rateLimits');
@@ -53,7 +55,7 @@ const VIBES = {
 const NEIGHBORHOODS = [
     'back bay','south end','north end','seaport','downtown','cambridge','beacon hill',
     'fort point','fenway','somerville','allston','brookline','jamaica plain','charlestown',
-    'chinatown','west end','east boston','dorchester','roslindale','brighton','hyde park',
+    'south boston','chinatown','west end','east boston','dorchester','roslindale','brighton','hyde park',
     'mission hill','roxbury','mattapan'
 ];
 
@@ -66,7 +68,7 @@ const TIME_HINTS = {
 };
 
 function classifyIntent(message) {
-    const m = (message || '').toLowerCase().trim();
+    const m = (message || '').toLowerCase().trim().replace(/\bsouthie\b/g,'south boston');
     const intent = {
         primary: 'search',
         cuisines: [],
@@ -145,7 +147,7 @@ function classifyIntent(message) {
 // ═════════════════════════════════════════════════════════════
 async function queryVenues(intent, limit) {
     limit = limit || 5;
-    const conditions = [];
+    const conditions = [availableVenueSQL('')];
     const values = [];
     let i = 1;
 
@@ -167,7 +169,7 @@ async function queryVenues(intent, limit) {
     if (intent.vibes.indexOf('sports') !== -1) typeFilters.push('sports bar','bar');
     if (typeFilters.length) {
         const tf = typeFilters.map(function(t){ return '%' + t + '%'; });
-        conditions.push(`(LOWER(type) ILIKE ANY($${i}) OR LOWER(subcategory) ILIKE ANY($${i}))`);
+        conditions.push(`(LOWER(type) ILIKE ANY($${i}) OR LOWER(category) ILIKE ANY($${i}))`);
         values.push(tf);
         i++;
     }
@@ -187,77 +189,38 @@ async function queryVenues(intent, limit) {
         i++;
     }
 
-    // Time: tonight → is_open_now if available
-    if (intent.times.indexOf('tonight') !== -1) {
-        // Soft filter — prefer trending/hot venues for "tonight"
-        conditions.push(`(buzz_score >= 50 OR is_open_now = true OR 1=1)`);
-    }
-
     const whereClause = conditions.length ? ('WHERE ' + conditions.join(' AND ')) : '';
     const sql = `
         SELECT id, slug, name, type, cuisine, category, neighborhood, city, address,
-               rating, price_level, buzz_score, why_hot, pair_with, short_desc, description,
+               source, NULL::numeric AS rating, price_level, NULL::numeric AS buzz_score, NULL::text AS why_hot, pair_with, short_desc, description,
                cover_image_url, image_url, reservation_url, opentable_url, resy_url, yelp_url,
-               google_maps_url, lat, lng, is_open_now, hours_display,
-               trending, featured, going_count
+               google_maps_url, lat, lng, NULL::boolean AS is_open_now, hours_display,
+               NULL::boolean AS trending, NULL::boolean AS featured, NULL::integer AS going_count
         FROM venues
         ${whereClause}
-        ORDER BY
-            CASE WHEN trending = true THEN 1 ELSE 0 END DESC,
-            COALESCE(buzz_score, 0) DESC,
-            COALESCE(rating, 0) DESC,
-            RANDOM()
+        ORDER BY lower(name), id
         LIMIT $${i}
     `;
     values.push(limit);
 
-    try {
-        const result = await pool.query(sql, values);
-        return result.rows;
-    } catch (err) {
-        console.error('[concierge/queryVenues]', err.message);
-        // Fallback: just return top trending venues
-        try {
-            const fb = await pool.query(
-                `SELECT id, slug, name, type, cuisine, neighborhood, rating, price_level, buzz_score,
-                        why_hot, short_desc, cover_image_url, image_url, reservation_url, opentable_url,
-                        resy_url, yelp_url, google_maps_url, lat, lng
-                 FROM venues
-                 ORDER BY COALESCE(buzz_score,0) DESC, COALESCE(rating,0) DESC
-                 LIMIT $1`, [limit]);
-            return fb.rows;
-        } catch(_){ return []; }
-    }
+    const result = await pool.query(sql, values);
+    return result.rows.map(publicVenue); // Database failure must not become unrelated successful recommendations.
 }
 
 // ═════════════════════════════════════════════════════════════
 // EVENT QUERY
 // ═════════════════════════════════════════════════════════════
 async function queryEvents(intent, limit) {
-    limit = limit || 5;
-    try {
-        const now = new Date();
-        const end = new Date();
-        if (intent.times.indexOf('weekend') !== -1) {
-            end.setDate(end.getDate() + 7);
-        } else {
-            end.setDate(end.getDate() + 1); // tonight/tomorrow
-        }
-        const result = await pool.query(
-            `SELECT id, slug, name, description, event_date, start_time, end_time,
-                    venue_name, venue_neighborhood, category, image_url, cover_image_url,
-                    ticket_url, ticket_price, price_range
-             FROM events
-             WHERE event_date >= $1 AND event_date <= $2
-             ORDER BY event_date ASC, start_time ASC
-             LIMIT $3`,
-            [now.toISOString(), end.toISOString(), limit]
-        );
-        return result.rows;
-    } catch (err) {
-        console.error('[concierge/queryEvents]', err.message);
-        return [];
-    }
+    const start = new Date(), end = new Date();
+    end.setUTCDate(end.getUTCDate() + (intent.times.includes('weekend') ? 7 : 1));
+    const result = await pool.query(
+        `SELECT ${EVENT_COLUMNS}
+         FROM events e LEFT JOIN venues v ON v.id=e.venue_id
+         WHERE ${PUBLIC_EVENT()} AND e.date BETWEEN $1::date AND $2::date
+         ORDER BY e.date,e.start_time,e.id LIMIT $3`,
+        [start.toISOString().slice(0,10),end.toISOString().slice(0,10),limit || 5]
+    );
+    return result.rows.map(publicEvent);
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -265,10 +228,10 @@ async function queryEvents(intent, limit) {
 // ═════════════════════════════════════════════════════════════
 function generateResponse(intent, venues, events) {
     if (intent.is_greeting) {
-        return "Hey! I'm your SceneLink AI Concierge. I know every venue in Boston — ask me anything! Try: 'romantic Italian in the North End' or 'rooftop bars open tonight' or 'where's the best sushi in Back Bay?'";
+        return "Hi! I can help you explore Boston venues by neighborhood, cuisine and budget. Hours and table availability need confirmation with the venue.";
     }
     if (intent.is_help) {
-        return "I can help you find the perfect Boston venue for any occasion. I know cuisines, vibes, neighborhoods, and what's trending right now. I can also help you **book a table**, **plan a night with friends**, or **save venues** to your lists. What are you in the mood for?";
+        return "I can help you find the perfect Boston venue for any occasion. I can search stored venue information by cuisine and neighborhood, help you **plan a night with friends**, or **save venues** to your lists. Booking links open an external site; availability and reservations must be confirmed there. What are you in the mood for?";
     }
 
     // Build descriptive intro based on detected intent
@@ -289,15 +252,15 @@ function generateResponse(intent, venues, events) {
     }
 
     if (!venues.length) {
-        return `I couldn't find exact matches for that. Try a different cuisine, neighborhood, or vibe — I know 520+ venues across Boston.`;
+        return `I couldn't find exact matches for that. Try a different cuisine, neighborhood, or vibe — Availability and opening hours need confirmation with the venue.`;
     }
 
     const descParts = parts.length ? parts.join(' · ') + ' ' : '';
     let leadIn;
     if (intent.is_booking) {
-        leadIn = `Perfect — here are top ${descParts}spots ${location} where you can book a table${timing ? ' ' + timing : ''}:`;
+        leadIn = `Here are ${descParts}spots ${location} to explore booking options${timing ? ' ' + timing : ''}:`;
     } else if (intent.primary === 'recommend') {
-        leadIn = `${venues.length} top ${descParts}spots ${location}${timing ? ' ' + timing : ''}:`;
+        leadIn = `${venues.length} matching ${descParts}spots ${location}${timing ? ' ' + timing : ''}:`;
     } else {
         leadIn = `Here's what I found:`;
     }
@@ -315,7 +278,7 @@ function generateActions(intent, venues) {
         return actions;
     }
     if (intent.is_booking && venues[0] && (venues[0].reservation_url || venues[0].opentable_url || venues[0].resy_url)) {
-        actions.push({ label: 'Book ' + venues[0].name, type: 'book', venue_id: venues[0].id });
+        actions.push({ label: 'Check booking options for ' + venues[0].name, type: 'book', venue_id: venues[0].id, href:venues[0].booking.url, reservation_confirmed:false });
     }
     actions.push({ label: 'Save all to a list', type: 'save_all' });
     actions.push({ label: 'Plan this with friends', type: 'plan' });
@@ -331,7 +294,9 @@ function generateActions(intent, venues) {
 router.post('/', aiLimiter, optionalAuth, async (req, res) => {
     const startedAt = Date.now();
     try {
-        const message = (req.body.message || '').trim();
+        if(typeof req.body?.message!=='string')return res.status(400).json({error:'message must be text'});
+        const message = req.body.message.trim();
+        res.setHeader('Cache-Control','private, no-store');
         const context = req.body.context || {};
         const history = Array.isArray(req.body.history) ? req.body.history : [];
         const session_id = req.body.session_id || ('sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6));
@@ -342,15 +307,28 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
         // ─── Try OpenAI first if enabled ───────────────────────────
         if (aiEnabled() && req.body.ai !== false) {
             try {
-                const ai = await aiConcierge({ message, history, context });
+                const result = await runAIConcierge({ message, history, context });
+                const byId = new Map(result.candidates.map(v => [String(v.id),v]));
+                const stops = result.recommendedPlan?.stops || [];
+                const ids = [...new Set([...result.recommendedVenues.map(v=>String(v.venueId)), ...stops.map(v=>String(v.venueId))])];
+                const ai = {
+                    source: result.source, response: result.reply,
+                    venues: ids.map(id=>byId.get(id)).filter(Boolean).map(v=>({...v,is_open_now:null})), events: [],
+                    itinerary: result.recommendedPlan ? {...result.recommendedPlan,stops:stops.map(stop=>{
+                        const v=byId.get(String(stop.venueId));
+                        return {...stop,name:v.name,neighborhood:v.neighborhood,category:v.category||v.type,
+                            priceLevel:v.price_level?'$'.repeat(v.price_level):null,bestTime:null,vibeTags:[]};
+                    })} : null,
+                    actions: [], tools_used: ['venue_database']
+                };
                 const intent = classifyIntent(message); // keep for analytics + client hints
                 pool.query(
                     `INSERT INTO analytics_events (event, user_id, anon, session_id, properties)
                      VALUES ($1, $2, $3, $4, $5)`,
                     ['concierge_query', req.user ? req.user.id : null, !req.user, session_id,
                      JSON.stringify({
-                         message: message.slice(0, 200),
-                         source: 'openai',
+                         message_length: message.length,
+                         source: ai.source,
                          tools_used: ai.tools_used,
                          matches: ai.venues.length,
                          events: ai.events.length,
@@ -359,7 +337,7 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
                 ).catch(()=>{});
                 return res.json({
                     ok: true,
-                    source: 'openai',
+                    source: ai.source,
                     response: ai.response,
                     venues: ai.venues,
                     events: ai.events,
@@ -378,14 +356,14 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
                     session_id
                 });
             } catch (aiErr) {
-                console.warn('[concierge] AI failed, falling back to rule-based:', aiErr.message);
+                console.warn('[concierge] AI unavailable; using database fallback');
                 // fall through to rule-based
             }
         }
 
         // ─── Fallback: rule-based classifier ───────────────────────
         const intent = classifyIntent(message);
-        const limit = Math.min(parseInt(req.body.limit) || 5, 10);
+        const limit = Math.max(1, Math.min(parseInt(req.body.limit) || 5, 10));
 
         let venues = [];
         let events = [];
@@ -403,7 +381,7 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
             `INSERT INTO analytics_events (event, user_id, anon, session_id, properties)
              VALUES ($1, $2, $3, $4, $5)`,
             ['concierge_query', req.user ? req.user.id : null, !req.user, session_id,
-             JSON.stringify({ message: message.slice(0, 200), source: 'rule-based', intent: intent.primary, matches: venues.length, events: events.length, ms: Date.now() - startedAt })]
+             JSON.stringify({ message_length: message.length, source: 'rule-based', intent: intent.primary, matches: venues.length, events: events.length, ms: Date.now() - startedAt })]
         ).catch(()=>{});
 
         res.json({

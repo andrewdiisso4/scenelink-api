@@ -1,0 +1,71 @@
+/* Nav Active Underline — Definitive Fix */
+/* Loaded last to override all competing styles */
+
+/* Base underline for all nav links */
+.nav-link::after,
+.nav-links a::after,
+.nav-center .nav-link::after,
+.nav-enhanced .nav-link::after,
+.nav-enhanced .nav-center .nav-link::after,
+.nav-enhanced .nav-links a::after,
+.header-enhanced .nav-link::after,
+body .nav-link::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: -3px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 0 !important;
+    height: 3px !important;
+    background: linear-gradient(90deg, #D4AF37, #F4D03F) !important;
+    border-radius: 2px !important;
+    transition: width 0.3s ease !important;
+    opacity: 1 !important;
+    display: block !important;
+}
+
+/* Ensure nav links have relative positioning */
+.nav-link,
+.nav-links a,
+.nav-center .nav-link,
+.nav-enhanced .nav-link,
+.nav-enhanced .nav-links a,
+.header-enhanced .nav-link {
+    position: relative !important;
+}
+
+/* Hover state */
+.nav-link:hover::after,
+.nav-links a:hover::after,
+.nav-center .nav-link:hover::after,
+.nav-enhanced .nav-link:hover::after,
+.nav-enhanced .nav-links a:hover::after,
+.header-enhanced .nav-link:hover::after {
+    width: 70% !important;
+    opacity: 0.7 !important;
+}
+
+/* Active state — GOLD UNDERLINE, FULL WIDTH */
+.nav-link.active::after,
+.nav-links a.active::after,
+.nav-center .nav-link.active::after,
+.nav-enhanced .nav-link.active::after,
+.nav-enhanced .nav-center .nav-link.active::after,
+.nav-enhanced .nav-links a.active::after,
+.header-enhanced .nav-link.active::after,
+body .nav-link.active::after {
+    width: 100% !important;
+    height: 3px !important;
+    background: linear-gradient(90deg, #D4AF37, #F4D03F) !important;
+    opacity: 1 !important;
+}
+
+/* Active link text color */
+.nav-link.active,
+.nav-links a.active,
+.nav-center .nav-link.active,
+.nav-enhanced .nav-link.active,
+.nav-enhanced .nav-links a.active,
+.header-enhanced .nav-link.active {
+    color: #D4AF37 !important;
+}

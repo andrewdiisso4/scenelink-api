@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/sl-connected-api.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-connected-actions.js?v=connected-20261108-6" defer></script>
+<link rel="stylesheet" href="/css/sl-connected.css?v=connected-20261108-6"><!-- sl-preconnect-added -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- sl-observability:v1 -->
+  <script src="/env.js"></script>
+  <script src="/js/sl-avatar.js?v=connected-20261108-6"></script>
+  <script src="/js/sl-social-core.js?v=connected-20261108-6" defer></script>
+  <!-- Phase 7A perf -->
+  <script src="/js/sl-fetch-guard.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-perf-loader.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-observability.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-version-marker.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-stale-version-detector.js?v=connected-20261108-6" defer></script>
+
+    <script src="js/sl-bundle-7d.js?v=connected-20261108-6" defer></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>Events - SceneLink</title>
+    
+    <!-- Base Styles -->
+    <link rel="stylesheet" href="css/sl-bundle-7d.css?v=connected-20261108-6">
+    
+        <link rel="stylesheet" href="css/sl-phase8-launch.css?v=connected-20261108-6">
+<!-- Unified Components -->
+    
+    <!-- Events-Specific -->
+    <link rel="stylesheet" href="css/events-page.css?v=connected-20261108-6">
+    
+    <!-- Leaflet -->
+    <!-- Phase 7A perf: leaflet lazy-loaded by sl-perf-loader -->
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"><noscript><link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"></noscript>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css?v=connected-20261108-6" crossorigin="anonymous" referrerpolicy="no-referrer">
+
+    <link rel="icon" type="image/png" href="images/logo-transparent.png">
+    <link rel="stylesheet" href="css/lists-system.css?v=connected-20261108-6">
+    <!-- Phase 7A perf: ai-concierge CSS lazy-loaded -->
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SceneLink">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="SceneLink">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="57x57" href="/icons/apple-touch-icon-57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="/icons/apple-touch-icon-60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="/icons/apple-touch-icon-72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="/icons/apple-touch-icon-76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="/icons/apple-touch-icon-114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-touch-icon-120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="/icons/apple-touch-icon-144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png">
+
+    <meta property="og:title" content="Events — Live Music, DJs, & Special Nights in Boston | SceneLink">
+    <meta property="og:description" content="Find tonight's best live music, DJ sets, comedy shows, and special events across Boston.">
+    <meta property="og:url" content="https://scenelink.app/events.html">
+    <meta name="twitter:title" content="Events — Live Music, DJs, & Special Nights in Boston | SceneLink">
+    <meta name="twitter:description" content="Find tonight's best live music, DJ sets, comedy shows, and special events across Boston.">
+    <meta name="description" content="Find tonight's best live music, DJ sets, comedy shows, and special events across Boston.">
+    <link rel="canonical" href="https://scenelink.app/events.html">
+    <meta property="og:site_name" content="SceneLink">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/icons/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/icons/icon-512.png">
+  <!-- SceneLink unified auth bundle -->
+
+  <!-- SceneLink unified auth bundle -->
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="css/sl-phase8-home.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-universal-search.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8d-hotfix.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8f-polish.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="/css/sl-recovery-truthfulness.css?v=connected-20261108-6">
+</head>
+<body>
+    <!-- Universal Header -->
+    <header class="header-enhanced" id="mainHeader">
+        <nav class="nav-enhanced">
+            <div class="nav-left">
+                <a class='logo-container' href='/'>
+                    <img loading="eager" fetchpriority="high" width="180" height="48" src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" class="logo-main">
+                </a>
+            </div>
+            
+            <ul class="nav-center">
+                <li><a class='nav-link' data-page='home' href='/'>Home</a></li>
+                <li><a class='nav-link' data-page='explore' href='/explore'>Explore</a></li>
+                <li><a class='nav-link' data-page='nightlife' href='/nightlife'>Nightlife</a></li>
+                <li><a class='nav-link' data-page='tonights-picks' href='/tonight'>Tonight's Picks</a></li>
+                    <li><a href='/events'>Events</a></li>
+                <li><a class='nav-link' data-page='social' href='/social-feed'>Social</a></li>
+                <li><a class='nav-link' data-page='my-lists' href='/my-lists'>My Lists</a></li>
+                <li><a href="/" class="nav-link" data-ai-concierge-nav="1" data-sl-concierge="Plan my night in Boston" onclick="event.preventDefault();"><i class="fas fa-magic" style="color:#D4AF37;margin-right:4px;"></i>Ask AI</a></li>
+            </ul>
+            
+            <div class="nav-right">
+                <button class="btn-header-primary sl-auth-trigger">Log in / Sign up</button>
+            </div>
+            
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <span></span><span></span><span></span>
+            </button>
+        </nav>
+    </header>
+<main id="slConnectedEvents" class="sl-connected"></main>
+    <!-- Footer -->
+    <!-- ========== UNIFIED FOOTER ========== -->
+    <footer class="footer-unified">
+        <!-- Newsletter Bar -->
+        <div class="footer-newsletter-bar">
+            <div class="footer-newsletter-inner">
+                <div class="footer-newsletter-text">
+                    <h4>Stay in the Scene</h4>
+                    <p>Get weekly picks, exclusive events & hidden gems delivered to your inbox.</p>
+                </div>
+                <form class="footer-newsletter-form" data-sl-newsletter="1">
+                    <input type="email" name="email" placeholder="Enter your email address" required>
+                    <button type="submit">Subscribe</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main Footer Content -->
+        <div class="footer-main-content">
+            <!-- Brand Column -->
+            <div class="footer-brand-col">
+                <a class='footer-logo-link' href='/'>
+                    <img loading="lazy" src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" class="footer-logo-img">
+                </a>
+                <p class="footer-brand-tagline">Eat. Drink. Discover.</p>
+                <p class="footer-brand-desc">Your social guide to the best restaurants, bars, events, and nightlife experiences in Boston.</p>
+                <div class="footer-social-icons">
+                    <a href="https://www.instagram.com/scenelink.app" class="social-instagram" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="https://x.com/Scenelinkapp" class="social-x" aria-label="X (Twitter)"><i class="fab fa-twitter"></i></a>
+                    <a href="https://www.facebook.com/SceneLinkApp/" class="social-facebook" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="https://www.youtube.com/@SceneLinkapp" class="social-youtube" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                </div>
+                <div class="footer-app-badges">
+                    <a href="/" class="footer-webapp-badge" style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:#D4AF37;color:#0a0a0a;border-radius:8px;font-weight:600;text-decoration:none;font-size:14px;"><i class="fas fa-globe"></i><span>Open Web App</span></a></div>
+            </div>
+
+            <!-- Discover Column -->
+            <div class="footer-link-col">
+                <h5>Discover</h5>
+                <ul>
+                    <li><a href='/explore'>Restaurants</a></li>
+                    <li><a href='/nightlife'>Bars & Nightlife</a></li>
+                    <li><a href='/tonight'>Tonight's Picks</a></li>
+                </ul>
+            </div>
+
+            <!-- Social Column -->
+            <div class="footer-link-col">
+                <h5>Plan</h5>
+                <ul>
+                    <li><a href='/my-lists'>My Lists</a></li>
+                    <li><a href='/plan-with-friends'>Plan Builder — Beta</a></li>
+                    <li><a href='/profile'>My Profile</a></li>
+                </ul>
+                    <li><a href="/" data-sl-concierge="Plan my night in Boston" onclick="event.preventDefault();">Ask AI Concierge</a></li>
+                </ul>
+            </div>
+
+            <!-- Company Column -->
+            <div class="footer-link-col">
+                <h5>Company</h5>
+                <ul>
+                    <li><a href='/about'>About Us</a></li>
+                    <li><a href='/contact'>Contact</a></li>
+                    <li><a href='/careers'>Careers</a></li>
+                    <li><a href='/press'>Press & Media</a></li>
+                </ul>
+            </div>
+
+            <!-- Support Column -->
+            <div class="footer-link-col">
+                <h5>Support</h5>
+                <ul>
+                    <li><a href='/privacy'>Privacy Policy</a></li>
+                    <li><a href='/terms'>Terms of Service</a></li>
+                    </ul>
+            </div>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="footer-bottom-bar">
+            <div class="footer-bottom-inner">
+                <p class="footer-copyright">&copy; 2026 <a href='/'>SceneLink</a>. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href='/privacy'>Privacy</a>
+                    <a href='/terms'>Terms</a></div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/sl-bundle-7d-ui.js?v=connected-20261108-6" defer></script>
+    <script src="js/unified-map.js?v=connected-20261108-6" defer></script>
+    <script src="js/page-animations.js?v=connected-20261108-6" defer></script>
+    <!-- events-page-app removed in 5H truth pass -->
+    <!-- removed: booking-system.js (made a Reservation modal) -->
+    <!-- Phase 7A perf: ai-concierge-v5.js lazy-loaded -->
+
+
+
+
+
+
+
+
+
+    <!-- Phase 7A perf: sl-social-feed.js removed (not a social page) -->
+
+
+
+    <!-- SL-POLISH-SCRIPTS -->
+
+    
+
+
+
+
+  <script src="js/sl-phase8-launch.js?v=connected-20261108-6" defer></script>
+<script src="js/sl-phase8-completion.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-universal-search.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-social-network.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-phase8d-recovery.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-social-integration-9a.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-venue-activity-9a.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-verification-banner.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-events.js?v=connected-20261108-6" defer></script>
+</body>
+</html>

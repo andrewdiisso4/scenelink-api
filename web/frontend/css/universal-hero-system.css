@@ -1,0 +1,160 @@
+/* Universal Hero System - Consistent Across All Pages */
+/* Based on social-feed hero styling */
+
+/* Universal Hero Base - Applied to all page heroes */
+.universal-hero {
+    padding: 140px 0 60px;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.universal-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 20% 50%, rgba(212, 175, 55, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.universal-hero .container {
+    position: relative;
+    z-index: 2;
+}
+
+.universal-hero h1 {
+    font-size: 3rem;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-md);
+    background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-light) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.universal-hero p {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+/* Page-Specific Hero Variations */
+.tonight-hero {
+    @extend .universal-hero;
+}
+
+.explore-hero {
+    @extend .universal-hero;
+}
+
+.nightlife-hero {
+    @extend .universal-hero;
+}
+
+.events-hero {
+    @extend .universal-hero;
+}
+
+.lists-hero {
+    @extend .universal-hero;
+}
+
+.profile-hero {
+    @extend .universal-hero;
+}
+
+.group-planning-hero {
+    @extend .universal-hero;
+}
+
+.venue-details-hero {
+    @extend .universal-hero;
+}
+
+/* Hero Badge for Tonight's Picks */
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    background: rgba(212, 175, 55, 0.2);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 50px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    color: var(--gold-primary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+}
+
+.hero-badge svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .universal-hero {
+        padding: 120px 0 40px;
+    }
+    
+    .universal-hero h1 {
+        font-size: 2rem;
+    }
+    
+    .universal-hero p {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .universal-hero {
+        padding: 100px 0 30px;
+    }
+    
+    .universal-hero h1 {
+        font-size: 1.75rem;
+    }
+}
+
+/* Ensure proper spacing after hero */
+.universal-hero + * {
+    margin-top: 0;
+}
+
+/* Remove conflicting styles */
+.tonight-hero,
+.explore-hero,
+.nightlife-hero,
+.events-hero,
+.lists-hero,
+.profile-hero,
+.group-planning-hero,
+.venue-details-hero {
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%) !important;
+    padding: 140px 0 60px !important;
+    text-align: center !important;
+}
+
+.tonight-hero h1,
+.explore-hero h1,
+.nightlife-hero h1,
+.events-hero h1,
+.lists-hero h1,
+.profile-hero h1,
+.group-planning-hero h1,
+.venue-details-hero h1 {
+    font-size: 3rem !important;
+    background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-light) 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+}

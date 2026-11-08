@@ -1,0 +1,471 @@
+/* =====================================================================
+   SceneLink Phase 8F — Launch Polish (loaded LAST, override layer)
+   Scope: logo sizing, header spacing, footer density.
+   Logo asset note: scenelinkheaderlogo-trimmed.png is the cropped
+   wordmark (283x84). Square padded asset rendered tiny -> swapped.
+   ===================================================================== */
+
+/* ---- HEADER LOGO (header-enhanced + explore/nightlife app-shell) ---- */
+.header-enhanced .logo-container .logo-main,
+.header-enhanced .logo-main,
+.nav-enhanced .logo-container .logo-main,
+header .logo-main,
+#mainHeader .logo-main,
+.sl-explore-logo,
+img.sl-explore-logo {
+  height: 34px !important;
+  max-height: 34px !important;
+  min-height: 0 !important;
+  width: auto !important;
+  max-width: 168px !important;
+  object-fit: contain !important;
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* keep header vertical rhythm tidy */
+.nav-enhanced { align-items: center !important; }
+.sl-unified-nav .sl-nav-logo-link { display: flex; align-items: center; }
+
+@media (max-width: 768px) {
+  .header-enhanced .logo-main,
+  .nav-enhanced .logo-container .logo-main,
+  header .logo-main,
+  #mainHeader .logo-main,
+  .sl-explore-logo {
+    height: 30px !important;
+    max-height: 30px !important;
+  }
+}
+
+/* ---- FOOTER LOGO (was 120px inline) ---- */
+.footer-logo-img,
+img.footer-logo-img,
+footer .footer-logo-img {
+  height: 60px !important;
+  max-height: 60px !important;
+  min-height: 0 !important;
+  width: auto !important;
+  margin-bottom: 18px !important;
+  object-fit: contain !important;
+}
+
+/* ---- FOOTER density polish ---- */
+.footer-brand-tagline { font-weight: 700; letter-spacing: .2px; }
+.footer-social-icons a:focus-visible,
+.footer-link-col a:focus-visible { outline: 2px solid var(--gold-primary, #D4AF37); outline-offset: 2px; }
+
+/* ---- Tap targets: ensure mobile menu + auth buttons >= 44px ---- */
+@media (max-width: 1024px) {
+  .mobile-menu-btn,
+  .mobile-menu-toggle,
+  #mobileMenuBtn { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+  /* Phase 8F: index.html hamburger was 42x42 → bump to 44x44 */
+  .sl-phase8-mobile-menu { width: 44px !important; height: 44px !important; }
+}
+
+/* ---- Prevent accidental horizontal scroll on small screens ---- */
+@media (max-width: 480px) {
+  html, body { overflow-x: hidden; }
+}
+
+/* ====================================================================
+   Phase 8F — Header nav anti-wrap + spacing polish
+   Prevent the primary nav from wrapping to two lines on desktop and
+   keep the integrated search from crowding the nav. The single nav
+   "Ask AI" is the canonical nav affordance; the search bar's "Ask AI"
+   pill is a contextual (ask-this-query) action — distinct, not a dup.
+   ==================================================================== */
+.nav-enhanced .nav-center,
+.sl-header-nav { flex-wrap: nowrap !important; }
+
+.nav-enhanced .nav-center .nav-link,
+.sl-header-nav .sl-header-nav-link,
+.sl-phase8-links a,
+.sl-phase8-linklike {
+  white-space: nowrap !important;
+}
+
+/* Tighten desktop nav item spacing so 7 items + search + auth fit */
+@media (min-width: 901px) {
+  .nav-enhanced .nav-center { gap: 2px !important; }
+  .nav-enhanced .nav-center .nav-link,
+  .sl-header-nav .sl-header-nav-link {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    font-size: 14px !important;
+  }
+  /* Keep the integrated search from eating the nav row */
+  .header-enhanced .sl-universal-search,
+  .sl-explore-header .sl-universal-search { max-width: 360px !important; }
+}
+
+/* Earlier wrap of search to its own row to avoid cramped nav */
+@media (max-width: 1180px) and (min-width: 901px) {
+  .header-enhanced .sl-universal-search,
+  .sl-explore-header .sl-universal-search { max-width: 300px !important; }
+  .nav-enhanced .nav-center .nav-link,
+  .sl-header-nav .sl-header-nav-link { font-size: 13px !important; padding-left: 8px !important; padding-right: 8px !important; }
+}
+
+/* ====================================================================
+   Phase 8F — FIX broken mobile drawer at <=768px
+   sl-bundle-7d.css @media(max-width:768px) contains a late
+   ".header-enhanced .nav-center{display:none !important}" that overrides
+   the @900px slide-in drawer's display:flex, so on phones the hamburger
+   added body.menu-open but the drawer never appeared (dead button).
+   Loaded LAST, this restores the off-canvas drawer + open state on phones
+   for BOTH header systems (.header-enhanced and .sl-explore-header).
+   ==================================================================== */
+@media (max-width: 768px) {
+  /* Off-canvas drawer baseline (hidden via transform, not display) */
+  .header-enhanced .nav-center {
+    display: flex !important;
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    left: auto !important;
+    width: min(86vw, 340px) !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    margin: 0 !important;
+    padding: calc(env(safe-area-inset-top,0) + 76px) 0 calc(env(safe-area-inset-bottom,0) + 24px) 0 !important;
+    background: rgba(10,10,10,0.985) !important;
+    -webkit-backdrop-filter: saturate(160%) blur(20px);
+    backdrop-filter: saturate(160%) blur(20px);
+    border-left: 1px solid rgba(212,175,55,0.25) !important;
+    box-shadow: -12px 0 36px rgba(0,0,0,0.6) !important;
+    list-style: none !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
+    transform: translate3d(100%,0,0) !important;
+    transition: transform .28s cubic-bezier(.2,.8,.2,1) !important;
+    z-index: 9050 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    pointer-events: none;
+  }
+  body.menu-open .header-enhanced .nav-center {
+    transform: translate3d(0,0,0) !important;
+    pointer-events: auto !important;
+  }
+  .header-enhanced .nav-center > li { width: 100% !important; list-style: none !important; margin: 0 !important; }
+  .header-enhanced .nav-center > li > .nav-link {
+    display: flex !important;
+    align-items: center;
+    width: 100% !important;
+    min-height: 52px;
+    padding: 14px 22px !important;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    color: #fff !important;
+    text-decoration: none !important;
+    font-size: 1rem !important;
+    font-weight: 500 !important;
+    text-align: left !important;
+    white-space: normal !important;
+  }
+  .header-enhanced .nav-center > li > .nav-link.active {
+    color: #D4AF37 !important;
+    background: linear-gradient(90deg, rgba(212,175,55,0.12), transparent);
+    border-left: 3px solid #D4AF37;
+    padding-left: 19px !important;
+  }
+  /* Dim backdrop while open */
+  body.menu-open::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 9040;
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+  }
+  /* App-shell header drawer (explore/nightlife) */
+  body.menu-open .sl-explore-header .sl-header-nav,
+  body.menu-open .sl-unified-nav .sl-header-nav,
+  body.menu-open .sl-header-nav.sl-mobile-drawer {
+    transform: translate3d(0,0,0) !important;
+    pointer-events: auto !important;
+  }
+}
+
+/* ====================================================================
+   Phase 8F — Visual polish: gold accents, CTA hierarchy, footer density
+   ===================================================================== */
+
+/* Footer column headings: consistent gold accent */
+.footer-link-col h5 {
+  color: var(--sl-gold, #D4AF37) !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  letter-spacing: .8px !important;
+  text-transform: uppercase !important;
+  margin-bottom: 14px !important;
+}
+
+/* Footer links: clean hover with gold underline */
+.footer-link-col a {
+  color: rgba(255,255,255,.72) !important;
+  transition: color .15s !important;
+}
+.footer-link-col a:hover {
+  color: var(--sl-gold, #D4AF37) !important;
+}
+
+/* "Coming Soon" and "Beta" labels: subtle muted treatment */
+.footer-link-col a[href="events.html"] {
+  color: rgba(255,255,255,.42) !important;
+  font-style: italic !important;
+}
+.footer-link-col a[href="plan-with-friends.html"] {
+  color: rgba(255,255,255,.58) !important;
+}
+
+/* Hero CTA hierarchy: primary gold filled, secondary outlined, tertiary subtle */
+.sl-phase8-hero .sl-phase8-cta-primary,
+.sl-phase8-hero .sl-phase8-cta-gold {
+  background: linear-gradient(135deg, #D4AF37, #B8941F) !important;
+  color: #0a0a0a !important;
+  font-weight: 700 !important;
+  padding: 14px 28px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(212,175,55,.28) !important;
+  transition: transform .15s, box-shadow .15s !important;
+}
+.sl-phase8-hero .sl-phase8-cta-primary:hover,
+.sl-phase8-hero .sl-phase8-cta-gold:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 28px rgba(212,175,55,.38) !important;
+}
+.sl-phase8-hero .sl-phase8-cta-secondary,
+.sl-phase8-hero .sl-phase8-cta-outline {
+  background: transparent !important;
+  border: 1.5px solid rgba(212,175,55,.55) !important;
+  color: #D4AF37 !important;
+  padding: 12px 24px !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+}
+
+/* Section spacing: consistent vertical rhythm */
+.sl-phase8-section { padding-top: 56px; padding-bottom: 56px; }
+@media (max-width: 768px) { .sl-phase8-section { padding-top: 40px; padding-bottom: 40px; } }
+
+/* Stat cards: subtle gold border on hover */
+.sl-phase8-stat:hover { border-color: rgba(212,175,55,.35) !important; }
+
+/* Feature card: gold icon color consistency */
+.sl-phase8-feature-icon { color: var(--sl-gold, #D4AF37) !important; }
+
+/* ====================================================================
+   Phase 8F — app-shell (explore/nightlife) drawer fix <=900px
+   The .sl-explore-header .sl-header-nav (with .sl-mobile-drawer added by
+   the nav controller) was rendering inline/static on phones instead of as
+   an off-canvas drawer. Force the off-canvas baseline + open state here.
+   ==================================================================== */
+@media (max-width: 900px) {
+  .sl-explore-header .sl-header-nav,
+  .sl-unified-nav .sl-header-nav,
+  .sl-header-nav.sl-mobile-drawer {
+    display: flex !important;
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    left: auto !important;
+    width: min(86vw, 340px) !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    margin: 0 !important;
+    padding: calc(env(safe-area-inset-top,0) + 76px) 0 calc(env(safe-area-inset-bottom,0) + 24px) 0 !important;
+    background: rgba(10,10,10,0.985) !important;
+    -webkit-backdrop-filter: saturate(160%) blur(20px);
+    backdrop-filter: saturate(160%) blur(20px);
+    border-left: 1px solid rgba(212,175,55,0.25) !important;
+    box-shadow: -12px 0 36px rgba(0,0,0,0.6) !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    transform: translate3d(100%,0,0) !important;
+    transition: transform .28s cubic-bezier(.2,.8,.2,1) !important;
+    z-index: 9050 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    pointer-events: none;
+  }
+  body.menu-open .sl-explore-header .sl-header-nav,
+  body.menu-open .sl-unified-nav .sl-header-nav,
+  body.menu-open .sl-header-nav.sl-mobile-drawer {
+    transform: translate3d(0,0,0) !important;
+    pointer-events: auto !important;
+  }
+  .sl-explore-header .sl-header-nav-link,
+  .sl-unified-nav .sl-header-nav-link {
+    display: flex !important;
+    align-items: center;
+    width: 100% !important;
+    min-height: 52px;
+    padding: 14px 22px !important;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    color: #fff !important;
+    text-decoration: none !important;
+    font-size: 1rem !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+  }
+  .sl-explore-header .sl-header-nav-link.active,
+  .sl-unified-nav .sl-header-nav-link.active {
+    color: #D4AF37 !important;
+    background: linear-gradient(90deg, rgba(212,175,55,0.12), transparent);
+    border-left: 3px solid #D4AF37;
+    padding-left: 19px !important;
+  }
+}
+
+/* ====================================================================
+   Phase 8F — Mobile footer: stacked columns at <=640px
+   ===================================================================== */
+@media (max-width: 640px) {
+  .sl-phase8-footer-grid,
+  footer .footer-grid,
+  footer .footer-content {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+  }
+  .footer-link-col { margin-bottom: 4px; }
+  .footer-logo-img { height: 48px !important; max-height: 48px !important; }
+}
+
+/* Phase 8F — Ensure brand col tagline and description are readable */
+.footer-brand-tagline {
+  color: var(--sl-gold, #D4AF37) !important;
+  font-size: 15px !important;
+  margin-bottom: 6px !important;
+}
+.footer-brand-desc {
+  color: rgba(255,255,255,.55) !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  margin-bottom: 14px !important;
+}
+
+/* Keep authenticated controls reachable when search and all nav links coexist.
+   The navigation gets a dedicated row rather than overflowing a clipped page. */
+@media (min-width: 901px) {
+  .header-enhanced .nav-enhanced {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    grid-template-areas: "brand search account" "links links links";
+    height: auto !important;
+    min-height: 98px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 20px !important;
+    gap: 4px 16px !important;
+  }
+  .header-enhanced .nav-left { grid-area: brand; min-width: 0; }
+  .header-enhanced .nav-enhanced > .sl-universal-search {
+    grid-area: search;
+    width: 100%;
+    min-width: 0 !important;
+    max-width: 520px !important;
+    margin: 0 !important;
+    justify-self: center;
+  }
+  .header-enhanced .nav-right {
+    grid-area: account;
+    min-width: 0;
+    gap: 8px !important;
+    margin: 0 !important;
+  }
+  .header-enhanced .nav-center {
+    grid-area: links;
+    display: flex !important;
+    position: static !important;
+    justify-content: center !important;
+    align-items: center;
+    flex-wrap: wrap !important;
+    min-width: 0;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .header-enhanced .mobile-menu-btn { display: none !important; }
+  .header-enhanced #sl-user-dropdown .sl-ud-name { max-width: 100px; }
+}
+
+/* A bounded mobile header: actions stay on row one, search on row two.
+   Normal document flow reserves the full header height for page content. */
+@media (max-width: 900px) {
+  body:has(.header-enhanced) { padding-top: 0 !important; }
+  .header-enhanced {
+    position: relative !important; height: auto !important; max-height: none !important;
+    backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  }
+  body.menu-open .header-enhanced { z-index: 9050 !important; }
+  .header-enhanced .nav-center { visibility: hidden !important; }
+  body.menu-open .header-enhanced .nav-center { visibility: visible !important; }
+  body.menu-open .header-enhanced .nav-right,
+  body.menu-open .header-enhanced .sl-universal-search { visibility: hidden !important; }
+  body.menu-open .header-enhanced .mobile-menu-btn { z-index: 9060 !important; }
+  .header-enhanced .nav-enhanced {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto 44px !important;
+    grid-template-areas: "brand account menu" "search search search";
+    width: 100% !important;
+    height: auto !important;
+    min-height: 60px;
+    max-height: none !important;
+    box-sizing: border-box;
+    padding: 8px 12px !important;
+    gap: 8px !important;
+  }
+  .header-enhanced .nav-left { grid-area: brand; min-width: 0 !important; }
+  .header-enhanced .nav-right {
+    grid-area: account;
+    min-width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 4px !important;
+  }
+  .header-enhanced .nav-enhanced > .sl-universal-search {
+    grid-area: search;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+  .header-enhanced .sl-universal-search .slus-panel {
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    max-height: min(65svh, 480px);
+  }
+  .header-enhanced .nav-enhanced > .mobile-menu-btn {
+    grid-area: menu;
+    display: flex !important;
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    margin: 0 !important;
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .header-enhanced #sl-user-dropdown { margin-left: 0 !important; }
+  .header-enhanced #sl-user-dropdown .sl-ud-trigger { min-width: 44px; min-height: 44px; padding: 6px !important; }
+  .header-enhanced #sl-user-dropdown .sl-ud-name {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap;
+  }
+  .header-enhanced #sl-user-dropdown .sl-ud-caret,
+  .header-enhanced #sl-user-dropdown .sl-ud-role { display: none; }
+  .header-enhanced .nav-right:has(#sl-user-dropdown) #slHdrSocial > a { display: none !important; }
+  .header-enhanced #slHdrSocial > button { width: 44px; height: 44px; }
+  /* Universal search includes people; the social drawer owns notifications. */
+  .header-enhanced .nav-enhanced:has(> .sl-universal-search) .sl-usearch-wrap,
+  .header-enhanced .nav-right:has(#slHdrSocial) .sl-bell-wrap { display: none !important; }
+}

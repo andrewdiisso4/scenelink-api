@@ -203,11 +203,11 @@ function buildVenue(el, category) {
     image_url: image,
     image_urls: [image],
     cover_image_url: image,
-    rating: 3.8 + Math.random() * 1.1,
-    review_count: Math.floor(Math.random() * 400) + 20,
-    buzz_score: 5 + Math.random() * 5,
-    going_count: Math.floor(Math.random() * 80) + 5,
-    friends_going: Math.floor(Math.random() * 8),
+    rating: null, // Not supplied by OSM; never manufacture engagement
+    review_count: null, // Not supplied by OSM; never manufacture engagement
+    buzz_score: null, // Not supplied by OSM; never manufacture engagement
+    going_count: null, // Not supplied by OSM; never manufacture engagement
+    friends_going: null, // Not supplied by OSM; never manufacture engagement
     tags: [category.category, neighborhood, cuisine].filter(Boolean),
     badges: [],
     features: [],

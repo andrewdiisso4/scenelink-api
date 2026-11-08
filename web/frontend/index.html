@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/sl-connected-api.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-connected-actions.js?v=connected-20261108-6" defer></script>
+<link rel="stylesheet" href="/css/sl-connected.css?v=connected-20261108-6">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <script src="/env.js"></script>
+  <script src="/js/sl-avatar.js?v=connected-20261108-6"></script>
+  <script src="/js/sl-social-core.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-fetch-guard.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-perf-loader.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-observability.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-version-marker.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-stale-version-detector.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-bundle-7d.js?v=connected-20261108-6" defer></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="description" content="SceneLink helps you discover Boston restaurants, bars, nightlife, saved lists, and AI-powered night-out ideas.">
+  <title>SceneLink — Boston, planned for tonight.</title>
+  <link rel="preload" as="image" href="images/scenelinkbghero.webp" fetchpriority="high">
+  <link rel="preload" as="image" href="images/scenelinkbghero-mobile.webp" type="image/webp" media="(max-width: 768px)">
+  <link rel="stylesheet" href="css/sl-bundle-7d.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8-launch.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css?v=connected-20261108-6" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <noscript><link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"></noscript>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="color-scheme" content="dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SceneLink">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="SceneLink">
+  <meta name="format-detection" content="telephone=no">
+  <meta property="og:title" content="SceneLink — Boston, planned for tonight.">
+  <meta property="og:description" content="Discover Boston restaurants, bars, nightlife, saved lists, and AI Concierge recommendations.">
+  <meta property="og:url" content="https://scenelink.app/">
+  <meta property="og:site_name" content="SceneLink">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/icons/icon-512.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SceneLink — Boston, planned for tonight.">
+  <meta name="twitter:description" content="Discover Boston restaurants, bars, nightlife, saved lists, and AI Concierge recommendations.">
+  <meta name="twitter:image" content="/icons/icon-512.png">
+  <link rel="canonical" href="https://scenelink.app/">
+  <link rel="stylesheet" href="css/sl-universal-search.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8d-hotfix.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8f-polish.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="/css/sl-recovery-truthfulness.css?v=connected-20261108-6">
+</head>
+<body class="sl-phase8-home" data-page="home">
+  <header class="sl-phase8-nav" role="banner">
+    <div class="sl-phase8-nav-inner">
+      <a href="/" class="sl-phase8-logo" aria-label="SceneLink home">
+        <img loading="eager" src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" width="138" height="41">
+      </a>
+      <nav class="sl-phase8-links" id="phase8NavLinks" aria-label="Primary navigation">
+        <a href="/" class="active">Home</a>
+        <a href='/explore'>Explore</a>
+        <a href='/nightlife'>Nightlife</a>
+        <a href='/tonight'>Tonight</a>
+        <a href='/social-feed'>Social</a>
+        <a href='/my-lists'>My Lists</a>
+        <button type="button" class="sl-phase8-linklike" data-sl-concierge="Plan my night in Boston"><i class="fas fa-magic" style="color:#D4AF37;margin-right:5px"></i>Ask AI</button>
+      </nav>
+      <div class="sl-phase8-actions">
+        <button type="button" class="sl-phase8-btn dark sl-auth-trigger">Log in / Sign up</button>
+        <button type="button" class="sl-phase8-mobile-menu" data-phase8-menu aria-label="Open menu"><i class="fas fa-bars"></i></button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="sl-phase8-hero">
+      <div class="sl-phase8-container sl-phase8-hero-grid">
+        <div>
+          <div class="sl-phase8-kicker">Boston hospitality discovery</div>
+          <h1 class="sl-phase8-h1">Boston, planned for <span class="gold">tonight.</span></h1>
+          <p class="sl-phase8-subhead">Discover restaurants, bars, nightlife, and hidden gems across Boston — then save your spots or ask SceneLink AI to build the night.</p>
+          <div class="sl-phase8-cta-row">
+            <a class='sl-phase8-btn gold' href='/explore'><i class="fas fa-compass"></i> Explore Boston</a>
+            <button type="button" class="sl-phase8-btn dark" data-sl-concierge="Plan my night in Boston"><i class="fas fa-magic"></i> Ask AI Concierge</button>
+            <a class='sl-phase8-btn ghost' href='/my-lists'><i class="fas fa-bookmark"></i> Save Your Spots</a>
+          </div>
+          <div class="sl-phase8-proof" aria-label="SceneLink at a glance">
+            <div class="sl-phase8-proof-item"><span class="sl-phase8-proof-num">Explore</span><span class="sl-phase8-proof-label">Boston venues</span></div>
+            <div class="sl-phase8-proof-item"><span class="sl-phase8-proof-num">Boston</span><span class="sl-phase8-proof-label">Neighborhoods</span></div>
+            <div class="sl-phase8-proof-item"><span class="sl-phase8-proof-num">AI</span><span class="sl-phase8-proof-label">Concierge picks</span></div>
+          </div>
+        </div>
+        <aside class="sl-phase8-concierge-card" aria-label="AI Concierge prompts">
+          <h2>Tell SceneLink your vibe.</h2>
+          <p>Use AI Concierge for direct Boston venue ideas. Every recommendation should link back to real SceneLink venues.</p>
+          <div class="sl-phase8-prompt-grid">
+            <button type="button" class="sl-phase8-prompt" data-sl-concierge="Date night dinner and drinks in Back Bay"><span>Date night in Back Bay</span><i class="fas fa-arrow-right"></i></button>
+            <button type="button" class="sl-phase8-prompt" data-sl-concierge="Rooftop drinks in Seaport tonight"><span>Rooftop drinks in Seaport</span><i class="fas fa-arrow-right"></i></button>
+            <button type="button" class="sl-phase8-prompt" data-sl-concierge="Low key dinner then cocktails in Boston"><span>Dinner then cocktails</span><i class="fas fa-arrow-right"></i></button>
+            <button type="button" class="sl-phase8-prompt" data-sl-concierge="Late night bars with music in Boston"><span>Late-night music spots</span><i class="fas fa-arrow-right"></i></button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="sl-phase8-container">
+      <div class="sl-phase8-search-card">
+        <form id="phase8SearchForm" class="sl-phase8-search-row" role="search">
+          <input id="phase8SearchInput" type="search" placeholder="Search restaurants, bars, neighborhoods, or vibes" autocomplete="off" aria-label="Search SceneLink">
+          <button class="sl-phase8-btn gold" type="submit"><i class="fas fa-search"></i> Search</button>
+        </form>
+        <div class="sl-phase8-chip-row" aria-label="Popular searches">
+          <button type="button" class="sl-phase8-chip" data-phase8-query="date night restaurants Boston">Date night</button>
+          <button type="button" class="sl-phase8-chip" data-phase8-query="rooftop bars Seaport">Rooftops</button>
+          <button type="button" class="sl-phase8-chip" data-phase8-query="Italian North End">North End Italian</button>
+          <button type="button" class="sl-phase8-chip" data-phase8-query="live music Boston tonight">Live music</button>
+          <button type="button" class="sl-phase8-chip" data-phase8-query="cocktail bars Back Bay">Cocktails</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-phase8-section">
+      <div class="sl-phase8-container">
+        <div class="sl-phase8-section-head">
+          <div>
+            <span class="sl-phase8-section-eyebrow">Tonight in Boston</span>
+            <h2 class="sl-phase8-section-title">Start with real places.</h2>
+            <p class="sl-phase8-section-copy">Restaurants, bars, nightlife, venue details, saves, lists, plans, and social activity — connected to real backend data.</p>
+          </div>
+          <a class='sl-phase8-btn ghost' href='/tonight'>Open Tonight <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="sl-phase8-venue-grid" id="phase8TonightGrid" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="sl-phase8-section alt">
+      <div class="sl-phase8-container">
+        <div class="sl-phase8-section-head">
+          <div>
+            <span class="sl-phase8-section-eyebrow">Explore Boston</span>
+            <h2 class="sl-phase8-section-title">Browse by neighborhood.</h2>
+            <p class="sl-phase8-section-copy">Jump into Boston’s strongest hospitality neighborhoods without loading the full map on the home page.</p>
+          </div>
+          <a class='sl-phase8-btn gold' href='/explore'>Open Explore</a>
+        </div>
+        <div class="sl-phase8-neighborhood-grid">
+          <a class='sl-phase8-neighborhood-card' href='/explore?neighborhood=Back+Bay'><strong>Back Bay</strong><span>Dining rows, cocktail rooms, classic Boston energy</span></a>
+          <a class='sl-phase8-neighborhood-card' href='/explore?neighborhood=North+End'><strong>North End</strong><span>Italian staples, pasta nights, neighborhood favorites</span></a>
+          <a class='sl-phase8-neighborhood-card' href='/explore?neighborhood=Seaport'><strong>Seaport</strong><span>Waterfront dining, rooftops, destination nights</span></a>
+          <a class='sl-phase8-neighborhood-card' href='/explore?neighborhood=South+End'><strong>South End</strong><span>Brunch, patios, intimate restaurants</span></a>
+          <a class='sl-phase8-neighborhood-card' href='/explore?neighborhood=Cambridge'><strong>Cambridge</strong><span>Squares, music, cocktails, neighborhood gems</span></a>
+          <a class='sl-phase8-neighborhood-card' href='/explore?neighborhood=Fenway'><strong>Fenway</strong><span>Pre-game, post-game, Lansdowne energy</span></a>
+          <a class='sl-phase8-neighborhood-card' href='/explore?neighborhood=Beacon+Hill'><strong>Beacon Hill</strong><span>Cozy taverns, Charles Street charm</span></a>
+          <a class='sl-phase8-neighborhood-card' href='/explore?neighborhood=Downtown'><strong>Downtown</strong><span>Steakhouses, lounges, after-work plans</span></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-phase8-section">
+      <div class="sl-phase8-container">
+        <div class="sl-phase8-section-head">
+          <div>
+            <span class="sl-phase8-section-eyebrow">Launch core</span>
+            <h2 class="sl-phase8-section-title">Discovery, saving, planning, and social — in one flow.</h2>
+            <p class="sl-phase8-section-copy">Search the city, save the right spots, build the plan, and connect with your people from the same SceneLink account.</p>
+          </div>
+        </div>
+        <div class="sl-phase8-card-grid">
+          <article class="sl-phase8-feature-card"><div class="sl-phase8-feature-icon"><i class="fas fa-map-location-dot"></i></div><h3>Discover</h3><p>Search and filter Boston venues by cuisine, neighborhood, vibe, price, and nightlife category.</p><ul><li>Explore and Nightlife routes</li><li>Venue detail links</li><li>Mobile-first browsing</li></ul></article>
+          <article class="sl-phase8-feature-card"><div class="sl-phase8-feature-icon"><i class="fas fa-bookmark"></i></div><h3>Save & organize</h3><p>Create personal lists, save venues, and keep your next night-out shortlist available after login.</p><ul><li>Save / unsave venues</li><li>Create and rename lists</li><li>Add venues to lists</li></ul></article>
+          <article class="sl-phase8-feature-card"><div class="sl-phase8-feature-icon"><i class="fas fa-magic"></i></div><h3>AI Concierge</h3><p>Ask for a vibe, area, budget, or type of night and get SceneLink venue recommendations.</p><ul><li>Real venue IDs and links</li><li>Boston-specific prompts</li><li>Plan-ready suggestions</li></ul></article>
+          <article class="sl-phase8-feature-card"><div class="sl-phase8-feature-icon"><i class="fas fa-users"></i></div><h3>Social & messages</h3><p>Connect through friend requests, activity feed posts, comments, likes, notifications, and direct messages.</p><ul><li>Friend graph</li><li>Feed posts and comments</li><li>DM conversations</li></ul></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-phase8-section compact">
+      <div class="sl-phase8-container">
+        <div class="sl-phase8-newsletter">
+          <div>
+            <h2>Join the early Boston list.</h2>
+            <p>Get weekly venue picks, hidden gems, and launch updates from SceneLink.</p>
+          </div>
+          <form data-sl-newsletter="1" data-sl-newsletter-source="home-phase8">
+            <input type="email" name="email" placeholder="Enter your email" required>
+            <button type="submit" class="sl-phase8-btn gold">Subscribe</button>
+            <div class="sl-phase8-status" data-sl-form-status></div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer-unified">
+    <div class="footer-main-content">
+      <div class="footer-brand-col">
+        <a class='footer-logo-link' href='/'><img loading="lazy" src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" class="footer-logo-img"></a>
+        <p class="footer-brand-tagline">Boston, planned for tonight.</p>
+        <p class="footer-brand-desc">Discover restaurants, bars, nightlife, saved lists, and AI-powered night-out ideas in Boston.</p>
+        <div class="footer-social-icons">
+          <a href="https://www.facebook.com/SceneLinkApp/" target="_blank" rel="noopener" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+          <a href="https://www.instagram.com/scenelink.app" target="_blank" rel="noopener" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+          <a href="https://x.com/Scenelinkapp" target="_blank" rel="noopener" aria-label="X"><i class="fab fa-twitter"></i></a>
+          <a href="https://www.youtube.com/@SceneLinkapp" target="_blank" rel="noopener" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+        </div>
+      </div>
+      <div class="footer-link-col"><h5>Discover</h5><ul><li><a href='/explore'>Restaurants</a></li><li><a href='/nightlife'>Bars & Nightlife</a></li><li><a href='/tonight'>Tonight's Picks</a></li><li><a href='/events'>Events</a></li></ul></div>
+      <div class="footer-link-col"><h5>Plan</h5><ul><li><a href='/my-lists'>My Lists</a></li><li><a href='/plan-with-friends'>Plan Builder — Beta</a></li><li><a href='/profile'>My Profile</a></li><li><a href="/" data-sl-concierge="Plan my night in Boston" onclick="event.preventDefault();">Ask AI Concierge</a></li></ul></div>
+      <div class="footer-link-col"><h5>Company</h5><ul><li><a href='/about'>About</a></li><li><a href='/contact'>Contact</a></li><li><a href='/business'>For Business</a></li></ul></div>
+      <div class="footer-link-col"><h5>Legal</h5><ul><li><a href='/privacy'>Privacy Policy</a></li><li><a href='/terms'>Terms of Service</a></li></ul></div>
+    </div>
+    <div class="footer-bottom-bar"><div class="footer-bottom-inner"><p class="footer-copyright">&copy; 2026 <a href='/'>SceneLink</a>. All rights reserved.</p><div class="footer-bottom-links"><a href='/privacy'>Privacy</a><a href='/terms'>Terms</a></div></div></div>
+  </footer>
+
+  <script src="js/sl-bundle-7d-ui.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-phase8-completion.js?v=connected-20261108-6" defer></script>
+  <!-- AI Concierge loads lazily via sl-perf-loader on first [data-sl-concierge] interaction. -->
+  <script src="js/sl-universal-search.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-social-network.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-phase8d-recovery.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-social-integration-9a.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-venue-activity-9a.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-verification-banner.js?v=connected-20261108-6" defer></script>
+</body>
+</html>

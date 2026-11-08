@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/sl-connected-api.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-connected-actions.js?v=connected-20261108-6" defer></script>
+<link rel="stylesheet" href="/css/sl-connected.css?v=connected-20261108-6"><!-- sl-preconnect-added -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- sl-observability:v1 -->
+  <script src="/env.js"></script>
+  <script src="/js/sl-avatar.js?v=connected-20261108-6"></script>
+  <script src="/js/sl-social-core.js?v=connected-20261108-6" defer></script>
+  <!-- Phase 7A perf -->
+  <script src="/js/sl-fetch-guard.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-perf-loader.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-discovery-map.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-discovery-filters.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-observability.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-version-marker.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-stale-version-detector.js?v=connected-20261108-6" defer></script>
+
+    <script src="js/sl-bundle-7d.js?v=connected-20261108-6" defer></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>Explore - Where should I go tonight? | SceneLink</title>
+    <meta name="description" content="Discover Boston's best restaurants, bars, events and nightlife with SceneLink's interactive map.">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"><noscript><link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"></noscript>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css?v=connected-20261108-6" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <!-- Leaflet -->
+    <!-- Phase 7A perf: leaflet lazy-loaded by sl-perf-loader -->
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Premium App CSS -->
+    <link rel="stylesheet" href="css/explore-premium.css?v=connected-20261108-6">
+    <link rel="stylesheet" href="css/sl-venue-popup-premium-5da.css?v=connected-20261108-6">
+    <!-- Phase 7A perf: ai-concierge CSS lazy-loaded -->
+    <link rel="stylesheet" href="css/sl-bundle-7d.css?v=connected-20261108-6">
+        <link rel="stylesheet" href="css/sl-phase8-launch.css?v=connected-20261108-6">
+<link rel="stylesheet" href="css/unified-chip-buttons.css?v=connected-20261108-6">
+    <link rel="icon" type="image/png" href="images/logo-transparent.png">
+    <link rel="stylesheet" href="css/product-evolution.css?v=connected-20261108-6">
+    <link rel="stylesheet" href="css/launch-polish.css?v=connected-20261108-6">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SceneLink">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="SceneLink">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="57x57" href="/icons/apple-touch-icon-57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="/icons/apple-touch-icon-60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="/icons/apple-touch-icon-72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="/icons/apple-touch-icon-76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="/icons/apple-touch-icon-114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-touch-icon-120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="/icons/apple-touch-icon-144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png">
+
+    <meta property="og:title" content="Explore — Where should I go tonight? | SceneLink">
+    <meta property="og:description" content="Browse Boston restaurants, bars, and nightlife. Filter by vibe, neighborhood, and price.">
+    <meta property="og:url" content="https://scenelink.app/explore.html">
+    <meta name="twitter:title" content="Explore — Where should I go tonight? | SceneLink">
+    <meta name="twitter:description" content="Browse Boston restaurants, bars, and nightlife. Filter by vibe, neighborhood, and price.">
+    <link rel="canonical" href="https://scenelink.app/explore.html">
+    <meta property="og:site_name" content="SceneLink">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/icons/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/icons/icon-512.png">
+  <!-- SceneLink unified auth bundle -->
+
+  <!-- SceneLink unified auth bundle -->
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="css/sl-phase8-home.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-universal-search.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8d-hotfix.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8f-polish.css?v=connected-20261108-6">
+<link rel="stylesheet" href="/css/sl-recovery-layout.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="/css/sl-recovery-truthfulness.css?v=connected-20261108-6">
+</head>
+<body>
+
+<!-- ═══════ FULL-SCREEN APP SHELL ═══════ -->
+<div class="sl-explore-app">
+
+    <!-- ═══ HEADER BAR (Unified Nav) ═══ -->
+    <div class="sl-explore-header sl-unified-nav">
+        <a class='sl-nav-logo-link' href='/'>
+            <img loading="lazy" src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" class="sl-explore-logo">
+        </a>
+
+        <nav class="sl-header-nav">
+            <a class='sl-header-nav-link' data-page='home' href='/'>Home</a>
+            <a class='sl-header-nav-link active' data-page='explore' href='/explore'>Explore</a>
+            <a class='sl-header-nav-link' data-page='nightlife' href='/nightlife'>Nightlife</a>
+            <a class='sl-header-nav-link' data-page='tonights-picks' href='/tonight'>Tonight's Picks</a>
+            <a class='sl-header-nav-link' data-page='social' href='/social-feed'>Social</a>
+            <a class='sl-header-nav-link' data-page='my-lists' href='/my-lists'>My Lists</a>
+            <a href="/" class="sl-header-nav-link" data-ai-concierge-nav="1" data-sl-concierge="Plan my night in Boston" onclick="event.preventDefault();"><i class="fas fa-magic" style="color:#D4AF37;margin-right:4px;"></i>Ask AI</a>
+        </nav>
+
+        <div class="sl-explore-header-spacer"></div>
+
+        <!-- View Toggle -->
+        <div class="sl-view-toggle">
+            <button class="sl-view-btn active" data-view="map"><i class="fas fa-map"></i> Map</button>
+            <button class="sl-view-btn" data-view="list"><i class="fas fa-list"></i> List</button>
+        </div>
+
+        <button class="sl-header-auth-btn sl-auth-trigger">Log in / Sign up</button>
+    </div>
+    <script>
+    // Mark header as upgraded so polish-final.js skips its injection
+    (function(){var h=document.querySelector('.sl-explore-header');if(h)h._upgraded=true;})();
+    </script>
+
+    <!-- ═══ MAIN LAYOUT: Map + Right Panel ═══ -->
+    <div class="sl-split-layout">
+
+    <!-- ═══ MAP AREA ═══ -->
+    <div class="sl-map-area">
+        <div id="slMapCanvas" data-needs-leaflet aria-label="Venue map"></div>
+
+        <!-- Floating toolbar -->
+        <div class="sl-map-toolbar">
+            <!-- Search bar -->
+            <div class="sl-map-searchbar">
+                <i class="fas fa-search sl-search-icon"></i>
+                <input type="text" id="slSearchInput" aria-label="Search venues" placeholder="Search venues or neighborhoods" autocomplete="off">
+                <button class="sl-map-loc-btn" id="slSearchLoc" title="Use my location"><i class="fas fa-location-arrow"></i></button>
+                <button class="sl-map-search-btn" id="slSearchBtn">Search</button>
+            </div>
+
+            <!-- Filter chips -->
+            <div class="sl-map-chips">
+                <button class="sl-chip-btn active" data-cat="all"><i class="fas fa-th"></i> All</button>
+                <button class="sl-chip-btn" data-cat="restaurant"><i class="fas fa-utensils"></i> Restaurants</button>
+                <button class="sl-chip-btn" data-cat="bar"><i class="fas fa-cocktail"></i> Bars</button>
+                <button class="sl-chip-btn" data-cat="lounge"><i class="fas fa-couch"></i> Lounges</button>
+                <button class="sl-chip-btn" data-cat="nightclub"><i class="fas fa-fire"></i> Nightclubs</button>
+                <button class="sl-chip-btn" data-cat="music"><i class="fas fa-music"></i> Music venues</button>
+                <button class="sl-chip-btn sl-chip-filter" id="slFilterBtn"><i class="fas fa-sliders-h"></i> Filters</button>
+            </div>
+            <!-- Cuisine Filter Row -->
+            <div class="sl-cuisine-filters" id="slCuisineFilters">
+                <button class="sl-cuisine-chip active" data-cuisine="all"><i class="fas fa-utensils"></i> All Cuisines</button>
+                <button class="sl-cuisine-chip" data-cuisine="italian"><i class="fas fa-pizza-slice"></i> Italian</button>
+                <button class="sl-cuisine-chip" data-cuisine="japanese"><i class="fas fa-fish"></i> Japanese</button>
+                <button class="sl-cuisine-chip" data-cuisine="mexican"><i class="fas fa-pepper-hot"></i> Mexican</button>
+                <button class="sl-cuisine-chip" data-cuisine="seafood"><i class="fas fa-shrimp"></i> Seafood</button>
+                <button class="sl-cuisine-chip" data-cuisine="steakhouse"><i class="fas fa-drumstick-bite"></i> Steakhouse</button>
+                <button class="sl-cuisine-chip" data-cuisine="french"><i class="fas fa-wine-glass"></i> French</button>
+                <button class="sl-cuisine-chip" data-cuisine="indian"><i class="fas fa-bowl-food"></i> Indian</button>
+                <button class="sl-cuisine-chip" data-cuisine="thai"><i class="fas fa-mortar-pestle"></i> Thai</button>
+                <button class="sl-cuisine-chip" data-cuisine="chinese"><i class="fas fa-bowl-rice"></i> Chinese</button>
+                <button class="sl-cuisine-chip" data-cuisine="spanish"><i class="fas fa-plate-wheat"></i> Spanish</button>
+                <button class="sl-cuisine-chip" data-cuisine="mediterranean"><i class="fas fa-leaf"></i> Mediterranean</button>
+            </div>
+        </div>
+
+        <!-- Map controls -->
+        <div class="sl-map-ctrls">
+            <button class="sl-map-ctrl" id="slLocateBtn" title="My location"><i class="fas fa-crosshairs"></i></button>
+            <button class="sl-map-ctrl" id="slZoomIn" title="Zoom in"><i class="fas fa-plus"></i></button>
+            <button class="sl-map-ctrl" id="slZoomOut" title="Zoom out"><i class="fas fa-minus"></i></button>
+        </div>
+
+        <!-- Venue Count Badge -->
+        <div class="sl-crowd-index">
+            <div class="sl-crowd-pulse"></div>
+            <span class="sl-crowd-text">BOSTON</span>
+            <span class="sl-crowd-count" id="slCrowdCount">Explore the available venue directory</span>
+        </div>
+
+        <!-- Bottom venue preview card -->
+        <div class="sl-venue-card-wrap" id="slVenueWrap">
+            <div class="sl-venue-card">
+                <img loading="lazy" class="sl-venue-card-img" id="slCardImg" src="" alt="">
+                <div class="sl-venue-card-info">
+                    <div class="sl-venue-card-name" id="slCardName"></div>
+                    <div class="sl-venue-card-meta">
+                        <span class="star" id="slCardRating"></span>
+                        <span id="slCardDist"></span>
+                    </div>
+                    <div class="sl-venue-card-type" id="slCardType"></div>
+                </div>
+                <div class="sl-venue-card-actions">
+                    <button class="sl-venue-cta" id="slCardReserve"><i class="fas fa-circle-info"></i> Details</button>
+                    <button class="sl-venue-cta sl-venue-cta-plan" id="slCardPlanBtn" title="Create Plan"><i class="fas fa-calendar-plus"></i> Plan</button>
+                    <button class="sl-venue-save-btn" id="slCardSaveBtn" title="Save to Favorites"><i class="fas fa-heart"></i></button>
+                    <button class="sl-venue-detail-btn" id="slCardDetailBtn"><i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+            <button class="sl-venue-close" id="slCardClose">&times;</button>
+        </div>
+
+        <!-- List View (overlays map when active) -->
+        <div class="sl-list-view" id="slListView">
+            <div class="sl-list-header">
+                <div class="sl-list-title">Explore</div>
+                <div class="sl-list-count" id="slListCount">Loading venue directory…</div>
+            </div>
+            <div id="slListCards"></div>
+        </div>
+    </div>
+
+    <!-- ═══ RIGHT SIDE PANEL ═══ -->
+    <div class="sl-right-panel" id="slRightPanel">
+        <div class="sl-right-panel-header">
+            <h3 class="sl-right-panel-title">Venue directory</h3>
+            <span class="sl-right-panel-count" id="slRightPanelCount">Finding venues</span>
+        </div>
+        <div class="sl-right-panel-cards" id="slRightPanelCards">
+            <div class="sl-phase8-panel-skeleton" aria-hidden="true">
+                <div class="sl-phase8-skel-card"></div>
+                <div class="sl-phase8-skel-card"></div>
+                <div class="sl-phase8-skel-card"></div>
+            </div>
+        </div>
+    </div>
+
+    </div><!-- /sl-split-layout -->
+
+    <!-- ═══ BOTTOM NAV (MOBILE) ═══ -->
+    <div class="sl-bottom-nav">
+        <a class='sl-nav-item active' href='/explore'><i class="fas fa-compass"></i><span>Explore</span></a>
+        <a class='sl-nav-item' href='/nightlife'><i class="fas fa-moon"></i><span>Nightlife</span></a>
+        <a class='sl-nav-item' href='/tonight'><i class="fas fa-fire"></i><span>Tonight</span></a>
+    </div>
+</div>
+
+<!-- ═══════ FILTER MODAL ═══════ -->
+<div class="sl-filter-overlay" id="slFilterOverlay">
+    <section class="sl-filter-modal" role="dialog" aria-modal="true" aria-labelledby="slFilterTitle">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h2 class="sl-filter-title" id="slFilterTitle">Filter venues</h2>
+            <button type="button" id="slFilterClose" aria-label="Close filters">Close</button>
+        </div>
+        <p class="sl-filter-description">Search the full directory using listed venue details.</p>
+        <form id="slDiscoveryFilters">
+            <div class="sl-discovery-filter-grid">
+                <label>Venue type<select name="type"><option value="all">All types</option><option value="restaurant">Restaurants</option><option value="cafe">Cafés</option><option value="bar">Bars</option><option value="lounge">Lounges</option><option value="nightclub">Nightclubs</option><option value="music">Music venues</option><option value="rooftop_bar">Rooftop bars</option><option value="pub">Pubs</option><option value="brewery">Breweries</option><option value="cocktail_bar">Cocktail bars</option><option value="wine_bar">Wine bars</option><option value="beer_hall">Beer halls</option><option value="dive_bar">Dive bars</option></select></label>
+                <label>Cuisine<input name="cuisine" maxlength="80" placeholder="e.g. Italian" autocomplete="off"></label>
+                <label>Neighborhood<input name="neighborhood" maxlength="80" placeholder="e.g. Back Bay" autocomplete="off"></label>
+                <label>Listed vibe<input name="vibe" maxlength="80" placeholder="e.g. cozy, outdoor" autocomplete="off"></label>
+                <label>Price range<select name="price_level"><option value="">Any listed price</option><option value="1">$ · Budget</option><option value="2">$$ · Moderate</option><option value="3">$$$ · Upscale</option><option value="4">$$$$ · Fine dining</option></select></label>
+            </div>
+            <p class="sl-filter-unavailable" role="note">Distance, verified ratings, music genres, open-now status, live attendance and booking availability filters are unavailable. Listed vibes describe venue records, not the atmosphere right now.</p>
+            <div class="sl-filter-actions">
+                <button type="button" class="sl-filter-reset" id="slFilterReset">Clear filters</button>
+                <button type="submit" class="sl-filter-apply" id="slFilterApply">Show results</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+<!-- ═══════ VENUE DETAIL MODAL ═══════ -->
+<div class="sl-detail-overlay" id="slDetailOverlay">
+    <div class="sl-detail-modal">
+        <button class="sl-detail-close"><i class="fas fa-times"></i></button>
+        <img loading="lazy" class="sl-detail-img" id="slDetImg" src="" alt="">
+        <div class="sl-detail-body">
+            <div class="sl-detail-name" id="slDetName"></div>
+            <div class="sl-detail-meta" id="slDetMeta"></div>
+            <div class="sl-detail-tags" id="slDetTags"></div>
+            <p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.6;margin-bottom:16px;" id="slDetVibe"></p>
+            <div style="display:flex;gap:8px;margin-bottom:16px;font-size:13px;color:rgba(255,255,255,0.5);">
+                <span id="slDetPrice" style="color:#D4AF37;font-weight:700;"></span>
+                <span>&middot;</span>
+                <span id="slDetHours"></span>
+            </div>
+            <div class="sl-detail-stats" id="slDetailStats" style="display:none;"></div>
+            <div class="sl-detail-actions">
+                <button class="sl-detail-reserve" id="slDetDirectionsBtn" onclick="(function(){var n=document.getElementById('slDetName');var q=n?encodeURIComponent((n.textContent||'').trim()+' Boston'):'Boston';window.open('https://www.google.com/maps/search/?api=1&query='+q,'_blank','noopener');})()"><i class="fas fa-diamond-turn-right"></i> Get Directions</button>
+                <button class="sl-detail-plan-btn" id="slDetPlanBtn"><i class="fas fa-calendar-plus"></i> Plan Night</button>
+                <button class="sl-detail-icon-btn" id="slDetSaveBtn" title="Save to List"><i class="far fa-heart"></i></button>
+                <button class="sl-detail-icon-btn" id="slDetShareBtn" title="Share"><i class="fas fa-share-alt"></i></button>
+            </div>
+
+            <!-- Plan Night Section -->
+            <div class="sl-detail-plan-section" id="slDetPlanSection">
+                <h4><i class="fas fa-moon"></i> Build Your Night Out</h4>
+                <div class="sl-detail-plan-actions">
+                    <button class="sl-detail-plan-action" id="slDetAddToItinerary">
+                        <i class="fas fa-plus-circle"></i>
+                        Add to Itinerary
+                    </button>
+                    <button class="sl-detail-plan-action" id="slDetInviteFriends">
+                        <i class="fas fa-user-friends"></i>
+                        Invite Friends
+                    </button>
+                    <button class="sl-detail-plan-action" id="slDetShareVenue">
+                        <i class="fas fa-share-alt"></i>
+                        Share Venue
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Engine -->
+    <!-- SL-POLISH-SCRIPTS -->
+    <script src="js/sl-bundle-7d-ui.js?v=connected-20261108-6" defer></script>
+
+
+<script src="js/explore-premium.js?v=connected-20261108-6" defer></script>
+<script src="js/tonight-boston-explore.js?v=connected-20261108-6" defer></script>
+<script src="js/product-evolution.js?v=connected-20261108-6" defer></script>
+<script src="js/production-pass.js?v=connected-20261108-6" defer></script>
+<!-- Auth System (replaces universal-auth.js) -->
+
+
+
+
+
+
+
+
+
+    <!-- Phase 7A perf: sl-social-feed.js removed (not a social page) -->
+
+
+    <script src="js/launch-polish.js?v=connected-20261108-6" defer></script>
+    <!-- Phase 7A perf: ai-concierge-v5.js lazy-loaded -->
+<script src="js/sl-right-panel.js?v=connected-20261108-6" defer></script>
+
+
+
+
+
+
+<script src="js/sl-map-popup-premium.js?v=connected-20261108-6" defer></script>
+
+  <script src="js/sl-phase8-launch.js?v=connected-20261108-6" defer></script>
+<script src="js/sl-phase8-completion.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-universal-search.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-social-network.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-phase8d-recovery.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-social-integration-9a.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-venue-activity-9a.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-verification-banner.js?v=connected-20261108-6" defer></script>
+</body>
+</html>

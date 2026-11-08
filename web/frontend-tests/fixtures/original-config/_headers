@@ -1,0 +1,44 @@
+# SceneLink _headers — authoritative for manual ZIP deploys (netlify.toml headers
+# are only applied on git-triggered builds, which are disabled via stop_builds=true).
+# Long-lived immutable caching for version-busted / static assets.
+
+/js/*
+  Cache-Control: public, max-age=31536000, immutable
+/css/*
+  Cache-Control: public, max-age=31536000, immutable
+/images/*
+  Cache-Control: public, max-age=31536000, immutable
+/icons/*
+  Cache-Control: public, max-age=31536000, immutable
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# These MUST stay fresh so the service worker / version banner works correctly.
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/version.json
+  Cache-Control: public, max-age=0, must-revalidate
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+/env.js
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/css/sl-phase8-home.css
+  Cache-Control: public, max-age=31536000, immutable
+/js/sl-phase8-launch.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/api/*
+  Cache-Control: no-store
+/css/sl-universal-search.css
+  Cache-Control: public, max-age=31536000, immutable
+/js/sl-universal-search.js
+  Cache-Control: public, max-age=31536000, immutable
+/js/sl-social-network.js
+  Cache-Control: public, max-age=31536000, immutable
+/css/sl-phase8d-hotfix.css
+  Cache-Control: public, max-age=31536000, immutable
+/js/sl-phase8d-recovery.js
+  Cache-Control: public, max-age=31536000, immutable

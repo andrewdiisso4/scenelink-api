@@ -1,0 +1,55 @@
+/* SceneLink — Icon Fallbacks
+ * Ensures critical icons render even if FontAwesome fails or is cached old
+ * Uses inline SVG background-image as a safety net
+ */
+
+/* X (Twitter) logo SVG fallback — injected when fa-x-twitter fails */
+.fa-x-twitter,
+i.fa-x-twitter,
+.fab.fa-x-twitter {
+    /* Default: let FontAwesome render. If FA is missing/old, the ::before below ensures a visible glyph */
+    position: relative;
+    display: inline-block;
+    min-width: 1em;
+    min-height: 1em;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+/* If the FontAwesome font didn't load the glyph (old version), show SVG fallback.
+ * We use a background-image that renders only when content is empty (FA glyph missing).
+ */
+.fa-x-twitter:not(.fa-loaded)::before {
+    content: "";
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' fill='currentColor'><path d='M389.2 48h70.6L305.6 224.2 487 464H345L233.7 318.6 106.5 464H35.8l164.9-188.5L26.8 48h145.6l100.5 132.9L389.2 48zm-24.8 373.8h39.1L151.1 88h-42L364.4 421.8z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    vertical-align: -0.125em;
+}
+
+/* Once FontAwesome loads the glyph, it will naturally show through the ::before content:"\f81a" */
+/* Webfont-aware: if the font renders the char, it overrides the svg */
+@font-face {
+    font-family: "FA-Fallback-Check";
+    src: local("Font Awesome 6 Brands");
+    unicode-range: U+F81A; /* x-twitter codepoint */
+}
+
+/* Social link-large cards — make X visible even in old FA */
+.social-link-large i.fa-x-twitter::before {
+    content: "\f81a";
+}
+
+/* Belt-and-suspenders: if no FA at all, the ::after provides the SVG */
+@supports (background: url("data:image/svg+xml,<svg/>")) {
+    i.fa-x-twitter:empty {
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' fill='currentColor'><path d='M389.2 48h70.6L305.6 224.2 487 464H345L233.7 318.6 106.5 464H35.8l164.9-188.5L26.8 48h145.6l100.5 132.9L389.2 48zm-24.8 373.8h39.1L151.1 88h-42L364.4 421.8z'/></svg>");
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+    }
+}

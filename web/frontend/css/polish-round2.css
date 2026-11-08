@@ -1,0 +1,585 @@
+/* =====================================================
+   SCENELINK — PRODUCTION POLISH ROUND 2
+   Auth · Nightlife · Tonight · Homepage fixes
+   ===================================================== */
+
+/* ====================================================
+   1. AUTH MODAL — TERMS ONLY ON SIGNUP
+   ==================================================== */
+
+/* Suppress old auth modal completely */
+#sl-auth-modal {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+}
+
+/* Our R2 auth modal */
+#sl-auth-modal-r2 {
+    z-index: 100000 !important;
+}
+
+/* Default: hide terms checkboxes (they show only for signup) */
+#sl-auth-modal .sl-terms-row {
+    display: none;
+    margin: 4px 0;
+}
+#sl-auth-modal.signup-mode .sl-terms-row {
+    display: flex !important;
+}
+
+/* Auth modal tab bar */
+#sl-auth-modal-r2 .sl-tab-bar,
+#sl-auth-modal .sl-tab-bar {
+    display: flex !important;
+    gap: 0 !important;
+    margin-bottom: 18px !important;
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+}
+#sl-auth-modal-r2 .sl-tab,
+#sl-auth-modal .sl-tab {
+    flex: 1 !important;
+    padding: 12px 0 !important;
+    background: none !important;
+    border: none !important;
+    color: rgba(255,255,255,0.45) !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    position: relative !important;
+    transition: color 0.2s !important;
+    letter-spacing: 0.3px !important;
+}
+#sl-auth-modal-r2 .sl-tab.active,
+#sl-auth-modal .sl-tab.active {
+    color: #D4AF37 !important;
+}
+#sl-auth-modal-r2 .sl-tab.active::after,
+#sl-auth-modal .sl-tab.active::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: -1px !important;
+    left: 10% !important;
+    right: 10% !important;
+    height: 2px !important;
+    background: #D4AF37 !important;
+    border-radius: 2px !important;
+}
+#sl-auth-modal-r2 .sl-tab:hover,
+#sl-auth-modal .sl-tab:hover {
+    color: rgba(255,255,255,0.8) !important;
+}
+
+/* Auth form input polish */
+#sl-auth-modal input[type="email"],
+#sl-auth-modal input[type="password"],
+#sl-auth-modal input[type="text"] {
+    width: 100%;
+    padding: 13px 16px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+#sl-auth-modal input:focus {
+    border-color: rgba(212,175,55,0.45);
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.08);
+}
+
+/* Auth button styling */
+#sl-auth-modal .sl-primary {
+    width: 100%;
+    padding: 13px;
+    background: linear-gradient(135deg, #D4AF37, #b8962e);
+    color: #0a0a0a;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s;
+}
+#sl-auth-modal .sl-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(212,175,55,0.3);
+}
+
+#sl-auth-modal .sl-auth-error {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.2);
+    color: #fca5a5;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    display: none;
+    margin-bottom: 10px;
+}
+
+/* ====================================================
+   2. NIGHTLIFE — FILTER CHIP OVERLAP FIX
+   ==================================================== */
+
+.nl-map-chips {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 6px 0 !important;
+}
+
+.nl-map-chip {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    padding: 7px 14px !important;
+    font-size: 12.5px !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    background: rgba(255,255,255,0.06) !important;
+    color: rgba(255,255,255,0.7) !important;
+    cursor: pointer !important;
+    transition: all 0.25s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+    outline: none !important;
+    /* Fix overlap: ensure consistent sizing */
+    box-sizing: border-box !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+}
+
+.nl-map-chip.active {
+    background: rgba(212,175,55,0.18) !important;
+    border-color: rgba(212,175,55,0.45) !important;
+    color: #D4AF37 !important;
+    font-weight: 600 !important;
+    /* No size change on active — prevent overlap */
+    padding: 7px 14px !important;
+    box-shadow: 0 2px 10px rgba(212,175,55,0.15) !important;
+}
+
+.nl-map-chip:hover:not(.active) {
+    background: rgba(255,255,255,0.1) !important;
+    border-color: rgba(255,255,255,0.2) !important;
+    color: #fff !important;
+}
+
+/* Genre chip divider fix */
+.nl-map-chips > span[style] {
+    align-self: center !important;
+    flex-shrink: 0 !important;
+}
+
+/* ====================================================
+   3. NIGHTLIFE — SEARCH BAR MATCH EXPLORE STYLE
+   ==================================================== */
+
+.nl-map-search-bar {
+    display: flex !important;
+    align-items: center !important;
+    background: rgba(8,8,14,0.92) !important;
+    border: 1.5px solid rgba(212,175,55,0.22) !important;
+    border-radius: 28px !important;
+    padding: 4px 4px 4px 20px !important;
+    backdrop-filter: blur(48px) !important;
+    -webkit-backdrop-filter: blur(48px) !important;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04) !important;
+    transition: all 0.35s ease !important;
+    gap: 0 !important;
+}
+
+.nl-map-search-bar:focus-within {
+    border-color: rgba(212,175,55,0.45) !important;
+    box-shadow: 0 16px 50px rgba(0,0,0,0.5), 0 0 30px rgba(212,175,55,0.06) !important;
+}
+
+.nl-map-search-bar > i {
+    color: #D4AF37 !important;
+    font-size: 14px !important;
+    margin-right: 12px !important;
+    flex-shrink: 0 !important;
+    width: 36px !important;
+    height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(212,175,55,0.12) !important;
+    border-radius: 10px !important;
+}
+
+.nl-map-search-bar input {
+    flex: 1 !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    color: #fff !important;
+    font-size: 14.5px !important;
+    padding: 13px 14px 13px 0 !important;
+    caret-color: #D4AF37 !important;
+}
+.nl-map-search-bar input::placeholder {
+    color: rgba(255,255,255,0.3) !important;
+    font-size: 13.5px !important;
+}
+
+.nl-map-search-row .nl-search-btn,
+.nl-map-search-bar .nl-search-btn {
+    flex-shrink: 0 !important;
+    background: linear-gradient(135deg, #D4AF37, #b8962e) !important;
+    color: #0a0a0a !important;
+    border: none !important;
+    border-radius: 22px !important;
+    padding: 11px 22px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    transition: all 0.25s !important;
+}
+
+.nl-map-search-row .nl-search-btn:hover,
+.nl-map-search-bar .nl-search-btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 15px rgba(212,175,55,0.35) !important;
+}
+
+/* ====================================================
+   4. NIGHTLIFE — MAP PIN POPUP STYLES
+   ==================================================== */
+
+/* Venue card — match explore style popup */
+.nl-map-venue-card {
+    position: absolute !important;
+    bottom: 24px !important;
+    left: 50% !important;
+    transform: translateX(-50%) translateY(20px) !important;
+    background: rgba(12,12,18,0.97) !important;
+    border: 1px solid rgba(212,175,55,0.2) !important;
+    border-radius: 20px !important;
+    overflow: hidden !important;
+    width: 380px !important;
+    max-width: calc(100vw - 40px) !important;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04) !important;
+    z-index: 1000 !important;
+    display: none !important;
+    opacity: 0 !important;
+    transition: all 0.35s cubic-bezier(0.34, 1.3, 0.64, 1) !important;
+    backdrop-filter: blur(30px) !important;
+}
+
+.nl-map-venue-card.active {
+    display: flex !important;
+    flex-direction: column !important;
+    opacity: 1 !important;
+    transform: translateX(-50%) translateY(0) !important;
+}
+
+.nl-map-vc-img {
+    width: 100% !important;
+    height: 160px !important;
+    object-fit: cover !important;
+}
+
+.nl-map-vc-info {
+    padding: 16px 18px !important;
+}
+
+.nl-map-vc-name {
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    color: #fff !important;
+    margin-bottom: 4px !important;
+}
+
+.nl-map-vc-type {
+    font-size: 12.5px !important;
+    color: rgba(255,255,255,0.5) !important;
+    margin-bottom: 10px !important;
+}
+
+.nl-map-vc-meta {
+    display: flex !important;
+    gap: 12px !important;
+    font-size: 12.5px !important;
+    color: rgba(255,255,255,0.6) !important;
+    flex-wrap: wrap !important;
+}
+
+.nl-map-vc-meta .vc-rating {
+    color: #D4AF37 !important;
+    font-weight: 600 !important;
+}
+
+.nl-map-vc-close {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 50% !important;
+    background: rgba(0,0,0,0.6) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: #fff !important;
+    font-size: 16px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 10 !important;
+    transition: all 0.2s !important;
+}
+
+.nl-map-vc-close:hover {
+    background: rgba(255,255,255,0.15) !important;
+}
+
+/* Venue card action buttons */
+.nl-vc-actions {
+    display: flex;
+    gap: 8px;
+    padding: 0 18px 16px;
+}
+
+.nl-vc-action-btn {
+    flex: 1;
+    padding: 9px 14px;
+    border-radius: 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+    border: none;
+}
+
+.nl-vc-action-btn.primary {
+    background: linear-gradient(135deg, #D4AF37, #b8962e);
+    color: #0a0a0a;
+}
+.nl-vc-action-btn.primary:hover {
+    box-shadow: 0 4px 15px rgba(212,175,55,0.35);
+    transform: translateY(-1px);
+}
+
+.nl-vc-action-btn.secondary {
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.8);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+.nl-vc-action-btn.secondary:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.nl-vc-action-btn.save-btn.saved {
+    background: rgba(212,175,55,0.2);
+    color: #D4AF37;
+    border-color: rgba(212,175,55,0.3);
+}
+
+/* ====================================================
+   5. NIGHTLIFE — SMOOTH SCROLL TO LIST
+   ==================================================== */
+
+.nl-scroll-to-list {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 0 4px;
+    cursor: pointer;
+}
+
+.nl-scroll-to-list-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(212,175,55,0.08);
+    border: 1px solid rgba(212,175,55,0.2);
+    color: #D4AF37;
+    padding: 10px 22px;
+    border-radius: 50px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+    animation: gentleBounce 2s ease-in-out infinite;
+}
+
+.nl-scroll-to-list-btn:hover {
+    background: rgba(212,175,55,0.15);
+    border-color: rgba(212,175,55,0.4);
+    transform: translateY(-2px);
+}
+
+@keyframes gentleBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(3px); }
+}
+
+/* Nightlife venues section — better integration */
+.venues-section {
+    padding-top: 20px !important;
+}
+
+.nightlife-filters-section {
+    padding: 16px 0 !important;
+}
+
+/* ====================================================
+   6. TONIGHT — NAV ICONS GOLD + SPACING
+   ==================================================== */
+
+/* Force gold color on tonight page nav icons */
+.tp-page ~ .nothing,
+body:has(.tp-page) .nav-icon-btn svg,
+.header-enhanced .nav-icon-btn svg {
+    stroke: #D4AF37 !important;
+    color: #D4AF37 !important;
+}
+
+.header-enhanced .nav-icon-btn .nav-my-lists svg {
+    fill: #D4AF37 !important;
+}
+
+.header-enhanced .nav-icon-btn {
+    width: 38px !important;
+    height: 38px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 10px !important;
+    transition: all 0.2s !important;
+    margin: 0 2px !important;
+}
+
+.header-enhanced .nav-icon-btn:hover {
+    background: rgba(212,175,55,0.08) !important;
+}
+
+.header-enhanced .nav-right {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+
+/* ====================================================
+   7. TONIGHT — VIEW ALL EXPANDED SECTION
+   ==================================================== */
+
+.tp-section.expanded .tp-grid {
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+.tp-section .tp-grid {
+    transition: max-height 0.4s ease;
+}
+
+.tp-section-link {
+    cursor: pointer !important;
+    transition: color 0.2s !important;
+}
+
+.tp-section-link:hover {
+    color: #D4AF37 !important;
+}
+
+.tp-section-link.expanded {
+    color: #D4AF37 !important;
+}
+
+/* ====================================================
+   8. HOMEPAGE — HERO BACKGROUND + SEARCH SPACING
+   ==================================================== */
+
+/* Override hero background to upscale restaurant interior */
+.hero-v2::before {
+    background:
+        url('https://images.unsplash.com/photo-1559329007-40df8a9345d8?w=1920&q=80') center/cover no-repeat !important;
+}
+
+/* More spacing above search on mobile */
+@media (max-width: 768px) {
+    .premium-search-section {
+        margin-top: -30px !important;
+        padding: 0 16px 60px !important;
+    }
+}
+
+/* More spacing below search to prevent overlap with social layer */
+.premium-search-section {
+    padding-bottom: 80px !important;
+    position: relative !important;
+    z-index: 20 !important;
+}
+
+.search-results-dropdown {
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 100 !important;
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    background: rgba(12,12,18,0.97) !important;
+    border: 1px solid rgba(212,175,55,0.15) !important;
+    border-radius: 18px !important;
+    margin-top: 8px !important;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7) !important;
+    backdrop-filter: blur(30px) !important;
+}
+
+.search-results-dropdown:empty {
+    display: none !important;
+}
+
+/* More breathing room before social layer */
+.social-layer-section {
+    padding-top: 80px !important;
+    position: relative !important;
+    z-index: 5 !important;
+}
+
+/* ====================================================
+   9. NIGHTLIFE — PIN ANIMATIONS
+   ==================================================== */
+
+.nl-pin-wrap {
+    background: transparent !important;
+    border: none !important;
+}
+
+.nl-pin {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+    position: relative;
+}
+
+.nl-pin.active,
+.nl-pin:hover {
+    transform: scale(1.3);
+    z-index: 999 !important;
+}
+
+.nl-pin.bounce {
+    animation: nlPinBounce 0.6s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@keyframes nlPinBounce {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.5) translateY(-8px); }
+    50% { transform: scale(1.2) translateY(0); }
+    70% { transform: scale(1.35) translateY(-3px); }
+    100% { transform: scale(1.3) translateY(0); }
+}

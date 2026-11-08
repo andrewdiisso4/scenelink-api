@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+throw new Error('Retired synthetic-data generator: use verified venue/event imports, never generated popularity or activity');
 /**
  * Build seed JSON files (venues.json, events.json, activity.json) by parsing
  * the frontend JS venue arrays from the scenelink-frontend package.

@@ -1,0 +1,33 @@
+/* Logo Size Enhanced - Unified logo sizing - 72px canonical header */
+
+.logo-container .logo-main,
+.logo-container img.logo-main {
+    width: auto !important;
+    height: 72px !important;
+    max-height: 72px !important;
+    min-height: 0 !important;
+    object-fit: contain !important;
+    transition: transform 0.3s ease !important;
+}
+
+.logo-container:hover .logo-main {
+    transform: scale(1.05) !important;
+}
+
+@media (max-width: 768px) {
+    .logo-container .logo-main,
+    .logo-container img.logo-main {
+        height: 44px !important;
+        max-height: 44px !important;
+        min-height: 0 !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .logo-container .logo-main,
+    .logo-container img.logo-main {
+        height: 40px !important;
+        max-height: 40px !important;
+        min-height: 0 !important;
+    }
+}

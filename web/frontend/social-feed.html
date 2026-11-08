@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/sl-connected-api.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-connected-actions.js?v=connected-20261108-6" defer></script>
+<link rel="stylesheet" href="/css/sl-connected.css?v=connected-20261108-6"><!-- sl-preconnect-added -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- sl-observability:v1 -->
+  <script src="/env.js"></script>
+  <script src="/js/sl-avatar.js?v=connected-20261108-6"></script>
+  <script src="/js/sl-social-core.js?v=connected-20261108-6" defer></script>
+  <!-- Phase 7A perf -->
+  <script src="/js/sl-fetch-guard.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-perf-loader.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-observability.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-version-marker.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-stale-version-detector.js?v=connected-20261108-6" defer></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>Social - Connect with Your Scene | SceneLink</title>
+    <meta name="description" content="See what your friends are doing tonight. Share plans, discover venues, and build your nightlife community.">
+    <link rel="stylesheet" href="css/sl-bundle-7d.css?v=connected-20261108-6">
+        <link rel="stylesheet" href="css/sl-phase8-launch.css?v=connected-20261108-6">
+<link rel="stylesheet" href="css/product-evolution.css?v=connected-20261108-6">
+    <link rel="stylesheet" href="css/launch-polish.css?v=connected-20261108-6">
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"><noscript><link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"></noscript>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css?v=connected-20261108-6" crossorigin="anonymous" referrerpolicy="no-referrer">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/logo-transparent.png">
+    <style>
+        /* ===== SOCIAL PAGE — Premium Design System ===== */
+        :root {
+            --sl-gold: #D4AF37;
+            --sl-gold-light: #f5d670;
+            --sl-gold-dark: #b8971f;
+            --sl-dark: #0a0a0a;
+            --sl-card: #111111;
+            --sl-card-alt: #161616;
+            --sl-surface: #1a1a1a;
+            --sl-border: rgba(212,175,55,0.10);
+            --sl-border-light: rgba(255,255,255,0.06);
+            --sl-text: #ffffff;
+            --sl-text-dim: rgba(255,255,255,0.6);
+            --sl-text-muted: rgba(255,255,255,0.35);
+            --sl-radius: 16px;
+            --sl-radius-sm: 10px;
+        }
+
+        * { box-sizing: border-box; }
+
+        /* ===== LOGGED OUT: Premium Landing ===== */
+        .social-landing { background: var(--sl-dark); min-height: 100vh; }
+        .social-landing.hidden { display: none !important; }
+
+        /* --- Hero Section --- */
+        .sl-social-hero {
+            position: relative;
+            padding: 120px 24px 80px;
+            text-align: center;
+            overflow: hidden;
+        }
+        .sl-social-hero::before {
+            content: '';
+            position: absolute;
+            top: -200px; left: 50%; transform: translateX(-50%);
+            width: 800px; height: 800px;
+            background: radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .sl-social-hero::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(212,175,55,0.2), transparent);
+        }
+        .sl-hero-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            background: rgba(212,175,55,0.08);
+            border: 1px solid rgba(212,175,55,0.18);
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--sl-gold);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 32px;
+        }
+        .sl-hero-chip i { font-size: 11px; }
+        .sl-social-hero h1 {
+            font-size: clamp(38px, 6vw, 68px);
+            font-weight: 900;
+            color: #fff;
+            line-height: 1.05;
+            letter-spacing: -0.04em;
+            margin: 0 0 20px;
+        }
+        .sl-social-hero h1 .sl-gold-text {
+            background: linear-gradient(135deg, var(--sl-gold), var(--sl-gold-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .sl-hero-desc {
+            font-size: 18px;
+            color: var(--sl-text-dim);
+            max-width: 560px;
+            margin: 0 auto 40px;
+            line-height: 1.65;
+        }
+        .sl-hero-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        /* Premium CTA — matches Explore primary pill style (uses !important to beat .sl-auth-trigger global override) */
+        .sl-btn-primary,
+        button.sl-btn-primary,
+        .sl-btn-primary.sl-auth-trigger {
+            display: inline-flex !important;
+            height: 47px !important;
+            box-sizing: border-box !important;
+            line-height: 1 !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 10px !important;
+            background: linear-gradient(135deg, #D4AF37 0%, #b8962e 100%) !important;
+            color: #0a0a0a !important;
+            font-weight: 700 !important;
+            font-size: 15px !important;
+            letter-spacing: 0.3px !important;
+            padding: 14px 32px !important;
+            border-radius: 50px !important;
+            border: none !important;
+            cursor: pointer !important;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease !important;
+            text-decoration: none !important;
+            box-shadow: 0 8px 24px rgba(212,175,55,0.28), inset 0 1px 0 rgba(255,255,255,0.25) !important;
+            white-space: nowrap !important;
+        }
+        .sl-btn-primary:hover,
+        button.sl-btn-primary:hover,
+        .sl-btn-primary.sl-auth-trigger:hover {
+            background: linear-gradient(135deg, #e0be4a 0%, #D4AF37 100%) !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 14px 36px rgba(212,175,55,0.45), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+        }
+        .sl-btn-primary:active { transform: translateY(0) !important; }
+        .sl-btn-primary i { font-size: 14px !important; }
+        .sl-btn-secondary,
+        a.sl-btn-secondary {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 10px !important;
+            background: transparent !important;
+            color: #D4AF37 !important;
+            font-weight: 700 !important;
+            font-size: 15px !important;
+            letter-spacing: 0.3px !important;
+            padding: 12.5px 32px !important;
+            height: 47px !important;
+            box-sizing: border-box !important;
+            border-radius: 50px !important;
+            border: 1.5px solid rgba(212,175,55,0.55) !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+            text-decoration: none !important;
+            line-height: 1 !important;
+        }
+        .sl-btn-secondary:hover { background: rgba(212,175,55,0.08); border-color: #D4AF37; transform: translateY(-2px); }
+
+        /* --- Live Activity Preview Mockup --- */
+        .sl-activity-preview {
+            max-width: 860px;
+            margin: 60px auto 0;
+            position: relative;
+        }
+        .sl-activity-preview-inner {
+            background: var(--sl-card);
+            border: 1px solid var(--sl-border);
+            border-radius: 20px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .sl-activity-preview-inner::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--sl-gold), var(--sl-gold-light), var(--sl-gold));
+        }
+        .sl-preview-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .sl-preview-header h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sl-preview-header h3 .sl-live-dot {
+            width: 8px; height: 8px;
+            background: #00d26a;
+            border-radius: 50%;
+            display: inline-block;
+            animation: sl-pulse-dot 2s infinite;
+        }
+        @keyframes sl-pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .sl-preview-badge {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--sl-gold);
+            background: rgba(212,175,55,0.1);
+            padding: 4px 12px;
+            border-radius: 100px;
+        }
+        .sl-preview-items {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .sl-preview-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            background: rgba(255,255,255,0.03);
+            border-radius: var(--sl-radius-sm);
+            border: 1px solid var(--sl-border-light);
+            transition: all 0.2s;
+        }
+        .sl-preview-item:hover { border-color: var(--sl-border); background: rgba(255,255,255,0.05); }
+        .sl-preview-avatar {
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 15px;
+            color: #000;
+            flex-shrink: 0;
+        }
+        .sl-preview-avatar.av-1 { background: linear-gradient(135deg, #D4AF37, #f5d670); }
+        .sl-preview-avatar.av-2 { background: linear-gradient(135deg, #6C5CE7, #a29bfe); color:#fff; }
+        .sl-preview-avatar.av-3 { background: linear-gradient(135deg, #00b894, #55efc4); }
+        .sl-preview-avatar.av-4 { background: linear-gradient(135deg, #fd79a8, #e84393); color:#fff; }
+        .sl-preview-content { flex: 1; min-width: 0; }
+        .sl-preview-name { font-size: 14px; font-weight: 600; color: #fff; }
+        .sl-preview-action { font-size: 13px; color: var(--sl-text-dim); margin-top: 2px; }
+        .sl-preview-action strong { color: var(--sl-gold); font-weight: 600; }
+        .sl-preview-time { font-size: 11px; color: var(--sl-text-muted); flex-shrink: 0; white-space: nowrap; }
+        .sl-preview-blur {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 80px;
+            background: linear-gradient(transparent, var(--sl-card));
+            pointer-events: none;
+        }
+
+        /* --- Features Section --- */
+        .sl-features-section {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 80px 24px;
+            text-align: center;
+        }
+        .sl-section-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--sl-gold);
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            text-align: center;
+            margin-bottom: 14px;
+        }
+        .sl-section-title {
+            font-size: clamp(28px, 4vw, 42px);
+            font-weight: 800;
+            color: #fff;
+            text-align: center;
+            letter-spacing: -0.03em;
+            margin-bottom: 16px;
+        }
+        .sl-section-subtitle {
+            font-size: 16px;
+            color: rgba(255,255,255,0.5);
+            text-align: center;
+            max-width: 520px;
+            margin: 0 auto 56px;
+            line-height: 1.6;
+        }
+        .sl-features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        @media (max-width: 900px) { .sl-features-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px) { .sl-features-grid { grid-template-columns: 1fr; } }
+        .sl-feature-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 20px;
+            padding: 36px 28px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            text-align: left;
+        }
+        .sl-feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(212,175,55,0.5), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .sl-feature-card:hover {
+            border-color: rgba(212,175,55,0.18);
+            transform: translateY(-5px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+            background: rgba(255,255,255,0.05);
+        }
+        .sl-feature-card:hover::before { opacity: 1; }
+        .sl-feature-icon {
+            width: 56px; height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 22px;
+        }
+        .sl-feature-icon.ic-gold { background: rgba(212,175,55,0.12); color: var(--sl-gold); box-shadow: 0 0 20px rgba(212,175,55,0.1); }
+        .sl-feature-icon.ic-purple { background: rgba(108,92,231,0.12); color: #a29bfe; }
+        .sl-feature-icon.ic-green { background: rgba(0,184,148,0.12); color: #55efc4; }
+        .sl-feature-icon.ic-pink { background: rgba(253,121,168,0.12); color: #fd79a8; }
+        .sl-feature-icon.ic-blue { background: rgba(116,185,255,0.12); color: #74b9ff; }
+        .sl-feature-icon.ic-orange { background: rgba(255,118,67,0.12); color: #ff7643; }
+        .sl-feature-card h3 { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 10px; letter-spacing: -0.01em; }
+        .sl-feature-card p { font-size: 14px; color: rgba(255,255,255,0.48); line-height: 1.7; margin: 0; }
+
+        /* --- Stats Banner --- */
+        .sl-stats-banner {
+            background: var(--sl-surface);
+            border-top: 1px solid var(--sl-border-light);
+            border-bottom: 1px solid var(--sl-border-light);
+            padding: 56px 24px;
+        }
+        .sl-stats-row {
+            max-width: 900px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            text-align: center;
+        }
+        @media (max-width: 600px) { .sl-stats-row { grid-template-columns: repeat(2, 1fr); } }
+        .sl-stat-item {}
+        .sl-stat-value {
+            font-size: 36px;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+        .sl-stat-value .sl-gold-num { color: var(--sl-gold); }
+        .sl-stat-label { font-size: 13px; color: var(--sl-text-dim); font-weight: 500; }
+
+        /* --- Testimonials --- */
+        .sl-testimonials-section {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 80px 24px;
+        }
+        .sl-testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        @media (max-width: 800px) { .sl-testimonials-grid { grid-template-columns: 1fr; } }
+        .sl-testimonial {
+            background: var(--sl-card);
+            border: 1px solid var(--sl-border-light);
+            border-radius: var(--sl-radius);
+            padding: 28px 24px;
+        }
+        .sl-testimonial-stars { color: var(--sl-gold); font-size: 14px; margin-bottom: 16px; }
+        .sl-testimonial-text { font-size: 14px; color: var(--sl-text-dim); line-height: 1.7; margin-bottom: 20px; font-style: italic; }
+        .sl-testimonial-author { display: flex; align-items: center; gap: 12px; }
+        .sl-testimonial-avatar {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: #000;
+        }
+        .sl-testimonial-name { font-size: 14px; font-weight: 600; color: #fff; }
+        .sl-testimonial-role { font-size: 12px; color: var(--sl-text-muted); }
+
+        /* --- Bottom CTA --- */
+        .sl-bottom-cta {
+            text-align: center;
+            padding: 80px 24px;
+            position: relative;
+        }
+        .sl-bottom-cta::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(212,175,55,0.2), transparent);
+        }
+        .sl-bottom-cta h2 {
+            font-size: clamp(26px, 4vw, 36px);
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -0.02em;
+            margin-bottom: 14px;
+        }
+        .sl-bottom-cta p { color: var(--sl-text-dim); margin-bottom: 32px; font-size: 16px; }
+
+        /* ===== LOGGED IN: Social Feed ===== */
+        .social-feed-page { display: none; background: var(--sl-dark); min-height: 100vh; }
+        .social-feed-page.active { display: block; }
+
+        .sf-layout {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px 16px 100px;
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 28px;
+            align-items: start;
+        }
+        @media (max-width: 900px) { .sf-layout { grid-template-columns: 1fr; } }
+
+        /* --- Feed Column --- */
+        .sf-main {}
+        .sf-page-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: #fff;
+            margin: 16px 0 20px;
+            letter-spacing: -0.02em;
+        }
+
+        /* Stories bar */
+        .sf-stories {
+            display: flex;
+            gap: 16px;
+            overflow-x: auto;
+            padding: 4px 0 16px;
+            margin-bottom: 20px;
+            scrollbar-width: none;
+        }
+        .sf-stories::-webkit-scrollbar { display: none; }
+        .sf-story {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        .sf-story-ring {
+            width: 64px; height: 64px;
+            border-radius: 50%;
+            padding: 3px;
+            background: linear-gradient(135deg, var(--sl-gold), var(--sl-gold-light), #ff7643);
+        }
+        .sf-story-ring.no-story { background: rgba(255,255,255,0.1); }
+        .sf-story-avatar {
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            background: var(--sl-surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            color: var(--sl-gold);
+            border: 3px solid var(--sl-dark);
+        }
+        .sf-story-name { font-size: 11px; color: var(--sl-text-dim); font-weight: 500; max-width: 72px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* Tabs */
+        .sf-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--sl-surface);
+            border-radius: var(--sl-radius-sm);
+            padding: 4px;
+            margin-bottom: 20px;
+        }
+        .sf-tab {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            background: none;
+            color: var(--sl-text-dim);
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.25s;
+            font-family: 'Inter', sans-serif;
+        }
+        .sf-tab.active { background: var(--sl-gold); color: #000; }
+
+        /* Create Post */
+        .sf-create {
+            background: var(--sl-card);
+            border: 1px solid var(--sl-border-light);
+            border-radius: var(--sl-radius);
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .sf-create-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .sf-create-avatar {
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--sl-gold), var(--sl-gold-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 15px;
+            color: #000;
+            flex-shrink: 0;
+        }
+        .sf-create-input {
+            flex: 1;
+            background: var(--sl-surface);
+            border: 1px solid var(--sl-border-light);
+            border-radius: var(--sl-radius-sm);
+            padding: 12px 16px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s;
+        }
+        .sf-create-input:focus { border-color: var(--sl-gold); }
+        .sf-create-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 4px;
+        }
+        .sf-create-actions { display: flex; gap: 12px; }
+        .sf-create-action {
+            background: none; border: none;
+            color: var(--sl-text-muted);
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .sf-create-action:hover { color: var(--sl-gold); background: rgba(212,175,55,0.08); }
+        .sf-create-action span { font-size: 12px; font-weight: 500; }
+        .sf-create-btn {
+            background: linear-gradient(135deg, var(--sl-gold), var(--sl-gold-light));
+            color: #000;
+            font-weight: 700;
+            padding: 10px 24px;
+            border-radius: var(--sl-radius-sm);
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+        .sf-create-btn:hover { box-shadow: 0 4px 16px rgba(212,175,55,0.3); }
+
+        /* Feed Posts */
+        .sf-post {
+            background: var(--sl-card);
+            border: 1px solid var(--sl-border-light);
+            border-radius: var(--sl-radius);
+            margin-bottom: 16px;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .sf-post:hover { border-color: var(--sl-border); }
+        .sf-post-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 18px 12px;
+        }
+        .sf-post-avatar {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 15px;
+            color: #000;
+            flex-shrink: 0;
+        }
+        .sf-post-info { flex: 1; min-width: 0; }
+        .sf-post-user { font-weight: 600; color: #fff; font-size: 14px; }
+        .sf-post-action-text { font-size: 13px; color: var(--sl-text-dim); margin-top: 1px; }
+        .sf-post-action-text strong { color: var(--sl-gold); font-weight: 600; }
+        .sf-post-time { font-size: 11px; color: var(--sl-text-muted); margin-top: 2px; }
+        .sf-post-more {
+            background: none; border: none; color: var(--sl-text-muted);
+            cursor: pointer; padding: 8px; font-size: 16px; border-radius: 50%;
+            transition: all 0.2s;
+        }
+        .sf-post-more:hover { color: #fff; background: rgba(255,255,255,0.06); }
+
+        /* Venue card in post */
+        .sf-venue-card {
+            margin: 0 18px 14px;
+            background: var(--sl-surface);
+            border-radius: var(--sl-radius-sm);
+            overflow: hidden;
+            border: 1px solid var(--sl-border-light);
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+        .sf-venue-card:hover { border-color: var(--sl-border); }
+        .sf-venue-img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            display: block;
+        }
+        .sf-venue-body { padding: 14px 16px; }
+        .sf-venue-name { font-weight: 700; color: #fff; font-size: 15px; margin-bottom: 4px; }
+        .sf-venue-meta { font-size: 12px; color: var(--sl-text-muted); display: flex; align-items: center; gap: 8px; }
+        .sf-venue-rating { color: var(--sl-gold); font-weight: 600; }
+
+        /* Post footer */
+        .sf-post-footer {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 10px 18px 14px;
+            border-top: 1px solid rgba(255,255,255,0.04);
+        }
+        .sf-post-btn {
+            background: none; border: none;
+            color: var(--sl-text-muted);
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .sf-post-btn:hover { color: var(--sl-gold); background: rgba(212,175,55,0.06); }
+        .sf-post-btn.liked { color: #ff6b6b; }
+        .sf-post-btn.liked i { font-weight: 900; }
+        .sf-post-btn i { font-size: 15px; }
+        .sf-post-btn .count { font-size: 12px; font-weight: 600; }
+
+        /* Comment preview */
+        .sf-comment-preview {
+            padding: 0 18px 14px;
+        }
+        .sf-comment-line {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--sl-text-dim);
+            line-height: 1.5;
+        }
+        .sf-comment-line strong { color: #fff; font-weight: 600; }
+        .sf-comment-line + .sf-comment-line { margin-top: 6px; }
+        .sf-view-comments { font-size: 12px; color: var(--sl-text-muted); margin-top: 8px; cursor: pointer; }
+        .sf-view-comments:hover { color: var(--sl-gold); }
+
+        /* --- Sidebar Column --- */
+        .sf-sidebar {}
+        @media (max-width: 900px) { .sf-sidebar { display: none; } }
+
+        .sf-sidebar-card {
+            background: var(--sl-card);
+            border: 1px solid var(--sl-border-light);
+            border-radius: var(--sl-radius);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .sf-sidebar-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .sf-sidebar-title .sf-see-all {
+            font-size: 12px;
+            color: var(--sl-gold);
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        /* Suggestions */
+        .sf-suggestion {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+        }
+        .sf-suggestion + .sf-suggestion { border-top: 1px solid var(--sl-border-light); }
+        .sf-suggestion-avatar {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: #000;
+            flex-shrink: 0;
+        }
+        .sf-suggestion-info { flex: 1; min-width: 0; }
+        .sf-suggestion-name { font-size: 13px; font-weight: 600; color: #fff; }
+        .sf-suggestion-mutual { font-size: 11px; color: var(--sl-text-muted); }
+        .sf-follow-btn {
+            background: rgba(212,175,55,0.12);
+            color: var(--sl-gold);
+            font-weight: 600;
+            font-size: 12px;
+            padding: 6px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+        .sf-follow-btn:hover { background: rgba(212,175,55,0.2); }
+        .sf-follow-btn.following { background: rgba(255,255,255,0.06); color: var(--sl-text-dim); }
+
+        /* Trending venues sidebar */
+        .sf-trending-venue {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            cursor: pointer;
+        }
+        .sf-trending-venue + .sf-trending-venue { border-top: 1px solid var(--sl-border-light); }
+        .sf-trending-img {
+            width: 48px; height: 48px;
+            border-radius: var(--sl-radius-sm);
+            object-fit: cover;
+            background: var(--sl-surface);
+        }
+        .sf-trending-info { flex: 1; min-width: 0; }
+        .sf-trending-name { font-size: 13px; font-weight: 600; color: #fff; }
+        .sf-trending-meta { font-size: 11px; color: var(--sl-text-muted); margin-top: 2px; }
+        .sf-trending-people {
+            font-size: 11px;
+            color: var(--sl-gold);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* Your activity sidebar */
+        .sf-my-stat { display: flex; justify-content: space-between; padding: 8px 0; }
+        .sf-my-stat + .sf-my-stat { border-top: 1px solid var(--sl-border-light); }
+        .sf-my-stat-label { font-size: 13px; color: var(--sl-text-dim); }
+        .sf-my-stat-value { font-size: 13px; font-weight: 700; color: #fff; }
+    </style>
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SceneLink">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="SceneLink">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="57x57" href="/icons/apple-touch-icon-57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="/icons/apple-touch-icon-60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="/icons/apple-touch-icon-72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="/icons/apple-touch-icon-76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="/icons/apple-touch-icon-114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-touch-icon-120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="/icons/apple-touch-icon-144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png">
+<meta property="og:site_name" content="SceneLink">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/icons/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/icons/icon-512.png">
+  <!-- SceneLink unified auth bundle -->
+
+  <!-- SceneLink unified auth bundle -->
+    <script src="js/sl-bundle-7d.js?v=connected-20261108-6" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="css/sl-phase8-home.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-universal-search.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8d-hotfix.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8f-polish.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="/css/sl-recovery-truthfulness.css?v=connected-20261108-6">
+</head>
+<body>
+
+    <!-- Universal Header -->
+    <header class="header-enhanced" id="mainHeader">
+        <nav class="nav-enhanced">
+            <div class="nav-left">
+                <a class='logo-container' href='/'>
+                    <img loading="eager" fetchpriority="high" width="180" height="48" src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" class="logo-main">
+                </a>
+            </div>
+            <ul class="nav-center">
+                <li><a class='nav-link' href='/'>Home</a></li>
+                <li><a class='nav-link' href='/explore'>Explore</a></li>
+                <li><a class='nav-link' href='/nightlife'>Nightlife</a></li>
+                <li><a class='nav-link' href='/tonight'>Tonight's Picks</a></li>
+                <li><a class='nav-link' href='/social-feed'>Social</a></li>
+                <li><a class='nav-link' data-page='my-lists' href='/my-lists'>My Lists</a></li>
+                <li><a href="/" class="nav-link" data-ai-concierge-nav="1" data-sl-concierge="Plan my night in Boston" onclick="event.preventDefault();"><i class="fas fa-magic" style="color:#D4AF37;margin-right:4px;"></i>Ask AI</a></li>
+            </ul>
+            <div class="nav-right">
+                <button class="btn-header-primary sl-auth-trigger">Log in / Sign up</button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- ═══ LOGGED OUT: Premium Social Landing ═══ -->
+    <div class="social-landing" id="socialLanding">
+
+        <!-- Hero -->
+        <div class="sl-social-hero">
+            <div class="sl-hero-chip">
+                <i class="fas fa-tower-broadcast"></i>
+                <span>Social Discovery Platform</span>
+            </div>
+            <h1>Your Scene.<br><span class="sl-gold-text">Your People.</span></h1>
+            <p class="sl-hero-desc">Discover where your friends are going, share your favorite spots, and plan unforgettable nights out — all in one place.</p>
+            <div class="sl-hero-actions">
+                <button class="sl-btn-primary sl-auth-trigger">
+                    <i class="fas fa-arrow-right"></i> Join the Scene
+                </button>
+                <a class='sl-btn-secondary' href='/explore'>
+                    <i class="fas fa-compass"></i> Explore First
+                </a>
+            </div>
+
+            <!-- Live Activity Preview -->
+            <div class="sl-activity-preview">
+                <div class="sl-activity-preview-inner">
+                    <div class="sl-preview-header">
+                        <h3><span class="sl-live-dot"></span> Boston Scene</h3>
+                        <span class="sl-preview-badge" style="background:rgba(212,175,55,0.15);color:#D4AF37;border:1px solid rgba(212,175,55,0.3);">Preview</span>
+                    </div>
+                    <div class="sl-preview-items" id="slHeroActivityFeed">
+                        <div style="padding:24px;text-align:center;color:rgba(255,255,255,0.6);font-size:13px;">
+                            <i class="fas fa-users" style="color:#D4AF37;margin-bottom:10px;display:block;font-size:22px;"></i>
+                            <div style="color:#fff;font-size:15px;font-weight:600;margin-bottom:6px;">Friend activity arrives once you connect</div>
+                            <div style="color:rgba(255,255,255,0.55);font-size:12px;line-height:1.5;">When you sign up and add friends, you'll see what they're saving and planning here in real time.</div>
+                            <a href="#" data-sl-action="signup-prompt" style="display:inline-block;margin-top:14px;background:linear-gradient(135deg,#D4AF37,#B8941F);color:#0a0a0a;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;">Get started</a>
+                        </div>
+                    </div>
+                    <div class="sl-preview-blur"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="sl-features-section">
+            <h2 class="sl-section-title">Everything You Need for the Perfect Night</h2>
+            <p class="sl-section-subtitle">One platform to discover, connect, and go out — with the people that matter.</p>
+            <div class="sl-features-grid">
+                <div class="sl-feature-card">
+                    <div class="sl-feature-icon ic-gold"><i class="fas fa-location-dot"></i></div>
+                    <h3>Social Feed — Beta</h3>
+                    <p>See where friends are checking in, what they&rsquo;re saving, and where they&rsquo;re planning their next night out.</p>
+                </div>
+                <div class="sl-feature-card">
+                    <div class="sl-feature-icon ic-purple"><i class="fas fa-list-check"></i></div>
+                    <h3>Personal Lists</h3>
+                    <p>Build your own collections of Boston spots — date nights, group dinners, bar crawls — and find them again fast.</p>
+                </div>
+                <div class="sl-feature-card">
+                    <div class="sl-feature-icon ic-green"><i class="fas fa-calendar-plus"></i></div>
+                    <h3>Plan Your Night</h3>
+                    <p>Sketch out your night, save venue options, and lock in a winner — all in one place.</p>
+                </div>
+                <div class="sl-feature-card">
+                    <div class="sl-feature-icon ic-pink"><i class="fas fa-bookmark"></i></div>
+                    <h3>Save & Organize</h3>
+                    <p>Save the spots you love and organize them into lists — date-night picks, group dinner ideas, weekend bar crawls.</p>
+                </div>
+                <div class="sl-feature-card">
+                    <div class="sl-feature-icon ic-blue"><i class="fas fa-share-nodes"></i></div>
+                    <h3>Share Your Picks</h3>
+                    <p>Share venues and lists with friends so the whole group sees the same options. Group messaging is coming in a future update.</p>
+                </div>
+                <div class="sl-feature-card">
+                    <div class="sl-feature-icon ic-orange"><i class="fas fa-map-location-dot"></i></div>
+                    <h3>Boston-First</h3>
+                    <p>Browse venue listings across Boston neighborhoods. Restaurants, bars, lounges, nightlife — all in one place.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom CTA -->
+        <div class="sl-bottom-cta">
+            <h2>Ready to Join the Scene?</h2>
+            <p>Connect with friends, discover new spots, and never miss a great night out again.</p>
+            <button class="sl-btn-primary sl-auth-trigger">
+                <i class="fas fa-user-plus"></i> Get Started — It's Free
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══ LOGGED IN: Social Feed ═══ -->
+    <div class="social-feed-page" id="socialFeed">
+        <div class="sf-layout">
+            <!-- Main Feed -->
+            <div class="sf-main">
+                <h1 class="sf-page-title">Your Feed</h1>
+
+                <!-- Stories -->
+                <div class="sf-stories" id="sfStories">
+                    <!-- Injected by JS -->
+                </div>
+
+                <!-- Tabs -->
+                <div class="sf-tabs">
+                    <button class="sf-tab active" data-tab="all">All Activity</button>
+                    
+                    
+                    
+                </div>
+
+                <!-- Create Post -->
+                <div class="sf-create">
+                    <div class="sf-create-top">
+                        <div class="sf-create-avatar" id="sfUserAvatar">?</div>
+                        <input class="sf-create-input" id="sfCreateInput" placeholder="Share what you're up to tonight...">
+                    </div>
+                    <div class="sf-create-bottom">
+                        <div class="sf-create-actions">
+                            <button class="sf-create-action"><i class="fas fa-location-dot"></i> <span>Check In</span></button>
+                            <button class="sf-create-action"><i class="fas fa-images"></i> <span>Photo</span></button>
+                            <button class="sf-create-action"><i class="fas fa-calendar-plus"></i> <span>Plan</span></button>
+                        </div>
+                        <button class="sf-create-btn" id="sfPostBtn">Post</button>
+                    </div>
+                </div>
+
+                <!-- Feed Content -->
+                <div id="sfFeedContent">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="sf-sidebar">
+                <!-- Your Stats -->
+                <div class="sf-sidebar-card">
+                    <div class="sf-sidebar-title">Your Activity <a class='sf-see-all' href='/profile'>View Profile</a></div>
+                    <div class="sf-my-stat"><span class="sf-my-stat-label">Check-ins</span><span class="sf-my-stat-value" id="sfStatCheckins">&mdash;</span></div>
+                    <div class="sf-my-stat"><span class="sf-my-stat-label">Reviews</span><span class="sf-my-stat-value" id="sfStatReviews">&mdash;</span></div>
+                    <div class="sf-my-stat"><span class="sf-my-stat-label">Saved Venues</span><span class="sf-my-stat-value" id="sfStatSaved">&mdash;</span></div>
+                    <div class="sf-my-stat"><span class="sf-my-stat-label">Lists Created</span><span class="sf-my-stat-value" id="sfStatScene" style="color:var(--sl-gold)">&mdash;</span></div>
+                </div>
+
+                <!-- Suggested Friends -->
+                <div class="sf-sidebar-card">
+                    <div class="sf-sidebar-title">Recently Active <span class="sf-see-all">See All</span></div>
+                    <div id="sfSuggestions">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Venue directory -->
+                <div class="sf-sidebar-card">
+                    <div class="sf-sidebar-title">Venue directory <a class='sf-see-all' href='/tonight'>See All</a></div>
+                    <div id="sfTrending">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer-unified">
+        <div class="footer-newsletter-bar">
+            <div class="footer-newsletter-inner">
+                <div class="footer-newsletter-text">
+                    <h4>Stay in the Scene</h4>
+                    <p>Get weekly picks, exclusive events & hidden gems delivered to your inbox.</p>
+                </div>
+                <form class="footer-newsletter-form" data-sl-newsletter="1">
+                    <input type="email" name="email" placeholder="Enter your email address" required>
+                    <button type="submit">Subscribe</button>
+                </form>
+            </div>
+        </div>
+        <div class="footer-main-content">
+            <div class="footer-brand-col">
+                <a class='footer-logo-link' href='/'>
+                    <img loading="lazy" src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" class="footer-logo-img">
+                </a>
+                <p class="footer-brand-tagline">Eat. Drink. Discover.</p>
+                <p class="footer-brand-desc">Your social guide to the best restaurants, bars, events, and nightlife experiences in Boston.</p>
+                <div class="footer-social-icons">
+                    <a href="https://www.facebook.com/SceneLinkApp/" target="_blank" rel="noopener" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="https://www.instagram.com/scenelink.app" target="_blank" rel="noopener" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="https://x.com/Scenelinkapp" target="_blank" rel="noopener" class="fab fa-twitter" aria-label="X"><i class="fab fa-twitter"></i></a>
+                    <a href="https://www.youtube.com/@SceneLinkapp" target="_blank" rel="noopener" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                </div>
+            </div>
+            <div class="footer-link-col">
+                <h5>Discover</h5>
+                <ul>
+                    <li><a href='/explore'>Restaurants</a></li>
+                    <li><a href='/nightlife'>Bars & Nightlife</a></li>
+                    <li><a href='/tonight'>Tonight's Picks</a></li>
+                    <li><a href='/events'>Events</a></li>
+                </ul>
+            </div>
+            <div class='footer-link-col'>
+                <h5>Plan</h5>
+                <ul>
+                    <li><a href='/my-lists'>My Lists</a></li>
+                    <li><a href='/plan-with-friends'>Plan Builder — Beta</a></li>
+                    <li><a href='/profile'>My Profile</a></li>
+                    <li><a href='/' data-sl-concierge='Plan my night in Boston' onclick='event.preventDefault();'>Ask AI Concierge</a></li>
+                </ul>
+            </div>
+            <div class="footer-link-col">
+                <h5>Company</h5>
+                <ul>
+                    <li><a href='/about'>About Us</a></li>
+                    <li><a href='/contact'>Contact</a></li>
+                    <li><a href='/business'>For Business</a></li>
+                </ul>
+            </div>
+            <div class="footer-link-col">
+                <h5>Legal</h5>
+                <ul>
+                    <li><a href='/privacy'>Privacy Policy</a></li>
+                    <li><a href='/terms'>Terms of Service</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom-bar">
+            <div class="footer-bottom-inner">
+                <p class="footer-copyright">&copy; 2026 <a href='/'>SceneLink</a>. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href='/privacy'>Privacy</a>
+                    <a href='/terms'>Terms</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <!-- SL-POLISH-SCRIPTS -->
+    <script src="js/sl-bundle-7d-ui.js?v=connected-20261108-6" defer></script>
+
+
+    <!-- Phase 9A: legacy inline social hub removed; logic now in sl-social-feed-9a.js -->
+
+    <script>
+    /* ── Hero Activity Feed — loads real /api/activity for the landing section ── */
+    (function(){
+        var AVATAR_COLORS = ['#D4AF37','#6C5CE7','#00b894','#fd79a8','#74b9ff','#ff7643','#a29bfe'];
+
+        function timeAgo(ts) {
+            if(!ts) return 'Recently';
+            var diff = Math.floor((Date.now() - new Date(ts)) / 1000);
+            if(diff < 60) return diff + 's ago';
+            if(diff < 3600) return Math.floor(diff/60) + 'm ago';
+            return Math.floor(diff/3600) + 'h ago';
+        }
+        function actionText(type) {
+            var map = { checkin:'checked in at', check_in:'checked in at', review:'reviewed', save:'saved', favorite:'saved', plan:'is planning a night at', going:'is going to' };
+            return map[type] || 'visited';
+        }
+        function renderHeroFeed(acts) {
+            var container = document.getElementById('slHeroActivityFeed');
+            if(!container) return;
+            if(!acts || !acts.length) {
+                container.innerHTML = '<div style="padding:32px 16px;text-align:center;color:rgba(255,255,255,0.4);font-size:13px;"><i class="fas fa-moon" style="font-size:20px;color:#D4AF37;opacity:0.6;margin-bottom:8px;display:block;"></i>Activity will appear here as the Boston scene gets going tonight.</div>';
+                return;
+            }
+            var html = acts.slice(0,4).map(function(a, idx){
+                var name = a.user_display_name || a.user_name || 'Scene member';
+                var initial = name.charAt(0).toUpperCase();
+                var venue = a.venue_name || a.venue || '';
+                var color = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+                return '<div class="sl-preview-item">' +
+                    '<div class="sl-preview-avatar" style="background:'+color+';color:#000">'+initial+'</div>' +
+                    '<div class="sl-preview-content">' +
+                        '<div class="sl-preview-name">'+name+'</div>' +
+                        '<div class="sl-preview-action">'+actionText(a.activity_type)+(venue?' <strong>'+venue+'</strong>':'')+'</div>' +
+                    '</div>' +
+                    '<div class="sl-preview-time">'+timeAgo(a.created_at)+'</div>' +
+                '</div>';
+            }).join('');
+            container.innerHTML = html;
+        }
+
+        function loadHeroFeed() {
+            // Phase 6A: only render activity entries that are demonstrably real
+            // (have a numeric user_id, created within the last 14 days, and have a venue).
+            // The legacy /api/activity may still return seeded preview rows with NULL user_id
+            // and dates outside the recent window — filter those out so we never show
+            // fake "Alex M. visited X 700h ago" style pills on the marketing landing.
+            fetch('/api/activity?limit=20')
+                .then(function(r){ return r.ok ? r.json() : {activities:[]}; })
+                .then(function(data){
+                    var acts = data.activities || data || [];
+                    var now = Date.now();
+                    var maxAgeMs = 14 * 24 * 3600 * 1000;
+                    var real = acts.filter(function(a){
+                        if(!a) return false;
+                        if(a.user_id == null || a.user_id === '') return false;
+                        if(!a.venue_name && !a.venue) return false;
+                        if(!a.created_at) return false;
+                        var t = new Date(a.created_at).getTime();
+                        if(isNaN(t)) return false;
+                        if(t > now + 60000) return false; // future-dated seeds
+                        if(now - t > maxAgeMs) return false;
+                        return true;
+                    });
+                    renderHeroFeed(real);
+                })
+                .catch(function(){ renderHeroFeed([]); });
+        }
+
+        if(document.readyState === 'loading'){
+            document.addEventListener('DOMContentLoaded', loadHeroFeed);
+        } else {
+            loadHeroFeed();
+        }
+        // Refresh every 60s to keep live feel
+        setInterval(loadHeroFeed, 60000);
+    })();
+    </script>
+
+
+
+
+    <script src="js/sl-social-feed-9a.js?v=connected-20261108-6" defer></script>
+    <script defer src="js/ai-concierge-v5.js?v=connected-20261108-6"></script>
+  <script src="js/sl-phase8-launch.js?v=connected-20261108-6" defer></script>
+<script src="js/sl-phase8-completion.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-universal-search.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-phase8d-recovery.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-social-integration-9a.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-verification-banner.js?v=connected-20261108-6" defer></script>
+</body>
+</html>

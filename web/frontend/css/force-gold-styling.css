@@ -1,0 +1,127 @@
+/* FORCE GOLD STYLING - Override all conflicting styles */
+
+/* CSS Variables */
+:root {
+    --accent-gold: #d4af37 !important;
+    --accent-gold-hover: #b8941f !important;
+    --accent-gold-light: #f4e4bc !important;
+}
+
+/* FORCE NAVIGATION ICONS TO BE GOLD */
+.nav-icon-btn {
+    color: var(--accent-gold) !important;
+    stroke: var(--accent-gold) !important;
+    fill: var(--accent-gold) !important;
+}
+
+.nav-icon-btn:hover {
+    color: var(--accent-gold-hover) !important;
+    stroke: var(--accent-gold-hover) !important;
+    fill: var(--accent-gold-hover) !important;
+}
+
+/* SVG Icons in Navigation */
+.nav-icon-btn svg {
+    color: var(--accent-gold) !important;
+    stroke: var(--accent-gold) !important;
+    fill: var(--accent-gold) !important;
+}
+
+.nav-icon-btn:hover svg {
+    color: var(--accent-gold-hover) !important;
+    stroke: var(--accent-gold-hover) !important;
+    fill: var(--accent-gold-hover) !important;
+}
+
+/* FORCE NAVIGATION LINKS TO HAVE GOLD ON HOVER/ACTION */
+.nav-enhanced .nav-link {
+    color: #b0b0b0 !important;
+    transition: all 0.3s ease !important;
+}
+
+.nav-enhanced .nav-link:hover,
+.nav-enhanced .nav-link.active {
+    color: var(--accent-gold) !important;
+}
+
+/* FORCE ALL HEADER TITLES TO BE GOLD */
+.hero-title,
+.page-title,
+.main-header h1,
+.section-header h1,
+.content-header h1,
+h1.main-title,
+h2.section-title,
+h3.subsection-title,
+.tonights-picks-hero .hero-content h1,
+.nightlife-hero .hero-content h1,
+.events-hero .hero-content h1,
+.explore-hero .hero-content h1,
+body header .hero-content h1,
+body .main-hero h1,
+body .page-hero h1,
+h1 {
+    background: linear-gradient(135deg, #d4af37, #f4e4bc) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    color: transparent !important;
+}
+
+/* Force gold for all h1, h2, h3 in headers */
+.hero-content h1,
+.hero-content h2,
+.hero-content h3,
+.page-hero h1,
+.page-hero h2,
+.page-hero h3 {
+    background: linear-gradient(135deg, #d4af37, #f4e4bc) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    color: transparent !important;
+}
+
+/* Special handling for Tonight's Picks */
+.tonights-picks-hero h1,
+.tonights-picks-hero .hero-content h1 {
+    background: linear-gradient(135deg, #d4af37, #f4e4bc) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    color: transparent !important;
+}
+
+/* Active state underline */
+.nav-enhanced .nav-link.active::after {
+    background: var(--accent-gold) !important;
+}
+
+/* Ensure high specificity */
+body .nav-icon-btn,
+header .nav-icon-btn,
+.header-enhanced .nav-icon-btn {
+    color: var(--accent-gold) !important;
+    stroke: var(--accent-gold) !important;
+    fill: var(--accent-gold) !important;
+}
+
+body .nav-icon-btn:hover,
+header .nav-icon-btn:hover,
+.header-enhanced .nav-icon-btn:hover {
+    color: var(--accent-gold-hover) !important;
+    stroke: var(--accent-gold-hover) !important;
+    fill: var(--accent-gold-hover) !important;
+}
+
+/* Mobile menu button */
+.mobile-menu-btn {
+    color: var(--accent-gold) !important;
+}
+
+@media (max-width: 768px) {
+    .nav-enhanced .nav-link.active,
+    .nav-enhanced .nav-link:hover {
+        color: var(--accent-gold) !important;
+    }
+}

@@ -1,0 +1,856 @@
+/* ================================================
+   Plan with Friends - Complete Styling
+   ================================================ */
+
+:root {
+    --pwf-gold: #D4AF37;
+    --pwf-gold-light: #F4D03F;
+    --pwf-dark: #0a0a0a;
+    --pwf-dark-card: #141414;
+    --pwf-dark-lighter: #1a1a1a;
+    --pwf-border: rgba(212, 175, 55, 0.15);
+    --pwf-text: #f0f0f0;
+    --pwf-text-secondary: #a0a0a0;
+    --pwf-success: #2ecc71;
+    --pwf-danger: #e74c3c;
+    --pwf-info: #3498db;
+}
+
+/* ---- Page Layout ---- */
+.pwf-page {
+    min-height: 100vh;
+    background: var(--pwf-dark);
+    color: var(--pwf-text);
+    padding-top: 80px;
+}
+
+/* ---- Hero Section ---- */
+.pwf-hero {
+    text-align: center;
+    padding: 60px 20px 40px;
+    background: linear-gradient(180deg, rgba(212,175,55,0.08) 0%, transparent 100%);
+}
+
+.pwf-hero h1 {
+    font-size: 2.8rem;
+    font-weight: 700;
+    color: var(--pwf-gold);
+    margin-bottom: 12px;
+}
+
+.pwf-hero p {
+    color: var(--pwf-text-secondary);
+    font-size: 1.15rem;
+    max-width: 600px;
+    margin: 0 auto 30px;
+}
+
+.pwf-hero-actions {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.pwf-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.pwf-btn-primary {
+    background: linear-gradient(135deg, var(--pwf-gold), #C5A028);
+    color: #000;
+}
+
+.pwf-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(212,175,55,0.35);
+}
+
+.pwf-btn-secondary {
+    background: rgba(212,175,55,0.12);
+    color: var(--pwf-gold);
+    border: 1px solid var(--pwf-border);
+}
+
+.pwf-btn-secondary:hover {
+    background: rgba(212,175,55,0.2);
+}
+
+.pwf-btn-sm {
+    padding: 8px 18px;
+    font-size: 0.85rem;
+}
+
+.pwf-btn-xs {
+    padding: 5px 12px;
+    font-size: 0.8rem;
+}
+
+.pwf-btn-danger {
+    background: rgba(231,76,60,0.15);
+    color: var(--pwf-danger);
+    border: 1px solid rgba(231,76,60,0.25);
+}
+
+.pwf-btn-success {
+    background: rgba(46,204,113,0.15);
+    color: var(--pwf-success);
+    border: 1px solid rgba(46,204,113,0.25);
+}
+
+/* ---- Container ---- */
+.pwf-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* ---- Plans Grid ---- */
+.pwf-plans-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.pwf-plans-header h2 {
+    font-size: 1.5rem;
+    color: var(--pwf-text);
+}
+
+.pwf-plans-tabs {
+    display: flex;
+    gap: 8px;
+}
+
+.pwf-tab {
+    padding: 8px 20px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--pwf-border);
+    background: transparent;
+    color: var(--pwf-text-secondary);
+    transition: all 0.25s ease;
+}
+
+.pwf-tab.active {
+    background: linear-gradient(135deg, var(--pwf-gold), #C5A028);
+    color: #000;
+    border-color: var(--pwf-gold);
+}
+
+.pwf-tab:hover:not(.active) {
+    color: var(--pwf-gold);
+    border-color: var(--pwf-gold);
+}
+
+.pwf-plans-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 24px;
+    margin-bottom: 60px;
+}
+
+/* ---- Plan Card ---- */
+.pwf-plan-card {
+    background: var(--pwf-dark-card);
+    border: 1px solid var(--pwf-border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.pwf-plan-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+}
+
+.pwf-plan-card-header {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.pwf-plan-card-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.pwf-plan-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--pwf-text);
+}
+
+.pwf-plan-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pwf-status-planning {
+    background: rgba(52,152,219,0.15);
+    color: var(--pwf-info);
+}
+
+.pwf-status-voting {
+    background: rgba(212,175,55,0.15);
+    color: var(--pwf-gold);
+}
+
+.pwf-status-confirmed {
+    background: rgba(46,204,113,0.15);
+    color: var(--pwf-success);
+}
+
+.pwf-status-completed {
+    background: rgba(160,160,160,0.15);
+    color: var(--pwf-text-secondary);
+}
+
+.pwf-plan-date {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--pwf-text-secondary);
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+}
+
+.pwf-plan-creator {
+    color: var(--pwf-text-secondary);
+    font-size: 0.8rem;
+}
+
+.pwf-plan-creator strong {
+    color: var(--pwf-gold);
+}
+
+/* ---- Plan Card Body ---- */
+.pwf-plan-card-body {
+    padding: 16px 20px;
+}
+
+.pwf-plan-venues {
+    margin-bottom: 16px;
+}
+
+.pwf-plan-venues-title {
+    font-size: 0.8rem;
+    color: var(--pwf-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.pwf-venue-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.pwf-venue-info {
+    flex: 1;
+}
+
+.pwf-venue-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--pwf-text);
+}
+
+.pwf-venue-meta {
+    font-size: 0.78rem;
+    color: var(--pwf-text-secondary);
+    margin-top: 2px;
+}
+
+.pwf-venue-votes {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pwf-vote-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: transparent;
+    color: var(--pwf-text-secondary);
+    transition: all 0.2s ease;
+}
+
+.pwf-vote-btn:hover {
+    border-color: var(--pwf-gold);
+    color: var(--pwf-gold);
+}
+
+.pwf-vote-btn.voted {
+    background: rgba(212,175,55,0.15);
+    border-color: var(--pwf-gold);
+    color: var(--pwf-gold);
+}
+
+.pwf-vote-btn.downvote:hover {
+    border-color: var(--pwf-danger);
+    color: var(--pwf-danger);
+}
+
+.pwf-vote-count {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--pwf-gold);
+    min-width: 20px;
+    text-align: center;
+}
+
+.pwf-venue-winner {
+    border: 1px solid rgba(46,204,113,0.3);
+    background: rgba(46,204,113,0.05);
+}
+
+.pwf-venue-winner .pwf-venue-name::after {
+    content: ' 👑';
+}
+
+/* ---- Attendees ---- */
+.pwf-attendees {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.pwf-attendee-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--pwf-gold), #C5A028);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #000;
+    border: 2px solid var(--pwf-dark-card);
+    margin-left: -8px;
+}
+
+.pwf-attendee-avatar:first-child {
+    margin-left: 0;
+}
+
+.pwf-attendee-avatar.more {
+    background: var(--pwf-dark-lighter);
+    color: var(--pwf-text-secondary);
+    font-size: 0.7rem;
+}
+
+.pwf-attendees-label {
+    margin-left: 10px;
+    font-size: 0.8rem;
+    color: var(--pwf-text-secondary);
+}
+
+/* ---- Plan Card Footer ---- */
+.pwf-plan-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    gap: 8px;
+}
+
+.pwf-plan-card-footer .pwf-btn {
+    flex: 1;
+}
+
+/* ---- Messages / Chat ---- */
+.pwf-messages {
+    margin-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding-top: 12px;
+}
+
+.pwf-messages-title {
+    font-size: 0.8rem;
+    color: var(--pwf-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.pwf-message {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.pwf-message-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.pwf-message-content {
+    flex: 1;
+}
+
+.pwf-message-author {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--pwf-gold);
+}
+
+.pwf-message-text {
+    font-size: 0.85rem;
+    color: var(--pwf-text-secondary);
+    margin-top: 2px;
+    line-height: 1.4;
+}
+
+.pwf-message-time {
+    font-size: 0.7rem;
+    color: rgba(160,160,160,0.6);
+    margin-top: 2px;
+}
+
+.pwf-message-input-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.pwf-message-input {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 50px;
+    padding: 8px 16px;
+    color: var(--pwf-text);
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.pwf-message-input:focus {
+    border-color: var(--pwf-gold);
+}
+
+.pwf-message-input::placeholder {
+    color: rgba(160,160,160,0.5);
+}
+
+/* ---- Create Plan Modal ---- */
+.pwf-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    padding: 20px;
+}
+
+.pwf-modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.pwf-modal {
+    background: var(--pwf-dark-card);
+    border: 1px solid var(--pwf-border);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 85vh;
+    overflow-y: auto;
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+}
+
+.pwf-modal-overlay.active .pwf-modal {
+    transform: translateY(0);
+}
+
+.pwf-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.pwf-modal-header h2 {
+    font-size: 1.4rem;
+    color: var(--pwf-gold);
+}
+
+.pwf-modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 38px;
+    height: 38px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 50%;
+    color: #fff;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    z-index: 10;
+}
+
+.pwf-modal-close:hover {
+    background: rgba(212,175,55,0.25);
+    border-color: rgba(212,175,55,0.5);
+    color: #fff;
+    transform: scale(1.05);
+}
+.pwf-modal-close:active { transform: scale(0.95); }
+
+/* Ensure modal header has room for the close button */
+.pwf-modal-header { position: relative; padding-right: 56px; }
+
+/* Close on outside click */
+.pwf-modal-overlay { cursor: default; }
+.pwf-modal { position: relative; }
+
+.pwf-modal-body {
+    padding: 20px 24px;
+}
+
+.pwf-form-group {
+    margin-bottom: 20px;
+}
+
+.pwf-form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--pwf-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.pwf-form-input,
+.pwf-form-textarea,
+.pwf-form-select {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: var(--pwf-text);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+}
+
+.pwf-form-input:focus,
+.pwf-form-textarea:focus,
+.pwf-form-select:focus {
+    border-color: var(--pwf-gold);
+}
+
+.pwf-form-textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.pwf-form-select option {
+    background: var(--pwf-dark-card);
+    color: var(--pwf-text);
+}
+
+.pwf-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.pwf-invite-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.pwf-invite-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: rgba(212,175,55,0.12);
+    border: 1px solid var(--pwf-border);
+    border-radius: 50px;
+    font-size: 0.8rem;
+    color: var(--pwf-gold);
+}
+
+.pwf-invite-chip-remove {
+    cursor: pointer;
+    font-size: 0.9rem;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.pwf-invite-chip-remove:hover {
+    opacity: 1;
+}
+
+.pwf-modal-footer {
+    padding: 16px 24px 24px;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+/* ---- Calendar Integration ---- */
+.pwf-calendar-section {
+    margin-top: 16px;
+}
+
+.pwf-cal-export-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.pwf-cal-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.03);
+    color: var(--pwf-text-secondary);
+    transition: all 0.2s ease;
+}
+
+.pwf-cal-btn:hover {
+    border-color: var(--pwf-gold);
+    color: var(--pwf-gold);
+    background: rgba(212,175,55,0.08);
+}
+
+.pwf-cal-btn i {
+    font-size: 1rem;
+}
+
+/* ---- Share Section ---- */
+.pwf-share-section {
+    margin-top: 16px;
+    padding: 16px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.pwf-share-link-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.pwf-share-link-input {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--pwf-text);
+    font-size: 0.85rem;
+    outline: none;
+}
+
+.pwf-share-social-btns {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.pwf-share-social-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.03);
+    color: var(--pwf-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.pwf-share-social-btn:hover {
+    border-color: var(--pwf-gold);
+    color: var(--pwf-gold);
+}
+
+/* ---- Toast Notification ---- */
+.pwf-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 14px 24px;
+    background: var(--pwf-dark-card);
+    border: 1px solid var(--pwf-border);
+    border-radius: 12px;
+    color: var(--pwf-text);
+    font-size: 0.9rem;
+    z-index: 10001;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.pwf-toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.pwf-toast-icon {
+    font-size: 1.2rem;
+}
+
+/* ---- Empty State ---- */
+.pwf-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.pwf-empty-state i {
+    font-size: 3rem;
+    color: var(--pwf-gold);
+    margin-bottom: 16px;
+}
+
+.pwf-empty-state h3 {
+    font-size: 1.3rem;
+    color: var(--pwf-text);
+    margin-bottom: 8px;
+}
+
+.pwf-empty-state p {
+    color: var(--pwf-text-secondary);
+    margin-bottom: 20px;
+}
+
+/* ---- Add to Plan Floating Button (used on other pages) ---- */
+.pwf-add-to-plan-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid rgba(212,175,55,0.3);
+    background: rgba(212,175,55,0.1);
+    color: var(--pwf-gold);
+    transition: all 0.2s ease;
+}
+
+.pwf-add-to-plan-btn:hover {
+    background: rgba(212,175,55,0.2);
+    border-color: var(--pwf-gold);
+}
+
+.pwf-add-to-plan-btn i {
+    font-size: 0.85rem;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+    .pwf-hero h1 {
+        font-size: 2rem;
+    }
+
+    .pwf-plans-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pwf-form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .pwf-plans-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .pwf-hero-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .pwf-modal {
+        max-width: 100%;
+        border-radius: 16px 16px 0 0;
+    }
+}

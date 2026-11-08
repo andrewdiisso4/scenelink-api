@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/sl-connected-api.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-connected-actions.js?v=connected-20261108-6" defer></script>
+<link rel="stylesheet" href="/css/sl-connected.css?v=connected-20261108-6">
+  <!-- sl-observability:v1 -->
+  <script src="/env.js"></script>
+  <script src="/js/sl-avatar.js?v=connected-20261108-6"></script>
+  <script src="/js/sl-social-core.js?v=connected-20261108-6" defer></script>
+  <!-- Phase 7A perf -->
+  <script src="/js/sl-fetch-guard.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-perf-loader.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-observability.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-version-marker.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-stale-version-detector.js?v=connected-20261108-6" defer></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>Press - SceneLink | Media Resources & News</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/footer-pages.css?v=connected-20261108-6">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"><noscript><link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"></noscript>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css?v=connected-20261108-6" crossorigin="anonymous" referrerpolicy="no-referrer">
+    
+    <!-- Meta Tags -->
+    <meta name="description" content="SceneLink press resources, media kit, company news, and contact information for journalists and media professionals.">
+    <meta name="keywords" content="press, media, news, SceneLink, Boston startup, nightlife app, media kit">
+    
+    <style>
+        /* Press-specific styles */
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 80px 0 60px;
+            text-align: center;
+            color: white;
+        }
+        
+        .hero-section h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            animation: fadeInUp 0.8s ease;
+        }
+        
+        .hero-section p {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto 30px;
+            animation: fadeInUp 0.8s ease 0.2s both;
+        }
+        
+        .press-contact {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px 30px;
+            border-radius: 15px;
+            display: inline-block;
+            margin-top: 20px;
+            animation: fadeInUp 0.8s ease 0.4s both;
+        }
+        
+        .press-contact a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .press-contact a:hover {
+            text-decoration: underline;
+        }
+        
+        .media-kit-section {
+            padding: 80px 0;
+            background: #f8f9fa;
+        }
+        
+        .kit-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 50px;
+        }
+        
+        .kit-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .kit-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        
+        .kit-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 1.5rem;
+            color: white;
+        }
+        
+        .download-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-block;
+            margin-top: 15px;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .news-section {
+            padding: 80px 0;
+        }
+        
+        .news-grid {
+            display: grid;
+            gap: 30px;
+            margin-top: 50px;
+        }
+        
+        .news-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: row;
+        }
+        
+        .news-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        
+        .news-image {
+            width: 200px;
+            height: 150px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+        
+        .news-content {
+            padding: 25px;
+            flex: 1;
+        }
+        
+        .news-date {
+            color: #667eea;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .news-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        
+        .news-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        
+        .news-source {
+            color: #999;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .read-more {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .read-more:hover {
+            text-decoration: underline;
+        }
+        
+        .milestones-section {
+            padding: 80px 0;
+            background: #f8f9fa;
+        }
+        
+        .timeline {
+            position: relative;
+            margin-top: 50px;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            transform: translateX(-50%);
+        }
+        
+        .milestone {
+            position: relative;
+            margin-bottom: 50px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .milestone:nth-child(odd) {
+            flex-direction: row-reverse;
+        }
+        
+        .milestone-content {
+            width: 45%;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .milestone-date {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            white-space: nowrap;
+            z-index: 10;
+        }
+        
+        .milestone h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .milestone p {
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .awards-section {
+            padding: 80px 0;
+        }
+        
+        .awards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-top: 50px;
+        }
+        
+        .award-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+        
+        .award-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        
+        .award-icon {
+            font-size: 3rem;
+            color: #ffd700;
+            margin-bottom: 20px;
+        }
+        
+        .award-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .award-organization {
+            color: #667eea;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .award-year {
+            color: #999;
+            font-size: 0.9rem;
+        }
+        
+        .facts-section {
+            padding: 80px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .facts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            margin-top: 50px;
+        }
+        
+        .fact-item {
+            text-align: center;
+        }
+        
+        .fact-number {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .fact-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .timeline::before {
+                left: 20px;
+            }
+            
+            .milestone,
+            .milestone:nth-child(odd) {
+                flex-direction: row;
+            }
+            
+            .milestone-content {
+                width: calc(100% - 60px);
+                margin-left: 60px;
+            }
+            
+            .milestone-date {
+                left: 20px;
+                transform: translateX(0);
+            }
+            
+            .news-card {
+                flex-direction: column;
+            }
+            
+            .news-image {
+                width: 100%;
+                height: 200px;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="css/sl-bundle-7d.css?v=connected-20261108-6">
+    <!-- Phase 7A perf: ai-concierge CSS lazy-loaded -->
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SceneLink">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="SceneLink">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="57x57" href="/icons/apple-touch-icon-57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="/icons/apple-touch-icon-60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="/icons/apple-touch-icon-72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="/icons/apple-touch-icon-76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="/icons/apple-touch-icon-114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-touch-icon-120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="/icons/apple-touch-icon-144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png">
+<meta property="og:site_name" content="SceneLink">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/icons/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/icons/icon-512.png">
+  <!-- SceneLink unified auth bundle -->
+
+  <!-- SceneLink unified auth bundle -->
+    <script src="js/sl-bundle-7d.js?v=connected-20261108-6" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="css/sl-phase8-home.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-universal-search.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8d-hotfix.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8f-polish.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="/css/sl-recovery-truthfulness.css?v=connected-20261108-6">
+</head>
+<body>
+    <!-- Header -->
+        <!-- Universal Header -->
+    <header class="header-enhanced" id="mainHeader">
+        <nav class="nav-enhanced">
+            <div class="nav-left">
+                <a class='logo-container' href='/'>
+                    <img src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" class="logo-main">
+                </a>
+            </div>
+            <ul class="nav-center">
+                <li><a class='nav-link' href='/'>Home</a></li>
+                <li><a class='nav-link' href='/explore'>Explore</a></li>
+                <li><a class='nav-link' href='/nightlife'>Nightlife</a></li>
+                <li><a class='nav-link' href='/tonight'>Tonight\'s Picks</a></li>
+            </ul>
+            <div class="nav-right">
+                <button class="btn-header-primary sl-auth-trigger">Log in / Sign up</button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <h1>Press & Media</h1>
+            <p>Welcome to the SceneLink press room. Find our latest news, media assets, and company information.</p>
+            
+            <div class="press-contact">
+                <i class="fas fa-envelope"></i> Media Inquiries: <a href="mailto:info@scenelink.app">info@scenelink.app</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Media Kit Section -->
+    <section class="media-kit-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Media Kit</h2>
+                <p>Download our brand assets, logos, and company information</p>
+            </div>
+            
+            <div class="kit-grid">
+                <div class="kit-card">
+                    <div class="kit-icon">
+                        <i class="fas fa-images"></i>
+                    </div>
+                    <h3>Logo Package</h3>
+                    <p>High-resolution logos in various formats including transparent PNG, SVG, and print-ready files.</p>
+                    <a href="#" class="download-btn" onclick="downloadAsset('logos')">
+                        <i class="fas fa-download"></i> Download Logos
+                    </a>
+                </div>
+                
+                <div class="kit-card">
+                    <div class="kit-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <h3>Company Overview</h3>
+                    <p>Complete company fact sheet, team bios, and our mission to revolutionize social discovery.</p>
+                    <a href="#" class="download-btn" onclick="downloadAsset('overview')">
+                        <i class="fas fa-download"></i> Download Overview
+                    </a>
+                </div>
+                
+                <div class="kit-card">
+                    <div class="kit-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Product Screenshots</h3>
+                    <p>High-quality app screenshots and product images for editorial use and reviews.</p>
+                    <a href="#" class="download-btn" onclick="downloadAsset('screenshots')">
+                        <i class="fas fa-download"></i> Download Screenshots
+                    </a>
+                </div>
+                
+                <div class="kit-card">
+                    <div class="kit-icon">
+                        <i class="fas fa-video"></i>
+                    </div>
+                    <h3>B-roll & Videos</h3>
+                    <p>Product demonstration videos, team interviews, and footage of the SceneLink experience.</p>
+                    <a href="#" class="download-btn" onclick="downloadAsset('videos')">
+                        <i class="fas fa-download"></i> Download Videos
+                    </a>
+                </div>
+                
+                <div class="kit-card">
+                    <div class="kit-icon">
+                        <i class="fas fa-newspaper"></i>
+                    </div>
+                    <h3>Press Release Archive</h3>
+                    <p>Collection of our press releases and announcements from launch to present day.</p>
+                    <a href="#" class="download-btn" onclick="downloadAsset('releases')">
+                        <i class="fas fa-download"></i> Download Releases
+                    </a>
+                </div>
+                
+                <div class="kit-card">
+                    <div class="kit-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h3>Impact Report</h3>
+                    <p>Data-driven insights on how SceneLink is transforming Boston's social and dining landscape.</p>
+                    <a href="#" class="download-btn" onclick="downloadAsset('impact')">
+                        <i class="fas fa-download"></i> Download Report
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Latest News Section -->
+    <section class="news-section" style="padding:64px 0;background:#0e0e10;">
+        <div class="container" style="max-width:800px;text-align:center;">
+            <div style="display:inline-block;padding:8px 16px;background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);border-radius:999px;color:#D4AF37;font-size:11px;font-weight:700;letter-spacing:2px;margin-bottom:16px;">PRESS</div>
+            <h2 style="color:#fff;font-size:30px;font-weight:700;margin-bottom:14px;">Media inquiries welcome.</h2>
+            <p style="color:rgba(255,255,255,0.6);font-size:16px;line-height:1.7;">We'll share press coverage here as it becomes available. For editorial inquiries, reach out to <a href="mailto:info@scenelink.app" style="color:#D4AF37;">info@scenelink.app</a>.</p>
+        </div>
+    </section>
+
+    <!-- Milestones — building in public -->
+    <section style="padding:80px 0;background:#0a0a0a;">
+        <div class="container" style="max-width:800px;text-align:center;">
+            <div style="display:inline-block;padding:8px 16px;background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);border-radius:999px;color:#D4AF37;font-size:12px;font-weight:700;letter-spacing:2px;margin-bottom:20px;">BUILDING IN PUBLIC</div>
+            <h2 style="color:#fff;font-size:36px;font-weight:700;margin-bottom:16px;">We're just getting started.</h2>
+            <p style="color:rgba(255,255,255,0.6);font-size:17px;line-height:1.7;margin-bottom:32px;">SceneLink is launching in Boston. Milestones, press coverage, and accolades will live here soon. Follow our story as we build the social layer for hospitality &mdash; from day one.</p>
+            <a class='btn-modern' href='/contact' style='display:inline-flex;align-items:center;gap:10px;padding:14px 28px;background:linear-gradient(135deg,#D4AF37,#B8941F);color:#0a0a0a;text-decoration:none;border-radius:10px;font-weight:700;'>
+                <span>Partner with us</span>
+                <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <!-- ========== UNIFIED FOOTER ========== -->
+    <footer class="footer-unified">
+        <!-- Newsletter Bar -->
+        <div class="footer-newsletter-bar">
+            <div class="footer-newsletter-inner">
+                <div class="footer-newsletter-text">
+                    <h4>Stay in the Scene</h4>
+                    <p>Get weekly picks, exclusive events & hidden gems delivered to your inbox.</p>
+                </div>
+                <form class="footer-newsletter-form" data-sl-newsletter="1">
+                    <input type="email" name="email" placeholder="Enter your email address" required>
+                    <button type="submit">Subscribe</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main Footer Content -->
+        <div class="footer-main-content">
+            <!-- Brand Column -->
+            <div class="footer-brand-col">
+                <a class='footer-logo-link' href='/'>
+                    <img src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" class="footer-logo-img">
+                </a>
+                <p class="footer-brand-tagline">Eat. Drink. Discover.</p>
+                <p class="footer-brand-desc">Your social guide to the best restaurants, bars, events, and nightlife experiences in Boston.</p>
+                <div class="footer-social-icons">
+                    <a href="https://www.instagram.com/scenelink.app" class="social-instagram" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="https://x.com/Scenelinkapp" class="social-x" aria-label="X (Twitter)"><i class="fab fa-twitter"></i></a>
+                    <a href="https://www.facebook.com/SceneLinkApp/" class="social-facebook" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="https://www.youtube.com/@SceneLinkapp" class="social-youtube" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                </div>
+                <div class="footer-app-badges">
+                    <a href="/" class="footer-webapp-badge" style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:#D4AF37;color:#0a0a0a;border-radius:8px;font-weight:600;text-decoration:none;font-size:14px;"><i class="fas fa-globe"></i><span>Open Web App</span></a></div>
+            </div>
+
+            <!-- Discover Column -->
+            <div class="footer-link-col">
+                <h5>Discover</h5>
+                <ul>
+                    <li><a href='/explore'>Restaurants</a></li>
+                    <li><a href='/nightlife'>Bars & Nightlife</a></li>
+                    <li><a href='/tonight'>Tonight's Picks</a></li>
+                    <li><a href='/events'>Events</a></li>
+                <li><a class='nav-link' data-page='my-lists' href='/my-lists'>My Lists</a></li>
+                <li><a href="/" class="nav-link" data-ai-concierge-nav="1" data-sl-concierge="Plan my night in Boston" onclick="event.preventDefault();"><i class="fas fa-magic" style="color:#D4AF37;margin-right:4px;"></i>Ask AI</a></li>
+                </ul>
+            </div>
+
+            <!-- Social Column -->
+            <div class="footer-link-col">
+                <h5>Plan</h5>
+                <ul>
+                    <li><a href='/my-lists'>My Lists</a></li>
+                    <li><a href='/plan-with-friends'>Plan Builder — Beta</a></li>
+                    <li><a href='/profile'>My Profile</a></li>
+                </ul>
+                    <li><a href="/" data-sl-concierge="Plan my night in Boston" onclick="event.preventDefault();">Ask AI Concierge</a></li>
+                </ul>
+            </div>
+
+            <!-- Company Column -->
+            <div class="footer-link-col">
+                <h5>Company</h5>
+                <ul>
+                    <li><a href='/about'>About Us</a></li>
+                    <li><a href='/contact'>Contact</a></li>
+                    <li><a href='/careers'>Careers</a></li>
+                    <li><a href='/press'>Press & Media</a></li>
+                </ul>
+            </div>
+
+            <!-- Support Column -->
+            <div class="footer-link-col">
+                <h5>Support</h5>
+                <ul>
+                    <li><a href='/privacy'>Privacy Policy</a></li>
+                    <li><a href='/terms'>Terms of Service</a></li>
+                    </ul>
+            </div>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="footer-bottom-bar">
+            <div class="footer-bottom-inner">
+                <p class="footer-copyright">&copy; 2026 <a href='/'>SceneLink</a>. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href='/privacy'>Privacy</a>
+                    <a href='/terms'>Terms</a></div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Download asset function
+        function downloadAsset(type) {
+            // Create modal with download information
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+            `;
+            
+            const assetDescriptions = {
+                logos: 'Complete logo package including transparent PNG, SVG, and print-ready files',
+                overview: 'Company fact sheet, team bios, mission statement, and brand guidelines',
+                screenshots: 'High-quality product screenshots and app interface images',
+                videos: 'Product demos, team interviews, and promotional videos',
+                releases: 'Archive of all press releases and company announcements',
+                impact: 'Data-driven impact report with user metrics and success stories'
+            };
+            
+            modal.innerHTML = `
+                <div style="background: white; padding: 40px; border-radius: 15px; max-width: 500px; text-align: center;">
+                    <h3 style="margin-bottom: 20px; color: #333;">Download ${type.charAt(0).toUpperCase() + type.slice(1)}</h3>
+                    <p style="color: #666; margin-bottom: 30px;">${assetDescriptions[type]}</p>
+                    <p style="color: #667eea; font-weight: 600; margin-bottom: 20px;">
+                        <i class="fas fa-envelope"></i> Request sent to: info@scenelink.app
+                    </p>
+                    <p style="color: #999; font-size: 0.9rem; margin-bottom: 30px;">
+                        Our media team will send you the download link within 24 hours.
+                    </p>
+                    <button onclick="this.parentElement.parentElement.remove()" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-weight: 500;">
+                        Got it, thanks!
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+
+        // Mobile menu toggle
+        document.querySelector('.mobile-menu-btn').addEventListener('click', function() {
+            document.querySelector('.nav-menu').classList.toggle('active');
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Add intersection observer for animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animation = 'fadeInUp 0.6s ease forwards';
+                }
+            });
+        }, observerOptions);
+
+        // Observe all cards and sections
+        document.querySelectorAll('.kit-card, .news-card, .milestone-content, .award-card, .fact-item').forEach(el => {
+            observer.observe(el);
+        });
+    </script>
+    <!-- Phase 7A perf: ai-concierge-v5.js lazy-loaded -->
+
+
+
+
+
+
+
+
+
+    <!-- Phase 7A perf: sl-social-feed.js removed (not a social page) -->
+
+
+
+    <!-- SL-POLISH-SCRIPTS -->
+    <script src="js/sl-bundle-7d-ui.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-phase8-launch.js?v=connected-20261108-6" defer></script>
+<script src="js/sl-phase8-completion.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-universal-search.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-social-network.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-phase8d-recovery.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-social-integration-9a.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-verification-banner.js?v=connected-20261108-6" defer></script>
+</body>
+</html>

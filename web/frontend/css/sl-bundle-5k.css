@@ -1,0 +1,2338 @@
+/* Phase 5K bundle — concatenated 2026-05-19 — preserves order */
+
+/* === css/sl-consistency.css === */
+/* ============================================================
+   sl-consistency.css
+   Global visual consistency layer — loaded AFTER all page CSS.
+   Fixes:
+     - z-index stacking for header / modals / dropdowns / Ask AI
+     - de-duplicates page-specific Ask AI buttons when multiple exist
+     - ensures auth modal is always above maps, overlays, mobile nav
+     - unified premium dark style with gold accents for dropdowns
+   ============================================================ */
+
+/* ---- Z-INDEX SYSTEM (single source of truth) ------------------------ */
+.header-enhanced,
+.sl-explore-header,
+header.header-enhanced {
+  z-index: 1000 !important;
+}
+
+/* Leaflet / maps must stay below the header */
+.leaflet-container,
+#slMapCanvas,
+.sl-map-area {
+  z-index: 1 !important;
+}
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom,
+.leaflet-control { z-index: 100 !important; }
+
+/* AI Concierge floating button */
+.sl-concierge-fab,
+.sl-concierge-fab-v5,
+#enhanced-concierge-button {
+  z-index: 9000 !important;
+}
+
+/* AI Concierge panel */
+.sl-concierge-panel,
+.sl-concierge-panel-v5,
+#enhanced-concierge-panel {
+  z-index: 9500 !important;
+}
+
+/* Auth modal (sl-auth-ui) — must be above everything except critical alerts */
+.sl-auth-modal-overlay,
+.sl-auth-modal,
+#sl-auth-modal,
+.sl-auth-overlay {
+  z-index: 10000 !important;
+}
+
+/* User dropdown in header — above header itself */
+#sl-user-dropdown { z-index: 99999 !important; }
+#sl-user-dropdown .sl-ud-menu { z-index: 99999 !important; }
+
+/* Mobile nav sheet (if used) should not cover auth modal */
+.mobile-nav,
+.mobile-menu,
+.sl-mobile-nav {
+  z-index: 800 !important;
+}
+
+/* ---- AI CONCIERGE DEDUP --------------------------------------------- */
+/* If older integrations inject more than one Ask-AI button, keep only the v5 FAB.
+   v5 FAB has class 'sl-concierge-fab-v5' — any other variant is hidden. */
+#enhanced-concierge-button { display: none !important; }
+.ai-concierge-float-btn-legacy { display: none !important; }
+/* Hide older concierge panels we don't use */
+#enhanced-concierge-panel { display: none !important; }
+
+/* ---- MESSAGES NAV-LINK HIDDEN STATE --------------------------------- */
+/* sl-nav-gate.js sets display:none inline; this backs it up with !important
+   to win over any page-specific nav CSS. */
+a[href="messages.html"][style*="display: none"],
+a[data-page="messages"][style*="display: none"] {
+  display: none !important;
+}
+
+/* ---- AUTH MODAL CONSISTENCY (overrides) ----------------------------- */
+.sl-auth-modal,
+#sl-auth-modal {
+  background: #121212 !important;
+  color: #eaeaea !important;
+  border: 1px solid rgba(212,175,55,0.4) !important;
+}
+
+.sl-auth-modal input[type=email],
+.sl-auth-modal input[type=password],
+.sl-auth-modal input[type=text] {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: #fff !important;
+}
+.sl-auth-modal input:focus {
+  border-color: #d4af37 !important;
+  outline: none !important;
+}
+
+.sl-auth-modal button[type=submit],
+.sl-auth-modal .sl-auth-primary {
+  background: linear-gradient(135deg,#F5D97A 0%, #D4AF37 55%, #B8941F 100%) !important;
+  color: #0a0a0a !important;
+  border: none !important;
+  font-weight: 700 !important;
+}
+
+/* ---- NAV ACTIVE STATE CONSISTENCY ----------------------------------- */
+.nav-link.active,
+.sl-header-nav-link.active {
+  color: #d4af37 !important;
+}
+
+/* ---- PREVENT DUPLICATE HEADERS -------------------------------------- */
+/* If a page ever ends up with >1 .header-enhanced, hide the second+ */
+body > header.header-enhanced ~ header.header-enhanced { display: none !important; }
+
+/* ---- MOBILE: ensure dropdown doesn't get clipped ------------------- */
+@media (max-width: 768px) {
+  .nav-right { position: relative !important; }
+  #sl-user-dropdown .sl-ud-menu {
+    right: -8px !important;
+    min-width: 200px !important;
+  }
+}
+/* === css/sl-header-logo.css === */
+/* =============================================================
+ * SceneLink — Global Header Logo (Single Source of Truth)
+ * Loaded LAST across all pages. Wins over any page-specific CSS.
+ * Target: 80px logo height, consistent across every page.
+ * ============================================================= */
+
+/* Covers every logo selector used anywhere in the codebase */
+.sl-logo img,
+.sl-logo,
+.sl-brand img,
+.sl-brand-logo,
+.sl-brand-logo img,
+.sl-nav-logo,
+.sl-nav-logo img,
+.sl-header-logo,
+.sl-header-logo img,
+.sl-top-logo,
+.sl-top-logo img,
+.nav-logo,
+.nav-logo img,
+.navbar-logo,
+.navbar-logo img,
+.sl-explore-logo,
+.sl-explore-logo img,
+.nightlife-logo,
+.nightlife-logo img,
+.site-logo,
+.site-logo img,
+.brand-logo,
+.brand-logo img,
+header .logo,
+header .logo img,
+.header .logo,
+.header .logo img,
+.sl-header .logo,
+.sl-header .logo img,
+.sl-nav .logo,
+.sl-nav .logo img,
+.sl-topnav .logo,
+.sl-topnav .logo img,
+a[class*="logo"] img,
+.nav-brand img,
+.nav-brand {
+    height: 80px !important;
+    max-height: 80px !important;
+    width: auto !important;
+    object-fit: contain !important;
+}
+
+/* Loose catch-all for <img> with alt="SceneLink" */
+img[alt="SceneLink"],
+img[alt="SceneLink Logo"],
+img[alt*="SceneLink" i][src*="logo" i],
+img[src*="logo" i][src*="scenelink" i] {
+    height: 80px !important;
+    max-height: 80px !important;
+    width: auto !important;
+    object-fit: contain !important;
+}
+
+/* Header container sizing — give the logo room */
+.sl-header,
+.sl-topnav,
+.site-header,
+header.sl-nav,
+nav.sl-nav,
+nav.navbar {
+    min-height: 96px !important;
+}
+
+/* Tablet/mobile — shrink slightly but still larger than old size */
+@media (max-width: 768px) {
+    .sl-logo img,
+    .sl-logo,
+    .sl-brand img,
+    .sl-brand-logo,
+    .sl-brand-logo img,
+    .sl-nav-logo,
+    .sl-nav-logo img,
+    .sl-header-logo,
+    .sl-header-logo img,
+    .sl-explore-logo,
+    .sl-explore-logo img,
+    .nightlife-logo,
+    .nightlife-logo img,
+    .nav-logo,
+    .nav-logo img,
+    .navbar-logo,
+    .navbar-logo img,
+    header .logo img,
+    .nav-brand img,
+    img[alt="SceneLink"],
+    img[alt="SceneLink Logo"],
+    img[alt*="SceneLink" i][src*="logo" i] {
+        height: 64px !important;
+        max-height: 64px !important;
+    }
+    .sl-header, .sl-topnav, .site-header, header.sl-nav, nav.sl-nav, nav.navbar { min-height: 80px !important; }
+}
+/* === css/sl-map-popup-premium.css === */
+/* =============================================================
+ * SceneLink — Premium Map Popup (Explore + Nightlife)
+ * Applied to #slVenueWrap .sl-venue-card on map pages.
+ * Loaded AFTER explore-premium.css / nightlife CSS so it wins.
+ * ============================================================= */
+
+#slVenueWrap.sl-venue-card-wrap {
+    position: fixed !important;
+    left: 50% !important;
+    bottom: 24px !important;
+    transform: translateX(-50%) translateY(24px) !important;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 9500 !important;
+    width: min(92vw, 620px) !important;
+    max-width: 620px !important;
+    transition: opacity .25s ease, transform .25s ease !important;
+}
+#slVenueWrap.sl-venue-card-wrap.visible {
+    opacity: 1 !important;
+    transform: translateX(-50%) translateY(0) !important;
+    pointer-events: auto !important;
+}
+
+#slVenueWrap .sl-venue-card {
+    display: grid !important;
+    grid-template-columns: 120px 1fr !important;
+    grid-template-rows: auto auto !important;
+    gap: 0 16px !important;
+    align-items: stretch !important;
+    background: linear-gradient(180deg, #141414 0%, #0c0c0c 100%) !important;
+    border: 1px solid rgba(212,175,55,0.22) !important;
+    border-radius: 18px !important;
+    padding: 14px 16px 14px 14px !important;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.65), 0 2px 0 rgba(255,255,255,0.03) inset !important;
+    color: #fff !important;
+    overflow: hidden !important;
+    position: relative !important;
+}
+
+/* Thumbnail (rectangle, not circle — cleaner) */
+#slVenueWrap .sl-venue-card-img,
+#slVenueWrap img#slCardImg {
+    grid-row: 1 / span 2 !important;
+    grid-column: 1 !important;
+    width: 120px !important;
+    height: 120px !important;
+    border-radius: 14px !important;
+    object-fit: cover !important;
+    background: #1a1a1a !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    display: block !important;
+}
+
+/* Info stack */
+#slVenueWrap .sl-venue-card-info {
+    grid-row: 1 !important;
+    grid-column: 2 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+    padding-right: 36px !important; /* leave room for close btn */
+}
+
+#slVenueWrap .sl-venue-card-name {
+    font-size: 19px !important;
+    font-weight: 800 !important;
+    color: #fff !important;
+    letter-spacing: -0.01em !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+#slVenueWrap .sl-venue-card-type {
+    font-size: 12px !important;
+    color: rgba(212,175,55,0.95) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+#slVenueWrap .sl-venue-card-meta {
+    display: flex !important;
+    gap: 12px !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    font-size: 12.5px !important;
+    color: rgba(255,255,255,0.78) !important;
+    margin-top: 2px !important;
+}
+
+#slVenueWrap .sl-venue-card-meta > span {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    font-weight: 600 !important;
+}
+#slVenueWrap .sl-venue-card-meta .star { color: #f5c518 !important; }
+#slVenueWrap .sl-venue-card-meta .people i { color: #e74c3c !important; }
+#slVenueWrap .sl-venue-card-meta .sl-mpp-open {
+    color: #2ecc71 !important;
+    background: rgba(46,204,113,0.14) !important;
+    padding: 2px 8px !important;
+    border-radius: 999px !important;
+    font-size: 11px !important;
+    letter-spacing: 0.03em !important;
+    text-transform: uppercase !important;
+}
+#slVenueWrap .sl-venue-card-meta .sl-mpp-closed {
+    color: #bbb !important;
+    background: rgba(255,255,255,0.06) !important;
+    padding: 2px 8px !important;
+    border-radius: 999px !important;
+    font-size: 11px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.03em !important;
+}
+#slVenueWrap .sl-mpp-vibe {
+    font-size: 12.5px !important;
+    color: rgba(255,255,255,0.65) !important;
+    line-height: 1.45 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    margin-top: 4px !important;
+    font-style: italic !important;
+}
+
+/* Action row — horizontal icon buttons */
+#slVenueWrap .sl-venue-card-actions {
+    grid-row: 2 !important;
+    grid-column: 2 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    margin-top: 10px !important;
+    align-items: center !important;
+    flex-shrink: initial !important;
+}
+
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    height: 36px !important;
+    padding: 0 12px !important;
+    border-radius: 10px !important;
+    font-size: 12.5px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.01em !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    background: rgba(255,255,255,0.06) !important;
+    color: #fff !important;
+    cursor: pointer !important;
+    transition: transform .15s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease !important;
+    white-space: nowrap !important;
+}
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn i { font-size: 13px !important; }
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn:hover {
+    background: rgba(255,255,255,0.12) !important;
+    border-color: rgba(212,175,55,0.45) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Primary action (Reserve / Details) */
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn.sl-mpp-primary {
+    background: linear-gradient(135deg, #D4AF37 0%, #b8962e 100%) !important;
+    border-color: transparent !important;
+    color: #0a0a0a !important;
+    box-shadow: 0 4px 14px rgba(212,175,55,0.35) !important;
+}
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn.sl-mpp-primary:hover {
+    box-shadow: 0 8px 22px rgba(212,175,55,0.5) !important;
+}
+
+/* Icon-only round buttons (Save, Directions) */
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn.sl-mpp-icon {
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+}
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn.sl-mpp-icon.saved {
+    background: rgba(231,76,60,0.15) !important;
+    border-color: rgba(231,76,60,0.45) !important;
+    color: #e74c3c !important;
+}
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn.sl-mpp-icon.saved i { color: #e74c3c !important; }
+
+/* Close button — top-right */
+#slVenueWrap .sl-venue-close,
+#slVenueWrap #slCardClose {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 50% !important;
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    color: rgba(255,255,255,0.75) !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    z-index: 2 !important;
+    transition: background .2s ease, transform .15s ease !important;
+}
+#slVenueWrap .sl-venue-close:hover,
+#slVenueWrap #slCardClose:hover {
+    background: rgba(231,76,60,0.2) !important;
+    color: #fff !important;
+    transform: rotate(90deg) !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 560px) {
+    #slVenueWrap.sl-venue-card-wrap {
+        width: calc(100vw - 20px) !important;
+        bottom: 12px !important;
+    }
+    #slVenueWrap .sl-venue-card {
+        grid-template-columns: 84px 1fr !important;
+        padding: 12px !important;
+        gap: 0 12px !important;
+    }
+    #slVenueWrap .sl-venue-card-img,
+    #slVenueWrap img#slCardImg {
+        width: 84px !important;
+        height: 84px !important;
+        border-radius: 12px !important;
+    }
+    #slVenueWrap .sl-venue-card-name { font-size: 16px !important; }
+    #slVenueWrap .sl-venue-card-meta { font-size: 11.5px !important; gap: 8px !important; }
+    #slVenueWrap .sl-venue-card-actions > .sl-mpp-btn {
+        height: 34px !important;
+        padding: 0 10px !important;
+        font-size: 12px !important;
+    }
+    #slVenueWrap .sl-venue-card-actions > .sl-mpp-btn.sl-mpp-icon {
+        width: 34px !important; height: 34px !important;
+    }
+    #slVenueWrap .sl-mpp-vibe { display: none !important; }
+}
+
+/* =============================================================
+ * Premium Map Search Bar + Filter Chips (Explore + Nightlife)
+ * ============================================================= */
+
+.sl-map-toolbar,
+#slMapToolbar,
+.sl-explore-toolbar {
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    background: rgba(12,12,12,0.72) !important;
+    border: 1px solid rgba(212,175,55,0.18) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 32px rgba(0,0,0,0.5) !important;
+    padding: 10px 12px !important;
+}
+
+/* Search bar wrapper */
+.sl-map-searchbar {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    border-radius: 14px !important;
+    padding: 4px 4px 4px 40px !important;
+    transition: border-color .2s ease, background .2s ease, box-shadow .2s ease !important;
+}
+.sl-map-searchbar:focus-within {
+    border-color: rgba(212,175,55,0.6) !important;
+    background: rgba(255,255,255,0.08) !important;
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.15) !important;
+}
+.sl-search-icon,
+.sl-map-searchbar .sl-search-icon,
+.sl-map-searchbar > i.fa-search {
+    position: absolute !important;
+    left: 14px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    color: rgba(212,175,55,0.85) !important;
+    font-size: 14px !important;
+    pointer-events: none !important;
+}
+
+/* Search input premium look */
+#slSearchInput,
+.sl-map-searchbar input[type="text"],
+.sl-explore-search input[type="text"] {
+    background: transparent !important;
+    border: none !important;
+    color: #fff !important;
+    padding: 10px 8px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    height: 42px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+#slSearchInput::placeholder,
+.sl-map-searchbar input[type="text"]::placeholder {
+    color: rgba(255,255,255,0.5) !important;
+}
+
+/* Locate btn (in search bar) */
+.sl-map-loc-btn,
+#slSearchLoc {
+    background: rgba(255,255,255,0.06) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    color: rgba(212,175,55,0.95) !important;
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: background .15s ease, border-color .15s ease !important;
+    flex-shrink: 0 !important;
+}
+.sl-map-loc-btn:hover, #slSearchLoc:hover {
+    background: rgba(212,175,55,0.15) !important;
+    border-color: rgba(212,175,55,0.5) !important;
+}
+
+/* Search primary btn */
+.sl-map-search-btn,
+#slSearchBtn {
+    background: linear-gradient(135deg, #D4AF37 0%, #b8962e 100%) !important;
+    color: #0a0a0a !important;
+    border: none !important;
+    height: 34px !important;
+    padding: 0 16px !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+    cursor: pointer !important;
+    transition: box-shadow .2s ease, transform .12s ease !important;
+    flex-shrink: 0 !important;
+    letter-spacing: 0.02em !important;
+}
+.sl-map-search-btn:hover, #slSearchBtn:hover {
+    box-shadow: 0 4px 14px rgba(212,175,55,0.4) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Chip rows alignment */
+.sl-map-chips,
+.sl-cuisine-filters {
+    display: flex !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    margin-top: 10px !important;
+}
+
+/* Cuisine chips */
+.sl-cuisine-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    height: 30px !important;
+    padding: 0 12px !important;
+    border-radius: 999px !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    color: rgba(255,255,255,0.78) !important;
+    cursor: pointer !important;
+    transition: background .2s ease, border-color .2s ease, color .2s ease !important;
+    white-space: nowrap !important;
+}
+.sl-cuisine-chip:hover {
+    background: rgba(212,175,55,0.08) !important;
+    border-color: rgba(212,175,55,0.35) !important;
+    color: #fff !important;
+}
+.sl-cuisine-chip.active {
+    background: rgba(212,175,55,0.2) !important;
+    border-color: rgba(212,175,55,0.6) !important;
+    color: #D4AF37 !important;
+}
+
+/* Filter chips — gold-outline premium */
+.sl-chip,
+.sl-chip-btn,
+.sl-filter-chip,
+.sl-map-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    height: 34px !important;
+    padding: 0 14px !important;
+    border-radius: 999px !important;
+    font-size: 12.5px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.01em !important;
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: rgba(255,255,255,0.82) !important;
+    cursor: pointer !important;
+    transition: background .2s ease, border-color .2s ease, color .2s ease, transform .12s ease !important;
+    white-space: nowrap !important;
+}
+.sl-chip i,
+.sl-chip-btn i,
+.sl-filter-chip i,
+.sl-map-chip i { font-size: 11px !important; opacity: 0.9 !important; }
+
+.sl-chip:hover,
+.sl-chip-btn:hover,
+.sl-filter-chip:hover,
+.sl-map-chip:hover {
+    background: rgba(212,175,55,0.08) !important;
+    border-color: rgba(212,175,55,0.4) !important;
+    color: #fff !important;
+    transform: translateY(-1px) !important;
+}
+
+.sl-chip.active,
+.sl-chip.sl-chip-active,
+.sl-chip-btn.active,
+.sl-chip-btn.sl-chip-active,
+.sl-filter-chip.active,
+.sl-map-chip.active {
+    background: linear-gradient(135deg, #D4AF37 0%, #b8962e 100%) !important;
+    border-color: transparent !important;
+    color: #0a0a0a !important;
+    box-shadow: 0 4px 14px rgba(212,175,55,0.32) !important;
+}
+
+/* Map control buttons (zoom/locate/layers) — premium round */
+.leaflet-bar a,
+.sl-map-ctrls button,
+.sl-map-ctrl-btn {
+    background: rgba(12,12,12,0.85) !important;
+    color: #fff !important;
+    border: 1px solid rgba(212,175,55,0.2) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    transition: background .15s ease, border-color .15s ease !important;
+}
+.leaflet-bar a:hover,
+.sl-map-ctrls button:hover,
+.sl-map-ctrl-btn:hover {
+    background: rgba(212,175,55,0.18) !important;
+    border-color: rgba(212,175,55,0.55) !important;
+    color: #D4AF37 !important;
+}
+
+/* ============================================================= */
+/* Leaflet popup — premium dark override (in case used) */
+/* ============================================================= */
+.leaflet-popup-content-wrapper {
+    background: linear-gradient(180deg, #141414 0%, #0c0c0c 100%) !important;
+    color: #fff !important;
+    border: 1px solid rgba(212,175,55,0.22) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 18px 48px rgba(0,0,0,0.6) !important;
+    padding: 0 !important;
+}
+.leaflet-popup-content { margin: 0 !important; padding: 0 !important; color: #fff !important; }
+.leaflet-popup-tip { background: #0c0c0c !important; box-shadow: none !important; }
+.leaflet-popup-close-button { color: rgba(255,255,255,0.7) !important; }
+/* === css/sl-mobile-launch-fix.css === */
+/* SceneLink — Mobile Launch Fix
+ * Comprehensive mobile polish targeting real blockers:
+ * - Horizontal scroll
+ * - Dropdowns hidden behind maps
+ * - Clipped buttons
+ * - Overlapping search bars
+ * - Modal overflow
+ * - Map + list toggle UX
+ * Tested: 375px, 390px, 414px, 768px
+ * v1.0 — 2026-05-03
+ */
+
+/* ============ GLOBAL: Prevent horizontal scroll ============ */
+@media (max-width: 820px) {
+    html, body {
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+    }
+
+    /* Containers: respect viewport width */
+    .container,
+    .sl-container,
+    .page-wrap,
+    main,
+    section {
+        max-width: 100% !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+        box-sizing: border-box;
+    }
+
+    /* Prevent fixed-width elements from pushing layout */
+    img, video, iframe, canvas {
+        max-width: 100% !important;
+        height: auto;
+    }
+
+    /* Tables -> scroll internally, not page */
+    table { display: block; overflow-x: auto; max-width: 100%; }
+}
+
+/* ============ MOBILE MENU ============ */
+@media (max-width: 820px) {
+    /* Mobile menu must always be topmost */
+    .mobile-menu,
+    .mobile-nav,
+    .sl-mobile-menu,
+    .nav-mobile,
+    #mobileMenu,
+    [class*="mobile-menu"] {
+        z-index: 99990 !important;
+    }
+
+    /* Hamburger button: tappable, visible */
+    .mobile-menu-toggle,
+    .hamburger,
+    .menu-toggle,
+    .nav-toggle,
+    [aria-label*="menu" i] {
+        min-width: 44px !important;
+        min-height: 44px !important;
+        padding: 10px !important;
+    }
+}
+
+/* ============ DROPDOWNS / POPOVERS ABOVE MAPS ============ */
+@media (max-width: 820px) {
+    /* Maps must sit below dropdowns */
+    .map-container,
+    #map,
+    .leaflet-container,
+    .mapboxgl-map,
+    .gm-style,
+    [class*="map-"] {
+        z-index: 1 !important;
+    }
+
+    /* Any select/dropdown/search results stays above map */
+    select,
+    .dropdown-menu,
+    .search-results,
+    .autocomplete-results,
+    .sl-dropdown,
+    .filter-dropdown,
+    [role="listbox"],
+    [class*="autocomplete"] {
+        z-index: 500 !important;
+    }
+
+    /* Filters panel on mobile */
+    .filters-panel,
+    .sl-filters,
+    #filters,
+    [class*="filters-bar"] {
+        z-index: 10 !important;
+        position: relative;
+    }
+}
+
+/* ============ MODALS ============ */
+@media (max-width: 820px) {
+    /* All modals fit screen */
+    .modal,
+    .modal-content,
+    .sl-modal,
+    .sl-auth-overlay .sl-auth-modal,
+    .pwf-modal,
+    .bz-modal,
+    [class*="modal-content"],
+    [class*="-modal"]:not(.modal-overlay) {
+        max-width: calc(100vw - 24px) !important;
+        max-height: calc(100vh - 48px) !important;
+        width: auto !important;
+        margin: 12px auto !important;
+        box-sizing: border-box;
+        overflow-y: auto !important;
+    }
+
+    /* Modal overlays fill screen */
+    .modal-overlay,
+    .sl-auth-overlay,
+    .pwf-modal-overlay,
+    [class*="modal-overlay"] {
+        padding: 12px !important;
+        box-sizing: border-box;
+    }
+
+    /* Close buttons always tappable */
+    .modal-close,
+    .sl-auth-close,
+    .pwf-modal-close,
+    [class*="modal-close"],
+    [aria-label="Close" i] {
+        min-width: 40px !important;
+        min-height: 40px !important;
+        touch-action: manipulation;
+    }
+}
+
+/* ============ BUTTONS / INPUTS — no clipping ============ */
+@media (max-width: 820px) {
+    button, .btn, .sl-btn, input[type="button"], input[type="submit"] {
+        min-height: 44px;
+        touch-action: manipulation;
+    }
+
+    input[type="text"], input[type="email"], input[type="password"],
+    input[type="search"], input[type="tel"], textarea, select {
+        font-size: 16px !important; /* prevent iOS zoom-on-focus */
+        min-height: 44px;
+        box-sizing: border-box;
+    }
+
+    textarea { min-height: 88px; }
+}
+
+/* ============ SEARCH BARS — no overlap ============ */
+@media (max-width: 820px) {
+    /* If two search bars exist (top + map toolbar), space them */
+    .search-bar + .search-bar,
+    .sl-search + .sl-search {
+        margin-top: 8px;
+    }
+
+    /* Hero search doesn't clip */
+    .hero-search,
+    .search-hero,
+    [class*="hero-search"] {
+        max-width: 100% !important;
+        padding: 0 12px !important;
+    }
+}
+
+/* ============ MAP VIEW — mobile ============ */
+@media (max-width: 820px) {
+    /* Map list toggle bar pinned top on mobile */
+    .map-list-toggle,
+    .view-toggle,
+    .sl-view-switcher,
+    [class*="map-toggle"] {
+        position: sticky !important;
+        top: 56px; /* below header */
+        z-index: 40 !important;
+        background: #0d0d0d;
+        padding: 8px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    /* Map height: respect viewport, leave space for list */
+    .map-container,
+    #map,
+    .leaflet-container,
+    .mapboxgl-map {
+        height: 65vh !important;
+        min-height: 400px !important;
+        max-height: 70vh !important;
+        width: 100% !important;
+    }
+
+    /* Popup on mobile: fits screen, has close */
+    .leaflet-popup,
+    .mapboxgl-popup,
+    .sl-map-popup,
+    [class*="map-popup"] {
+        max-width: calc(100vw - 32px) !important;
+    }
+
+    .leaflet-popup-content,
+    .mapboxgl-popup-content,
+    .sl-map-popup-content {
+        max-width: calc(100vw - 40px) !important;
+        width: auto !important;
+        padding: 16px !important;
+        box-sizing: border-box;
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+
+    /* Zoom controls tappable */
+    .leaflet-control-zoom a,
+    .mapboxgl-ctrl button {
+        min-width: 40px !important;
+        min-height: 40px !important;
+    }
+}
+
+/* ============ FOOTER SOCIAL ICONS ============ */
+@media (max-width: 820px) {
+    .footer-social,
+    .social-links,
+    .social-links-large,
+    [class*="social-links"] {
+        display: flex !important;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+    }
+
+    .footer-social a,
+    .social-links a,
+    .social-link,
+    .social-link-large {
+        min-width: 44px !important;
+        min-height: 44px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+}
+
+/* ============ CONTACT AI SUPPORT (contact page) — mobile ============ */
+@media (max-width: 600px) {
+    .sl-cai-panel {
+        bottom: 0 !important;
+        right: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+    }
+}
+
+/* ============ AUTH MODAL close button — make obvious on mobile ============ */
+@media (max-width: 820px) {
+    .sl-auth-close,
+    .pwf-modal-close,
+    .modal-close {
+        width: 44px !important;
+        height: 44px !important;
+        font-size: 24px !important;
+    }
+}
+
+/* ============ BUSINESS PAGE — mobile dashboard ============ */
+@media (max-width: 820px) {
+    .bd-card,
+    .bz-card {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+
+    .bd-stats-grid,
+    [class*="stats-grid"] {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
+}
+
+/* ============ PROFILE — mobile sign-in ============ */
+@media (max-width: 820px) {
+    /* Ensure profile sign-in CTA is reachable */
+    .btn-header-primary.sl-auth-trigger {
+        min-height: 40px !important;
+        padding: 8px 16px !important;
+        font-size: 14px !important;
+    }
+}
+
+/* ============ NAVIGATION HEADER — prevent overflow ============ */
+@media (max-width: 820px) {
+    .nav-links,
+    .navbar-nav,
+    .main-nav ul {
+        /* on mobile, these should be in the mobile menu, not inline */
+    }
+
+    .navbar,
+    .header,
+    .sl-header,
+    header {
+        max-width: 100vw !important;
+        overflow-x: visible;
+    }
+}
+/* ============ EXPLORE PAGE: prevent duplicate search bars ============ */
+/* If any legacy script injects .explore-search-enhanced or .sl-old-search, hide it */
+.explore-search-enhanced,
+.sl-old-search,
+.sl-legacy-search-bar,
+[data-legacy-search] {
+    display: none !important;
+}
+
+/* Ensure the current search bar sits above everything */
+.sl-map-searchbar {
+    position: relative;
+    z-index: 5;
+}
+
+/* === css/sl-social-icons.css === */
+/* =====================================================
+ * SceneLink - Social Icon Parity (launch-polish)
+ * Ensures X icon renders at the exact same visual weight
+ * as Instagram, Facebook, YouTube in all footers.
+ * ===================================================== */
+
+/* Target the social icon links in footer + profile social row */
+footer .social-links a,
+footer .footer-social a,
+.profile-social-link,
+.footer-social-links a {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: rgba(255,255,255,0.7);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    transition: all 0.2s ease;
+    text-decoration: none;
+    font-size: 16px;
+}
+
+footer .social-links a:hover,
+footer .footer-social a:hover,
+.profile-social-link:hover,
+.footer-social-links a:hover {
+    color: #D4AF37;
+    background: rgba(212,175,55,0.12);
+    border-color: rgba(212,175,55,0.35);
+    transform: translateY(-2px);
+}
+
+footer .social-links a i,
+footer .footer-social a i,
+.profile-social-link i,
+.footer-social-links a i {
+    font-size: 16px;
+    width: 1em;
+    height: 1em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+/* X icon specifically — force svg sizing parity with glyph icons */
+.sl-social-x i,
+.sl-social-x .fa-x-twitter,
+i.fa-x-twitter,
+i.fab.fa-x-twitter {
+    font-size: 15px !important; /* X glyph is visually slightly heavier, compensate */
+    width: 15px;
+    height: 15px;
+}
+.sl-social-x svg,
+i.fa-x-twitter svg,
+i.fab.fa-x-twitter svg {
+    width: 15px !important;
+    height: 15px !important;
+    vertical-align: middle;
+}
+/* === css/sl-logo-standard.css === */
+/* =====================================================
+ * SceneLink - Global Logo Standardization (launch-polish)
+ * Forces identical large logo size across every page header.
+ * Loads LAST (linked after other CSS) so !important wins.
+ * ===================================================== */
+
+/* Desktop: large, prominent logo */
+.nav-logo,
+.logo-img,
+.logo-main,
+.sl-logo-main,
+.sl-explore-logo,
+.sl-nav-logo,
+.sl-nav-logo-link img,
+.sl-explore-header .sl-nav-logo-link img,
+.navbar .logo img,
+.main-nav .logo img,
+.top-nav .logo img,
+header .logo img,
+header a.logo img,
+nav a.logo img {
+    height: 64px !important;
+    max-height: 64px !important;
+    min-height: 64px !important;
+    width: auto !important;
+    max-width: none !important;
+    object-fit: contain !important;
+    display: inline-block !important;
+    transition: transform 0.2s ease;
+}
+
+/* Admin sidebar uses text-logo — upscale to match */
+.sidebar-logo-text { font-size: 24px !important; letter-spacing: -0.4px !important; }
+.sidebar-logo-sub  { font-size: 12px !important; }
+
+.nav-logo:hover,
+.logo-img:hover,
+.logo-main:hover,
+header .logo img:hover,
+header a.logo img:hover {
+    transform: scale(1.03);
+}
+
+/* Link wrapping the logo shouldn't have any constrain */
+.navbar .logo,
+header .logo,
+header a.logo,
+nav a.logo {
+    display: inline-flex !important;
+    align-items: center !important;
+    line-height: 1 !important;
+    padding: 4px 0 !important;
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+    .nav-logo,
+    .logo-img,
+    .logo-main,
+    .sl-explore-logo,
+    .sl-nav-logo,
+    .sl-nav-logo-link img,
+    header .logo img,
+    header a.logo img,
+    nav a.logo img {
+        height: 54px !important;
+        max-height: 54px !important;
+        min-height: 54px !important;
+    }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+    .nav-logo,
+    .logo-img,
+    .logo-main,
+    .sl-explore-logo,
+    .sl-nav-logo,
+    .sl-nav-logo-link img,
+    header .logo img,
+    header a.logo img,
+    nav a.logo img {
+        height: 44px !important;
+        max-height: 44px !important;
+        min-height: 44px !important;
+    }
+}
+/* === css/sl-prelaunch-polish.css === */
+/* =====================================================
+ * SceneLink - Pre-Launch Polish (v1)
+ * Safe, additive CSS that improves trust, conversion,
+ * and launch-day feel. Nothing here breaks existing
+ * working styles — all selectors are either new or
+ * specifically scoped to common patterns.
+ * ===================================================== */
+
+/* ---------- EMPTY STATES (global premium look) ---------- */
+.empty-state,
+.sl-empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: rgba(255,255,255,0.65);
+    max-width: 440px;
+    margin: 0 auto;
+}
+.empty-state-icon,
+.sl-empty-state-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(212,175,55,0.12), rgba(212,175,55,0.02));
+    border: 1px solid rgba(212,175,55,0.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #D4AF37;
+}
+.empty-state-title,
+.sl-empty-state-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+    letter-spacing: -0.2px;
+}
+.empty-state-description,
+.empty-state-message,
+.sl-empty-state-description {
+    font-size: 14px;
+    line-height: 1.55;
+    color: rgba(255,255,255,0.65);
+    margin-bottom: 22px;
+}
+.empty-state-action,
+.sl-empty-state-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    background: linear-gradient(135deg, #D4AF37, #B8941F);
+    color: #0a0a0a;
+    border: none;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 8px 20px rgba(212,175,55,0.3);
+}
+.empty-state-action:hover,
+.sl-empty-state-action:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 28px rgba(212,175,55,0.45);
+}
+
+/* Secondary action for empty states */
+.sl-empty-state-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.85);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    margin-left: 10px;
+    transition: all 0.15s ease;
+}
+.sl-empty-state-secondary:hover {
+    background: rgba(255,255,255,0.12);
+    border-color: rgba(212,175,55,0.3);
+    color: #fff;
+}
+
+/* ---------- TOASTS (premium, non-intrusive) ---------- */
+.sl-toast,
+.sl-global-toast,
+.universal-toast {
+    position: fixed !important;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20,20,24,0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(212,175,55,0.25);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.3);
+    z-index: 10001;
+    max-width: 440px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slToastIn 0.3s cubic-bezier(0.18,0.89,0.32,1.28);
+}
+.sl-toast--saved,
+.sl-toast.saved { border-color: rgba(46,204,113,0.4); }
+.sl-toast--error,
+.sl-toast.error { border-color: rgba(231,76,60,0.4); }
+.sl-toast--info,
+.sl-toast.info { border-color: rgba(212,175,55,0.35); }
+
+@keyframes slToastIn {
+    from { transform: translate(-50%, 20px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+/* ---------- LOGIN PROMPT (consistent framing when gated actions hit) ---------- */
+.sl-login-prompt-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(8px);
+    z-index: 10050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: slFadeIn 0.2s ease;
+}
+.sl-login-prompt-card {
+    background: linear-gradient(180deg, #1a1a22 0%, #121218 100%);
+    border: 1px solid rgba(212,175,55,0.25);
+    border-radius: 20px;
+    padding: 36px 32px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(212,175,55,0.1);
+}
+.sl-login-prompt-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.05));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    color: #D4AF37;
+}
+.sl-login-prompt-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 10px;
+    letter-spacing: -0.3px;
+}
+.sl-login-prompt-text {
+    color: rgba(255,255,255,0.65);
+    font-size: 14.5px;
+    line-height: 1.55;
+    margin-bottom: 24px;
+}
+.sl-login-prompt-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.sl-login-prompt-btn-primary {
+    padding: 12px 28px;
+    background: linear-gradient(135deg, #D4AF37, #B8941F);
+    color: #0a0a0a;
+    border: none;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 8px 20px rgba(212,175,55,0.35);
+}
+.sl-login-prompt-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 26px rgba(212,175,55,0.5);
+}
+.sl-login-prompt-btn-secondary {
+    padding: 12px 24px;
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.85);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.sl-login-prompt-btn-secondary:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(212,175,55,0.3);
+}
+.sl-login-prompt-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: none;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.15s ease;
+}
+.sl-login-prompt-close:hover {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+}
+
+@keyframes slFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* ---------- LOADING SKELETONS (consistent shimmer) ---------- */
+.sl-skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 100%);
+    background-size: 200% 100%;
+    animation: slShimmerPL 1.4s ease-in-out infinite;
+    border-radius: 8px;
+}
+@keyframes slShimmerPL {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ---------- FAVORITE/SAVE BUTTON CONSISTENCY ---------- */
+.favorite-btn,
+.sl-fav-btn {
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+.favorite-btn:hover,
+.sl-fav-btn:hover {
+    transform: scale(1.12);
+}
+.favorite-btn:active,
+.sl-fav-btn:active {
+    transform: scale(0.95);
+}
+
+/* Heart-pop animation on save */
+.sl-fav-pop {
+    animation: slFavPop 0.4s cubic-bezier(0.18,0.89,0.32,1.28);
+}
+@keyframes slFavPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.35); }
+    100% { transform: scale(1); }
+}
+
+/* ---------- MOBILE TAPPABLE AREAS ---------- */
+@media (max-width: 640px) {
+    .sl-empty-state-action,
+    .sl-login-prompt-btn-primary,
+    .sl-login-prompt-btn-secondary,
+    .empty-state-action {
+        min-height: 44px; /* Apple HIG minimum */
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+    /* Make sure no content bleeds past viewport */
+    .sl-toast,
+    .universal-toast {
+        max-width: calc(100vw - 32px);
+        left: 16px;
+        right: 16px;
+        transform: none;
+        bottom: 16px;
+    }
+}
+
+/* ---------- REPORT INCORRECT INFO CTA ---------- */
+.sl-report-venue-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: rgba(255,255,255,0.5);
+    font-size: 12.5px;
+    font-weight: 500;
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    font-family: inherit;
+}
+.sl-report-venue-link:hover {
+    color: #D4AF37;
+    background: rgba(212,175,55,0.08);
+}
+.sl-report-venue-link i {
+    font-size: 11px;
+}
+
+/* ---------- TRUST BADGES (small "verified" / "data source" pills) ---------- */
+.sl-trust-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    background: rgba(46,204,113,0.1);
+    color: #2ecc71;
+    border: 1px solid rgba(46,204,113,0.25);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+.sl-trust-badge i {
+    font-size: 9px;
+}
+.sl-trust-badge--gold {
+    background: rgba(212,175,55,0.1);
+    color: #D4AF37;
+    border-color: rgba(212,175,55,0.25);
+}
+/* === css/sl-nav-mobile.css === */
+/* ==========================================================================
+   SL-NAV-MOBILE — Single authoritative mobile nav layer
+   Phase 5D-E. Loaded LAST. Wins over any legacy header/nav CSS.
+   Drives: header, hamburger, .nav-center mobile drawer, body.menu-open lock,
+            account/avatar dropdown positioning.
+   ========================================================================== */
+
+/* -- Header base (lock z-index high enough above content) ----------------- */
+.header-enhanced{
+  position:sticky; top:0; left:0; right:0;
+  z-index:9000;
+  background:rgba(10,10,10,0.92);
+  backdrop-filter:saturate(160%) blur(14px);
+  -webkit-backdrop-filter:saturate(160%) blur(14px);
+  border-bottom:1px solid rgba(212,175,55,0.18);
+  padding-top:env(safe-area-inset-top,0);
+}
+.header-enhanced .nav-enhanced{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:1rem; padding:0.6rem 1rem; max-width:1400px; margin:0 auto;
+}
+.header-enhanced .nav-left{flex:0 0 auto; display:flex; align-items:center;}
+.header-enhanced .nav-right{flex:0 0 auto; display:flex; align-items:center; gap:.5rem;}
+.header-enhanced .logo-main{height:48px !important; width:auto !important;}
+
+/* -- Hamburger (only visible on mobile) ----------------------------------- */
+.header-enhanced .mobile-menu-btn{
+  display:none;
+  width:44px; height:44px;
+  flex-direction:column; align-items:center; justify-content:center;
+  gap:5px; padding:0; margin:0;
+  background:transparent; border:1px solid rgba(212,175,55,0.4);
+  border-radius:10px; cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  position:relative; z-index:9100;
+  touch-action:manipulation;
+}
+.header-enhanced .mobile-menu-btn span{
+  display:block; width:22px; height:2px; background:#D4AF37; border-radius:2px;
+  transition:transform .25s ease, opacity .2s ease;
+}
+.header-enhanced .mobile-menu-btn.is-open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+.header-enhanced .mobile-menu-btn.is-open span:nth-child(2){opacity:0;}
+.header-enhanced .mobile-menu-btn.is-open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+
+/* ==========================================================================
+   MOBILE BREAKPOINT — primary fix lives here.
+   Selector specificity is intentionally high to beat 16 legacy stylesheets.
+   ========================================================================== */
+@media (max-width: 900px){
+  .header-enhanced .mobile-menu-btn{display:flex !important;}
+
+  /* The nav drawer — hidden by default, slides in from right */
+  .header-enhanced .nav-center{
+    position:fixed !important;
+    top:0 !important;
+    right:0 !important;
+    left:auto !important;
+    width:min(86vw, 340px) !important;
+    height:100vh !important;
+    height:100dvh !important;
+    margin:0 !important;
+    padding:calc(env(safe-area-inset-top,0) + 80px) 0 calc(env(safe-area-inset-bottom,0) + 24px) 0 !important;
+    background:rgba(10,10,10,0.985) !important;
+    backdrop-filter:saturate(160%) blur(20px);
+    -webkit-backdrop-filter:saturate(160%) blur(20px);
+    border-left:1px solid rgba(212,175,55,0.25) !important;
+    box-shadow:-12px 0 36px rgba(0,0,0,0.6);
+    list-style:none !important;
+    display:flex !important;            /* always rendered, slid offscreen */
+    flex-direction:column !important;
+    align-items:stretch !important;
+    justify-content:flex-start !important;
+    gap:0 !important;
+    transform:translate3d(100%,0,0) !important;
+    transition:transform .28s cubic-bezier(.2,.8,.2,1) !important;
+    z-index:9050 !important;
+    overflow-y:auto !important;
+    -webkit-overflow-scrolling:touch;
+    pointer-events:none;
+  }
+
+  /* OPEN STATE — driven by body.menu-open (single source of truth) */
+  body.menu-open .header-enhanced .nav-center{
+    transform:translate3d(0,0,0) !important;
+    pointer-events:auto !important;
+  }
+
+  /* Nav links inside drawer */
+  .header-enhanced .nav-center > li{
+    width:100% !important; list-style:none !important; margin:0 !important;
+  }
+  .header-enhanced .nav-center > li > .nav-link{
+    display:flex !important; align-items:center;
+    width:100% !important; min-height:52px;
+    padding:14px 22px !important;
+    border-bottom:1px solid rgba(255,255,255,0.05);
+    color:#fff !important; text-decoration:none !important;
+    font-size:1rem !important; font-weight:500 !important;
+    text-align:left !important;
+  }
+  .header-enhanced .nav-center > li > .nav-link.active{
+    color:#D4AF37 !important;
+    background:linear-gradient(90deg, rgba(212,175,55,0.12), transparent);
+    border-left:3px solid #D4AF37;
+    padding-left:19px !important;
+  }
+
+  /* Hide nav-center underline ::after on mobile */
+  .header-enhanced .nav-center .nav-link::after{display:none !important;}
+
+  /* Backdrop scrim — covers content but sits BELOW the drawer */
+  body.menu-open::before{
+    content:""; position:fixed; inset:0;
+    background:rgba(0,0,0,0.55);
+    z-index:9040;        /* drawer is 9050, so scrim is below */
+    backdrop-filter:blur(4px);
+    -webkit-backdrop-filter:blur(4px);
+    pointer-events:none; /* scrim is decorative; tap-outside is handled in JS */
+  }
+
+  /* Lock body scroll */
+  body.menu-open{overflow:hidden !important; touch-action:none;}
+
+  /* Hide nav-right login button while drawer open (we surface it inside drawer) */
+  .header-enhanced .nav-right{
+    gap:.4rem;
+  }
+  .header-enhanced .nav-right .btn-header-primary{
+    padding:8px 14px !important; font-size:.85rem !important;
+  }
+}
+
+/* ==========================================================================
+   DESKTOP BEHAVIOUR — make sure mobile-only rules don't bleed up
+   ========================================================================== */
+@media (min-width: 901px){
+  .header-enhanced .mobile-menu-btn{display:none !important;}
+  .header-enhanced .nav-center{
+    position:static !important;
+    transform:none !important;
+    width:auto !important; height:auto !important;
+    flex-direction:row !important;
+    background:transparent !important;
+    box-shadow:none !important; border:0 !important;
+    padding:0 !important;
+    pointer-events:auto !important;
+  }
+  body.menu-open::before{display:none;}
+  body.menu-open{overflow:auto !important; touch-action:auto;}
+}
+
+/* ==========================================================================
+   ACCOUNT / AUTH DROPDOWN — fixed positioning, never offscreen
+   ========================================================================== */
+.sl-auth-modal{
+  position:fixed !important;
+  z-index:10000 !important;
+  max-width:calc(100vw - 24px);
+  max-height:calc(100vh - 24px);
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  box-shadow:0 24px 60px rgba(0,0,0,0.55);
+  border-radius:14px;
+}
+
+@media (max-width: 600px){
+  .sl-auth-modal{
+    top:auto !important; left:50% !important; right:auto !important;
+    bottom:max(env(safe-area-inset-bottom,0), 12px) !important;
+    transform:translateX(-50%) !important;
+    width:calc(100vw - 24px) !important;
+    max-width:420px;
+  }
+}
+
+/* ==========================================================================
+   TAP TARGETS — 44px minimum on mobile for App-Store quality
+   ========================================================================== */
+@media (max-width: 900px){
+  .header-enhanced .btn-header-primary,
+  .header-enhanced .nav-link,
+  .header-enhanced .mobile-menu-btn{
+    min-height:44px;
+  }
+}
+
+/* ==========================================================================
+   ALTERNATE HEADER (explore.html, nightlife.html)
+   .sl-explore-header.sl-unified-nav > .sl-header-nav (no native hamburger)
+   sl-nav-controller.js injects a .mobile-menu-btn into the header.
+   ========================================================================== */
+
+/* Make the alt header positioned (so the injected hamburger anchors correctly) */
+.sl-explore-header,
+.sl-unified-nav{
+  position:relative;
+}
+
+/* Hamburger when injected into alt header — same look as canonical */
+.sl-explore-header .mobile-menu-btn,
+.sl-unified-nav .mobile-menu-btn{
+  display:none;
+  position:absolute;
+  top:50%;
+  right:14px;
+  transform:translateY(-50%);
+  width:44px; height:44px;
+  flex-direction:column; align-items:center; justify-content:center;
+  gap:5px; padding:0; margin:0;
+  background:transparent; border:1px solid rgba(212,175,55,0.4);
+  border-radius:10px; cursor:pointer;
+  z-index:9100;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+.sl-explore-header .mobile-menu-btn span,
+.sl-unified-nav .mobile-menu-btn span{
+  display:block; width:22px; height:2px; background:#D4AF37; border-radius:2px;
+  transition:transform .25s ease, opacity .2s ease;
+}
+.sl-explore-header .mobile-menu-btn.is-open span:nth-child(1),
+.sl-unified-nav .mobile-menu-btn.is-open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+.sl-explore-header .mobile-menu-btn.is-open span:nth-child(2),
+.sl-unified-nav .mobile-menu-btn.is-open span:nth-child(2){opacity:0;}
+.sl-explore-header .mobile-menu-btn.is-open span:nth-child(3),
+.sl-unified-nav .mobile-menu-btn.is-open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+
+@media (max-width: 900px){
+  .sl-explore-header .mobile-menu-btn,
+  .sl-unified-nav .mobile-menu-btn{ display:flex !important; }
+
+  /* The .sl-header-nav becomes a slide-in drawer on mobile */
+  .sl-explore-header .sl-header-nav,
+  .sl-unified-nav .sl-header-nav,
+  .sl-header-nav.sl-mobile-drawer{
+    position:fixed !important;
+    top:0 !important;
+    right:0 !important;
+    left:auto !important;
+    width:min(86vw, 340px) !important;
+    height:100vh !important;
+    height:100dvh !important;
+    margin:0 !important;
+    padding:calc(env(safe-area-inset-top,0) + 80px) 0 calc(env(safe-area-inset-bottom,0) + 24px) 0 !important;
+    background:rgba(10,10,10,0.985) !important;
+    backdrop-filter:saturate(160%) blur(20px);
+    -webkit-backdrop-filter:saturate(160%) blur(20px);
+    border-left:1px solid rgba(212,175,55,0.25) !important;
+    box-shadow:-12px 0 36px rgba(0,0,0,0.6);
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:stretch !important;
+    gap:0 !important;
+    transform:translate3d(100%,0,0) !important;
+    transition:transform .28s cubic-bezier(.2,.8,.2,1) !important;
+    z-index:9050 !important;
+    overflow-y:auto !important;
+    pointer-events:none;
+  }
+  body.menu-open .sl-explore-header .sl-header-nav,
+  body.menu-open .sl-unified-nav .sl-header-nav,
+  body.menu-open .sl-header-nav.sl-mobile-drawer{
+    transform:translate3d(0,0,0) !important;
+    pointer-events:auto !important;
+  }
+
+  .sl-explore-header .sl-header-nav-link,
+  .sl-unified-nav .sl-header-nav-link{
+    display:flex !important; align-items:center;
+    width:100% !important; min-height:52px;
+    padding:14px 22px !important;
+    border-bottom:1px solid rgba(255,255,255,0.05);
+    color:#fff !important; text-decoration:none !important;
+    font-size:1rem !important; font-weight:500 !important;
+    text-align:left !important;
+  }
+  .sl-explore-header .sl-header-nav-link.active,
+  .sl-unified-nav .sl-header-nav-link.active{
+    color:#D4AF37 !important;
+    background:linear-gradient(90deg, rgba(212,175,55,0.12), transparent);
+    border-left:3px solid #D4AF37;
+    padding-left:19px !important;
+  }
+}
+
+/* ==========================================================================
+   ALT HEADER mobile spacing — make room for the injected hamburger
+   ========================================================================== */
+@media (max-width: 900px){
+  .sl-explore-header,
+  .sl-unified-nav{
+    padding-right:64px !important; /* reserve space for hamburger */
+  }
+  .sl-explore-header .sl-auth-trigger,
+  .sl-unified-nav .sl-auth-trigger,
+  .sl-explore-header .btn-header-primary,
+  .sl-unified-nav .btn-header-primary{
+    font-size:.8rem !important;
+    padding:6px 10px !important;
+    white-space:nowrap;
+  }
+  /* Hamburger sits ABOVE auth buttons */
+  .sl-explore-header .mobile-menu-btn,
+  .sl-unified-nav .mobile-menu-btn{
+    z-index:9100 !important;
+    background:rgba(20,20,20,0.85) !important;
+  }
+}
+
+/* === css/sl-mobile-polish.css === */
+/* ==========================================================================
+   sl-mobile-polish.css — Phase 5D-F Mobile Visual Polish
+   Loaded LAST (after sl-nav-mobile.css). Wins over all earlier mobile rules.
+
+   Goals:
+   1. Tighter mobile header (≤56px): smaller logo, slimmer auth button, slimmer hamburger.
+   2. Hide the desktop phone-mockup on mobile (it was breaking — pins escaping).
+   3. Clean mobile hero: tight spacing, centered headline, 3 single-column CTAs.
+   4. Bottom nav: don't crowd page content — add safe bottom padding to hero/section.
+   5. No horizontal overflow, no decorative pins overlapping copy/CTAs.
+   ========================================================================== */
+
+@media (max-width: 768px){
+
+  /* ----- HEADER ----- */
+  .header-enhanced{
+    /* Slimmer header */
+    min-height:56px !important;
+    height:56px !important;
+    padding:0 !important;
+  }
+  .header-enhanced .nav-enhanced{
+    height:56px !important;
+    padding:0 14px !important;
+  }
+  /* Smaller logo — but big enough to read the 2-line "SceneLink / Eat. Drink. Discover." mark.
+     We swap to a horizontally-trimmed mobile asset for a premium look. */
+  .header-enhanced .logo-main,
+  .header-enhanced .nav-left img,
+  .header-enhanced .nav-left a > img{
+    height:38px !important;
+    max-height:38px !important;
+    min-height:0 !important;
+    width:auto !important;
+    max-width:160px !important;
+    object-fit:contain !important;
+    /* Hide the actual <img>'s default content; swap via background-image on parent .logo-container instead.
+       Keep alt text accessible. */
+    content: url('../images/scenelinkheaderlogo-mobile.png') !important;
+  }
+  /* The "logo + tagline" composite — keep just the mark, hide subtitle on mobile */
+  .header-enhanced .nav-left .logo-tagline,
+  .header-enhanced .nav-left .logo-subtext,
+  .header-enhanced .nav-left .brand-tagline{
+    display:none !important;
+  }
+  /* Slim auth button */
+  .header-enhanced .nav-right .btn-header-primary,
+  .header-enhanced .nav-right .sl-auth-trigger{
+    height:34px !important;
+    padding:0 10px !important;
+    font-size:11.5px !important;
+    font-weight:600 !important;
+    line-height:34px !important;
+    border-radius:17px !important;
+    min-width:0 !important;
+    max-width:120px !important;
+    letter-spacing:0 !important;  }
+  .header-enhanced .nav-right{
+    display:flex !important;
+    align-items:center !important;
+    gap:6px !important;
+    padding-right:8px !important;
+  }
+  .header-enhanced .nav-right .btn-header-primary i,
+  .header-enhanced .nav-right .sl-auth-trigger i{ font-size:11px !important; margin-right:4px; }
+
+  /* Slim hamburger */
+  .header-enhanced .mobile-menu-btn{
+    width:36px !important;
+    height:36px !important;
+    padding:0 !important;
+    border:none !important;
+    background:transparent !important;
+    box-shadow:none !important;
+    margin-left:8px !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    flex-direction:column !important;
+  }
+  .header-enhanced .mobile-menu-btn span{
+    display:block !important;
+    width:20px !important;
+    height:2px !important;
+    background:#fff !important;
+    margin:2.5px 0 !important;
+    border-radius:1px !important;
+    transition:transform .2s ease, opacity .2s ease !important;
+  }
+  /* Hamburger -> X when drawer open */
+  body.menu-open .header-enhanced .mobile-menu-btn span:nth-child(1){
+    transform:translateY(7px) rotate(45deg);
+  }
+  body.menu-open .header-enhanced .mobile-menu-btn span:nth-child(2){ opacity:0; }
+  body.menu-open .header-enhanced .mobile-menu-btn span:nth-child(3){
+    transform:translateY(-7px) rotate(-45deg);
+  }
+
+  /* ----- HERO: clean, tight, centered ----- */
+  .hero-v2{
+    /* Pull hero up flush against header — no dead gap */
+    padding:24px 20px 40px !important;
+    min-height:auto !important;
+  }
+  .hero-v2 .hero-content-wrapper{ padding:0 !important; }
+  .hero-v2 .container{ padding:0 !important; max-width:100% !important; }
+  .hero-v2 .hero-text-center{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    text-align:center !important;
+    gap:0 !important;
+  }
+
+  /* Brand mark above headline — small, premium */
+  .hero-v2 .hero-brand-logo{
+    width:54px !important;
+    height:54px !important;
+    margin:8px auto 18px !important;
+    display:block !important;
+    object-fit:contain !important;
+  }
+
+  /* Headline */
+  .hero-v2 .hero-title-main{
+    font-size:34px !important;
+    line-height:1.08 !important;
+    letter-spacing:-0.02em !important;
+    margin:0 0 14px !important;
+    padding:0 !important;
+    font-weight:800 !important;
+  }
+
+  /* Subtitle */
+  .hero-v2 .hero-subtitle-main{
+    font-size:15px !important;
+    line-height:1.5 !important;
+    margin:0 0 26px !important;
+    padding:0 8px !important;
+    max-width:340px !important;
+    color:rgba(255,255,255,0.85) !important;
+  }
+
+  /* CTAs — single column, full-width, premium */
+  .hero-v2 .hero-cta-row{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:12px !important;
+    width:100% !important;
+    max-width:340px !important;
+    margin:0 auto !important;
+    flex-wrap:nowrap !important;
+  }
+  .hero-v2 .hero-cta-row > .btn-cta-primary,
+  .hero-v2 .hero-cta-row > a,
+  .hero-v2 .hero-cta-row > button{
+    width:100% !important;
+    height:50px !important;
+    padding:0 22px !important;
+    font-size:15px !important;
+    font-weight:700 !important;
+    border-radius:14px !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:8px !important;
+    line-height:1 !important;
+    letter-spacing:0.01em !important;
+  }
+  .hero-v2 .hero-cta-row > #heroExploreBtn{
+    background:linear-gradient(135deg,#F5D97A 0%,#D4AF37 55%,#B8941F 100%) !important;
+    color:#0a0a0a !important;
+    border:none !important;
+    box-shadow:0 8px 24px rgba(212,175,55,0.35) !important;
+  }
+  .hero-v2 .hero-cta-row > #heroJoinBtn{
+    background:rgba(255,255,255,0.06) !important;
+    color:#fff !important;
+    border:1px solid rgba(255,255,255,0.18) !important;
+    backdrop-filter:blur(8px);
+  }
+  .hero-v2 .hero-cta-row > #heroAskAIBtn{
+    background:rgba(212,175,55,0.10) !important;
+    color:#F5D97A !important;
+    border:1px solid rgba(212,175,55,0.45) !important;
+  }
+  .hero-v2 .hero-cta-row > #heroAskAIBtn span{
+    background:rgba(212,175,55,0.95) !important;
+    color:#0a0a0a !important;
+    margin-left:6px !important;
+    padding:2px 7px !important;
+    border-radius:5px !important;
+    font-size:9px !important;
+    font-weight:800 !important;
+    letter-spacing:0.5px;
+  }
+
+  /* ----- KILL the broken phone mockup on mobile ----- */
+  .hero-v2 .hero-phone-mockup,
+  .hero-v2 .phone-frame-modern,
+  .hero-v2 .phone-frame{
+    display:none !important;
+  }
+  /* Hide any floating pins that escaped */
+  .hero-v2 .sl-home-pin,
+  .hero-v2 .sl-pin{
+    display:none !important;
+  }
+
+  /* ----- BOTTOM NAV — don't crowd content ----- */
+  .sl-bottom-tabs{
+    height:60px !important;
+    padding-bottom:env(safe-area-inset-bottom, 0) !important;
+    background:rgba(8,8,12,0.94) !important;
+    backdrop-filter:saturate(160%) blur(20px);
+    -webkit-backdrop-filter:saturate(160%) blur(20px);
+    border-top:1px solid rgba(255,255,255,0.06) !important;
+    box-shadow:0 -4px 20px rgba(0,0,0,0.4) !important;
+  }
+  /* Reserve space at the bottom of every page so content isn't hidden behind the bottom nav.
+     Unconditional on mobile because body.sl-has-tabs class isn't applied to all pages,
+     but the bottom nav is rendered on all of them. */
+  body{
+    padding-bottom:calc(64px + env(safe-area-inset-bottom, 0)) !important;
+  }
+  body.sl-has-tabs{
+    padding-bottom:calc(64px + env(safe-area-inset-bottom, 0)) !important;
+  }
+  /* Also pad the last common content wrappers so floating cards aren't clipped */
+  main, .page-main, .sl-content, .container-content{
+    padding-bottom:calc(72px + env(safe-area-inset-bottom, 0)) !important;
+  }
+  /* Hero is the topmost section; reserve bottom nav space if hero is the last section */
+  .hero-v2{ margin-bottom:0 !important; }
+
+  /* ----- AUTH MODAL — never offscreen, premium card ----- */
+  .sl-auth-modal,
+  .sl-auth-overlay > .sl-auth-card{
+    max-width:min(92vw, 380px) !important;
+    margin:auto !important;
+  }
+
+  /* ----- GENERAL — kill horizontal overflow ----- */
+  html, body{ max-width:100vw; overflow-x:hidden !important; }
+  .hero-v2, section, .container{ max-width:100vw !important; }
+
+  /* Tonight page hero spacing */
+  .tonight-hero, .tonight-feed{ padding-top:16px !important; }
+
+  /* ============================================================
+     Override inline-style logo heights (Tonight uses style="height:52px!important")
+     We need to beat inline !important — so use attribute selector + class.
+     ============================================================ */
+  body .header-enhanced .nav-left a .logo-main[style],
+  body .header-enhanced .nav-left a img.logo-main[style],
+  body .header-enhanced .logo-container .logo-main[style]{
+    height:42px !important;
+    max-height:42px !important;
+    width:auto !important;
+    max-width:140px !important;
+  }
+
+  /* ============================================================
+     .header-enhanced rows must stay single-line (no wrap of injected hamburger)
+     Inject any sibling button (hamburger) and keep it in the right column.
+     ============================================================ */
+  .header-enhanced{
+    display:block !important;
+  }
+  .header-enhanced .nav-enhanced{
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    gap:8px !important;
+  }
+  .header-enhanced .nav-left{
+    flex:0 0 auto !important;
+    min-width:0 !important;
+  }
+  .header-enhanced .nav-center{
+    display:none !important; /* desktop links hidden on mobile */
+  }
+  .header-enhanced .nav-right{
+    flex:0 0 auto !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:8px !important;
+    margin-left:auto !important;
+  }
+  /* Auth button — slim it on tonight/business too */
+  .header-enhanced .nav-right .btn-header-primary,
+  .header-enhanced .nav-right .sl-auth-trigger{
+    height:34px !important;
+    padding:0 14px !important;
+    font-size:12px !important;
+    border-radius:999px !important;
+    line-height:34px !important;
+    white-space:nowrap !important;
+  }
+
+  /* ============================================================
+     Any injected mobile hamburger (created by sl-nav-mobile.js or polish-final.js)
+     normally lives OUTSIDE .nav-enhanced. Force it absolute to the header so it
+     never wraps onto a 2nd row.
+     ============================================================ */
+  .header-enhanced{ position:relative !important; }
+  .header-enhanced > button.menu-toggle,
+  .header-enhanced > button.hamburger,
+  .header-enhanced > button[aria-label*="menu" i],
+  .header-enhanced > button[aria-label*="navigation" i],
+  body > button.sl-mobile-menu-toggle,
+  body > .sl-mobile-menu-toggle{
+    position:absolute !important;
+    top:10px !important;
+    right:12px !important;
+    width:36px !important;
+    height:36px !important;
+    z-index:101 !important;
+  }
+  /* If the auth button + injected hamburger collide, push the auth button left */
+  .header-enhanced:has(> button.menu-toggle) .nav-right,
+  .header-enhanced:has(> .sl-mobile-menu-toggle) .nav-right{
+    margin-right:44px !important;
+  }
+
+  /* ============================================================
+     EXPLORE / NIGHTLIFE — .sl-explore-header.sl-unified-nav (custom header)
+     ============================================================ */
+  .sl-explore-header.sl-unified-nav{
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    height:56px !important;
+    min-height:56px !important;
+    padding:0 12px !important;
+    gap:8px !important;
+  }
+  .sl-explore-header.sl-unified-nav .sl-nav-logo-link{
+    flex:0 0 auto !important;
+  }
+  .sl-explore-header.sl-unified-nav .sl-explore-logo{
+    height:32px !important;
+    max-height:32px !important;
+    min-height:0 !important;
+    width:auto !important;
+    max-width:160px !important;
+    object-fit:contain !important;
+    content: url('../images/scenelinkheaderlogo-mobile.png') !important;
+  }
+  /* Header itself — ensure not forced taller by older rules */
+  .sl-explore-header.sl-unified-nav,
+  header.sl-explore-header,
+  nav.sl-explore-header{
+    min-height:56px !important;
+    max-height:56px !important;
+  }
+  /* Hide the desktop horizontal nav links on mobile */
+  .sl-explore-header.sl-unified-nav .sl-header-nav,
+  .sl-explore-header.sl-unified-nav .sl-explore-header-spacer{
+    display:none !important;
+  }
+  /* View toggle (Map/List) — keep but slim */
+  .sl-explore-header.sl-unified-nav .sl-view-toggle{
+    display:flex !important;
+    flex:0 0 auto !important;
+    gap:4px !important;
+    margin-left:auto !important;
+  }
+  .sl-explore-header.sl-unified-nav .sl-view-toggle .sl-view-btn{
+    height:30px !important;
+    padding:0 10px !important;
+    font-size:11px !important;
+    border-radius:999px !important;
+    line-height:30px !important;
+    white-space:nowrap !important;
+  }
+  /* Auth button on explore/nightlife header */
+  .sl-explore-header.sl-unified-nav .sl-header-auth-btn{
+    height:32px !important;
+    padding:0 12px !important;
+    font-size:11px !important;
+    border-radius:999px !important;
+    line-height:32px !important;
+    white-space:nowrap !important;
+    flex:0 0 auto !important;
+  }
+  /* Tighten the filter overlay so it doesn't cover the entire screen below header */
+  .sl-explore-controls,
+  .sl-explore-header + .sl-explore-controls,
+  .sl-filters-bar,
+  .sl-cuisine-filters{
+    padding:8px 10px !important;
+  }
+  .sl-explore-controls .sl-search-row,
+  .sl-search-bar-row{
+    margin-bottom:8px !important;
+  }
+  .sl-cuisine-filters{
+    max-height:120px !important;
+    overflow-y:auto !important;
+  }
+
+  /* Business page hero — same tight treatment */
+  .biz-hero, .business-hero{ padding-top:24px !important; }
+
+  /* Generic section bottom safety */
+  main, .page-main{ padding-bottom:calc(24px + env(safe-area-inset-bottom,0)) !important; }
+}
+
+/* ----- Smaller phones (≤390) — even tighter type ----- */
+@media (max-width: 410px){
+  .hero-v2 .hero-title-main{ font-size:30px !important; }
+  .hero-v2 .hero-subtitle-main{ font-size:14px !important; }
+}
+
+/* ----- Tiny phones (≤360) ----- */
+@media (max-width: 370px){
+  .hero-v2{ padding:18px 16px 32px !important; }
+  .hero-v2 .hero-title-main{ font-size:28px !important; }
+  .hero-v2 .hero-brand-logo{ width:46px !important; height:46px !important; margin:4px auto 14px !important; }
+  .hero-v2 .hero-cta-row > .btn-cta-primary{ height:48px !important; font-size:14px !important; }
+  .header-enhanced .nav-right .btn-header-primary{ font-size:11px !important; padding:0 10px !important; }
+}
+
+/* ----- AI Concierge FAB — sit above the bottom tab bar on mobile (5F5) ----- */
+@media (max-width: 768px){
+  .sl-concierge-fab,
+  .sl-concierge-fab-v5{
+    bottom:calc(60px + env(safe-area-inset-bottom, 0) + 14px) !important;
+    right:14px !important;
+    width:54px !important;
+    height:54px !important;
+    z-index:9000 !important;
+  }
+  /* Concierge panel — full-screen friendly above tab bar */
+  .sl-concierge-panel,
+  .sl-concierge-panel-v5{
+    bottom:calc(60px + env(safe-area-inset-bottom, 0)) !important;
+    max-height:calc(100vh - 60px - env(safe-area-inset-bottom, 0) - 56px) !important;
+  }
+}
+
+/* ----- EXPLORE PAGE — stronger overrides for the legacy logo CSS (5F6) ----- */
+@media (max-width: 768px){
+  /* Force explore logo small even when older CSS shouts min-height */
+  .sl-explore-header .sl-explore-logo,
+  .sl-explore-header img.sl-explore-logo,
+  .sl-explore-header a img,
+  header.sl-explore-header img{
+    height:32px !important;
+    max-height:32px !important;
+    min-height:0 !important;
+    max-width:160px !important;
+    width:auto !important;
+  }
+  /* Compact filter card: less vertical real estate, no fake-modal feel */
+  .sl-explore-controls,
+  .sl-filters-bar{
+    padding:8px 10px 6px !important;
+    gap:6px !important;
+  }
+  .sl-cuisine-filters,
+  .sl-filter-row,
+  .sl-category-row{
+    margin-top:6px !important;
+    margin-bottom:6px !important;
+    gap:6px !important;
+  }
+  /* The chip buttons */
+  .sl-cuisine-filter,
+  .sl-filter-chip,
+  .sl-category-chip{
+    height:30px !important;
+    padding:0 12px !important;
+    font-size:12px !important;
+    line-height:30px !important;
+  }
+}

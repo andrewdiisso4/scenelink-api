@@ -1,0 +1,755 @@
+/* =====================================================
+   ROUND 9.3 - Hero Background, Search Bar, Explore Map
+   ===================================================== */
+
+/* ========== 1. HERO BACKGROUND IMAGE ========== */
+.hero-v2 {
+    position: relative !important;
+    min-height: 700px !important;
+    background: #0a0a0a !important;
+    overflow: hidden !important;
+}
+
+/* Background image layer */
+.hero-v2::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&q=80') center center / cover no-repeat !important;
+    opacity: 0.22 !important;
+    z-index: 0 !important;
+    filter: saturate(1.1) brightness(0.8) contrast(1.1) !important;
+}
+
+/* Gradient overlays for depth and readability */
+.hero-overlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background:
+        radial-gradient(ellipse at 50% 40%, rgba(212,175,55,0.05) 0%, transparent 55%),
+        linear-gradient(180deg,
+            rgba(10,10,14,0.45) 0%,
+            rgba(10,10,14,0.30) 30%,
+            rgba(10,10,14,0.35) 60%,
+            rgba(10,10,14,0.88) 100%
+        ) !important;
+    z-index: 1 !important;
+}
+
+/* Ensure content is above overlays */
+.hero-content-wrapper {
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+/* Subtle warm vignette on edges */
+.hero-v2::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 0; left: 0; right: 0; bottom: 0 !important;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(10,10,14,0.7) 100%) !important;
+    z-index: 1 !important;
+    pointer-events: none !important;
+}
+
+/* Hero title - ensure gold shimmer pops */
+.hero-title-main {
+    text-shadow: 0 2px 40px rgba(212,175,55,0.15) !important;
+}
+
+.hero-subtitle-main {
+    color: rgba(255,255,255,0.78) !important;
+    text-shadow: 0 1px 8px rgba(0,0,0,0.4) !important;
+}
+
+
+/* ========== 2. PREMIUM SEARCH BAR - CLEANED UP ========== */
+.premium-search-section {
+    position: relative !important;
+    z-index: 3 !important;
+    margin-top: -48px !important;
+    padding: 0 20px 32px !important;
+}
+
+.premium-search-wrapper {
+    max-width: 680px !important;
+    margin: 0 auto !important;
+}
+
+/* Main search bar - sleek pill */
+.premium-search-bar {
+    display: flex !important;
+    align-items: center !important;
+    background: rgba(12, 12, 18, 0.92) !important;
+    border: 1.5px solid rgba(212,175,55,0.22) !important;
+    border-radius: 60px !important;
+    padding: 6px 6px 6px 22px !important;
+    gap: 0 !important;
+    backdrop-filter: blur(30px) !important;
+    -webkit-backdrop-filter: blur(30px) !important;
+    box-shadow:
+        0 4px 24px rgba(0,0,0,0.4),
+        0 0 0 1px rgba(255,255,255,0.04),
+        inset 0 1px 0 rgba(255,255,255,0.05) !important;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+.premium-search-bar:focus-within {
+    border-color: rgba(212,175,55,0.45) !important;
+    box-shadow:
+        0 4px 32px rgba(0,0,0,0.5),
+        0 0 20px rgba(212,175,55,0.08),
+        0 0 0 1px rgba(212,175,55,0.15),
+        inset 0 1px 0 rgba(255,255,255,0.05) !important;
+}
+
+/* Search icon */
+.premium-search-bar .search-icon,
+.premium-search-bar i.fa-search {
+    color: rgba(212,175,55,0.7) !important;
+    font-size: 15px !important;
+    flex-shrink: 0 !important;
+    margin-right: 12px !important;
+}
+
+/* Search input */
+.premium-search-bar input,
+.premium-search-bar input[type="text"] {
+    flex: 1 !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    color: #fff !important;
+    font-size: 14.5px !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.01em !important;
+    padding: 12px 8px 12px 0 !important;
+    caret-color: #D4AF37 !important;
+    min-width: 0 !important;
+}
+
+.premium-search-bar input::placeholder {
+    color: rgba(255,255,255,0.38) !important;
+    font-weight: 400 !important;
+    font-size: 14px !important;
+}
+
+/* Search button - gold pill */
+.premium-search-bar .btn-search,
+.premium-search-bar button {
+    flex-shrink: 0 !important;
+    background: linear-gradient(135deg, #D4AF37 0%, #c5a028 100%) !important;
+    color: #0a0a0a !important;
+    border: none !important;
+    border-radius: 50px !important;
+    padding: 10px 26px !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.03em !important;
+    cursor: pointer !important;
+    transition: all 0.25s ease !important;
+    white-space: nowrap !important;
+    text-transform: none !important;
+}
+
+.premium-search-bar .btn-search:hover,
+.premium-search-bar button:hover {
+    background: linear-gradient(135deg, #e0be4a 0%, #D4AF37 100%) !important;
+    box-shadow: 0 4px 16px rgba(212,175,55,0.3) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Location hint */
+.search-location-hint {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    margin-top: 14px !important;
+    font-size: 13px !important;
+    color: rgba(255,255,255,0.45) !important;
+}
+
+.search-location-hint i {
+    color: rgba(212,175,55,0.65) !important;
+    font-size: 12px !important;
+}
+
+/* Search results dropdown */
+.search-results-dropdown {
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: rgba(14, 14, 20, 0.97) !important;
+    border: 1px solid rgba(212,175,55,0.18) !important;
+    border-radius: 20px !important;
+    padding: 12px 0 !important;
+    z-index: 100 !important;
+    display: none !important;
+    backdrop-filter: blur(30px) !important;
+    -webkit-backdrop-filter: blur(30px) !important;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.6) !important;
+    max-height: 420px !important;
+    overflow-y: auto !important;
+}
+
+.search-results-dropdown.active {
+    display: block !important;
+}
+
+.sr-category {
+    padding: 10px 20px 4px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.1em !important;
+    color: rgba(212,175,55,0.6) !important;
+}
+
+.sr-item {
+    display: flex !important;
+    align-items: center !important;
+    padding: 10px 20px !important;
+    text-decoration: none !important;
+    transition: background 0.2s !important;
+    gap: 12px !important;
+}
+
+.sr-item:hover {
+    background: rgba(212,175,55,0.06) !important;
+}
+
+.sr-item-icon {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
+    background: rgba(212,175,55,0.1) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    color: #D4AF37 !important;
+    font-size: 14px !important;
+}
+
+.sr-item-info {
+    flex: 1 !important;
+    min-width: 0 !important;
+}
+
+.sr-item-name {
+    display: block !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+}
+
+.sr-item-detail {
+    display: block !important;
+    color: rgba(255,255,255,0.45) !important;
+    font-size: 12px !important;
+    margin-top: 2px !important;
+}
+
+.sr-item-badge {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    padding: 3px 8px !important;
+    border-radius: 10px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+.sr-badge-hot {
+    background: rgba(239,68,68,0.15) !important;
+    color: #ef4444 !important;
+}
+
+.sr-badge-trending {
+    background: rgba(212,175,55,0.15) !important;
+    color: #D4AF37 !important;
+}
+
+
+/* ========== 3. EXPLORE PAGE - INTERACTIVE MAP SECTION ========== */
+
+/* Map discovery section at top */
+.explore-map-discovery {
+    position: relative;
+    width: 100%;
+    height: 420px;
+    background: #0d0d12;
+    border-bottom: 1px solid rgba(212,175,55,0.12);
+    overflow: hidden;
+}
+
+.explore-map-discovery .leaflet-container {
+    width: 100% !important;
+    height: 100% !important;
+    background: #0d0d12 !important;
+}
+
+/* Dark map tiles overlay */
+.explore-map-discovery .leaflet-tile-pane {
+    filter: brightness(0.65) contrast(1.2) saturate(0.3) !important;
+}
+
+/* Map controls overlay - top search */
+.explore-map-controls-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    padding: 16px 20px;
+    background: linear-gradient(180deg, rgba(10,10,14,0.85) 0%, transparent 100%);
+    pointer-events: none;
+}
+
+.explore-map-controls-overlay > * {
+    pointer-events: auto;
+}
+
+/* Map search bar */
+.explore-map-search {
+    display: flex;
+    align-items: center;
+    background: rgba(12,12,18,0.92);
+    border: 1px solid rgba(212,175,55,0.2);
+    border-radius: 50px;
+    padding: 4px 4px 4px 16px;
+    max-width: 520px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.explore-map-search i.fa-search {
+    color: rgba(212,175,55,0.6);
+    font-size: 14px;
+    margin-right: 10px;
+}
+
+.explore-map-search input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #fff;
+    font-size: 13.5px;
+    padding: 8px 8px 8px 0;
+    caret-color: #D4AF37;
+}
+
+.explore-map-search input::placeholder {
+    color: rgba(255,255,255,0.35);
+    font-size: 13px;
+}
+
+.explore-map-search .map-search-btn {
+    background: linear-gradient(135deg, #D4AF37, #c5a028);
+    color: #0a0a0a;
+    border: none;
+    border-radius: 50px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.explore-map-search .map-search-btn:hover {
+    background: linear-gradient(135deg, #e0be4a, #D4AF37);
+}
+
+/* Map filter chips row */
+.explore-map-chips {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.explore-map-chips::-webkit-scrollbar { display: none; }
+
+.explore-map-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    background: rgba(12,12,18,0.85);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 30px;
+    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.explore-map-chip:hover {
+    border-color: rgba(212,175,55,0.3);
+    color: #D4AF37;
+}
+
+.explore-map-chip.active {
+    background: rgba(212,175,55,0.15);
+    border-color: rgba(212,175,55,0.5);
+    color: #D4AF37;
+}
+
+.explore-map-chip i {
+    font-size: 11px;
+}
+
+/* Map floating venue card (bottom of map) */
+.map-venue-preview {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%) translateY(120%);
+    z-index: 1000;
+    background: rgba(14,14,20,0.95);
+    border: 1px solid rgba(212,175,55,0.2);
+    border-radius: 16px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 320px;
+    max-width: 420px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.map-venue-preview.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.map-venue-preview-img {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid rgba(212,175,55,0.15);
+}
+
+.map-venue-preview-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.map-venue-preview-name {
+    font-weight: 700;
+    font-size: 15px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.map-venue-preview-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 12.5px;
+    color: rgba(255,255,255,0.55);
+}
+
+.map-venue-preview-meta .rating-star {
+    color: #D4AF37;
+}
+
+.map-venue-preview-meta .people-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: #ef4444;
+}
+
+.map-venue-preview-meta .people-count i {
+    font-size: 10px;
+}
+
+.map-venue-preview-type {
+    font-size: 11.5px;
+    color: rgba(255,255,255,0.4);
+    margin-top: 2px;
+}
+
+.map-venue-preview-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.map-venue-preview-actions button {
+    background: rgba(212,175,55,0.12);
+    border: 1px solid rgba(212,175,55,0.2);
+    color: #D4AF37;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.map-venue-preview-actions button:hover {
+    background: rgba(212,175,55,0.2);
+}
+
+.map-venue-preview-actions .btn-go {
+    background: linear-gradient(135deg, #D4AF37, #c5a028);
+    color: #0a0a0a;
+    border: none;
+}
+
+/* Map zoom controls */
+.explore-map-zoom {
+    position: absolute;
+    right: 16px;
+    bottom: 80px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.explore-map-zoom button {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: rgba(14,14,20,0.9);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    backdrop-filter: blur(12px);
+}
+
+.explore-map-zoom button:hover {
+    border-color: rgba(212,175,55,0.3);
+    color: #D4AF37;
+}
+
+/* Location button */
+.explore-map-locate {
+    position: absolute;
+    right: 16px;
+    bottom: 170px;
+    z-index: 1000;
+}
+
+.explore-map-locate button {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: rgba(14,14,20,0.9);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    backdrop-filter: blur(12px);
+}
+
+.explore-map-locate button:hover {
+    border-color: rgba(212,175,55,0.3);
+    color: #D4AF37;
+}
+
+/* Custom map markers */
+.sl-map-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 42px;
+    position: relative;
+    cursor: pointer;
+}
+
+.sl-map-marker-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.sl-map-marker-icon i {
+    transform: rotate(45deg);
+    font-size: 13px;
+    color: #fff;
+}
+
+.sl-map-marker.active .sl-map-marker-icon {
+    transform: rotate(-45deg) scale(1.2);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+/* Marker category colors */
+.sl-map-marker.cat-restaurants .sl-map-marker-icon {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.sl-map-marker.cat-bars .sl-map-marker-icon {
+    background: linear-gradient(135deg, #D4AF37, #c5a028);
+}
+
+.sl-map-marker.cat-events .sl-map-marker-icon {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+}
+
+.sl-map-marker.cat-nightlife .sl-map-marker-icon {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+/* Marker pulse for active/hot venues */
+.sl-map-marker-pulse {
+    position: absolute;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    top: 0;
+    left: 0;
+    animation: markerPulse 2s ease-out infinite;
+    opacity: 0;
+}
+
+.sl-map-marker.cat-restaurants .sl-map-marker-pulse { background: rgba(239,68,68,0.3); }
+.sl-map-marker.cat-bars .sl-map-marker-pulse { background: rgba(212,175,55,0.3); }
+.sl-map-marker.cat-events .sl-map-marker-pulse { background: rgba(99,102,241,0.3); }
+.sl-map-marker.cat-nightlife .sl-map-marker-pulse { background: rgba(34,197,94,0.3); }
+
+@keyframes markerPulse {
+    0% { transform: scale(1); opacity: 0.6; }
+    100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* Hide default leaflet controls on explore map */
+.explore-map-discovery .leaflet-control-zoom {
+    display: none !important;
+}
+
+.explore-map-discovery .leaflet-control-attribution {
+    display: none !important;
+}
+
+/* Venue list items - highlight on map hover */
+.venue-card.map-highlighted {
+    border-color: rgba(212,175,55,0.5) !important;
+    box-shadow: 0 0 20px rgba(212,175,55,0.1) !important;
+    transition: all 0.3s ease !important;
+}
+
+/* Explore page header refinement */
+.explore-page-wrapper .page-header {
+    padding-top: 100px !important;
+    padding-bottom: 16px !important;
+    background: transparent !important;
+}
+
+/* Results section heading */
+.explore-results-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 8px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.explore-results-heading h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+
+.explore-results-heading span {
+    font-size: 13px;
+    color: rgba(255,255,255,0.45);
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .hero-v2 {
+        min-height: 600px !important;
+    }
+
+    .premium-search-section {
+        margin-top: -36px !important;
+        padding: 0 12px 24px !important;
+    }
+
+    .premium-search-bar {
+        padding: 4px 4px 4px 16px !important;
+    }
+
+    .premium-search-bar input {
+        font-size: 13px !important;
+    }
+
+    .premium-search-bar .btn-search {
+        padding: 8px 18px !important;
+        font-size: 13px !important;
+    }
+
+    .explore-map-discovery {
+        height: 320px;
+    }
+
+    .map-venue-preview {
+        min-width: 280px;
+        max-width: calc(100vw - 32px);
+        bottom: 12px;
+    }
+
+    .explore-map-controls-overlay {
+        padding: 12px 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .explore-map-discovery {
+        height: 280px;
+    }
+
+    .premium-search-bar input::placeholder {
+        font-size: 12px !important;
+    }
+}

@@ -1,0 +1,123 @@
+/* ============================================================
+   sl-consistency.css
+   Global visual consistency layer — loaded AFTER all page CSS.
+   Fixes:
+     - z-index stacking for header / modals / dropdowns / Ask AI
+     - de-duplicates page-specific Ask AI buttons when multiple exist
+     - ensures auth modal is always above maps, overlays, mobile nav
+     - unified premium dark style with gold accents for dropdowns
+   ============================================================ */
+
+/* ---- Z-INDEX SYSTEM (single source of truth) ------------------------ */
+.header-enhanced,
+.sl-explore-header,
+header.header-enhanced {
+  z-index: 1000 !important;
+}
+
+/* Leaflet / maps must stay below the header */
+.leaflet-container,
+#slMapCanvas,
+.sl-map-area {
+  z-index: 1 !important;
+}
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom,
+.leaflet-control { z-index: 100 !important; }
+
+/* AI Concierge floating button */
+.sl-concierge-fab,
+.sl-concierge-fab-v5,
+#enhanced-concierge-button {
+  z-index: 9000 !important;
+}
+
+/* AI Concierge panel */
+.sl-concierge-panel,
+.sl-concierge-panel-v5,
+#enhanced-concierge-panel {
+  z-index: 9500 !important;
+}
+
+/* Auth modal (sl-auth-ui) — must be above everything except critical alerts */
+.sl-auth-modal-overlay,
+.sl-auth-modal,
+#sl-auth-modal,
+.sl-auth-overlay {
+  z-index: 10000 !important;
+}
+
+/* User dropdown in header — above header itself */
+#sl-user-dropdown { z-index: 99999 !important; }
+#sl-user-dropdown .sl-ud-menu { z-index: 99999 !important; }
+
+/* Mobile nav sheet (if used) should not cover auth modal */
+.mobile-nav,
+.mobile-menu,
+.sl-mobile-nav {
+  z-index: 800 !important;
+}
+
+/* ---- AI CONCIERGE DEDUP --------------------------------------------- */
+/* If older integrations inject more than one Ask-AI button, keep only the v5 FAB.
+   v5 FAB has class 'sl-concierge-fab-v5' — any other variant is hidden. */
+#enhanced-concierge-button { display: none !important; }
+.ai-concierge-float-btn-legacy { display: none !important; }
+/* Hide older concierge panels we don't use */
+#enhanced-concierge-panel { display: none !important; }
+
+/* ---- MESSAGES NAV-LINK HIDDEN STATE --------------------------------- */
+/* sl-nav-gate.js sets display:none inline; this backs it up with !important
+   to win over any page-specific nav CSS. */
+a[href="messages.html"][style*="display: none"],
+a[data-page="messages"][style*="display: none"] {
+  display: none !important;
+}
+
+/* ---- AUTH MODAL CONSISTENCY (overrides) ----------------------------- */
+.sl-auth-modal,
+#sl-auth-modal {
+  background: #121212 !important;
+  color: #eaeaea !important;
+  border: 1px solid rgba(212,175,55,0.4) !important;
+}
+
+.sl-auth-modal input[type=email],
+.sl-auth-modal input[type=password],
+.sl-auth-modal input[type=text] {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: #fff !important;
+}
+.sl-auth-modal input:focus {
+  border-color: #d4af37 !important;
+  outline: none !important;
+}
+
+.sl-auth-modal button[type=submit],
+.sl-auth-modal .sl-auth-primary {
+  background: linear-gradient(135deg,#F5D97A 0%, #D4AF37 55%, #B8941F 100%) !important;
+  color: #0a0a0a !important;
+  border: none !important;
+  font-weight: 700 !important;
+}
+
+/* ---- NAV ACTIVE STATE CONSISTENCY ----------------------------------- */
+.nav-link.active,
+.sl-header-nav-link.active {
+  color: #d4af37 !important;
+}
+
+/* ---- PREVENT DUPLICATE HEADERS -------------------------------------- */
+/* If a page ever ends up with >1 .header-enhanced, hide the second+ */
+body > header.header-enhanced ~ header.header-enhanced { display: none !important; }
+
+/* ---- MOBILE: ensure dropdown doesn't get clipped ------------------- */
+@media (max-width: 768px) {
+  .nav-right { position: relative !important; }
+  #sl-user-dropdown .sl-ud-menu {
+    right: -8px !important;
+    min-width: 200px !important;
+  }
+}

@@ -175,6 +175,8 @@ async function verify() {
  *   @param {string} [opts.replyTo]
  *   @param {string} [opts.from]            override from address (rarely needed)
  *   @param {string} [opts.fromName]        override display name
+ *   @param {boolean} [opts.retry]          false disables transport retries
+ *   @param {boolean} [opts.privateLog]     omit recipients, subjects and provider errors from send logs
  */
 async function sendMail(opts) {
   if (!isReady()) {
@@ -187,7 +189,7 @@ async function sendMail(opts) {
   await _acquireSlot();
 
   // Up to 2 retries on transient 432 4.3.2 / 421 errors with exponential backoff.
-  const maxAttempts = 3;
+  const maxAttempts = opts.retry === false ? 1 : 3;
   let lastErr = null;
   try {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -200,20 +202,27 @@ async function sendMail(opts) {
           text: opts.text || stripHtml(opts.html || ''),
           replyTo: opts.replyTo || undefined,
         });
+        if (Array.isArray(info.accepted) && info.accepted.length === 0) {
+          if (opts.privateLog) console.error('[mailer] transactional-email-not-accepted');
+          return { ok: false, error: 'SMTP did not accept recipient', attempts: attempt };
+        }
         // Don't log full message id stack; just confirm.
-        console.log(`[mailer] sent → ${Array.isArray(opts.to) ? opts.to.join(',') : opts.to} subject="${opts.subject}"${attempt > 1 ? ` (attempt ${attempt})` : ''}`);
+        if (opts.privateLog) console.log('[mailer] transactional-email-accepted');
+        else console.log(`[mailer] sent → ${Array.isArray(opts.to) ? opts.to.join(',') : opts.to} subject="${opts.subject}"${attempt > 1 ? ` (attempt ${attempt})` : ''}`);
         return { ok: true, messageId: info.messageId, attempts: attempt };
       } catch (e) {
         lastErr = e;
         if (attempt < maxAttempts && _isTransientSmtp(e)) {
           // Backoff: 250ms, 750ms, 2.25s ...  (250 * 3^(attempt-1))
           const backoffMs = 250 * Math.pow(3, attempt - 1);
-          console.warn(`[mailer] transient SMTP error (attempt ${attempt}/${maxAttempts}) — retry in ${backoffMs}ms: ${e.message}`);
+          if (opts.privateLog) console.warn('[mailer] transactional-email-retry');
+          else console.warn(`[mailer] transient SMTP error (attempt ${attempt}/${maxAttempts}) — retry in ${backoffMs}ms: ${e.message}`);
           await _sleep(backoffMs);
           continue;
         }
         // Non-transient or out of attempts.
-        console.error(`[mailer] send failed → ${opts.to}: ${e.message}`);
+        if (opts.privateLog) console.error('[mailer] transactional-email-outcome-unknown');
+        else console.error(`[mailer] send failed → ${opts.to}: ${e.message}`);
         return { ok: false, error: e.message, attempts: attempt };
       }
     }
@@ -257,22 +266,26 @@ function brandedLayout({ title, bodyHtml, ctaUrl, ctaLabel }) {
 }
 
 // ── Templates ───────────────────────────────────────────────────────────────
-function welcomeEmail(user) {
-  const name = user.display_name || (user.email || '').split('@')[0] || 'friend';
+function welcomeEmail(user = {}) {
+  // Unverified signup fields must not become attacker-supplied email content.
+  const name = user.email_verified === true ? String(user.display_name || '').trim().slice(0, 80) : '';
+  const greeting = name ? `Welcome, ${name}.` : 'Welcome to SceneLink.';
+  const verification = user.email_verified === true
+    ? '' : 'To post, connect with friends and send messages, sign in and verify your email first. Use the verification option in your account to request a separate confirmation link.';
+  const origin = new URL(APP_BASE_URL);
+  if (origin.username || origin.password || (origin.protocol !== 'https:' && !(process.env.NODE_ENV !== 'production' && origin.protocol === 'http:' && ['127.0.0.1','[::1]','localhost'].includes(origin.hostname)))) throw new Error('Welcome email origin is misconfigured');
+  const exploreUrl = new URL('/explore.html', origin).href;
   return {
-    subject: 'Welcome to SceneLink — Boston nightlife, your way',
+    subject: 'Welcome to SceneLink',
+    replyTo: SUPPORT_EMAIL,
+    text: `${greeting}\n\nThanks for joining SceneLink. Discover places to eat, drink and go out in Boston, save your favorites and plan with friends.\n\n${verification ? verification + '\n\n' : ''}Start exploring: ${exploreUrl}\n\nNeed help? Contact ${SUPPORT_EMAIL}.\nIf you did not create this account, you can ignore this email.`,
     html: brandedLayout({
-      title: `Welcome, ${escapeHtml(name)}.`,
-      bodyHtml: `
-        <p>You're now part of SceneLink — Boston's smartest guide to dining, drinks, and nightlife.</p>
-        <ul style="color:#ccc;line-height:2;padding-left:20px;margin:12px 0">
-          <li><strong style="color:#fff">Explore</strong> 1,600+ venues across Boston</li>
-          <li><strong style="color:#fff">Save</strong> favorites &amp; build curated lists</li>
-          <li><strong style="color:#fff">Plan</strong> nights out with friends</li>
-          <li><strong style="color:#fff">Ask</strong> the AI Concierge for tonight's pick</li>
-        </ul>
-        <p style="color:#888;font-size:13px;margin-top:18px">Questions? Just reply to this email — it goes straight to our team.</p>`,
-      ctaUrl: `${APP_BASE_URL}/explore.html`,
+      title: escapeHtml(greeting),
+      bodyHtml: `<p>Thanks for joining SceneLink. Discover places to eat, drink and go out in Boston, save your favorites and plan with friends.</p>
+        ${verification ? `<p>${escapeHtml(verification)}</p>` : ''}
+        <p>Need help? Contact <a href="mailto:${escapeHtml(SUPPORT_EMAIL)}" style="color:#D4AF37">${escapeHtml(SUPPORT_EMAIL)}</a>.</p>
+        <p style="color:#888;font-size:13px">If you did not create this account, you can ignore this email.</p>`,
+      ctaUrl: escapeHtml(exploreUrl),
       ctaLabel: 'Start exploring',
     }),
   };

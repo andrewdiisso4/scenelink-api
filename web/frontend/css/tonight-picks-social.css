@@ -1,0 +1,533 @@
+/**
+ * Tonight's Picks - Enhanced Social Features
+ * Comprehensive social integration styling
+ */
+
+/* ===================================
+   SOCIAL PROOF SECTION
+   =================================== */
+
+.social-proof-banner {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(212, 175, 55, 0.05) 100%);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.social-proof-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #D4AF37 0%, #E5C158 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.social-proof-icon svg {
+    width: 24px;
+    height: 24px;
+    color: #0a0a0a;
+}
+
+.social-proof-content {
+    flex: 1;
+}
+
+.social-proof-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 5px;
+}
+
+.social-proof-text {
+    font-size: 0.95rem;
+    color: #b0b0b0;
+}
+
+.social-proof-avatars {
+    display: flex;
+    margin-left: -8px;
+}
+
+.social-proof-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #0a0a0a;
+    margin-left: -8px;
+    object-fit: cover;
+}
+
+.social-proof-count {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(212, 175, 55, 0.2);
+    border: 2px solid #0a0a0a;
+    margin-left: -8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #D4AF37;
+}
+
+/* ===================================
+   FRIEND ACTIVITY SECTION
+   =================================== */
+
+.friend-activity-section {
+    background: #1a1a1a;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.friend-activity-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.friend-activity-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.friend-activity-title h3 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+}
+
+.friend-activity-icon {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #D4AF37 0%, #E5C158 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.friend-activity-icon svg {
+    width: 18px;
+    height: 18px;
+    color: #0a0a0a;
+}
+
+.view-all-activity {
+    color: #D4AF37;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.view-all-activity:hover {
+    color: #E5C158;
+}
+
+.friend-activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.friend-activity-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.friend-activity-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(212, 175, 55, 0.3);
+    transform: translateX(4px);
+}
+
+.friend-activity-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #D4AF37;
+    flex-shrink: 0;
+}
+
+.friend-activity-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.friend-activity-name {
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.friend-activity-action {
+    font-size: 0.9rem;
+    color: #b0b0b0;
+    margin-bottom: 4px;
+}
+
+.friend-activity-venue {
+    font-size: 0.85rem;
+    color: #D4AF37;
+    font-weight: 500;
+}
+
+.friend-activity-time {
+    font-size: 0.8rem;
+    color: #808080;
+    white-space: nowrap;
+}
+
+/* ===================================
+   TRENDING INDICATORS
+   =================================== */
+
+.trending-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, rgba(255, 68, 68, 0.2) 0%, rgba(255, 100, 100, 0.1) 100%);
+    border: 1px solid rgba(255, 68, 68, 0.3);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ff6b6b;
+    animation: pulse-trending 2s ease-in-out infinite;
+}
+
+.trending-badge svg {
+    width: 14px;
+    height: 14px;
+    animation: flame-flicker 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-trending {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+@keyframes flame-flicker {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.1) rotate(-5deg); }
+    75% { transform: scale(1.1) rotate(5deg); }
+}
+
+.hot-pick-indicator {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8787 100%);
+    color: #ffffff;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+    animation: glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+    }
+    50% {
+        box-shadow: 0 4px 20px rgba(255, 107, 107, 0.6);
+    }
+}
+
+/* ===================================
+   SOCIAL STATS IN CARDS
+   =================================== */
+
+.pick-social-stats {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 12px;
+}
+
+.social-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #b0b0b0;
+}
+
+.social-stat svg {
+    width: 16px;
+    height: 16px;
+    color: #D4AF37;
+}
+
+.social-stat-value {
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.friends-going {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.friends-going-avatars {
+    display: flex;
+    margin-left: -6px;
+}
+
+.friends-going-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #1a1a1a;
+    margin-left: -6px;
+    object-fit: cover;
+}
+
+.friends-going-text {
+    font-size: 0.85rem;
+    color: #D4AF37;
+    font-weight: 500;
+}
+
+/* ===================================
+   SOCIAL SCORE BAR
+   =================================== */
+
+.social-score-container {
+    margin-top: 12px;
+}
+
+.social-score-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+}
+
+.social-score-title {
+    color: #b0b0b0;
+    font-weight: 500;
+}
+
+.social-score-value {
+    color: #D4AF37;
+    font-weight: 700;
+}
+
+.social-score-bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.social-score-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #D4AF37 0%, #E5C158 100%);
+    border-radius: 3px;
+    transition: width 0.6s ease;
+}
+
+/* ===================================
+   WHO'S GOING SECTION
+   =================================== */
+
+.whos-going-section {
+    background: rgba(212, 175, 55, 0.05);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.whos-going-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.whos-going-header h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+}
+
+.whos-going-count {
+    background: rgba(212, 175, 55, 0.2);
+    color: #D4AF37;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.whos-going-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.whos-going-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.whos-going-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #D4AF37;
+}
+
+.whos-going-name {
+    font-size: 0.9rem;
+    color: #ffffff;
+    font-weight: 500;
+}
+
+/* ===================================
+   FRIEND REVIEWS
+   =================================== */
+
+.friend-reviews-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.friend-reviews-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.friend-reviews-header h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+}
+
+.friend-review-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.friend-review-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.friend-review-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #D4AF37;
+}
+
+.friend-review-info {
+    flex: 1;
+}
+
+.friend-review-name {
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.friend-review-rating {
+    display: flex;
+    gap: 2px;
+}
+
+.friend-review-rating svg {
+    width: 14px;
+    height: 14px;
+    fill: #D4AF37;
+}
+
+.friend-review-text {
+    font-size: 0.9rem;
+    color: #b0b0b0;
+    line-height: 1.5;
+}
+
+/* ===================================
+   RESPONSIVE DESIGN
+   =================================== */
+
+@media (max-width: 768px) {
+    .social-proof-banner {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .friend-activity-section {
+        padding: 16px;
+    }
+    
+    .friend-activity-item {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .friend-activity-time {
+        margin-top: 8px;
+    }
+    
+    .pick-social-stats {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    
+    .whos-going-list {
+        justify-content: center;
+    }
+}
+</file_path>

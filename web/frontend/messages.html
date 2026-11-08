@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/sl-connected-api.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-connected-actions.js?v=connected-20261108-6" defer></script>
+<link rel="stylesheet" href="/css/sl-connected.css?v=connected-20261108-6"><!-- sl-preconnect-added -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- sl-observability:v1 -->
+  <script src="/env.js"></script>
+  <script src="/js/sl-avatar.js?v=connected-20261108-6"></script>
+  <script src="/js/sl-social-core.js?v=connected-20261108-6" defer></script>
+  <!-- Phase 7A perf -->
+  <script src="/js/sl-fetch-guard.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-perf-loader.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-observability.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-version-marker.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-stale-version-detector.js?v=connected-20261108-6" defer></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="description" content="Messages on SceneLink — chat with friends about where to go next.">
+    <title>Messages - SceneLink</title>
+    <link rel="stylesheet" href="css/master-styles.css?v=connected-20261108-6">
+    <link rel="stylesheet" href="css/styles-v2.css?v=connected-20261108-6">
+    <link rel="stylesheet" href="css/universal-footer.css?v=connected-20261108-6">
+    <link rel="icon" type="image/png" href="images/logo-transparent.png">
+    <link rel="stylesheet" href="css/sl-auth.css?v=connected-20261108-6">
+    <link rel="stylesheet" href="css/footer-unified.css?v=connected-20261108-6">
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"><noscript><link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"></noscript>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css?v=connected-20261108-6" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="css/sl-auth-enhanced.css?v=connected-20261108-6">
+    <style>
+      .msg-page {
+        max-width: 1100px;
+        margin: 100px auto 60px;
+        padding: 0 20px;
+      }
+      .msg-shell {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 0;
+        background: #0e0e0e;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px;
+        overflow: hidden;
+        height: calc(100vh - 240px);
+        min-height: 520px;
+      }
+      @media (max-width: 768px) {
+        .msg-shell { grid-template-columns: 1fr; height: calc(100vh - 160px); }
+        .msg-shell.has-thread .msg-list-col { display: none; }
+        .msg-shell:not(.has-thread) .msg-thread-col { display: none; }
+      }
+
+      .msg-list-col {
+        border-right: 1px solid rgba(255,255,255,0.08);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .msg-list-head {
+        padding: 16px 18px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .msg-list-head h2 {
+        margin: 0; font-size: 18px; color: #fff; font-weight: 700;
+      }
+      .msg-list-head button {
+        background: transparent; border: 1px solid rgba(212,175,55,0.5);
+        color: #D4AF37; padding: 6px 10px; border-radius: 8px;
+        font-size: 12px; cursor: pointer;
+      }
+      .msg-list-scroll {
+        flex: 1;
+        overflow-y: auto;
+      }
+      .msg-item {
+        display: flex;
+        gap: 12px;
+        padding: 14px 18px;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+        transition: background 0.15s;
+      }
+      .msg-item:hover { background: rgba(255,255,255,0.03); }
+      .msg-item.active { background: rgba(212,175,55,0.08); border-left: 3px solid #D4AF37; padding-left: 15px; }
+      .msg-item img { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; }
+      .msg-item .msg-meta { flex: 1; min-width: 0; }
+      .msg-item .msg-meta strong { display: block; color: #fff; font-size: 14px; }
+      .msg-item .msg-meta small {
+        display: block; color: rgba(255,255,255,0.5); font-size: 12px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;
+      }
+      .msg-item .msg-unread-dot {
+        width: 10px; height: 10px; border-radius: 50%; background: #D4AF37;
+        align-self: center; flex-shrink: 0;
+      }
+
+      .msg-thread-col { display: flex; flex-direction: column; min-width: 0; }
+      .msg-thread-head {
+        padding: 14px 18px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        display: flex; align-items: center; gap: 12px;
+      }
+      .msg-thread-head .msg-back {
+        display: none;
+        background: transparent; border: 0; color: #D4AF37;
+        font-size: 18px; cursor: pointer; padding: 0;
+      }
+      @media (max-width: 768px) { .msg-thread-head .msg-back { display: inline-block; } }
+      .msg-thread-head img { width: 40px; height: 40px; border-radius: 50%; }
+      .msg-thread-head strong { color: #fff; font-size: 15px; }
+      .msg-thread-head small { color: rgba(255,255,255,0.5); font-size: 12px; display: block; }
+
+      .msg-thread-body {
+        flex: 1; overflow-y: auto;
+        padding: 18px; display: flex; flex-direction: column; gap: 8px;
+      }
+      .msg-bubble {
+        max-width: 70%; padding: 9px 14px; border-radius: 16px;
+        font-size: 14px; line-height: 1.45; word-break: break-word;
+      }
+      .msg-bubble.me {
+        align-self: flex-end;
+        background: linear-gradient(135deg,#D4AF37,#b8860b); color:#000;
+      }
+      .msg-bubble.them { align-self: flex-start; background: rgba(255,255,255,0.08); color:#fff; }
+      .msg-bubble small { display: block; font-size: 10px; opacity: 0.6; margin-top: 3px; }
+
+      .msg-composer {
+        display: flex; gap: 8px; padding: 12px 16px;
+        border-top: 1px solid rgba(255,255,255,0.06);
+      }
+      .msg-composer input {
+        flex: 1;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: #fff; padding: 10px 14px; border-radius: 20px; font-size: 14px;
+      }
+      .msg-composer input:focus { outline: none; border-color: #D4AF37; }
+      .msg-composer button {
+        background: linear-gradient(135deg,#D4AF37,#b8860b);
+        color: #000; border: 0; width: 40px; height: 40px; border-radius: 50%;
+        cursor: pointer; font-size: 16px;
+      }
+
+      .msg-empty {
+        flex: 1;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: rgba(255,255,255,0.4); text-align: center; padding: 40px;
+      }
+      .msg-empty i { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+      .msg-empty h3 { color: #fff; margin: 0 0 8px; }
+      .msg-empty p { margin: 0; font-size: 14px; }
+
+      .msg-find-wrap {
+        padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+      .msg-find-wrap input {
+        width: 100%; background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.1); color: #fff;
+        padding: 8px 12px; border-radius: 8px; font-size: 13px;
+      }
+      .msg-find-results {
+        max-height: 200px; overflow-y: auto;
+        background: #161616; border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 8px; margin-top: 8px; display: none;
+      }
+      .msg-find-results.open { display: block; }
+      .msg-find-row {
+        padding: 8px 10px; display: flex; gap: 10px; align-items: center;
+        cursor: pointer; font-size: 13px;
+      }
+      .msg-find-row:hover { background: rgba(255,255,255,0.04); }
+      .msg-find-row img { width: 28px; height: 28px; border-radius: 50%; }
+      .msg-find-row strong { color: #fff; display: block; }
+      .msg-find-row small { color: #888; }
+    </style>
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SceneLink">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="SceneLink">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="57x57" href="/icons/apple-touch-icon-57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="/icons/apple-touch-icon-60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="/icons/apple-touch-icon-72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="/icons/apple-touch-icon-76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="/icons/apple-touch-icon-114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-touch-icon-120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="/icons/apple-touch-icon-144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png">
+<meta property="og:site_name" content="SceneLink">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/icons/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/icons/icon-512.png">
+  <!-- SceneLink unified auth bundle -->
+    <link rel="stylesheet" href="css/sl-auth-ui.css?v=connected-20261108-6">
+
+  <!-- SceneLink unified auth bundle -->
+  <script defer src="js/config.js?v=connected-20261108-6"></script>
+  <script defer src="js/sl-api.js?v=connected-20261108-6"></script>
+  <script defer src="js/sl-auth-core.js?v=connected-20261108-6"></script>
+  <script defer src="js/sl-auth-ui.js?v=connected-20261108-6"></script>
+  <script defer src="js/sl-auth.js?v=connected-20261108-6"></script>
+  <script defer src="js/sl-auth-gate.js?v=connected-20261108-6"></script>
+  <script defer src="js/sl-nav-gate.js?v=connected-20261108-6"></script>
+  <script defer src="js/sl-unread-poller.js?v=connected-20261108-6"></script>
+  <script defer src="js/sl-page-guard.js?v=connected-20261108-6"></script>
+  <script defer src="js/sl-universal-guards.js?v=connected-20261108-6"></script>
+  <script defer src="js/sl-nav-controller.js?v=connected-20261108-6"></script>
+    <link rel="stylesheet" href="css/sl-bundle-5k.css?v=connected-20261108-6">
+
+<script src="js/sl-venue-corrections.js?v=connected-20261108-6" defer></script>
+
+    
+    
+    <style>
+        /* Phase 5D-B: Hide messages content immediately on cold load until
+           sl-page-guard.js decides; prevents brief flash of working inbox UI
+           for logged-out users. The gate overlay itself sits above this. */
+        body[data-sl-page="requires-auth"]:not(.sl-authed) .messages-container,
+        body[data-sl-page="requires-auth"]:not(.sl-authed) #messagesApp,
+        body[data-sl-page="requires-auth"]:not(.sl-authed) main,
+        body[data-sl-page="requires-auth"]:not(.sl-authed) .msg-shell {
+            visibility: hidden !important;
+        }
+    </style>
+
+    <script src="js/sl-avatar.js?v=connected-20261108-6" defer></script>
+  <link rel="stylesheet" href="css/sl-phase8-home.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-universal-search.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8d-hotfix.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8f-polish.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="/css/sl-recovery-truthfulness.css?v=connected-20261108-6">
+<link rel="stylesheet" href="/css/sl-social-messages.css?v=connected-20261108-6">
+</head>
+<body data-sl-social-messages>
+    <!-- Header -->
+    <header class="header-enhanced" id="mainHeader">
+        <nav class="nav-enhanced">
+            <div class="nav-left">
+                <a class='logo-container' href='/'>
+                    <img loading="eager" fetchpriority="high" width="180" height="48" src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" class="logo-main">
+                </a>
+            </div>
+            <ul class="nav-center">
+                <li><a class='nav-link' href='/'>Home</a></li>
+                <li><a class='nav-link' href='/explore'>Explore</a></li>
+                <li><a class='nav-link' href='/nightlife'>Nightlife</a></li>
+                <li><a class='nav-link' href='/tonight'>Tonight's Picks</a></li>
+                <li><a class='nav-link' href='/social-feed'>Social</a></li>
+                <li><a class='nav-link' data-page='my-lists' href='/my-lists'>My Lists</a></li>
+                <li><a href="/" class="nav-link" data-ai-concierge-nav="1" data-sl-concierge="Plan my night in Boston" onclick="event.preventDefault();"><i class="fas fa-magic" style="color:#D4AF37;margin-right:4px;"></i>Ask AI</a></li>
+            </ul>
+            <div class="nav-right">
+                <button class="btn-header-primary sl-auth-trigger">Log in / Sign up</button>
+            </div>
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <span></span><span></span><span></span>
+            </button>
+        </nav>
+    </header>
+
+    <!-- Main -->
+<main id="slMessagesWorkspace" aria-label="SceneLink messages"><p>Loading messages…</p></main>
+
+    <!-- Scripts -->
+    <script src="js/sl-feature-flags.js?v=connected-20261108-6" defer></script>
+    <script src="js/sl-notifications-bell.js?v=connected-20261108-6" defer></script>
+    <script src="js/sl-review-modal.js?v=connected-20261108-6" defer></script>
+    <script src="js/sl-plans-v2.js?v=connected-20261108-6" defer></script>
+    <script src="js/sl-user-search.js?v=connected-20261108-6" defer></script>
+    <script src="js/sl-phase6e-actions.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-social-messages.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-capacitor-bridge.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-pwa-boot.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-report-modal.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-account-settings.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-bottom-tabs.js?v=connected-20261108-6" defer></script>
+    <script defer src="js/ai-concierge-v5.js?v=connected-20261108-6"></script>
+  <script src="js/sl-phase8-launch.js?v=connected-20261108-6" defer></script>
+<script src="js/sl-phase8-completion.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-universal-search.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-social-network.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-phase8d-recovery.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-social-integration-9a.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-verification-banner.js?v=connected-20261108-6" defer></script>
+</body>
+</html>

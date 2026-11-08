@@ -1,0 +1,9 @@
+# INACTIVE EXAMPLE ONLY: do not install until candidate reconciliation and review.
+# Scheduling cadence proposal: hourly, one durable run UUID per scheduled attempt.
+# Invoke a reviewed worker with a lock, provider quota/backoff and explicit scope.
+# 0 * * * * /path/to/reviewed-event-worker
+# Runnable local rehearsal: node qa/run-event-ingestion.cjs <fixture.json> <run-uuid>
+# Optional provider mode: node qa/run-event-ingestion.cjs --ticketmaster <run-uuid>
+# Requires explicit ENABLE_PROVIDER_FETCH=true, TICKETMASTER_API_KEY, EVENT_START,
+# EVENT_END and the same isolated local DB guard; none are configured here.
+# No live worker, provider key, external schedule or production job is activated.

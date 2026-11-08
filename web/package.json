@@ -1,0 +1,16 @@
+{
+  "name": "scenelink-connected-release-qa",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SceneLink frontend regression checks",
+  "engines": {
+    "node": ">=24.22.1 <25"
+  },
+  "scripts": {
+    "test": "node --test frontend-tests/*.test.cjs",
+    "test:social": "node frontend-tests/social-regression.cjs"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}

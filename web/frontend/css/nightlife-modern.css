@@ -1,0 +1,491 @@
+/* Nightlife Page Specific Styles */
+
+.nightlife-map-section {
+  padding: var(--spacing-2xl) 0;
+  background: var(--dark-card);
+}
+
+/* Map Container */
+.nightlife-map-container {
+  position: relative;
+  height: 500px;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.nightlife-map {
+  width: 100%;
+  height: 100%;
+}
+
+.map-controls {
+  position: absolute;
+  top: var(--spacing-lg);
+  left: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  z-index: 1000;
+}
+
+.map-control-btn {
+  width: 40px;
+  height: 40px;
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+  cursor: pointer;
+}
+
+.map-control-btn:hover {
+  border-color: var(--gold-primary);
+  color: var(--gold-primary);
+  transform: scale(1.05);
+}
+
+/* Filters Container */
+.filters-container {
+  background: var(--dark-lighter);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+}
+
+.search-box {
+  position: relative;
+  margin-bottom: var(--spacing-lg);
+}
+
+.search-box svg {
+  position: absolute;
+  left: var(--spacing-md);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.search-box input {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md) 3rem;
+  background: var(--dark-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 1rem;
+  transition: border-color var(--transition);
+}
+
+.search-box input:focus {
+  border-color: var(--gold-primary);
+  outline: none;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.filter-group label {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.filter-select {
+  padding: var(--spacing-md);
+  background: var(--dark-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color var(--transition);
+}
+
+.filter-select:focus {
+  border-color: var(--gold-primary);
+  outline: none;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 28px;
+  cursor: pointer;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--dark-card);
+  border: 1px solid var(--border-color);
+  border-radius: 28px;
+  transition: all var(--transition);
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 4px;
+  bottom: 3px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: all var(--transition);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--gold-primary);
+  border-color: var(--gold-primary);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(22px);
+  background: var(--dark-bg);
+}
+
+/* Active Filters */
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  min-height: 32px;
+}
+
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 0.5rem 1rem;
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid var(--gold-primary);
+  border-radius: var(--radius-md);
+  color: var(--gold-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.filter-tag button {
+  background: none;
+  border: none;
+  color: var(--gold-primary);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: transform var(--transition);
+}
+
+.filter-tag button:hover {
+  transform: scale(1.2);
+}
+
+/* Venues Section */
+.venues-section {
+  padding: var(--spacing-3xl) 0;
+  background: var(--dark-bg);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-2xl);
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+}
+
+.section-header h2 {
+  font-size: 2rem;
+  margin: 0;
+}
+
+.section-header p {
+  color: var(--text-secondary);
+  margin: var(--spacing-sm) 0 0 0;
+}
+
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.sort-controls label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.sort-controls .filter-select {
+  min-width: 180px;
+}
+
+/* Venues Grid */
+.venues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--spacing-xl);
+}
+
+.venue-card {
+  background: var(--dark-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all var(--transition);
+  cursor: pointer;
+}
+
+.venue-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--gold-primary);
+  box-shadow: var(--shadow-lg);
+}
+
+.venue-image {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  background: linear-gradient(135deg, var(--dark-lighter), var(--dark-card));
+}
+
+.venue-content {
+  padding: var(--spacing-lg);
+}
+
+.venue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: var(--spacing-md);
+}
+
+.venue-title {
+  font-size: 1.4rem;
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--text-primary);
+}
+
+.venue-type {
+  color: var(--gold-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.venue-rating {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(212, 175, 55, 0.1);
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  color: var(--gold-primary);
+}
+
+.venue-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.venue-detail-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.venue-detail-item svg {
+  color: var(--gold-primary);
+  flex-shrink: 0;
+}
+
+.venue-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.venue-tag {
+  padding: 0.25rem 0.75rem;
+  background: var(--dark-lighter);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.venue-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid #4CAF50;
+  border-radius: var(--radius-md);
+  color: #4CAF50;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: var(--spacing-lg);
+}
+
+.venue-status.closed {
+  background: rgba(244, 67, 54, 0.1);
+  border-color: #F44336;
+  color: #F44336;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.venue-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.venue-action-btn {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--dark-lighter);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-weight: 500;
+  transition: all var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.venue-action-btn:hover {
+  border-color: var(--gold-primary);
+  color: var(--gold-primary);
+}
+
+.venue-action-btn.primary {
+  background: linear-gradient(135deg, var(--gold-primary), var(--gold-light));
+  border-color: var(--gold-primary);
+  color: var(--dark-bg);
+}
+
+.venue-action-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Loading State */
+.loading-spinner {
+  grid-column: 1/-1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid var(--dark-lighter);
+  border-top-color: var(--gold-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Empty State */
+.empty-state {
+  grid-column: 1/-1;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+}
+
+.empty-state svg {
+  margin: 0 auto 20px;
+  opacity: 0.3;
+}
+
+.empty-state h3 {
+  margin-bottom: 10px;
+  color: var(--text-primary);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .filter-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .nightlife-map-container {
+    height: 400px;
+  }
+  
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .venues-grid {
+    grid-template-columns: 1fr;
+  }
+}

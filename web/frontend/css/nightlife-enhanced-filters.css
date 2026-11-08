@@ -1,0 +1,84 @@
+/* Nightlife Enhanced Filters */
+.nightlife-filter-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.filter-label {
+    font-weight: 600;
+    color: #d4af37;
+    font-size: 14px;
+    min-width: 50px;
+}
+
+.filter-chip {
+    padding: 8px 16px;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    background: rgba(212, 175, 55, 0.1);
+    color: #fff;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.filter-chip:hover {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: rgba(212, 175, 55, 0.5);
+    transform: translateY(-1px);
+}
+
+.filter-chip.active {
+    background: #d4af37;
+    border-color: #d4af37;
+    color: #0a0a0a;
+    font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .nightlife-filter-buttons {
+        padding: 15px;
+        gap: 12px;
+    }
+    
+    .filter-group {
+        gap: 8px;
+    }
+    
+    .filter-chip {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    .filter-label {
+        font-size: 13px;
+        min-width: 40px;
+    }
+}
+
+@media (max-width: 480px) {
+    .filter-group {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .filter-label {
+        min-width: auto;
+    }
+}

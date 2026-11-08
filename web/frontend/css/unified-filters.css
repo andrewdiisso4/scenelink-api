@@ -1,0 +1,329 @@
+/* ============================================
+   UNIFIED FILTER SYSTEM - SceneLink
+   Consistent pill-chip filters across all pages
+   ============================================ */
+
+/* Filter Bar Container */
+.sl-filters-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 0;
+}
+
+.sl-filters-bar .sl-filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.sl-filter-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 4px;
+    white-space: nowrap;
+}
+
+/* Filter Chip - Core */
+.sl-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: 100px;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.sl-chip::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05));
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    border-radius: inherit;
+}
+
+.sl-chip:hover {
+    border-color: rgba(212, 175, 55, 0.4);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.sl-chip:hover::before {
+    opacity: 1;
+}
+
+.sl-chip:active {
+    transform: translateY(0) scale(0.97);
+}
+
+/* Active State */
+.sl-chip.active {
+    background: linear-gradient(135deg, #D4AF37, #C5A028);
+    border-color: #D4AF37;
+    color: #1a1a2e;
+    font-weight: 600;
+    box-shadow: 0 2px 12px rgba(212, 175, 55, 0.3);
+}
+
+.sl-chip.active::before {
+    opacity: 0;
+}
+
+.sl-chip.active:hover {
+    background: linear-gradient(135deg, #e0be4a, #D4AF37);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(212, 175, 55, 0.4);
+}
+
+/* Chip with icon */
+.sl-chip i,
+.sl-chip svg {
+    font-size: 0.85em;
+    opacity: 0.8;
+}
+
+.sl-chip.active i,
+.sl-chip.active svg {
+    opacity: 1;
+}
+
+/* Chip with count badge */
+.sl-chip-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: rgba(212, 175, 55, 0.2);
+    color: #D4AF37;
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.sl-chip.active .sl-chip-count {
+    background: rgba(26, 26, 46, 0.2);
+    color: #1a1a2e;
+}
+
+/* Divider between filter groups */
+.sl-filter-divider {
+    width: 1px;
+    height: 24px;
+    background: rgba(212, 175, 55, 0.15);
+    margin: 0 8px;
+    flex-shrink: 0;
+}
+
+/* Filter Section Header */
+.sl-filters-section {
+    padding: 20px 0;
+}
+
+.sl-filters-section .sl-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.sl-filters-section .sl-filter-row:last-child {
+    margin-bottom: 0;
+}
+
+/* Search chip input */
+.sl-filter-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    border-radius: 100px;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    background: rgba(255, 255, 255, 0.04);
+    flex: 1;
+    min-width: 200px;
+    max-width: 400px;
+    transition: all 0.25s ease;
+}
+
+.sl-filter-search:focus-within {
+    border-color: rgba(212, 175, 55, 0.5);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+}
+
+.sl-filter-search i {
+    color: rgba(212, 175, 55, 0.5);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.sl-filter-search input {
+    border: none;
+    background: transparent;
+    color: #fff;
+    font-size: 0.82rem;
+    width: 100%;
+    outline: none;
+}
+
+.sl-filter-search input::placeholder {
+    color: rgba(255, 255, 255, 0.35);
+}
+
+/* Results count */
+.sl-results-count {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.sl-results-count strong {
+    color: #D4AF37;
+    font-weight: 600;
+}
+
+/* Active Filters Bar */
+.sl-active-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 0;
+}
+
+.sl-active-filter-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 100px;
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    color: #D4AF37;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.sl-active-filter-tag .remove-tag {
+    cursor: pointer;
+    opacity: 0.6;
+    font-size: 0.9em;
+    transition: opacity 0.2s;
+}
+
+.sl-active-filter-tag .remove-tag:hover {
+    opacity: 1;
+}
+
+.sl-clear-all {
+    padding: 4px 12px;
+    border-radius: 100px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sl-clear-all:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+}
+
+/* Sort Control */
+.sl-sort-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.sl-sort-control label {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+}
+
+.sl-sort-select {
+    padding: 6px 28px 6px 12px;
+    border-radius: 100px;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.8rem;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23D4AF37' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    transition: all 0.2s ease;
+}
+
+.sl-sort-select:hover {
+    border-color: rgba(212, 175, 55, 0.4);
+}
+
+.sl-sort-select:focus {
+    outline: none;
+    border-color: #D4AF37;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+}
+
+.sl-sort-select option {
+    background: #1a1a2e;
+    color: #fff;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .sl-filters-bar {
+        gap: 8px;
+        padding: 12px 0;
+    }
+    
+    .sl-chip {
+        padding: 6px 12px;
+        font-size: 0.78rem;
+    }
+    
+    .sl-filter-search {
+        min-width: 160px;
+        max-width: 100%;
+    }
+    
+    .sl-filter-divider {
+        display: none;
+    }
+    
+    .sl-results-count {
+        width: 100%;
+        margin-left: 0;
+        margin-top: 4px;
+    }
+    
+    .sl-filters-section .sl-filter-row {
+        gap: 8px;
+    }
+}

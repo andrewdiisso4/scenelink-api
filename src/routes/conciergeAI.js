@@ -19,6 +19,7 @@
  */
 
 const pool = require('../config/database');
+const {publicVenue,availableVenueSQL} = require('../services/venue-helpers');
 
 const OPENAI_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
@@ -38,7 +39,7 @@ HARD RULES (never break these):
 2. Never invent or imagine venues, addresses, ratings, reviews, hours, prices, menus, or availability.
 3. Every stop.venueId MUST be an id that appears verbatim in the Available venues list. If nothing matches the user's request, return an empty stops array and be honest in the reply.
 4. Keep reply text to 1–3 sentences. Friendly, insider tone. No emojis unless the user uses one first.
-5. Never claim a venue is "available tonight", "open right now", or "has a table" — we do not have real-time availability.
+5. Never claim a venue is "available tonight", "open right now", or "has a table" — we do not have real-time availability. Never claim to book, reserve, purchase tickets, hold a table, or confirm an RSVP. Booking links only open an external site; confirmation must come from that provider.
 6. Never mention you are AI / GPT / OpenAI / an LLM. You are SceneLink Concierge.
 7. quickReplies: 3–4 short, tappable follow-ups. Examples: "Make it more casual", "Add a late-night spot", "Show cheaper options", "Invite friends", "Earlier seating".
 8. For planning questions (date night, bachelor party, birthday, "plan my night", "dinner then drinks"), build a recommendedPlan with 1–3 stops (e.g. dinner → drinks → late-night).
@@ -125,13 +126,13 @@ const NEIGHBORHOODS = [
     'Seaport', 'Somerville', 'South End'
 ];
 const NEIGHBORHOOD_ALIASES = {
-    'south boston': 'Seaport',
-    'southie': 'Seaport',
-    'east boston': 'Boston',
-    'eastie': 'Boston',
-    'charlestown': 'Boston',
-    'roxbury': 'Boston',
-    'mission hill': 'Fenway',
+    'south boston': 'South Boston',
+    'southie': 'South Boston',
+    'east boston': 'East Boston',
+    'eastie': 'East Boston',
+    'charlestown': 'Charlestown',
+    'roxbury': 'Roxbury',
+    'mission hill': 'Mission Hill',
     'kendall square': 'Cambridge',
     'harvard square': 'Cambridge',
     'central square': 'Cambridge',
@@ -175,7 +176,7 @@ function parseFilters(message = '', context = {}) {
         isEvent: false
     };
 
-    // Check aliases FIRST (e.g. "south boston" → Seaport) and strip them from
+    // Check aliases FIRST (e.g. "southie" → South Boston) and strip them from
     // the text so the literal "Boston" scan below doesn't re-match "boston"
     // inside "south boston".
     let stripped = text;
@@ -237,16 +238,16 @@ function parseFilters(message = '', context = {}) {
 const VENUE_SELECT = `
     id, slug, name, type, category, cuisine, neighborhood, address, city,
     lat::text AS lat, lng::text AS lng,
-    price_level, price_label, rating::text AS rating,
-    buzz_score::text AS buzz_score, going_count,
+    source, price_level, price_label, NULL::numeric AS rating,
+    NULL::numeric AS buzz_score, NULL::integer AS going_count,
     cover_image_url, image_url,
-    vibe, highlight, why_hot, pair_with, short_desc, description,
+    vibe, highlight, NULL::text AS why_hot, pair_with, short_desc, description,
     opentable_url, resy_url, yelp_url, google_maps_url, reservation_url,
-    trending, featured, is_open_now, hours_display
+    NULL::boolean AS trending, NULL::boolean AS featured, NULL::boolean AS is_open_now, hours_display
 `;
 
 async function fetchCandidateVenues(filters, limit = MAX_CANDIDATE_VENUES) {
-    const where = ['is_active = true'];
+    const where = [availableVenueSQL('')];
     const params = [];
     let i = 1;
 
@@ -276,55 +277,19 @@ async function fetchCandidateVenues(filters, limit = MAX_CANDIDATE_VENUES) {
         i += filters.cuisines.length;
     }
 
-    let vibeBoost = '0';
-    if (filters.vibes && filters.vibes.length) {
-        const vibeChecks = filters.vibes.map((v) => {
-            const key = String(v).toLowerCase().replace(/'/g, "''");
-            return `(CASE WHEN vibe ILIKE '%${key}%' OR highlight ILIKE '%${key}%' OR why_hot ILIKE '%${key}%' THEN 1 ELSE 0 END)`;
-        });
-        vibeBoost = vibeChecks.join(' + ');
-    }
-
+    // Search constraints come from facts; seed popularity, random order and
+    // unreviewed marketing copy never become a recommendation score.
     const sql = `
-        SELECT ${VENUE_SELECT},
-               (COALESCE(buzz_score, 0) + (${vibeBoost}) * 0.5) AS score
+        SELECT ${VENUE_SELECT}
         FROM venues
         WHERE ${where.join(' AND ')}
-        ORDER BY score DESC NULLS LAST, rating DESC NULLS LAST
-        LIMIT ${Math.min(limit, 30)}
+        ORDER BY lower(name), id
+        LIMIT ${Math.max(1, Math.min(Number.isSafeInteger(limit) ? limit : 20, 30))}
     `;
     const r = await pool.query(sql, params);
 
-    // If too few after strict filters, relax
-    if (r.rows.length < 5 && (filters.neighborhoods.length || filters.cuisines.length)) {
-        const relaxedParams = [];
-        let j = 1;
-        const relaxedWhere = ['is_active = true'];
-        if (filters.venueType === 'bar') {
-            relaxedWhere.push(`(type IN ('bar','nightlife','cocktail') OR category ILIKE '%bar%')`);
-        } else if (filters.venueType === 'restaurant') {
-            relaxedWhere.push(`(type = 'restaurant' OR category ILIKE '%restaurant%')`);
-        }
-        if (filters.neighborhoods.length) {
-            relaxedWhere.push(`neighborhood = ANY($${j}::text[])`);
-            relaxedParams.push(filters.neighborhoods);
-            j++;
-        }
-        const relax = await pool.query(
-            `SELECT ${VENUE_SELECT}
-             FROM venues WHERE ${relaxedWhere.join(' AND ')}
-             ORDER BY buzz_score DESC NULLS LAST, rating DESC NULLS LAST
-             LIMIT ${Math.min(limit, 20)}`,
-            relaxedParams
-        );
-        const seen = new Set(r.rows.map(x => x.id));
-        for (const row of relax.rows) {
-            if (!seen.has(row.id)) r.rows.push(row);
-            if (r.rows.length >= limit) break;
-        }
-    }
-
-    return r.rows.slice(0, limit);
+    // Never silently drop cuisine, neighborhood or price constraints.
+    return r.rows.slice(0, limit).map(publicVenue);
 }
 
 async function fetchVenuesByIds(ids) {
@@ -334,10 +299,10 @@ async function fetchVenuesByIds(ids) {
     const clean = ids.filter(x => typeof x === 'string' && uuidRegex.test(x));
     if (!clean.length) return [];
     const r = await pool.query(
-        `SELECT ${VENUE_SELECT} FROM venues WHERE id = ANY($1::uuid[])`,
+        `SELECT ${VENUE_SELECT} FROM venues WHERE id = ANY($1::uuid[]) AND ${availableVenueSQL('')}`,
         [clean]
     );
-    const byId = new Map(r.rows.map(row => [String(row.id), row]));
+    const byId = new Map(r.rows.map(row => [String(row.id), publicVenue(row)]));
     return clean.map(id => byId.get(String(id))).filter(Boolean);
 }
 
@@ -385,15 +350,18 @@ function summarizeVenueForLLM(v) {
         type: v.type,
         category: v.category,
         cuisine: v.cuisine,
-        rating: v.rating ? Number(v.rating) : null,
+        rating: null,
         priceLevel: v.price_level || null,
         priceLabel: v.price_label || (v.price_level ? '$'.repeat(v.price_level) : null),
         vibe: v.vibe ? String(v.vibe).slice(0, 140) : null,
         highlight: v.highlight ? String(v.highlight).slice(0, 140) : null,
-        whyHot: v.why_hot ? String(v.why_hot).slice(0, 180) : null,
+        whyHot: null,
         pairWith: v.pair_with ? String(v.pair_with).slice(0, 140) : null,
-        trending: !!v.trending,
-        featured: !!v.featured
+        trending: null,
+        featured: null,
+        availability: 'unknown',
+        bookingStatus: v.booking?.status || 'not_available',
+        reservationConfirmed: false
     };
 }
 
@@ -526,14 +494,14 @@ async function runAIConcierge({ message, history = [], context = {}, userId = nu
 
     const [candidates, userContext] = await Promise.all([
         fetchCandidateVenues(filters),
-        fetchUserContext(userId)
+        null // No saved profile/favorites are sent to an external model without a separate opt-in.
     ]);
 
     if (!candidates.length) {
         return {
             ok: true,
             source: 'empty',
-            reply: 'No live venue data is available yet. Add venues to the database before Concierge can make real recommendations.',
+            reply: 'No matching venues were found. Try changing the neighborhood, cuisine or budget.',
             intent: 'other',
             recommendedPlan: null,
             recommendedVenues: [],
@@ -587,5 +555,6 @@ module.exports = {
     fetchCandidateVenues,
     fetchVenuesByIds,
     parseFilters,
+    summarizeVenueForLLM,
     isEnabled: () => !!process.env.OPENAI_API_KEY
 };

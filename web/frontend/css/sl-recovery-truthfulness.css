@@ -1,0 +1,37 @@
+/* Recovery containment: legacy venue aggregates lack verified provenance.
+   This intentionally does NOT target user review content, review inputs,
+   friend graphs, feed likes/comments, or authenticated social API counters.
+   Re-enable individual fields only after implementing source-aware renderers. */
+.sl-list-card-rating,
+.sl-list-card-badge,
+.sl-rp-card-meta > .star,
+.sl-rp-card-meta > .people,
+.sl-venue-card-meta > .star,
+.sl-venue-card-meta > .people,
+#slCardRating,
+#slDetailMeta > .star,
+#slEnergyBarWrap,
+.sl-vd-stat,
+.tv2-card-rating,
+.tv2-modal-stars,
+.tv2-modal-crowd,
+.tv2-meta-item:has(> .fa-star),
+.tv2-card-badges,
+.tv2-spotlight-badges,
+.tv2-modal-hero-badges,
+#tv2-stats > .tv2-stat:not(:first-child),
+.sf-trending-people,
+.sl-chip-btn[data-cat="high-energy"],
+.sl-filter-opt[data-val="trending"],
+.tv2-chip[data-vibe="trending"] {
+    display: none !important;
+}
+
+/* These legacy controls depend on unverified imported metrics. */
+.sl-chip-btn[data-cat="featured"],
+.sl-filter-opt[data-filter="energy"],
+.sl-filter-opt[data-filter="rating"],
+.sl-filter-opt[data-val="featured"],
+.sl-filter-rating-btn,
+.sl-filter-special-btn[data-special="trending"],
+.sl-filter-special-btn[data-special="featured"] { display:none !important; }

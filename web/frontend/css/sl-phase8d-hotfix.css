@@ -1,0 +1,29 @@
+/* SceneLink Phase 8D emergency frontend hotfix: icons/nav/clickability/loading. */
+html, body { min-height: 100%; }
+body.sl-phase8-home { overflow-x: hidden; }
+.sl-phase8-nav, .sl-phase8-actions, .sl-phase8-links, .sl-phase8-btn, .sl-phase8-linklike,
+[data-sl-concierge], .slus-shell, .slus-input, .slus-ai, a, button {
+  pointer-events: auto;
+}
+.sl-phase8-btn, .sl-phase8-linklike, button, a { touch-action: manipulation; }
+.sl-phase8-links.open { display: flex !important; }
+.sl-phase8-mobile-menu { cursor: pointer; }
+.slus-shell { position: relative; z-index: 10020; }
+.slus-panel { z-index: 10030; }
+#sl-stale-banner { z-index: 2147483000; }
+/* If a legacy loader gets stranded, do not let it block launch navigation indefinitely. */
+.sl-phase8d-loader-released .loading-overlay,
+.sl-phase8d-loader-released .filters-loading-overlay,
+.sl-phase8d-loader-released .global-loading,
+.sl-phase8d-loader-released .page-loader,
+.sl-phase8d-loader-released #loadingOverlay,
+.sl-phase8d-loader-released #globalLoading,
+.sl-phase8d-loader-released #pageLoader {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+.sl-phase8d-icon-fallback {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:1em; min-height:1em; color:inherit; font-style:normal;
+}

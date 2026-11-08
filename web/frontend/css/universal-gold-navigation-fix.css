@@ -1,0 +1,155 @@
+/* Universal Gold Navigation and Header Fix - All Pages */
+
+/* Ensure CSS Variables are loaded first */
+:root {
+    --accent-gold: #d4af37;
+    --accent-gold-hover: #b8941f;
+    --accent-gold-light: #f4e4bc;
+    --text-primary: #ffffff;
+    --text-secondary: #b0b0b0;
+}
+
+/* Universal Navigation Gold Styling */
+.nav-enhanced .nav-link {
+    color: #b0b0b0 !important;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.nav-enhanced .nav-link:hover,
+.nav-enhanced .nav-link.active {
+    color: var(--accent-gold) !important;
+}
+
+.nav-enhanced .nav-link.active::after {
+    background: var(--accent-gold) !important;
+}
+
+/* Navigation Icons - Gold Color */
+.nav-icon-btn {
+    color: #b0b0b0 !important;
+    transition: all 0.3s ease;
+}
+
+.nav-icon-btn:hover {
+    color: var(--accent-gold) !important;
+}
+
+.nav-icon-btn.nav-social-feed:hover,
+.nav-icon-btn.nav-lists:hover,
+.nav-icon-btn.nav-search:hover,
+.nav-icon-btn.nav-profile:hover {
+    color: var(--accent-gold) !important;
+}
+
+/* Hero Header Titles - Gold for All Pages */
+.hero-title {
+    background: linear-gradient(135deg, #d4af37, #f4e4bc) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    color: transparent !important;
+}
+
+.page-title {
+    background: linear-gradient(135deg, #d4af37, #f4e4bc) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    color: transparent !important;
+}
+
+/* Main Content Headers */
+.main-header h1,
+.section-header h1,
+.content-header h1 {
+    background: linear-gradient(135deg, #d4af37, #f4e4bc) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    color: transparent !important;
+}
+
+/* Section Titles */
+h1.main-title,
+h2.section-title,
+h3.subsection-title {
+    background: linear-gradient(135deg, #d4af37, #f4e4bc) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    color: transparent !important;
+}
+
+/* Tonight's Picks Specific Gold Styling */
+.tonights-picks-hero .hero-content h1 {
+    background: linear-gradient(135deg, #d4af37, #f4e4bc) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    color: transparent !important;
+}
+
+.time-segment-header h3 {
+    color: var(--accent-gold) !important;
+}
+
+/* Nightlife Page Gold Styling */
+.nightlife-hero .hero-content h1 {
+    background: linear-gradient(135deg, #d4af37, #f4e4bc) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    color: transparent !important;
+}
+
+/* Events Page Gold Styling */
+.events-hero .hero-content h1 {
+    background: linear-gradient(135deg, #d4af37, #f4e4bc) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    color: transparent !important;
+}
+
+/* Explore Page Gold Styling */
+.explore-hero .hero-content h1 {
+    background: linear-gradient(135deg, #d4af37, #f4e4bc) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    color: transparent !important;
+}
+
+/* Fix any missing gold styling with high specificity */
+body header .hero-content h1,
+body .main-hero h1,
+body .page-hero h1 {
+    background: linear-gradient(135deg, #d4af37, #f4e4bc) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    color: transparent !important;
+}
+
+/* Mobile Navigation Gold */
+.mobile-menu-btn {
+    color: var(--accent-gold) !important;
+}
+
+@media (max-width: 768px) {
+    .nav-enhanced .nav-link {
+        color: #b0b0b0 !important;
+    }
+    
+    .nav-enhanced .nav-link.active,
+    .nav-enhanced .nav-link:hover {
+        color: var(--accent-gold) !important;
+    }
+}
+
+/* Ensure proper z-index for navigation */
+.header-enhanced {
+    z-index: 1000 !important;
+}

@@ -1,0 +1,26 @@
+/* css/sl-auth.css — SceneLink gold/green styling */
+:root{
+  --sl-gold: #e6c46b;
+  --sl-gold-600: #cdb66a;
+  --sl-green: #1e3f2d;
+  --sl-green-900: #14281d;
+  --sl-ink: #0b0b0b;
+  --sl-border: #2a2a2a;
+  --sl-text: #eaeaea;
+}
+#sl-auth-modal{ background: rgba(0,0,0,.55); }
+#sl-auth-modal .sl-card{ background: var(--sl-green-900); border: 1px solid var(--sl-border); border-radius: 18px; color: var(--sl-text); padding: 22px; box-shadow: 0 15px 40px rgba(0,0,0,.45); }
+#sl-auth-modal .sl-title{ display:flex;justify-content:space-between;align-items:center;margin-bottom:10px; }
+#sl-auth-modal .sl-close{ background:#122018;border:1px solid #203827;border-radius:10px;padding:6px 10px;color:#cfe8da;cursor:pointer }
+#sl-auth-modal input[type="email"], #sl-auth-modal input[type="password"]{ padding:12px;border-radius:12px;border:1px solid var(--sl-border);background:#0d1511;color:var(--sl-text); }
+#sl-auth-modal .sl-primary{ padding:12px 14px;border-radius:999px;background:var(--sl-gold);color:#121212;font-weight:800;border:none;cursor:pointer }
+#sl-auth-modal .sl-ghost{ padding:12px 14px;border-radius:999px;background:#111;border:1px solid var(--sl-border);color:var(--sl-text);font-weight:700;cursor:pointer }
+#sl-auth-modal .sl-link{ color: var(--sl-gold-600); }
+#sl-auth-error{ background:#3a1c1c;border:1px solid #5d2a2a;color:#ffd4d4;padding:10px;border-radius:12px;margin-bottom:10px; }
+.sl-userchip{ display:inline-flex;align-items:center;gap:10px;cursor:pointer;user-select:none;background:#0f1713;border:1px solid var(--sl-border);padding:6px 10px;border-radius:999px; }
+.sl-avatar{ width:28px;height:28px;border-radius:50%;display:inline-grid;place-items:center;background: var(--sl-gold); color:#121212; font-weight:900; letter-spacing:.5px; }
+.sl-caret{ opacity:.7 }
+.sl-dropdown{ position:absolute; right:0; top:calc(100% + 8px); background:#0e1713;border:1px solid var(--sl-border);border-radius:12px;min-width:200px; box-shadow:0 12px 36px rgba(0,0,0,.45); display:none; overflow:hidden; }
+.sl-dropdown a, .sl-dropdown button{ display:block; width:100%; text-align:left; padding:10px 12px; background:none; border:none; color:var(--sl-text); cursor:pointer; }
+.sl-dropdown a:hover, .sl-dropdown button:hover{ background:#122018; }
+.sl-usermenu{ position:relative; display:inline-block; margin-left:10px; }

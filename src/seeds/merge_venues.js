@@ -83,6 +83,9 @@ merged.sort((a, b) => {
 // Convert to seed format (match venues.json schema)
 const out = merged.map(v => ({
   ...v,
+  rating: null, review_count: null, buzz_score: null, going_count: null, friends_going: null,
+  trending: false, featured: false, spotlight: false,
+  metrics_status: 'unverified',
   // Ensure required fields
   city: v.city || 'Boston',
   state: v.state || 'MA',

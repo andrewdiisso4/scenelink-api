@@ -1,0 +1,237 @@
+/**
+ * Nightlife App — Overrides & Additions for nightlife page
+ * Extends explore-premium.css with nightlife-specific styling
+ */
+
+/* Nightlife color accents — purple/blue tones for nightlife vibe */
+.sl-nightlife-app .sl-crowd-pulse {
+    background: #8b5cf6;
+    box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4);
+}
+
+.sl-nightlife-app .sl-crowd-text {
+    color: #8b5cf6;
+}
+
+/* Nightlife-specific pin colors */
+.sl-nightlife-app .sl-pin.cat-nightclub .sl-pin-body { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+.sl-nightlife-app .sl-pin.cat-bar .sl-pin-body { background: linear-gradient(135deg, #D4AF37, #b8962e); }
+.sl-nightlife-app .sl-pin.cat-lounge .sl-pin-body { background: linear-gradient(135deg, #ec4899, #be185d); }
+.sl-nightlife-app .sl-pin.cat-rooftop .sl-pin-body { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+.sl-nightlife-app .sl-pin.cat-music .sl-pin-body { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.sl-nightlife-app .sl-pin.cat-hot .sl-pin-body { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+/* Nightlife badge colors */
+.sl-nightlife-app .sl-list-card-badge.nightclub { background: rgba(139, 92, 246, 0.9); color: #fff; }
+.sl-nightlife-app .sl-list-card-badge.bar { background: rgba(212, 175, 55, 0.9); color: #0a0a0a; }
+.sl-nightlife-app .sl-list-card-badge.lounge { background: rgba(236, 72, 153, 0.9); color: #fff; }
+.sl-nightlife-app .sl-list-card-badge.rooftop { background: rgba(6, 182, 212, 0.9); color: #fff; }
+.sl-nightlife-app .sl-list-card-badge.music { background: rgba(34, 197, 94, 0.9); color: #fff; }
+
+/* Nightlife tag colors */
+.sl-nightlife-app .sl-list-tag.nightclub { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }
+.sl-nightlife-app .sl-list-tag.bar { background: rgba(212, 175, 55, 0.12); color: #D4AF37; }
+.sl-nightlife-app .sl-list-tag.lounge { background: rgba(236, 72, 153, 0.12); color: #ec4899; }
+.sl-nightlife-app .sl-list-tag.rooftop { background: rgba(6, 182, 212, 0.12); color: #06b6d4; }
+.sl-nightlife-app .sl-list-tag.music { background: rgba(34, 197, 94, 0.12); color: #22c55e; }
+
+/* Detail overlay for nightlife */
+.sl-detail-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.sl-detail-overlay.active { display: flex; }
+
+.sl-detail-sheet {
+    background: #141418;
+    border-radius: 24px;
+    overflow: hidden;
+    width: 100%;
+    max-width: 560px;
+    max-height: 85vh;
+    overflow-y: auto;
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+    animation: slDetailSlideIn 0.3s ease;
+}
+
+@keyframes slDetailSlideIn {
+    from { opacity: 0; transform: translateY(30px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.sl-detail-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+}
+.sl-detail-close:hover { background: rgba(212,175,55,0.3); border-color: #D4AF37; }
+
+.sl-detail-hero {
+    position: relative;
+    height: 260px;
+    overflow: hidden;
+}
+.sl-detail-hero img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.sl-detail-hero-gradient {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 120px;
+    background: linear-gradient(transparent, #141418);
+}
+.sl-detail-hero-info {
+    position: absolute;
+    bottom: 20px;
+    left: 24px;
+    right: 24px;
+    z-index: 2;
+}
+.sl-detail-name {
+    font-size: 26px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.2;
+    margin-bottom: 6px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+.sl-detail-meta {
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.sl-detail-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.sl-detail-meta .star { color: #D4AF37; font-weight: 700; }
+.sl-detail-meta .price { color: #22c55e; font-weight: 600; }
+
+.sl-detail-body { padding: 20px 24px 28px; }
+
+.sl-detail-vibe {
+    font-size: 15px;
+    color: rgba(255,255,255,0.6);
+    line-height: 1.6;
+    margin-bottom: 20px;
+    font-style: italic;
+}
+
+.sl-detail-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.sl-detail-info-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+.sl-detail-info-item i {
+    color: #D4AF37;
+    font-size: 14px;
+    width: 18px;
+    text-align: center;
+}
+.sl-detail-info-item span {
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+}
+
+.sl-detail-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+.sl-detail-tag {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(139,92,246,0.12);
+    color: #8b5cf6;
+}
+
+.sl-detail-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.sl-detail-btn {
+    flex: 1;
+    min-width: 100px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+.sl-detail-btn:hover { border-color: rgba(212,175,55,0.3); background: rgba(212,175,55,0.08); }
+.sl-detail-btn.primary {
+    background: linear-gradient(135deg, #D4AF37, #b8962e);
+    color: #0a0a0a;
+    border: none;
+}
+.sl-detail-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(212,175,55,0.3); }
+.sl-detail-btn.secondary {
+    background: rgba(139,92,246,0.15);
+    color: #a78bfa;
+    border-color: rgba(139,92,246,0.3);
+}
+.sl-detail-btn.secondary:hover { background: rgba(139,92,246,0.25); }
+
+/* Nightlife People icon override */
+.sl-nightlife-app .sl-list-card-people i { color: #8b5cf6; }
+
+/* Scrollbar for detail sheet */
+.sl-detail-sheet::-webkit-scrollbar { width: 4px; }
+.sl-detail-sheet::-webkit-scrollbar-track { background: transparent; }
+.sl-detail-sheet::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+/* Ensure AI Concierge FAB is above the app shell */
+.sl-concierge-fab {
+    z-index: 99999 !important;
+}
+.sl-concierge-panel {
+    z-index: 99998 !important;
+}

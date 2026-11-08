@@ -1,0 +1,16 @@
+/* css/maps.css */
+/* Gold-accented toolbar and map wrapper */
+.sl-map-wrap { position: relative; }
+.sl-map-toolbar { position: absolute; left: 16px; top: 16px; z-index: 5; }
+.sl-map-toolbar-inner { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sl-map-search { min-width: 260px; max-width: 56vw; padding: 10px 12px; border-radius: 999px;
+  border: 1px solid #3a3320; background: #0b0b0b; color: #eee; outline: none;
+  box-shadow: 0 0 0 2px rgba(230,196,107,.12) inset; }
+.sl-map-geo, .sl-map-toggle { padding: 10px 12px; border-radius: 999px; border: 1px solid #6b5a1b;
+  background: #e6c46b; color: #121212; font-weight: 800; cursor: pointer; }
+.sl-card-focus { outline: 2px solid #e6c46b; outline-offset: 3px; border-radius: 12px; transition: outline-color .2s; }
+.google-map-container { height: 420px; border-radius: 16px; border: 1px solid #222; }
+@media (max-width: 640px){
+  .sl-map-toolbar { left: 8px; right: 8px; }
+  .sl-map-search { min-width: 160px; max-width: 100%; flex: 1; }
+}

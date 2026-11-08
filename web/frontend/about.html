@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/sl-connected-api.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-connected-actions.js?v=connected-20261108-6" defer></script>
+<link rel="stylesheet" href="/css/sl-connected.css?v=connected-20261108-6">
+  <!-- sl-observability:v1 -->
+  <script src="/env.js"></script>
+  <script src="/js/sl-avatar.js?v=connected-20261108-6"></script>
+  <script src="/js/sl-social-core.js?v=connected-20261108-6" defer></script>
+  <!-- Phase 7A perf -->
+  <script src="/js/sl-fetch-guard.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-perf-loader.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-observability.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-version-marker.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-stale-version-detector.js?v=connected-20261108-6" defer></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="description" content="About SceneLink - Your social guide to the best restaurants, bars, events, and nightlife.">
+    <title>About Us - SceneLink</title>
+    <link rel="stylesheet" href="css/sl-bundle-7d.css?v=connected-20261108-6">
+    <link rel="icon" type="image/png" href="images/logo-transparent.png">
+    <!-- Phase 7A perf: ai-concierge CSS lazy-loaded -->
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"><noscript><link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-6"></noscript>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css?v=connected-20261108-6" crossorigin="anonymous" referrerpolicy="no-referrer">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SceneLink">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="SceneLink">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="57x57" href="/icons/apple-touch-icon-57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="/icons/apple-touch-icon-60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="/icons/apple-touch-icon-72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="/icons/apple-touch-icon-76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="/icons/apple-touch-icon-114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-touch-icon-120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="/icons/apple-touch-icon-144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png">
+
+    <meta property="og:title" content="About SceneLink">
+    <meta property="og:description" content="Boston's social guide to eating, drinking, and discovering. Built by locals, for locals.">
+    <meta property="og:url" content="https://scenelink.app/about.html">
+    <meta name="twitter:title" content="About SceneLink">
+    <meta name="twitter:description" content="Boston's social guide to eating, drinking, and discovering. Built by locals, for locals.">
+    <link rel="canonical" href="https://scenelink.app/about.html">
+    <meta property="og:site_name" content="SceneLink">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/icons/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/icons/icon-512.png">
+  <!-- SceneLink unified auth bundle -->
+    <link rel="stylesheet" href="css/sl-about-enhanced.css?v=connected-20261108-6">
+
+  <!-- SceneLink unified auth bundle -->
+    <script src="js/sl-bundle-7d.js?v=connected-20261108-6" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="css/sl-phase8-home.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-universal-search.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8d-hotfix.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="css/sl-phase8f-polish.css?v=connected-20261108-6">
+  <link rel="stylesheet" href="/css/sl-recovery-truthfulness.css?v=connected-20261108-6">
+</head>
+<body>
+    <!-- Enhanced Fixed Header -->
+    <header class="header-enhanced" id="mainHeader">
+        <nav class="nav-enhanced">
+            <div class="nav-left">
+                <a class='logo-container' href='/'>
+                    <img src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" class="logo-main">
+                </a>
+            </div>
+            
+            <ul class="nav-center">
+                <li><a class='nav-link' href='/'>Home</a></li>
+                <li><a class='nav-link' href='/explore'>Explore</a></li>
+                <li><a class='nav-link' href='/nightlife'>Nightlife</a></li>
+                <li><a class='nav-link' href='/tonight'>Tonight's Picks</a></li>
+                    <li><a href='/events'>Events</a></li>
+                <li><a class='nav-link' href='/social-feed'>Social</a></li>
+                <li><a class='nav-link' data-page='my-lists' href='/my-lists'>My Lists</a></li>
+                <li><a href="/" class="nav-link" data-ai-concierge-nav="1" data-sl-concierge="Plan my night in Boston" onclick="event.preventDefault();"><i class="fas fa-magic" style="color:#D4AF37;margin-right:4px;"></i>Ask AI</a></li>
+            </ul>
+            
+            <div class="nav-right">
+                <button class="btn-header-primary sl-auth-trigger">Log in / Sign up</button>
+            </div>
+            
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </nav>
+    </header>
+
+    <!-- Page Hero -->
+    <section class="page-hero">
+        <div class="container">
+            <h1>About SceneLink</h1>
+            <p>Connecting people through exceptional dining and social experiences</p>
+        </div>
+    </section>
+
+    <!-- About Content -->
+    <section class="about-content">
+        <div class="container">
+            <div class="about-grid">
+                <div class="about-main">
+                    <h2>Our Story</h2>
+                    <p>SceneLink was born from a simple idea: make discovering great food and planning social outings effortless and fun. We noticed that friends spent countless hours texting back and forth, trying to decide where to eat, when to meet, and what everyone wanted to do.</p>
+                    
+                    <p>Founded in Boston in 2025, SceneLink is an early-stage local startup building a social-first discovery platform for the city&rsquo;s restaurants, bars, and nightlife. We&rsquo;re here to help you and your friends create memorable experiences together.</p>
+                    
+                    <h2>Our Mission</h2>
+                    <p>We're on a mission to transform how people discover and experience hospitality. By combining intelligent recommendations with social connections, we make it easy to find amazing places, coordinate with friends, and create lasting memories.</p>
+                    
+                    <h2>What Makes Us Different</h2>
+                    <div class="difference-list">
+                        <div class="difference-item">
+                            <div class="difference-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                                </svg>
+                            </div>
+                            <div class="difference-text">
+                                <h3>Social First</h3>
+                                <p>Everything we build is designed to help you connect with friends and share experiences.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="difference-item">
+                            <div class="difference-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M12 1v6m0 6v6m4.22-13.22l4.24 4.24M18.46 18.46l4.24 4.24M20.66 12H22M2 12h1.34m16.12 6.46l-4.24 4.24M6.34 6.34L2.1 2.1"></path>
+                                </svg>
+                            </div>
+                            <div class="difference-text">
+                                <h3>AI-Powered Discovery</h3>
+                                <p>Our smart recommendations learn your preferences and help you discover places you'll love.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="difference-item">
+                            <div class="difference-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="difference-text">
+                                <h3>Local Focus</h3>
+                                <p>We're passionate about supporting local businesses and helping you discover the best in your neighborhood.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="about-sidebar">
+                    <div class="sidebar-card">
+                        <h3>Quick Stats</h3>
+                        <div class="stat-list">
+                            <div class="stat-item">
+                                <span class="stat-number">Explore</span>
+                                <span class="stat-label">Boston Venues</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number">Boston</span>
+                                <span class="stat-label">Neighborhoods</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number">Verify</span>
+                                <span class="stat-label">Details with the venue</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number">2025</span>
+                                <span class="stat-label">Founded</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="sidebar-card">
+                        <h3>Get in Touch</h3>
+                        <p>Have questions or feedback? We'd love to hear from you!</p>
+                        <button class="btn-primary" onclick="window.location.href='contact.html'">Contact Us</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- CTA Section -->
+    <section class="cta-section-v2">
+        <div class="container">
+            <div class="cta-content-v2">
+                <h2>Join the SceneLink Community</h2>
+                <p>Start discovering and sharing amazing experiences with friends</p>
+                <button class="btn-cta-large" id="ctaSignupBtn">Get Started Free</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Enhanced Footer -->
+    <!-- ========== UNIFIED FOOTER ========== -->
+    <footer class="footer-unified">
+        <!-- Newsletter Bar -->
+        <div class="footer-newsletter-bar">
+            <div class="footer-newsletter-inner">
+                <div class="footer-newsletter-text">
+                    <h4>Stay in the Scene</h4>
+                    <p>Get weekly picks, exclusive events & hidden gems delivered to your inbox.</p>
+                </div>
+                <form class="footer-newsletter-form" data-sl-newsletter="1">
+                    <input type="email" name="email" placeholder="Enter your email address" required>
+                    <button type="submit">Subscribe</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main Footer Content -->
+        <div class="footer-main-content">
+            <!-- Brand Column -->
+            <div class="footer-brand-col">
+                <a class='footer-logo-link' href='/'>
+                    <img src="images/scenelinkheaderlogo-trimmed.png" alt="SceneLink" class="footer-logo-img">
+                </a>
+                <p class="footer-brand-tagline">Eat. Drink. Discover.</p>
+                <p class="footer-brand-desc">Your social guide to the best restaurants, bars, events, and nightlife experiences in Boston.</p>
+                <div class="footer-social-icons">
+                    <a href="https://www.instagram.com/scenelink.app" class="social-instagram" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="https://x.com/Scenelinkapp" class="social-x" aria-label="X (Twitter)"><i class="fab fa-twitter"></i></a>
+                    <a href="https://www.facebook.com/SceneLinkApp/" class="social-facebook" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="https://www.youtube.com/@SceneLinkapp" class="social-youtube" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                </div>
+                <div class="footer-app-badges">
+                    <a href="/" class="footer-webapp-badge" style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:#D4AF37;color:#0a0a0a;border-radius:8px;font-weight:600;text-decoration:none;font-size:14px;"><i class="fas fa-globe"></i><span>Open Web App</span></a></div>
+            </div>
+
+            <!-- Discover Column -->
+            <div class="footer-link-col">
+                <h5>Discover</h5>
+                <ul>
+                    <li><a href='/explore'>Restaurants</a></li>
+                    <li><a href='/nightlife'>Bars & Nightlife</a></li>
+                    <li><a href='/tonight'>Tonight's Picks</a></li>
+                </ul>
+            </div>
+
+            <!-- Social Column -->
+            <div class="footer-link-col">
+                <h5>Plan</h5>
+                <ul>
+                    <li><a href='/my-lists'>My Lists</a></li>
+                    <li><a href='/plan-with-friends'>Plan Builder — Beta</a></li>
+                    <li><a href='/profile'>My Profile</a></li>
+                </ul>
+                    <li><a href="/" data-sl-concierge="Plan my night in Boston" onclick="event.preventDefault();">Ask AI Concierge</a></li>
+                </ul>
+            </div>
+
+            <!-- Company Column -->
+            <div class="footer-link-col">
+                <h5>Company</h5>
+                <ul>
+                    <li><a href='/about'>About Us</a></li>
+                    <li><a href='/contact'>Contact</a></li>
+                    <li><a href='/careers'>Careers</a></li>
+                    <li><a href='/press'>Press & Media</a></li>
+                </ul>
+            </div>
+
+            <!-- Support Column -->
+            <div class="footer-link-col">
+                <h5>Support</h5>
+                <ul>
+                    <li><a href='/privacy'>Privacy Policy</a></li>
+                    <li><a href='/terms'>Terms of Service</a></li>
+                    </ul>
+            </div>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="footer-bottom-bar">
+            <div class="footer-bottom-inner">
+                <p class="footer-copyright">&copy; 2026 <a href='/'>SceneLink</a>. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href='/privacy'>Privacy</a>
+                    <a href='/terms'>Terms</a></div>
+            </div>
+        </div>
+    </footer>
+    <script src="js/sl-bundle-7d-ui.js?v=connected-20261108-6" defer></script>
+    <script src="js/booking-system.js?v=connected-20261108-6" defer></script>
+    
+    <!-- Advanced Features -->
+    <script src="js/multi-language.js?v=connected-20261108-6" defer></script>
+    
+    <!-- New Integrated Systems -->
+    <script src="js/scroll-animations.js?v=connected-20261108-6" defer></script>
+    <!-- Phase 7A perf: ai-concierge-v5.js lazy-loaded -->
+
+
+
+
+
+
+
+
+
+    <!-- Phase 7A perf: sl-social-feed.js removed (not a social page) -->
+
+
+
+    <!-- SL-POLISH-SCRIPTS -->
+
+  <script src="js/sl-phase8-launch.js?v=connected-20261108-6" defer></script>
+<script src="js/sl-phase8-completion.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-universal-search.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-social-network.js?v=connected-20261108-6" defer></script>
+  <script src="js/sl-phase8d-recovery.js?v=connected-20261108-6" defer></script>
+  <script src="/js/sl-social-integration-9a.js?v=connected-20261108-6" defer></script>
+<script src="/js/sl-verification-banner.js?v=connected-20261108-6" defer></script>
+</body>
+</html>

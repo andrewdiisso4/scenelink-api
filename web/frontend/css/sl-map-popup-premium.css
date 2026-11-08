@@ -1,0 +1,485 @@
+/* =============================================================
+ * SceneLink — Premium Map Popup (Explore + Nightlife)
+ * Applied to #slVenueWrap .sl-venue-card on map pages.
+ * Loaded AFTER explore-premium.css / nightlife CSS so it wins.
+ * ============================================================= */
+
+#slVenueWrap.sl-venue-card-wrap {
+    position: fixed !important;
+    left: 50% !important;
+    bottom: 24px !important;
+    transform: translateX(-50%) translateY(24px) !important;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 9500 !important;
+    width: min(92vw, 620px) !important;
+    max-width: 620px !important;
+    transition: opacity .25s ease, transform .25s ease !important;
+}
+#slVenueWrap.sl-venue-card-wrap.visible {
+    opacity: 1 !important;
+    transform: translateX(-50%) translateY(0) !important;
+    pointer-events: auto !important;
+}
+
+#slVenueWrap .sl-venue-card {
+    display: grid !important;
+    grid-template-columns: 120px 1fr !important;
+    grid-template-rows: auto auto !important;
+    gap: 0 16px !important;
+    align-items: stretch !important;
+    background: linear-gradient(180deg, #141414 0%, #0c0c0c 100%) !important;
+    border: 1px solid rgba(212,175,55,0.22) !important;
+    border-radius: 18px !important;
+    padding: 14px 16px 14px 14px !important;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.65), 0 2px 0 rgba(255,255,255,0.03) inset !important;
+    color: #fff !important;
+    overflow: hidden !important;
+    position: relative !important;
+}
+
+/* Thumbnail (rectangle, not circle — cleaner) */
+#slVenueWrap .sl-venue-card-img,
+#slVenueWrap img#slCardImg {
+    grid-row: 1 / span 2 !important;
+    grid-column: 1 !important;
+    width: 120px !important;
+    height: 120px !important;
+    border-radius: 14px !important;
+    object-fit: cover !important;
+    background: #1a1a1a !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    display: block !important;
+}
+
+/* Info stack */
+#slVenueWrap .sl-venue-card-info {
+    grid-row: 1 !important;
+    grid-column: 2 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+    padding-right: 36px !important; /* leave room for close btn */
+}
+
+#slVenueWrap .sl-venue-card-name {
+    font-size: 19px !important;
+    font-weight: 800 !important;
+    color: #fff !important;
+    letter-spacing: -0.01em !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+#slVenueWrap .sl-venue-card-type {
+    font-size: 12px !important;
+    color: rgba(212,175,55,0.95) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+#slVenueWrap .sl-venue-card-meta {
+    display: flex !important;
+    gap: 12px !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    font-size: 12.5px !important;
+    color: rgba(255,255,255,0.78) !important;
+    margin-top: 2px !important;
+}
+
+#slVenueWrap .sl-venue-card-meta > span {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    font-weight: 600 !important;
+}
+#slVenueWrap .sl-venue-card-meta .star { color: #f5c518 !important; }
+#slVenueWrap .sl-venue-card-meta .people i { color: #e74c3c !important; }
+#slVenueWrap .sl-venue-card-meta .sl-mpp-open {
+    color: #2ecc71 !important;
+    background: rgba(46,204,113,0.14) !important;
+    padding: 2px 8px !important;
+    border-radius: 999px !important;
+    font-size: 11px !important;
+    letter-spacing: 0.03em !important;
+    text-transform: uppercase !important;
+}
+#slVenueWrap .sl-venue-card-meta .sl-mpp-closed {
+    color: #bbb !important;
+    background: rgba(255,255,255,0.06) !important;
+    padding: 2px 8px !important;
+    border-radius: 999px !important;
+    font-size: 11px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.03em !important;
+}
+#slVenueWrap .sl-mpp-vibe {
+    font-size: 12.5px !important;
+    color: rgba(255,255,255,0.65) !important;
+    line-height: 1.45 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    margin-top: 4px !important;
+    font-style: italic !important;
+}
+
+/* Action row — horizontal icon buttons */
+#slVenueWrap .sl-venue-card-actions {
+    grid-row: 2 !important;
+    grid-column: 2 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    margin-top: 10px !important;
+    align-items: center !important;
+    flex-shrink: initial !important;
+}
+
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    height: 36px !important;
+    padding: 0 12px !important;
+    border-radius: 10px !important;
+    font-size: 12.5px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.01em !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    background: rgba(255,255,255,0.06) !important;
+    color: #fff !important;
+    cursor: pointer !important;
+    transition: transform .15s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease !important;
+    white-space: nowrap !important;
+}
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn i { font-size: 13px !important; }
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn:hover {
+    background: rgba(255,255,255,0.12) !important;
+    border-color: rgba(212,175,55,0.45) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Primary action (Reserve / Details) */
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn.sl-mpp-primary {
+    background: linear-gradient(135deg, #D4AF37 0%, #b8962e 100%) !important;
+    border-color: transparent !important;
+    color: #0a0a0a !important;
+    box-shadow: 0 4px 14px rgba(212,175,55,0.35) !important;
+}
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn.sl-mpp-primary:hover {
+    box-shadow: 0 8px 22px rgba(212,175,55,0.5) !important;
+}
+
+/* Icon-only round buttons (Save, Directions) */
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn.sl-mpp-icon {
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+}
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn.sl-mpp-icon.saved {
+    background: rgba(231,76,60,0.15) !important;
+    border-color: rgba(231,76,60,0.45) !important;
+    color: #e74c3c !important;
+}
+#slVenueWrap .sl-venue-card-actions > .sl-mpp-btn.sl-mpp-icon.saved i { color: #e74c3c !important; }
+
+/* Close button — top-right */
+#slVenueWrap .sl-venue-close,
+#slVenueWrap #slCardClose {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 50% !important;
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    color: rgba(255,255,255,0.75) !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    z-index: 2 !important;
+    transition: background .2s ease, transform .15s ease !important;
+}
+#slVenueWrap .sl-venue-close:hover,
+#slVenueWrap #slCardClose:hover {
+    background: rgba(231,76,60,0.2) !important;
+    color: #fff !important;
+    transform: rotate(90deg) !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 560px) {
+    #slVenueWrap.sl-venue-card-wrap {
+        width: calc(100vw - 20px) !important;
+        bottom: 12px !important;
+    }
+    #slVenueWrap .sl-venue-card {
+        grid-template-columns: 84px 1fr !important;
+        padding: 12px !important;
+        gap: 0 12px !important;
+    }
+    #slVenueWrap .sl-venue-card-img,
+    #slVenueWrap img#slCardImg {
+        width: 84px !important;
+        height: 84px !important;
+        border-radius: 12px !important;
+    }
+    #slVenueWrap .sl-venue-card-name { font-size: 16px !important; }
+    #slVenueWrap .sl-venue-card-meta { font-size: 11.5px !important; gap: 8px !important; }
+    #slVenueWrap .sl-venue-card-actions > .sl-mpp-btn {
+        height: 34px !important;
+        padding: 0 10px !important;
+        font-size: 12px !important;
+    }
+    #slVenueWrap .sl-venue-card-actions > .sl-mpp-btn.sl-mpp-icon {
+        width: 34px !important; height: 34px !important;
+    }
+    #slVenueWrap .sl-mpp-vibe { display: none !important; }
+}
+
+/* =============================================================
+ * Premium Map Search Bar + Filter Chips (Explore + Nightlife)
+ * ============================================================= */
+
+.sl-map-toolbar,
+#slMapToolbar,
+.sl-explore-toolbar {
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    background: rgba(12,12,12,0.72) !important;
+    border: 1px solid rgba(212,175,55,0.18) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 32px rgba(0,0,0,0.5) !important;
+    padding: 10px 12px !important;
+}
+
+/* Search bar wrapper */
+.sl-map-searchbar {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    border-radius: 14px !important;
+    padding: 4px 4px 4px 40px !important;
+    transition: border-color .2s ease, background .2s ease, box-shadow .2s ease !important;
+}
+.sl-map-searchbar:focus-within {
+    border-color: rgba(212,175,55,0.6) !important;
+    background: rgba(255,255,255,0.08) !important;
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.15) !important;
+}
+.sl-search-icon,
+.sl-map-searchbar .sl-search-icon,
+.sl-map-searchbar > i.fa-search {
+    position: absolute !important;
+    left: 14px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    color: rgba(212,175,55,0.85) !important;
+    font-size: 14px !important;
+    pointer-events: none !important;
+}
+
+/* Search input premium look */
+#slSearchInput,
+.sl-map-searchbar input[type="text"],
+.sl-explore-search input[type="text"] {
+    background: transparent !important;
+    border: none !important;
+    color: #fff !important;
+    padding: 10px 8px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    height: 42px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+#slSearchInput::placeholder,
+.sl-map-searchbar input[type="text"]::placeholder {
+    color: rgba(255,255,255,0.5) !important;
+}
+
+/* Locate btn (in search bar) */
+.sl-map-loc-btn,
+#slSearchLoc {
+    background: rgba(255,255,255,0.06) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    color: rgba(212,175,55,0.95) !important;
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: background .15s ease, border-color .15s ease !important;
+    flex-shrink: 0 !important;
+}
+.sl-map-loc-btn:hover, #slSearchLoc:hover {
+    background: rgba(212,175,55,0.15) !important;
+    border-color: rgba(212,175,55,0.5) !important;
+}
+
+/* Search primary btn */
+.sl-map-search-btn,
+#slSearchBtn {
+    background: linear-gradient(135deg, #D4AF37 0%, #b8962e 100%) !important;
+    color: #0a0a0a !important;
+    border: none !important;
+    height: 34px !important;
+    padding: 0 16px !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+    cursor: pointer !important;
+    transition: box-shadow .2s ease, transform .12s ease !important;
+    flex-shrink: 0 !important;
+    letter-spacing: 0.02em !important;
+}
+.sl-map-search-btn:hover, #slSearchBtn:hover {
+    box-shadow: 0 4px 14px rgba(212,175,55,0.4) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Chip rows alignment */
+.sl-map-chips,
+.sl-cuisine-filters {
+    display: flex !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    margin-top: 10px !important;
+}
+
+/* Cuisine chips */
+.sl-cuisine-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    height: 30px !important;
+    padding: 0 12px !important;
+    border-radius: 999px !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    color: rgba(255,255,255,0.78) !important;
+    cursor: pointer !important;
+    transition: background .2s ease, border-color .2s ease, color .2s ease !important;
+    white-space: nowrap !important;
+}
+.sl-cuisine-chip:hover {
+    background: rgba(212,175,55,0.08) !important;
+    border-color: rgba(212,175,55,0.35) !important;
+    color: #fff !important;
+}
+.sl-cuisine-chip.active {
+    background: rgba(212,175,55,0.2) !important;
+    border-color: rgba(212,175,55,0.6) !important;
+    color: #D4AF37 !important;
+}
+
+/* Filter chips — gold-outline premium */
+.sl-chip,
+.sl-chip-btn,
+.sl-filter-chip,
+.sl-map-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    height: 34px !important;
+    padding: 0 14px !important;
+    border-radius: 999px !important;
+    font-size: 12.5px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.01em !important;
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: rgba(255,255,255,0.82) !important;
+    cursor: pointer !important;
+    transition: background .2s ease, border-color .2s ease, color .2s ease, transform .12s ease !important;
+    white-space: nowrap !important;
+}
+.sl-chip i,
+.sl-chip-btn i,
+.sl-filter-chip i,
+.sl-map-chip i { font-size: 11px !important; opacity: 0.9 !important; }
+
+.sl-chip:hover,
+.sl-chip-btn:hover,
+.sl-filter-chip:hover,
+.sl-map-chip:hover {
+    background: rgba(212,175,55,0.08) !important;
+    border-color: rgba(212,175,55,0.4) !important;
+    color: #fff !important;
+    transform: translateY(-1px) !important;
+}
+
+.sl-chip.active,
+.sl-chip.sl-chip-active,
+.sl-chip-btn.active,
+.sl-chip-btn.sl-chip-active,
+.sl-filter-chip.active,
+.sl-map-chip.active {
+    background: linear-gradient(135deg, #D4AF37 0%, #b8962e 100%) !important;
+    border-color: transparent !important;
+    color: #0a0a0a !important;
+    box-shadow: 0 4px 14px rgba(212,175,55,0.32) !important;
+}
+
+/* Map control buttons (zoom/locate/layers) — premium round */
+.leaflet-bar a,
+.sl-map-ctrls button,
+.sl-map-ctrl-btn {
+    background: rgba(12,12,12,0.85) !important;
+    color: #fff !important;
+    border: 1px solid rgba(212,175,55,0.2) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    transition: background .15s ease, border-color .15s ease !important;
+}
+.leaflet-bar a:hover,
+.sl-map-ctrls button:hover,
+.sl-map-ctrl-btn:hover {
+    background: rgba(212,175,55,0.18) !important;
+    border-color: rgba(212,175,55,0.55) !important;
+    color: #D4AF37 !important;
+}
+
+/* ============================================================= */
+/* Leaflet popup — premium dark override (in case used) */
+/* ============================================================= */
+.leaflet-popup-content-wrapper {
+    background: linear-gradient(180deg, #141414 0%, #0c0c0c 100%) !important;
+    color: #fff !important;
+    border: 1px solid rgba(212,175,55,0.22) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 18px 48px rgba(0,0,0,0.6) !important;
+    padding: 0 !important;
+}
+.leaflet-popup-content { margin: 0 !important; padding: 0 !important; color: #fff !important; }
+.leaflet-popup-tip { background: #0c0c0c !important; box-shadow: none !important; }
+.leaflet-popup-close-button { color: rgba(255,255,255,0.7) !important; }

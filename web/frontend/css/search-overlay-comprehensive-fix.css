@@ -1,0 +1,258 @@
+/* Comprehensive Search Overlay Fix - Tonight's Picks Page */
+/* Addresses all overlay issues when scrolling */
+
+/* ==========================================================================
+   SEARCH AREA LAYERING HIERARCHY
+   ========================================================================== */
+
+/* Universal Header - Highest Priority (z-index: 1000) */
+.header-enhanced {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 1000 !important;
+  background: rgba(20, 20, 20, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+/* Enhanced Search Filters Section - Fixed Sticky Position */
+.enhanced-search-filters {
+  position: sticky !important;
+  top: 70px !important;  /* Exactly below header */
+  z-index: 950 !important;  /* Just below header but above everything else */
+  background: rgba(20, 20, 20, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2) !important;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Enhanced Search Container */
+.enhanced-search-container {
+  position: relative !important;
+  z-index: 951 !important;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-lg);
+}
+
+/* Main Search Bar */
+.enhanced-search-bar {
+  position: relative !important;
+  z-index: 952 !important;
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Search Input Wrapper */
+.search-input-wrapper {
+  position: relative !important;
+  z-index: 953 !important;
+}
+
+/* Search Input */
+.search-input {
+  position: relative !important;
+  z-index: 954 !important;
+  background: rgba(30, 30, 30, 0.95) !important;
+  border: 2px solid rgba(212, 175, 55, 0.3) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* Quick Filter Pills - Sticky Below Search */
+.quick-filter-pills {
+  position: sticky !important;
+  top: 180px !important;  /* Position below search bar */
+  z-index: 940 !important;
+  background: rgba(20, 20, 20, 0.95) !important;
+  backdrop-filter: blur(15px) !important;
+  border-radius: var(--radius-lg) !important;
+  padding: var(--spacing-md) !important;
+  margin: var(--spacing-md) 0 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Advanced Filters Panel */
+.advanced-filters-panel {
+  position: relative !important;
+  z-index: 945 !important;
+  background: rgba(25, 25, 25, 0.98) !important;
+  backdrop-filter: blur(15px) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Filter Categories */
+.filter-categories {
+  position: relative !important;
+  z-index: 946 !important;
+}
+
+/* ==========================================================================
+   MAIN CONTENT - PROPER STACKING CONTEXT
+   ========================================================================== */
+
+/* Main Content Wrapper */
+.main-content {
+  position: relative !important;
+  z-index: 100 !important;  /* Much lower than search area */
+  background: var(--dark-bg);
+  margin-top: 0 !important;
+}
+
+/* Container */
+.container {
+  position: relative !important;
+  z-index: 101 !important;
+}
+
+/* Featured Tonight Section */
+.featured-tonight-section {
+  position: relative !important;
+  z-index: 102 !important;
+  background: transparent;
+  margin-top: var(--spacing-xl) !important;
+}
+
+/* Personalized Picks Section */
+.personalized-picks-section {
+  position: relative !important;
+  z-index: 103 !important;
+  background: transparent;
+  margin-top: var(--spacing-xl) !important;
+}
+
+/* Venue Cards - Lower Priority */
+.venue-card,
+.listing-card,
+.featured-card-enhanced {
+  position: relative !important;
+  z-index: 50 !important;
+  background: rgba(30, 30, 30, 0.95) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+/* ==========================================================================
+   OVERLAY ELEMENTS - CONTROLLED LAYERING
+   ========================================================================== */
+
+/* Venue Notifications - Lower than search but above content */
+.venue-notification {
+  z-index: 800 !important;  /* Reduced from 10001 */
+}
+
+/* Venue Details Modal */
+.venue-details-modal {
+  z-index: 900 !important;  /* Below search but above content */
+}
+
+/* Venue Discovery System Elements */
+.venue-discovery-system * {
+  z-index: auto !important;
+}
+
+.venue-discovery-system .venue-notification {
+  z-index: 800 !important;
+}
+
+/* ==========================================================================
+   RESPONSIVE ADJUSTMENTS
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .enhanced-search-filters {
+    top: 60px !important;
+    z-index: 950 !important;
+  }
+  
+  .quick-filter-pills {
+    top: 200px !important;
+    z-index: 940 !important;
+  }
+  
+  .main-content {
+    z-index: 100 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .enhanced-search-filters {
+    top: 50px !important;
+  }
+  
+  .quick-filter-pills {
+    top: 180px !important;
+  }
+}
+
+/* ==========================================================================
+   SCROLLING BEHAVIOR
+   ========================================================================== */
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth !important;
+}
+
+/* Prevent content jump when search becomes sticky */
+.enhanced-search-filters + * {
+  margin-top: 0 !important;
+}
+
+/* Ensure proper content flow */
+.main-content {
+  padding-top: var(--spacing-lg) !important;
+}
+
+/* ==========================================================================
+   EDGE CASE HANDLING
+   ========================================================================== */
+
+/* Handle any rogue positioned elements */
+* {
+  z-index: auto !important;
+}
+
+/* Explicitly set important elements */
+.header-enhanced,
+.enhanced-search-filters,
+.enhanced-search-container,
+.enhanced-search-bar,
+.search-input-wrapper,
+.search-input,
+.quick-filter-pills,
+.advanced-filters-panel,
+.filter-categories,
+.main-content,
+.container,
+.featured-tonight-section,
+.personalized-picks-section {
+  position: relative !important;
+}
+
+/* Force proper layering */
+.header-enhanced { z-index: 1000 !important; }
+.enhanced-search-filters { z-index: 950 !important; }
+.enhanced-search-container { z-index: 951 !important; }
+.enhanced-search-bar { z-index: 952 !important; }
+.search-input-wrapper { z-index: 953 !important; }
+.search-input { z-index: 954 !important; }
+.quick-filter-pills { z-index: 940 !important; }
+.advanced-filters-panel { z-index: 945 !important; }
+.filter-categories { z-index: 946 !important; }
+.main-content { z-index: 100 !important; }
+.container { z-index: 101 !important; }
+.featured-tonight-section { z-index: 102 !important; }
+.personalized-picks-section { z-index: 103 !important; }
+
+/* Venue notifications and modals */
+.venue-notification { z-index: 800 !important; }
+.venue-details-modal { z-index: 900 !important; }
+
+/* Venue cards - lowest */
+.venue-card,
+.listing-card,
+.featured-card-enhanced { 
+  z-index: 50 !important; 
+}

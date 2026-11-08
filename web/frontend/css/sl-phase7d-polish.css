@@ -1,0 +1,229 @@
+/* Phase 7D — Performance polish overrides
+   Revised 2026-05-29 (v2) — CLS-safe.
+   Key fix vs v1: NEVER use :empty::before tricks (they trigger CLS when
+   content is injected). Use min-height on the parent, NOT injected pseudo
+   content. Never set opacity:0 on images that already have a src. */
+
+/* === CLS PREVENTION (NON-INTRUSIVE) === */
+
+/* Hero brand logo: prevent CLS from late image load */
+.hero-brand-logo {
+    height: 80px;
+    width: auto;
+    aspect-ratio: 3 / 1;
+}
+.logo-main {
+    height: 48px;
+    width: auto;
+}
+
+/* Homepage Tonight's Picks: lock card height to skeleton height (360px)
+   so when JS renders cards in place of skeletons, no shift occurs. */
+.tonight-pick-card {
+    height: 360px;
+    display: flex;
+    flex-direction: column;
+}
+.tonight-pick-card > div:last-child { /* the padding wrapper */
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Explore page: each right-panel card has fixed height so re-arrange
+   doesn't shift others. (sl-rp-card meta block height was the culprit) */
+.sl-rp-card {
+    min-height: 96px;
+}
+.sl-rp-card-body {
+    min-height: 72px;
+}
+
+/* Explore: reserve height on card containers BEFORE cards inject.
+   Avoid :empty pseudo-elements (those caused 1.2 CLS on v1). */
+#slListCards,
+#slRightPanelCards {
+    min-height: 800px;
+}
+
+/* Venue card images on cards: lock the imgwrap aspect-ratio so the card
+   reserves height before the image loads. SAFE — only affects sized wrappers. */
+.sl-list-card-imgwrap,
+.sl-venue-card-imgwrap,
+.tonight-card-imgwrap,
+.slht-venue-img-wrap {
+    aspect-ratio: 16 / 10;
+    background: linear-gradient(135deg, #181818, #1f1f1f);
+    overflow: hidden;
+}
+
+/* Hero stats row never reflows */
+.hero-stats-row,
+.sl-hero-stats { min-height: 64px; }
+
+/* Tonight's Picks cards reserve room */
+.slht-venue-card { min-height: 260px; }
+
+/* === IMAGE LOADING POLISH (NON-CLS) === */
+
+/* Subtle background while lazy images load — SAFE (no opacity:0 trick) */
+img[loading="lazy"] {
+    background: linear-gradient(135deg, #181818, #1f1f1f);
+}
+
+/* When polish JS marks an image loaded, fade in smoothly. */
+img.sl-img-loaded {
+    animation: sl-fadein 0.3s ease both;
+}
+@keyframes sl-fadein {
+    from { opacity: 0.6; }
+    to   { opacity: 1; }
+}
+
+/* === MICRO-INTERACTION POLISH === */
+
+/* Smooth scroll everywhere */
+html { scroll-behavior: smooth; }
+
+/* All buttons get a subtle lift on hover */
+button,
+.btn-primary,
+.btn-secondary,
+.btn-feature-cta,
+.cta-button,
+.sl-venue-cta,
+.pwf-btn,
+a.btn,
+.list-card-action {
+    transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+                background-color 0.18s ease;
+}
+button:hover:not(:disabled),
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-feature-cta:hover,
+.cta-button:hover,
+.sl-venue-cta:hover,
+.pwf-btn:hover,
+a.btn:hover,
+.list-card-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(255, 215, 0, 0.18);
+}
+
+/* Card hover lift on venue cards (safe — only on hover, no layout shift) */
+.sl-list-card,
+.sl-venue-card,
+.tonight-card,
+.slht-venue-card {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sl-list-card:hover,
+.sl-venue-card:hover,
+.tonight-card:hover,
+.slht-venue-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,215,0,0.15);
+}
+
+/* Image zoom on card hover */
+.sl-list-card-imgwrap img,
+.sl-venue-card-imgwrap img,
+.tonight-card-imgwrap img {
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sl-list-card:hover .sl-list-card-imgwrap img,
+.sl-venue-card:hover .sl-venue-card-imgwrap img,
+.tonight-card:hover .tonight-card-imgwrap img {
+    transform: scale(1.05);
+}
+
+/* Heart-pop animation when favoriting */
+@keyframes sl-heart-pop {
+    0%   { transform: scale(1); }
+    30%  { transform: scale(1.4); }
+    60%  { transform: scale(0.95); }
+    100% { transform: scale(1); }
+}
+.sl-heart-pop { animation: sl-heart-pop 0.45s ease; }
+
+/* Toast bounce-in (premium feel) */
+@keyframes sl-toast-bounce {
+    0%   { transform: translateY(20px) scale(0.95); opacity: 0; }
+    50%  { transform: translateY(-4px) scale(1.02); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.sl-toast,
+.toast-notification {
+    animation: sl-toast-bounce 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Top loading bar during navigation */
+.sl-top-loader {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    width: 0%;
+    background: linear-gradient(90deg, #FFD700, #FF6B35);
+    z-index: 99999;
+    transition: width 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+.sl-top-loader.active {
+    opacity: 1;
+    width: 90%;
+    transition: width 8s ease-out, opacity 0.2s ease;
+}
+.sl-top-loader.done {
+    width: 100%;
+    opacity: 0;
+    transition: width 0.2s ease, opacity 0.4s ease 0.2s;
+}
+
+/* AI Concierge typing-dots */
+.sl-typing-dots {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+}
+.sl-typing-dots span {
+    width: 6px; height: 6px;
+    background: #FFD700;
+    border-radius: 50%;
+    animation: sl-typing 1.2s infinite ease-in-out;
+}
+.sl-typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+.sl-typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes sl-typing {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    40%           { transform: scale(1);   opacity: 1; }
+}
+
+/* :focus-visible polish — premium keyboard nav */
+*:focus-visible {
+    outline: 2px solid rgba(255,215,0,0.85);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* Premium webkit scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #0a0a0a; }
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #2a2a2a, #1a1a1a);
+    border-radius: 8px;
+    border: 2px solid #0a0a0a;
+}
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #FFD700, #FF6B35); }
+
+/* Reduced motion override */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    html { scroll-behavior: auto; }
+}

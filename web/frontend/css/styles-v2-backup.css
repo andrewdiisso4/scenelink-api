@@ -1,0 +1,100 @@
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#comparisonBadge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--gold-primary);
+    color: var(--dark-bg);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.btn-compare {
+    position: relative;
+}
+
+.btn-compare.active {
+    background: rgba(68, 255, 68, 0.1);
+    border-color: #44ff44;
+    color: #44ff44;
+}
+
+/* ============================================
+   AI RECOMMENDATIONS
+   ============================================ */
+
+.recommendations-section {
+    margin: var(--spacing-xl) 0;
+}
+
+.recommendation-card {
+    position: relative;
+    background: var(--card-bg);
+    border: 1px solid rgba(212, 175, 55, 0.1);
+    border-radius: 12px;
+    padding: var(--spacing-lg);
+    transition: all 0.3s ease;
+}
+
+.recommendation-card:hover {
+    border-color: var(--gold-primary);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(212, 175, 55, 0.2);
+}
+
+.recommendation-reason {
+    display: inline-block;
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px solid var(--gold-primary);
+    color: var(--gold-primary);
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+}
+
+.recommendation-score {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: var(--gold-primary);
+    color: var(--dark-bg);
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+/* Responsive Advanced Features */
+@media (max-width: 768px) {
+    .language-selector-btn {
+        padding: 6px 10px;
+    }
+    
+    .language-dropdown {
+        min-width: 180px;
+    }
+    
+    .comparison-table {
+        padding: var(--spacing-md);
+    }
+    
+    .comparison-table th,
+    .comparison-table td {
+        padding: var(--spacing-sm);
+        font-size: 0.85rem;
+    }
+    
+    #searchSuggestions {
+        max-height: 300px;
+    }
+}
