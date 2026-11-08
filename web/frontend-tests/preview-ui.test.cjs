@@ -40,7 +40,7 @@ test('shared desktop header separates links from search/account and preserves na
  for(const file of ['profile.html','messages.html','social-feed.html','my-lists.html'])assert(fs.readFileSync(path.join(root,file),'utf8').includes('css/sl-phase8f-polish.css'));
 });
 test('UI hotfix uses a new asset/cache version and its build helper cannot restore the stale version',()=>{
- const tag='connected-20261108-6';
+ const tag='connected-20261108-7';
  const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
  assert(sw.includes("const VERSION = 'sl-"+tag+"'"));
  assert(sw.includes('c.match(req)')); // Query-string version remains part of the cache key.
@@ -57,7 +57,7 @@ test('UI hotfix uses a new asset/cache version and its build helper cannot resto
 test('mobile shared header reserves search row and retains account/notification access',()=>{
  const css=fs.readFileSync(path.join(root,'css/sl-phase8f-polish.css'),'utf8');
  const d=new JSDOM('<style>'+css+'</style>');
- try{const rules=d.window.document.styleSheets[0].cssRules,mobile=rules[rules.length-1];assert.equal(mobile.conditionText,'(max-width: 900px)');const rule=sel=>[...mobile.cssRules].find(r=>r.selectorText===sel).style;
+ try{const rules=d.window.document.styleSheets[0].cssRules,mobile=[...rules].find(r=>r.conditionText==='(max-width: 900px)' && [...r.cssRules].some(c=>c.selectorText==='body:has(.header-enhanced)'));assert.equal(mobile.conditionText,'(max-width: 900px)');const rule=sel=>[...mobile.cssRules].find(r=>r.selectorText===sel).style;
  assert.equal(rule('.header-enhanced .nav-enhanced').getPropertyValue('grid-template-areas'),'"brand account menu" "search search search"');
  assert.equal(rule('.header-enhanced').position,'relative');
  assert.equal(rule('.header-enhanced .nav-enhanced').height,'auto');
@@ -68,7 +68,7 @@ test('mobile shared header reserves search row and retains account/notification 
 });
 test('mobile drawer clears fixed-header offset and stacks above page backdrop',()=>{
  const css=fs.readFileSync(path.join(root,'css/sl-phase8f-polish.css'),'utf8'),d=new JSDOM('<style>'+css+'</style>');
- try{const rules=d.window.document.styleSheets[0].cssRules,mobile=rules[rules.length-1],rule=sel=>[...mobile.cssRules].find(r=>r.selectorText===sel).style;
+ try{const rules=d.window.document.styleSheets[0].cssRules,mobile=[...rules].find(r=>r.conditionText==='(max-width: 900px)' && [...r.cssRules].some(c=>c.selectorText==='body:has(.header-enhanced)')),rule=sel=>[...mobile.cssRules].find(r=>r.selectorText===sel).style;
  assert.equal(rule('body:has(.header-enhanced)').getPropertyValue('padding-top'),'0');
  assert.equal(rule('.header-enhanced').getPropertyValue('backdrop-filter'),'none');
  assert.equal(rule('body.menu-open .header-enhanced').getPropertyValue('z-index'),'9050');

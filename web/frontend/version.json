@@ -1,8 +1,8 @@
 {
-  "phase": "social-candidate",
-  "sw_version": "sl-connected-20261108-6",
-  "timestamp": "2026-11-08T05:37:09.747723+00:00",
-  "status": "local_not_deployed",
-  "requires_paired_backend": true,
-  "summary": "Connected social candidate with account-safe notifications, private-plan links, owner editing and restricted-plan recovery. Local synthetic-account browser acceptance passed; production authentication/providers, physical-device/Safari and coordinated-release acceptance remain pending. In-site booking unavailable."
+  "phase": "responsive-release",
+  "sw_version": "sl-connected-20261108-7",
+  "timestamp": "2026-11-08T21:20:46.427418+00:00",
+  "status": "prepared_for_deployment",
+  "requires_paired_backend": false,
+  "summary": "Responsive navigation release prepared for deployment: homepage menu and hosting badge clearance verified in isolated Chromium guest checks. Existing backend and provider settings are unchanged. Production post-deployment verification and physical-device/Safari acceptance remain pending. In-site booking unavailable."
 }

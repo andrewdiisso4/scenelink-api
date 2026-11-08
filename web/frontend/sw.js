@@ -14,18 +14,18 @@
  *     stale HTML even momentarily
  */
 
-const VERSION = 'sl-connected-20261108-6';
+const VERSION = 'sl-connected-20261108-7';
 const SHELL_CACHE = `sl-shell-${VERSION}`;
 const RUNTIME_CACHE = `sl-runtime-${VERSION}`;
 const IMG_CACHE = `sl-img-${VERSION}`;
 
 const SHELL_URLS = [
-  '/js/sl-social-messages.js?v=connected-20261108-6',
-  '/js/sl-social-profile.js?v=connected-20261108-6',
-  '/js/sl-events.js?v=connected-20261108-6',
-  '/js/sl-connected-plans.js?v=connected-20261108-6',
-  '/js/sl-connected-actions.js?v=connected-20261108-6',
-  '/js/sl-connected-api.js?v=connected-20261108-6',
+  '/js/sl-social-messages.js?v=connected-20261108-7',
+  '/js/sl-social-profile.js?v=connected-20261108-7',
+  '/js/sl-events.js?v=connected-20261108-7',
+  '/js/sl-connected-plans.js?v=connected-20261108-7',
+  '/js/sl-connected-actions.js?v=connected-20261108-7',
+  '/js/sl-connected-api.js?v=connected-20261108-7',
   '/offline.html',
   '/manifest.json',
   '/icons/icon-192.png',
@@ -33,21 +33,21 @@ const SHELL_URLS = [
   '/icons/apple-touch-icon.png',
   '/icons/favicon.ico',
   // Phase 7D: precache the bundles so first-paint after install is instant
-  '/css/sl-bundle-7d.css?v=connected-20261108-6',
-  '/js/sl-bundle-7d.js?v=connected-20261108-6',
-  '/js/sl-nav-gate.js?v=connected-20261108-6',
-  '/js/sl-fetch-guard.js?v=connected-20261108-6',
-  '/js/sl-version-marker.js?v=connected-20261108-6',
-  '/js/sl-bundle-7d-ui.js?v=connected-20261108-6',
-  '/css/sl-phase8-launch.css?v=connected-20261108-6',
-  '/js/sl-phase8-completion.js?v=connected-20261108-6',
-  '/js/sl-phase8d-recovery.js?v=connected-20261108-6',
-  '/css/sl-universal-search.css?v=connected-20261108-6',
-  '/js/sl-universal-search.js?v=connected-20261108-6',
-  '/js/sl-social-network.js?v=connected-20261108-6',
-  '/js/sl-social-core.js?v=connected-20261108-6',
-  '/js/sl-social-integration-9a.js?v=connected-20261108-6',
-  '/js/sl-venue-activity-9a.js?v=connected-20261108-6'
+  '/css/sl-bundle-7d.css?v=connected-20261108-7',
+  '/js/sl-bundle-7d.js?v=connected-20261108-7',
+  '/js/sl-nav-gate.js?v=connected-20261108-7',
+  '/js/sl-fetch-guard.js?v=connected-20261108-7',
+  '/js/sl-version-marker.js?v=connected-20261108-7',
+  '/js/sl-bundle-7d-ui.js?v=connected-20261108-7',
+  '/css/sl-phase8-launch.css?v=connected-20261108-7',
+  '/js/sl-phase8-completion.js?v=connected-20261108-7',
+  '/js/sl-phase8d-recovery.js?v=connected-20261108-7',
+  '/css/sl-universal-search.css?v=connected-20261108-7',
+  '/js/sl-universal-search.js?v=connected-20261108-7',
+  '/js/sl-social-network.js?v=connected-20261108-7',
+  '/js/sl-social-core.js?v=connected-20261108-7',
+  '/js/sl-social-integration-9a.js?v=connected-20261108-7',
+  '/js/sl-venue-activity-9a.js?v=connected-20261108-7'
 ];
 
 // ── install: nuke ALL old sl-* caches, then precache shell ──────────────
@@ -83,7 +83,7 @@ self.addEventListener('activate', (event) => {
     .then((clients) => {
       clients.forEach((c) => {
         try {
-          c.postMessage({ type: 'SW_UPDATED', version: VERSION, phase: 'social-candidate' });
+          c.postMessage({ type: 'SW_UPDATED', version: VERSION, phase: 'responsive-release' });
         } catch (_) { /* ignore */ }
       });
     })
