@@ -1,0 +1,87 @@
+/* =====================================================
+ * SceneLink - Global Logo Standardization (launch-polish)
+ * Forces identical large logo size across every page header.
+ * Loads LAST (linked after other CSS) so !important wins.
+ * ===================================================== */
+
+/* Desktop: large, prominent logo */
+.nav-logo,
+.logo-img,
+.logo-main,
+.sl-logo-main,
+.sl-explore-logo,
+.sl-nav-logo,
+.sl-nav-logo-link img,
+.sl-explore-header .sl-nav-logo-link img,
+.navbar .logo img,
+.main-nav .logo img,
+.top-nav .logo img,
+header .logo img,
+header a.logo img,
+nav a.logo img {
+    height: 64px !important;
+    max-height: 64px !important;
+    min-height: 64px !important;
+    width: auto !important;
+    max-width: none !important;
+    object-fit: contain !important;
+    display: inline-block !important;
+    transition: transform 0.2s ease;
+}
+
+/* Admin sidebar uses text-logo — upscale to match */
+.sidebar-logo-text { font-size: 24px !important; letter-spacing: -0.4px !important; }
+.sidebar-logo-sub  { font-size: 12px !important; }
+
+.nav-logo:hover,
+.logo-img:hover,
+.logo-main:hover,
+header .logo img:hover,
+header a.logo img:hover {
+    transform: scale(1.03);
+}
+
+/* Link wrapping the logo shouldn't have any constrain */
+.navbar .logo,
+header .logo,
+header a.logo,
+nav a.logo {
+    display: inline-flex !important;
+    align-items: center !important;
+    line-height: 1 !important;
+    padding: 4px 0 !important;
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+    .nav-logo,
+    .logo-img,
+    .logo-main,
+    .sl-explore-logo,
+    .sl-nav-logo,
+    .sl-nav-logo-link img,
+    header .logo img,
+    header a.logo img,
+    nav a.logo img {
+        height: 54px !important;
+        max-height: 54px !important;
+        min-height: 54px !important;
+    }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+    .nav-logo,
+    .logo-img,
+    .logo-main,
+    .sl-explore-logo,
+    .sl-nav-logo,
+    .sl-nav-logo-link img,
+    header .logo img,
+    header a.logo img,
+    nav a.logo img {
+        height: 44px !important;
+        max-height: 44px !important;
+        min-height: 44px !important;
+    }
+}

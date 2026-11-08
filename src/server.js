@@ -38,7 +38,7 @@ app.use(cors({
     // Allow server-to-server / curl / mobile apps (no Origin header)
     if (!origin) return callback(null, true);
     // Approved list: env-configured origins + Netlify preview subdomains
-    if (allowedOrigins.some(o => origin === o) || /^https:\/\/[a-z0-9-]+--[a-z0-9-]+\.netlify\.app$/i.test(origin)) {
+    if (allowedOrigins.some(o => origin === o) || /^https:\/\/[a-z0-9-]+--scenelink\.netlify\.app$/i.test(origin)) {
       return callback(null, true);
     }
     console.warn('[cors] blocked origin:', origin);
@@ -64,7 +64,8 @@ app.use((req, res, next) => {
     next();
 });
 app.use(compression());
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+// Never log credential-bearing query strings or message bodies.
+app.use(morgan((tokens, req, res) => [tokens.method(req,res), req.path, tokens.status(req,res), tokens['response-time'](req,res), 'ms'].join(' ')));
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
@@ -81,17 +82,20 @@ app.get('/api/health', async (req, res) => {
       environment: process.env.NODE_ENV || 'development',
     });
   } catch (err) {
-    res.status(500).json({ status: 'error', database: 'disconnected', error: err.message });
+    res.status(500).json({ status: 'error', database: 'disconnected', error: 'Database unavailable' });
   }
 });
 
 // ==================== API ROUTES ====================
-app.use('/api/auth', require('./routes/auth'));
+app.use('/api', require('./launch/router')); // Canonical permission-checked launch routes
+// All legacy auth endpoints are implemented by launch/router. Do not mount
+// older reset/logout implementations alongside the canonical handlers.
 app.use('/api/auth', require('./routes/oauth')); // Google + Apple OAuth
+app.use('/api/admin', require('./middleware/auth').requireAdmin, require('./launch/shared').noStore);
 app.use('/api/admin', require('./routes/admin')); // Admin dashboard API
 app.use('/api/admin', require('./routes/demo'));  // Demo/reviewer account seed (admin-gated)
 app.use('/api/venues', require('./routes/venues'));
-app.use('/api/events', require('./routes/events_stream')); // Phase 9A SSE realtime (mounts /api/events/stream)
+// Legacy query-token SSE is intentionally not mounted; canonical /events/stream rejects it.
 app.use('/api/events', require('./routes/events'));
 app.use('/api/activity', require('./routes/activity'));
 app.use('/api/favorites', require('./routes/favorites'));
@@ -122,7 +126,7 @@ app.use('/api/media',         require('./routes/media'));      // Phase 9A media
 
 // Admin: force reseed (requires secret header)
 app.post('/api/admin/reseed', async (req, res) => {
-  const secret = req.headers['x-admin-secret'] || req.query.secret;
+  const secret = req.headers['x-admin-secret'];
   if (!process.env.ADMIN_SECRET || secret !== process.env.ADMIN_SECRET) {
     return res.status(403).json({ error: 'forbidden' });
   }
@@ -194,7 +198,7 @@ async function applySqlMigrations() {
   }
   files.sort((a, b) => path.basename(a).localeCompare(path.basename(b)) || a.localeCompare(b));
   const runAll = process.env.RUN_ALL_SQL_MIGRATIONS === 'true';
-  const selected = runAll ? files : files.filter((file) => /^(002_|003_|004_|005_|006_).*\.sql$/i.test(path.basename(file)));
+  const selected = runAll ? files : files.filter((file) => /^(002_|003_|004_|005_|006_|007_|008_|009_|010_|011_|012_|013_).*\.sql$/i.test(path.basename(file)));
   for (const file of selected) {
     try {
       const sql = fs.readFileSync(file, 'utf8');
@@ -216,13 +220,14 @@ async function initDatabase() {
     await pool.query(schema);
     console.log('✅ Database schema initialized');
     await applySqlMigrations();
+    await require('./routes/business').initialize();
 
     // Check if we need to seed. Re-seed if the DB was seeded with the old small dataset
     // (fewer than 100 venues means we should refresh with the big dataset).
     const venueCount = await pool.query('SELECT COUNT(*) FROM venues');
     const n = parseInt(venueCount.rows[0].count);
     const RESEED_THRESHOLD = parseInt(process.env.SEED_MIN_VENUES || '100', 10);
-    if (n < RESEED_THRESHOLD || process.env.FORCE_RESEED === 'true') {
+    if (process.env.NODE_ENV !== 'production' && process.env.ALLOW_DEMO_SEED === 'true' && (n < RESEED_THRESHOLD || process.env.FORCE_RESEED === 'true')) {
       console.log(`📦 Database has ${n} venues (< ${RESEED_THRESHOLD}), running full seed...`);
       const { seedDatabase } = require('./seeds/seed');
       await seedDatabase(pool);
@@ -231,16 +236,8 @@ async function initDatabase() {
       console.log(`✅ Database already has ${n} venues`);
     }
   } catch (err) {
-    console.error('❌ Database init error:', err.message || String(err), '| code:', err.code, '| first stack:', (err.stack||'').split('\n')[0]);
-    console.error('❌ DATABASE_URL present?', !!process.env.DATABASE_URL, '| length:', (process.env.DATABASE_URL||'').length);
-    // Don't crash — schema might already exist with different extension setup
-    // Try just checking connection
-    try {
-      await pool.query('SELECT 1');
-      console.log('✅ Database connection OK (schema may need manual init)');
-    } catch (connErr) {
-      console.error('❌ Cannot connect to database:', connErr.message || String(connErr), '| code:', connErr.code);
-    }
+    // Preserve the error for startup failure; never continue with partial schema.
+    throw err;
   }
 }
 
@@ -248,7 +245,7 @@ async function initDatabase() {
 // Triggers a controlled server-side exception so we can verify Sentry is wired.
 // Gated by X-Admin-Secret header; safe to leave in production (requires secret).
 app.get('/api/_sentry-test', (req, res, next) => {
-  const secret = req.headers['x-admin-secret'] || req.query.secret;
+  const secret = req.headers['x-admin-secret'];
   if (!process.env.ADMIN_SECRET || secret !== process.env.ADMIN_SECRET) {
     return res.status(403).json({ error: 'forbidden' });
   }
@@ -271,7 +268,7 @@ sentry.attachErrorHandler(app);
 app.use((err, req, res, next) => {
   const isProd = process.env.NODE_ENV === 'production';
   // Log full detail server-side (Render logs), but NEVER in the response
-  console.error('[unhandled error]', req.method, req.originalUrl, '|', err && err.message, isProd ? '' : (err && err.stack));
+  console.error('[unhandled error]', req.method, req.path, '|', err && err.message, isProd ? '' : (err && err.stack));
   if (res.headersSent) return next(err);
   res.status(err.status || 500).json({
     error: isProd ? 'Internal server error' : (err.message || 'Internal server error'),
@@ -279,11 +276,9 @@ app.use((err, req, res, next) => {
 });
 
 // ==================== START SERVER ====================
-app.listen(PORT, async () => {
-  console.log(`🚀 SceneLink API running on port ${PORT}`);
-  console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 CORS origins: ${allowedOrigins.join(', ')}`);
-  await initDatabase();
-});
+if (require.main === module) {
+  require('./launch/bootstrap').start({app,pool,initialize:initDatabase,port:PORT})
+    .catch(async () => { console.error('[launch] Startup failed; no application traffic accepted'); process.exitCode=1; await pool.end(); });
+}
 
 module.exports = app;

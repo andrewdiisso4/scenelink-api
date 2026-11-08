@@ -1,0 +1,7 @@
+/* SceneLink Phase 8D hotfix — sl-phase8-home.css
+ * Restores a previously-dangling stylesheet reference present on 20 legacy pages
+ * (explore, profile, business, etc.) that pointed at css/sl-phase8-home.css and
+ * 404'd since Phase 8C. This alias forwards to the canonical Phase 8 launch styles
+ * so those pages stop emitting a console 404 and inherit consistent Phase 8 styling.
+ * No visual regression: it only imports an existing, already-loaded stylesheet. */
+@import url("sl-phase8-launch.css");

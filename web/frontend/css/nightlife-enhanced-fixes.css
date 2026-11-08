@@ -1,0 +1,548 @@
+/* Nightlife Page Enhanced Fixes
+ * Complete functionality and visual improvements
+ */
+
+/* 1. Modal Close X Icon Enhancement */
+.venue-details-modal .modal-close,
+.nightlife-modal .modal-close,
+.modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    background: rgba(20, 20, 20, 0.9);
+    border: 2px solid rgba(212, 175, 55, 0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10000;
+    backdrop-filter: blur(10px);
+}
+
+.modal-close:hover {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: var(--gold-primary);
+    transform: scale(1.1);
+}
+
+.modal-close svg {
+    width: 20px;
+    height: 20px;
+    stroke: var(--gold-primary);
+    stroke-width: 2;
+    transition: all 0.3s ease;
+}
+
+.modal-close:hover svg {
+    stroke: var(--gold-light);
+}
+
+/* 2. Map Control Placement Fix */
+.nightlife-map-container {
+    position: relative;
+    height: 500px;
+    background: #1a1a1a;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: var(--spacing-xl);
+}
+
+.leaflet-control-container {
+    top: 20px !important;
+    right: 20px !important;
+}
+
+.leaflet-control-zoom {
+    margin-bottom: 60px !important;
+}
+
+.map-reset-control {
+    position: absolute;
+    top: 80px !important;
+    right: 20px !important;
+    z-index: 1000;
+    background: rgba(20, 20, 20, 0.9);
+    border: 2px solid rgba(212, 175, 55, 0.3);
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.map-reset-control:hover {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: var(--gold-primary);
+}
+
+/* 3. Legend Enhancement with Color Indicators */
+.nightlife-legend {
+    background: rgba(25, 25, 25, 0.95);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 12px;
+    padding: var(--spacing-lg);
+    margin: var(--spacing-lg) 0;
+}
+
+.legend-title {
+    font-size: 1.2rem;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-md);
+    font-weight: 600;
+}
+
+.legend-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: rgba(30, 30, 30, 0.8);
+    border: 1px solid rgba(212, 175, 55, 0.1);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.legend-item:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: rgba(212, 175, 55, 0.3);
+    transform: translateY(-2px);
+}
+
+.legend-item.active {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: var(--gold-primary);
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.legend-color.nightclub {
+    background: #e74c3c;
+}
+
+.legend-color.bar {
+    background: #3498db;
+}
+
+.legend-color.lounge {
+    background: #2ecc71;
+}
+
+.legend-text {
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+/* 4. Enhanced Filter and Map Integration */
+.nightlife-filters-section {
+    background: rgba(25, 25, 25, 0.95);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 16px;
+    padding: var(--spacing-xl);
+    margin: var(--spacing-xl) 0;
+}
+
+.filter-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+.filter-label {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+    display: block;
+}
+
+.filter-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+}
+
+.filter-option {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: rgba(30, 30, 30, 0.8);
+    border: 1px solid rgba(212, 175, 55, 0.1);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.filter-option:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: rgba(212, 175, 55, 0.3);
+    color: var(--text-primary);
+}
+
+.filter-option.active {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: var(--gold-primary);
+    color: var(--gold-primary);
+}
+
+/* Remove Warnings and Setup Messages */
+.setup-warning,
+.map-loading-warning,
+.features-not-working,
+.manual-setup-notice {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* 5. Header Tagline Update */
+.nightlife-hero .hero-content p {
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    margin-bottom: var(--spacing-lg);
+}
+
+/* 6. Enhanced Search Venue Bar */
+.nightlife-search-section {
+    background: rgba(25, 25, 25, 0.95);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 16px;
+    padding: var(--spacing-xl);
+    margin: var(--spacing-lg) 0;
+}
+
+.search-venue-container {
+    position: relative;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.search-venue-input {
+    width: 100%;
+    padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-lg) calc(var(--spacing-xl) + 50px);
+    background: rgba(30, 30, 30, 0.8);
+    border: 2px solid rgba(212, 175, 55, 0.2);
+    border-radius: 12px;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+}
+
+.search-venue-input:focus {
+    outline: none;
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+    background: rgba(30, 30, 30, 0.95);
+}
+
+.search-venue-icon {
+    position: absolute;
+    left: var(--spacing-lg);
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    stroke: var(--gold-primary);
+    stroke-width: 2;
+}
+
+.search-venue-btn {
+    position: absolute;
+    right: var(--spacing-md);
+    top: 50%;
+    transform: translateY(-50%);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background: linear-gradient(135deg, var(--gold-primary), var(--gold-light));
+    border: none;
+    border-radius: 8px;
+    color: var(--dark-bg);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.search-venue-btn:hover {
+    transform: translateY(-50%) translateY(-2px);
+    box-shadow: 0 8px 20px rgba(212, 175, 55, 0.4);
+}
+
+/* 7. Header Link Fix */
+.header-enhanced .nav-link[href="nightlife.html"],
+.header-enhanced .nav-link[href="tonight.html"] {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+/* Venue Listings with Legend Integration */
+.nightlife-venue-listings {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: var(--spacing-lg);
+    margin: var(--spacing-xl) 0;
+}
+
+.venue-listing-card {
+    background: rgba(25, 25, 25, 0.95);
+    border: 1px solid rgba(212, 175, 55, 0.1);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.venue-listing-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+    border-color: rgba(212, 175, 55, 0.3);
+}
+
+.venue-type-indicator {
+    position: absolute;
+    top: var(--spacing-md);
+    left: var(--spacing-md);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+}
+
+.venue-type-indicator.nightclub {
+    background: #e74c3c;
+}
+
+.venue-type-indicator.bar {
+    background: #3498db;
+}
+
+.venue-type-indicator.lounge {
+    background: #2ecc71;
+}
+
+/* Map Integration - Full Functionality */
+.nightlife-map-section {
+    margin: var(--spacing-xl) 0;
+}
+
+#nightlifeMap {
+    height: 500px;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.venue-marker {
+    background: rgba(212, 175, 55, 0.9);
+    border: 2px solid var(--gold-primary);
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.venue-marker:hover {
+    transform: scale(1.5);
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
+}
+
+.venue-marker.nightclub {
+    background: #e74c3c;
+    border-color: #c0392b;
+}
+
+.venue-marker.bar {
+    background: #3498db;
+    border-color: #2980b9;
+}
+
+.venue-marker.lounge {
+    background: #2ecc71;
+    border-color: #27ae60;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .leaflet-control-container {
+        top: 10px !important;
+        right: 10px !important;
+    }
+    
+    .map-reset-control {
+        top: 70px !important;
+        right: 10px !important;
+    }
+    
+    .legend-items {
+        flex-direction: column;
+    }
+    
+    .nightlife-venue-listings {
+        grid-template-columns: 1fr;
+    }
+    
+    .filter-options {
+        flex-direction: column;
+    }
+    
+    .search-venue-input {
+        padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) calc(var(--spacing-lg) + 40px);
+    }
+}
+/* ==========================================
+   COMBINED NIGHTLIFE SEARCH BAR
+   ========================================== */
+.nightlife-combined-search {
+    padding: 0 0 24px;
+    margin-top: -10px;
+}
+
+.nl-search-bar {
+    background: rgba(25, 25, 25, 0.95);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    border-radius: 14px;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.nl-search-filters {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.nl-filter-dropdown {
+    flex: 1;
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.nl-filter-dropdown label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #D4AF37;
+    font-weight: 600;
+    padding-left: 2px;
+}
+
+.nl-filter-dropdown select {
+    padding: 10px 14px;
+    background: rgba(30, 30, 30, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23D4AF37' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 34px;
+}
+
+.nl-filter-dropdown select:focus {
+    outline: none;
+    border-color: #D4AF37;
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.15);
+}
+
+.nl-filter-dropdown select:hover {
+    border-color: rgba(212, 175, 55, 0.4);
+}
+
+.nl-search-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: rgba(30, 30, 30, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 4px 4px 4px 14px;
+    transition: border-color 0.2s ease;
+}
+
+.nl-search-input-wrap:focus-within {
+    border-color: #D4AF37;
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.15);
+}
+
+.nl-search-icon {
+    width: 20px;
+    height: 20px;
+    stroke: #D4AF37;
+    flex-shrink: 0;
+}
+
+.nl-search-input {
+    flex: 1;
+    padding: 10px 12px;
+    background: transparent;
+    border: none;
+    color: #e0e0e0;
+    font-size: 0.95rem;
+}
+
+.nl-search-input:focus {
+    outline: none;
+}
+
+.nl-search-input::placeholder {
+    color: #666;
+}
+
+.nl-search-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #D4AF37, #E8C547);
+    border: none;
+    border-radius: 8px;
+    color: #111;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.nl-search-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+}
+
+.nl-search-btn svg {
+    stroke: #111;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .nl-search-filters {
+        flex-direction: column;
+    }
+    .nl-filter-dropdown {
+        min-width: 100%;
+    }
+    .nl-search-bar {
+        padding: 16px;
+    }
+}

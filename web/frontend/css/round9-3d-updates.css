@@ -1,0 +1,899 @@
+/* ============================================
+   ROUND 9.3d - Homepage Search, Explore Filters, Nightlife Map
+   ============================================ */
+
+/* ========== 1. HOMEPAGE SEARCH BAR - COMPLETE REDESIGN ========== */
+
+.premium-search-section {
+    position: relative !important;
+    z-index: 3 !important;
+    margin-top: -54px !important;
+    padding: 0 20px 40px !important;
+}
+
+.premium-search-wrapper {
+    max-width: 780px !important;
+    margin: 0 auto !important;
+    position: relative !important;
+}
+
+/* Category tabs above search */
+.search-category-tabs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.search-cat-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 50px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.55);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+
+.search-cat-tab i {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.search-cat-tab:hover {
+    background: rgba(212,175,55,0.08);
+    border-color: rgba(212,175,55,0.2);
+    color: rgba(255,255,255,0.8);
+}
+
+.search-cat-tab.active {
+    background: rgba(212,175,55,0.12);
+    border-color: rgba(212,175,55,0.35);
+    color: #D4AF37;
+}
+
+.search-cat-tab.active i {
+    opacity: 1;
+}
+
+/* Main search container - elevated glass card */
+.premium-search-card {
+    background: rgba(12, 12, 18, 0.88) !important;
+    border: 1.5px solid rgba(212,175,55,0.18) !important;
+    border-radius: 24px !important;
+    padding: 6px !important;
+    backdrop-filter: blur(40px) !important;
+    -webkit-backdrop-filter: blur(40px) !important;
+    box-shadow:
+        0 8px 40px rgba(0,0,0,0.5),
+        0 0 0 1px rgba(255,255,255,0.04),
+        inset 0 1px 0 rgba(255,255,255,0.06) !important;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+.premium-search-card:focus-within {
+    border-color: rgba(212,175,55,0.4) !important;
+    box-shadow:
+        0 8px 48px rgba(0,0,0,0.6),
+        0 0 30px rgba(212,175,55,0.06),
+        0 0 0 1px rgba(212,175,55,0.15),
+        inset 0 1px 0 rgba(255,255,255,0.06) !important;
+}
+
+/* Search input row */
+.search-input-row {
+    display: flex;
+    align-items: center;
+    padding: 4px 4px 4px 20px;
+    gap: 0;
+}
+
+.search-input-row .search-icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    background: rgba(212,175,55,0.1);
+    flex-shrink: 0;
+    margin-right: 14px;
+}
+
+.search-input-row .search-icon-wrap i {
+    color: #D4AF37;
+    font-size: 14px;
+}
+
+.search-input-row input {
+    flex: 1;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    color: #fff !important;
+    font-size: 15px !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.01em !important;
+    padding: 14px 12px 14px 0 !important;
+    caret-color: #D4AF37 !important;
+    min-width: 0 !important;
+}
+
+.search-input-row input::placeholder {
+    color: rgba(255,255,255,0.35) !important;
+    font-weight: 400 !important;
+    font-size: 14.5px !important;
+}
+
+.search-input-row .btn-search-premium {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #D4AF37 0%, #c5a028 100%);
+    color: #0a0a0a;
+    border: none;
+    border-radius: 18px;
+    padding: 12px 28px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+}
+
+.search-input-row .btn-search-premium:hover {
+    background: linear-gradient(135deg, #e0be4a 0%, #D4AF37 100%);
+    box-shadow: 0 4px 20px rgba(212,175,55,0.35);
+    transform: translateY(-1px);
+}
+
+.search-input-row .btn-search-premium i {
+    font-size: 13px;
+}
+
+/* Quick suggestions row */
+.search-quick-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px 12px;
+    flex-wrap: wrap;
+}
+
+.search-quick-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.3);
+    margin-right: 4px;
+}
+
+.search-quick-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 50px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.5);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.search-quick-tag:hover {
+    background: rgba(212,175,55,0.08);
+    border-color: rgba(212,175,55,0.2);
+    color: rgba(255,255,255,0.8);
+}
+
+.search-quick-tag i {
+    font-size: 10px;
+    color: rgba(212,175,55,0.5);
+}
+
+/* AI hint bar */
+.search-ai-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 14px;
+    font-size: 12.5px;
+    color: rgba(255,255,255,0.35);
+}
+
+.search-ai-hint .ai-sparkle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: rgba(212,175,55,0.6);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.search-ai-hint .ai-sparkle i {
+    font-size: 11px;
+}
+
+/* Location hint refined */
+.search-location-hint {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    margin-top: 10px !important;
+    font-size: 12.5px !important;
+    color: rgba(255,255,255,0.35) !important;
+}
+
+.search-location-hint i {
+    color: rgba(212,175,55,0.55) !important;
+    font-size: 11px !important;
+}
+
+/* Enhanced dropdown */
+.search-results-dropdown {
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: rgba(14, 14, 20, 0.97) !important;
+    border: 1px solid rgba(212,175,55,0.18) !important;
+    border-radius: 20px !important;
+    padding: 12px 0 !important;
+    z-index: 100 !important;
+    display: none !important;
+    backdrop-filter: blur(30px) !important;
+    -webkit-backdrop-filter: blur(30px) !important;
+    box-shadow: 0 16px 56px rgba(0,0,0,0.65) !important;
+    max-height: 440px !important;
+    overflow-y: auto !important;
+}
+
+.search-results-dropdown.active {
+    display: block !important;
+}
+
+/* AI suggestion in dropdown */
+.sr-ai-suggestion {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 20px;
+    margin: 4px 12px 8px;
+    background: rgba(212,175,55,0.06);
+    border: 1px solid rgba(212,175,55,0.12);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.sr-ai-suggestion:hover {
+    background: rgba(212,175,55,0.1);
+}
+
+.sr-ai-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: rgba(212,175,55,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #D4AF37;
+    font-size: 13px;
+}
+
+.sr-ai-text {
+    flex: 1;
+}
+
+.sr-ai-text .sr-ai-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(212,175,55,0.7);
+    margin-bottom: 3px;
+}
+
+.sr-ai-text .sr-ai-answer {
+    display: block;
+    font-size: 13px;
+    color: rgba(255,255,255,0.8);
+    line-height: 1.4;
+}
+
+/* No results */
+.search-no-results {
+    padding: 24px 20px !important;
+    text-align: center !important;
+    color: rgba(255,255,255,0.4) !important;
+    font-size: 13.5px !important;
+}
+
+/* ========== HIDE OLD SEARCH BAR ========== */
+/* The old .premium-search-bar will be replaced in HTML */
+
+
+/* ========== 2. EXPLORE PAGE - ENHANCED RESTAURANT FILTERS ========== */
+
+/* Expanded filter chips for cuisine */
+.sl-cuisine-filters {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-top: 6px;
+}
+
+.sl-cuisine-filters::-webkit-scrollbar { display: none; }
+
+.sl-cuisine-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: 50px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.6);
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.sl-cuisine-chip:hover {
+    background: rgba(212,175,55,0.08);
+    border-color: rgba(212,175,55,0.25);
+    color: rgba(255,255,255,0.85);
+}
+
+.sl-cuisine-chip.active {
+    background: rgba(212,175,55,0.15);
+    border-color: rgba(212,175,55,0.4);
+    color: #D4AF37;
+}
+
+.sl-cuisine-chip i, .sl-cuisine-chip .emoji {
+    font-size: 13px;
+}
+
+/* Enhanced filter modal additions */
+.sl-filter-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(212,175,55,0.7);
+    margin: 20px 0 10px;
+    padding-left: 4px;
+}
+
+.sl-filter-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sl-filter-grid .sl-chip {
+    font-size: 12px;
+    padding: 7px 14px;
+}
+
+
+/* ========== 3. NIGHTLIFE PAGE - PREMIUM MAP INTEGRATION ========== */
+
+/* Full-width map header for nightlife */
+.nl-map-hero {
+    position: relative;
+    width: 100%;
+    height: 520px;
+    background: #0a0a0f;
+    overflow: hidden;
+}
+
+.nl-map-hero #nightlifeMapPremium {
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.nl-map-hero .leaflet-tile-pane {
+    filter: brightness(0.75) contrast(1.15) saturate(0.35) !important;
+}
+
+/* Top gradient overlay for readability */
+.nl-map-top-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    padding: 16px 24px;
+    background: linear-gradient(180deg, rgba(8,8,14,0.9) 0%, rgba(8,8,14,0.5) 60%, transparent 100%);
+    pointer-events: none;
+}
+
+.nl-map-top-bar > * {
+    pointer-events: auto;
+}
+
+.nl-map-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.nl-map-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.01em;
+}
+
+.nl-map-title span {
+    color: #D4AF37;
+}
+
+.nl-map-live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 50px;
+    background: rgba(239,68,68,0.12);
+    border: 1px solid rgba(239,68,68,0.25);
+    color: #ef4444;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.nl-map-live-badge .pulse-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #ef4444;
+    animation: nlPulse 1.5s infinite;
+}
+
+@keyframes nlPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+/* Nightlife search bar integrated in map */
+.nl-map-search-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 720px;
+}
+
+.nl-map-search-bar {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background: rgba(12,12,18,0.9);
+    border: 1px solid rgba(212,175,55,0.2);
+    border-radius: 50px;
+    padding: 4px 4px 4px 16px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    transition: border-color 0.3s;
+}
+
+.nl-map-search-bar:focus-within {
+    border-color: rgba(212,175,55,0.45);
+}
+
+.nl-map-search-bar i.fa-search {
+    color: rgba(212,175,55,0.6);
+    font-size: 14px;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.nl-map-search-bar input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #fff;
+    font-size: 14px;
+    padding: 10px 8px 10px 0;
+    caret-color: #D4AF37;
+}
+
+.nl-map-search-bar input::placeholder {
+    color: rgba(255,255,255,0.35);
+    font-size: 13.5px;
+}
+
+.nl-map-search-bar .nl-search-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #D4AF37, #c5a028);
+    color: #0a0a0a;
+    border: none;
+    border-radius: 50px;
+    padding: 9px 22px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s;
+}
+
+.nl-map-search-bar .nl-search-btn:hover {
+    background: linear-gradient(135deg, #e0be4a, #D4AF37);
+    box-shadow: 0 4px 16px rgba(212,175,55,0.3);
+}
+
+/* Filter chips inside map overlay */
+.nl-map-chips {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 12px 0 0;
+}
+
+.nl-map-chips::-webkit-scrollbar { display: none; }
+
+.nl-map-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: 50px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.4);
+    color: rgba(255,255,255,0.65);
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+    backdrop-filter: blur(8px);
+}
+
+.nl-map-chip:hover {
+    background: rgba(212,175,55,0.1);
+    border-color: rgba(212,175,55,0.3);
+    color: rgba(255,255,255,0.85);
+}
+
+.nl-map-chip.active {
+    background: rgba(212,175,55,0.15);
+    border-color: rgba(212,175,55,0.45);
+    color: #D4AF37;
+}
+
+.nl-map-chip i {
+    font-size: 12px;
+}
+
+/* Bottom venue preview card on map */
+.nl-map-venue-card {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    max-width: 420px;
+    z-index: 1000;
+    background: rgba(14,14,20,0.95);
+    border: 1px solid rgba(212,175,55,0.15);
+    border-radius: 20px;
+    padding: 14px;
+    backdrop-filter: blur(20px);
+    display: none;
+    animation: nlCardSlideUp 0.3s ease;
+}
+
+@keyframes nlCardSlideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.nl-map-venue-card.active {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+
+.nl-map-vc-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 14px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.nl-map-vc-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.nl-map-vc-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nl-map-vc-type {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 6px;
+}
+
+.nl-map-vc-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+}
+
+.nl-map-vc-meta .vc-rating {
+    color: #D4AF37;
+    font-weight: 600;
+}
+
+.nl-map-vc-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+}
+
+/* Map controls */
+.nl-map-controls {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nl-map-ctrl {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(12,12,18,0.85);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    backdrop-filter: blur(10px);
+}
+
+.nl-map-ctrl:hover {
+    background: rgba(212,175,55,0.12);
+    border-color: rgba(212,175,55,0.3);
+    color: #D4AF37;
+}
+
+.nl-map-ctrl svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Map legend overlay */
+.nl-map-legend-overlay {
+    position: absolute;
+    bottom: 20px;
+    right: 16px;
+    z-index: 1000;
+    display: flex;
+    gap: 12px;
+    padding: 8px 14px;
+    background: rgba(12,12,18,0.8);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    backdrop-filter: blur(10px);
+}
+
+.nl-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+}
+
+.nl-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.nl-legend-dot.nightclub { background: #ef4444; }
+.nl-legend-dot.bar { background: #3b82f6; }
+.nl-legend-dot.lounge { background: #D4AF37; }
+.nl-legend-dot.rooftop { background: #10b981; }
+
+/* Marker styles for nightlife map */
+.nl-pin {
+    width: 32px;
+    height: 32px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    transition: transform 0.2s;
+    cursor: pointer;
+}
+
+.nl-pin:hover {
+    transform: rotate(-45deg) scale(1.15);
+}
+
+.nl-pin-inner {
+    transform: rotate(45deg);
+    font-size: 12px;
+    color: #fff;
+}
+
+.nl-pin.nightclub { background: #ef4444; }
+.nl-pin.bar { background: #3b82f6; }
+.nl-pin.lounge, .nl-pin.cocktail-lounge { background: #D4AF37; }
+.nl-pin.rooftop { background: #10b981; }
+.nl-pin.sports-bar { background: #8b5cf6; }
+.nl-pin.live-music { background: #f59e0b; }
+
+/* Venues section below map */
+.nl-venues-section {
+    padding: 40px 0 20px;
+    background: #0a0a0f;
+}
+
+.nl-venues-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+.nl-venues-header h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.nl-venues-header .nl-count {
+    font-size: 14px;
+    color: rgba(255,255,255,0.45);
+}
+
+/* Hide sections on nightlife page that user wants removed */
+.nightlife-combined-search { display: none !important; }
+.nightlife-map-section .filters-container { display: none !important; }
+.nightlife-filters-section { display: none !important; }
+.nightlife-list-header { display: none !important; }
+.nightlife-venue-listings-section h3 { display: none !important; }
+
+/* Also hide the old map in nightlife since we're replacing it */
+.nightlife-map-section { display: none !important; }
+
+
+/* ========== 4. RESPONSIVE ========== */
+
+@media (max-width: 767px) {
+    .premium-search-section {
+        margin-top: -40px !important;
+        padding: 0 12px 28px !important;
+    }
+
+    .search-category-tabs {
+        gap: 4px;
+        overflow-x: auto;
+        justify-content: flex-start;
+        padding: 0 4px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .search-category-tabs::-webkit-scrollbar { display: none; }
+
+    .search-cat-tab {
+        padding: 6px 14px;
+        font-size: 12px;
+    }
+
+    .premium-search-card {
+        border-radius: 18px !important;
+    }
+
+    .search-input-row {
+        padding: 2px 2px 2px 14px;
+    }
+
+    .search-input-row input {
+        font-size: 14px !important;
+    }
+
+    .search-input-row .btn-search-premium {
+        padding: 10px 18px;
+        font-size: 13px;
+    }
+
+    .search-quick-row {
+        padding: 6px 14px 10px;
+    }
+
+    /* Nightlife map */
+    .nl-map-hero {
+        height: 420px;
+    }
+
+    .nl-map-top-bar {
+        padding: 12px 16px;
+    }
+
+    .nl-map-title {
+        font-size: 18px;
+    }
+
+    .nl-map-search-row {
+        flex-direction: column;
+    }
+
+    .nl-map-venue-card {
+        left: 12px;
+        right: 12px;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+    .nl-map-hero {
+        height: 480px;
+    }
+}

@@ -1,0 +1,832 @@
+/* ==========================================================================
+   SceneLink AI Concierge v5 — Premium Glass-Morphism UI
+   Overrides and extends the base concierge styles with a luxe gold/black vibe.
+   ========================================================================== */
+
+/* ─────────────────────────────────────────────────────────────
+   FAB (Floating Action Button)
+   ───────────────────────────────────────────────────────────── */
+.sl-concierge-fab.sl-concierge-fab-v5 {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 64px;
+    height: 64px;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #F5D97A 0%, #D4AF37 55%, #B8941F 100%);
+    box-shadow:
+        0 10px 30px rgba(212, 175, 55, 0.45),
+        0 4px 12px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    cursor: pointer;
+    z-index: 9998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.25s ease;
+}
+.sl-concierge-fab.sl-concierge-fab-v5:hover {
+    transform: scale(1.08) translateY(-2px);
+    box-shadow:
+        0 14px 38px rgba(212, 175, 55, 0.6),
+        0 6px 16px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.sl-concierge-fab.sl-concierge-fab-v5.slc-fab-open {
+    transform: scale(0.92);
+}
+.sl-concierge-fab.sl-concierge-fab-v5 svg {
+    position: relative;
+    z-index: 2;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+}
+
+/* Pulse ring */
+.slc-fab-pulse {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(212, 175, 55, 0.5);
+    z-index: 1;
+    animation: slcFabPulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes slcFabPulse {
+    0%   { transform: scale(1);    opacity: 0.55; }
+    70%  { transform: scale(1.55); opacity: 0;    }
+    100% { transform: scale(1.55); opacity: 0;    }
+}
+
+/* Tooltip */
+.slc-fab-tooltip {
+    position: absolute;
+    right: calc(100% + 14px);
+    top: 50%;
+    transform: translateY(-50%) translateX(6px);
+    background: #0a0a0a;
+    color: #D4AF37;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+.slc-fab-tooltip::after {
+    content: '';
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 6px solid transparent;
+    border-left-color: #0a0a0a;
+}
+.sl-concierge-fab.sl-concierge-fab-v5:hover .slc-fab-tooltip {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+}
+.sl-concierge-fab.sl-concierge-fab-v5.slc-fab-open .slc-fab-tooltip {
+    display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PANEL
+   ───────────────────────────────────────────────────────────── */
+.sl-concierge-panel.sl-concierge-panel-v5 {
+    position: fixed;
+    bottom: 100px;
+    right: 24px;
+    width: 400px;
+    max-width: calc(100vw - 32px);
+    height: 620px;
+    max-height: calc(100vh - 140px);
+    background: linear-gradient(180deg, rgba(18, 18, 20, 0.96) 0%, rgba(10, 10, 12, 0.98) 100%);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    border: 1px solid rgba(212, 175, 55, 0.22);
+    border-radius: 20px;
+    box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.6),
+        0 10px 30px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+    pointer-events: none;
+    transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.sl-concierge-panel.sl-concierge-panel-v5.slc-panel-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   HEADER
+   ───────────────────────────────────────────────────────────── */
+.slc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    background: linear-gradient(180deg, rgba(212, 175, 55, 0.08) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+    flex-shrink: 0;
+}
+.slc-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.slc-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #F5D97A 0%, #D4AF37 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.35);
+    flex-shrink: 0;
+}
+.slc-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.2;
+}
+.slc-badge {
+    background: linear-gradient(135deg, #D4AF37 0%, #B8941F 100%);
+    color: #0a0a0a;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 6px;
+    letter-spacing: 0.6px;
+}
+.slc-subtitle {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.55);
+    margin-top: 3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.2px;
+}
+.slc-online-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10D96B;
+    box-shadow: 0 0 0 3px rgba(16, 217, 107, 0.22);
+    animation: slcDotPulse 2s ease-in-out infinite;
+}
+@keyframes slcDotPulse {
+    0%, 100% { opacity: 1;   }
+    50%      { opacity: 0.55;}
+}
+.slc-close {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.65);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.18s ease;
+}
+.slc-close:hover {
+    background: rgba(212, 175, 55, 0.12);
+    color: #D4AF37;
+    border-color: rgba(212, 175, 55, 0.35);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MESSAGES AREA
+   ───────────────────────────────────────────────────────────── */
+.slc-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 16px 8px;
+    scroll-behavior: smooth;
+}
+.slc-messages::-webkit-scrollbar { width: 6px; }
+.slc-messages::-webkit-scrollbar-track { background: transparent; }
+.slc-messages::-webkit-scrollbar-thumb {
+    background: rgba(212, 175, 55, 0.22);
+    border-radius: 3px;
+}
+.slc-messages::-webkit-scrollbar-thumb:hover {
+    background: rgba(212, 175, 55, 0.38);
+}
+
+/* Message bubbles */
+.slc-msg {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    animation: slcMsgIn 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slcMsgIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0);   }
+}
+.slc-msg-bot { justify-content: flex-start; }
+.slc-msg-user { justify-content: flex-end; }
+
+.slc-msg-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(212, 175, 55, 0.12);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+.slc-msg-bubble {
+    max-width: 82%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    word-wrap: break-word;
+    letter-spacing: 0.1px;
+}
+.slc-msg-bot .slc-msg-bubble {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.92);
+    border-top-left-radius: 4px;
+}
+.slc-msg-user .slc-msg-bubble {
+    background: linear-gradient(135deg, #D4AF37 0%, #B8941F 100%);
+    color: #0a0a0a;
+    font-weight: 600;
+    border-top-right-radius: 4px;
+    box-shadow: 0 4px 14px rgba(212, 175, 55, 0.22);
+}
+.slc-msg-bubble strong {
+    color: #D4AF37;
+    font-weight: 700;
+}
+.slc-msg-bubble a {
+    color: #F5D97A;
+    text-decoration: none;
+    border-bottom: 1px dotted rgba(245, 217, 122, 0.5);
+}
+.slc-msg-bubble a:hover {
+    color: #fff;
+    border-bottom-color: #fff;
+}
+
+/* Typing indicator */
+.slc-typing-dots {
+    display: flex;
+    gap: 4px;
+    padding: 2px 0;
+}
+.slc-typing-dots span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #D4AF37;
+    animation: slcTypingBounce 1.3s ease-in-out infinite;
+}
+.slc-typing-dots span:nth-child(2) { animation-delay: 0.18s; }
+.slc-typing-dots span:nth-child(3) { animation-delay: 0.36s; }
+@keyframes slcTypingBounce {
+    0%, 60%, 100% { transform: translateY(0);    opacity: 0.45; }
+    30%           { transform: translateY(-5px); opacity: 1;    }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   QUICK ACTION CHIPS
+   ───────────────────────────────────────────────────────────── */
+.slc-quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    padding: 4px 0 12px 34px;
+    animation: slcMsgIn 0.32s ease;
+}
+.slc-chip {
+    background: rgba(212, 175, 55, 0.08);
+    border: 1px solid rgba(212, 175, 55, 0.28);
+    color: #F5D97A;
+    padding: 7px 13px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+}
+.slc-chip:hover {
+    background: rgba(212, 175, 55, 0.18);
+    border-color: #D4AF37;
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(212, 175, 55, 0.2);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   VENUE CARDS (inside chat)
+   ───────────────────────────────────────────────────────────── */
+.slc-cards-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 4px 0 14px 34px;
+    animation: slcMsgIn 0.32s ease;
+}
+.slc-venue-card {
+    display: flex;
+    gap: 11px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 10px;
+    transition: all 0.22s ease;
+    cursor: default;
+}
+.slc-venue-card:hover {
+    background: rgba(212, 175, 55, 0.06);
+    border-color: rgba(212, 175, 55, 0.35);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+.slc-venue-img {
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.04);
+}
+.slc-venue-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.slc-venue-name {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 3px;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.slc-venue-meta {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 2px;
+    letter-spacing: 0.15px;
+}
+.slc-venue-rating {
+    color: #D4AF37;
+    font-weight: 700;
+}
+.slc-venue-desc {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.68);
+    line-height: 1.4;
+    margin: 2px 0 6px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Action row */
+.slc-venue-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+}
+.slc-btn-view {
+    flex: 1;
+    background: linear-gradient(135deg, #D4AF37 0%, #B8941F 100%);
+    color: #0a0a0a;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: all 0.18s ease;
+}
+.slc-btn-view:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+}
+.slc-btn-book {
+    flex: 1;
+    background: rgba(212, 175, 55, 0.12);
+    color: #D4AF37;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: all 0.18s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+.slc-btn-book:hover {
+    background: rgba(212, 175, 55, 0.22);
+    border-color: #D4AF37;
+    transform: translateY(-1px);
+}
+.slc-btn-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.18s ease;
+    padding: 0;
+}
+.slc-btn-icon:hover {
+    background: rgba(212, 175, 55, 0.15);
+    color: #D4AF37;
+    border-color: rgba(212, 175, 55, 0.5);
+}
+.slc-btn-icon.is-active,
+.slc-btn-icon[data-active="true"] {
+    background: rgba(212, 175, 55, 0.25);
+    color: #D4AF37;
+    border-color: #D4AF37;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   EVENT CARDS
+   ───────────────────────────────────────────────────────────── */
+.slc-event-card {
+    display: flex;
+    gap: 11px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 10px;
+    transition: all 0.22s ease;
+}
+.slc-event-card:hover {
+    background: rgba(212, 175, 55, 0.06);
+    border-color: rgba(212, 175, 55, 0.35);
+}
+.slc-event-img {
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.04);
+}
+.slc-event-body { flex: 1; min-width: 0; }
+.slc-event-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 3px;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.slc-event-meta {
+    font-size: 11.5px;
+    color: #D4AF37;
+    margin-bottom: 4px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+.slc-event-desc {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.65);
+    line-height: 1.4;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   INPUT AREA
+   ───────────────────────────────────────────────────────────── */
+.slc-input-area {
+    display: flex;
+    gap: 8px;
+    padding: 12px 14px;
+    border-top: 1px solid rgba(212, 175, 55, 0.15);
+    background: linear-gradient(0deg, rgba(212, 175, 55, 0.04) 0%, transparent 100%);
+    flex-shrink: 0;
+}
+.slc-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding: 11px 14px;
+    border-radius: 12px;
+    font-size: 13.5px;
+    outline: none;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    letter-spacing: 0.1px;
+}
+.slc-input::placeholder {
+    color: rgba(255, 255, 255, 0.38);
+}
+.slc-input:focus {
+    border-color: rgba(212, 175, 55, 0.55);
+    background: rgba(212, 175, 55, 0.06);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+}
+.slc-send {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, #F5D97A 0%, #D4AF37 55%, #B8941F 100%);
+    color: #0a0a0a;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.32);
+    flex-shrink: 0;
+}
+.slc-send:hover {
+    transform: translateY(-1px) scale(1.04);
+    box-shadow: 0 6px 18px rgba(212, 175, 55, 0.5);
+}
+.slc-send:active { transform: translateY(0) scale(0.98); }
+
+/* Context badge / tip */
+.slc-ctx-badge {
+    display: inline-block;
+    background: rgba(212, 175, 55, 0.14);
+    color: #F5D97A;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.slc-tip {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.48);
+    font-style: italic;
+    margin-top: 6px;
+    letter-spacing: 0.1px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MOBILE
+   ───────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .sl-concierge-panel.sl-concierge-panel-v5 {
+        right: 8px;
+        left: 8px;
+        width: auto;
+        bottom: 88px;
+        height: calc(100vh - 110px);
+        max-height: calc(100vh - 110px);
+        border-radius: 18px;
+    }
+    .sl-concierge-fab.sl-concierge-fab-v5 {
+        bottom: 18px;
+        right: 18px;
+        width: 58px;
+        height: 58px;
+    }
+    .slc-fab-tooltip { display: none; }
+    .slc-msg-bubble { max-width: 86%; }
+    .slc-cards-stack,
+    .slc-quick-actions { padding-left: 32px; }
+}
+
+/* Hide old v3 concierge if any legacy markup sneaks in */
+.sl-concierge-panel:not(.sl-concierge-panel-v5) { display: none !important; }
+.sl-concierge-fab:not(.sl-concierge-fab-v5) { display: none !important; }
+/* ═════════════════════════════════════════════════════════
+   BUILD MY NIGHT — itinerary chips & stop labels
+   ═════════════════════════════════════════════════════════ */
+.slc-choice-chips {
+    margin-top: 4px;
+    padding-bottom: 8px;
+}
+.slc-choice-chips .slc-quick-btn {
+    background: rgba(212,175,55,0.10);
+    border: 1px solid rgba(212,175,55,0.35);
+    color: #E8D88A;
+}
+.slc-choice-chips .slc-quick-btn:hover {
+    background: rgba(212,175,55,0.22);
+    border-color: #D4AF37;
+    color: #FFF;
+    transform: translateY(-1px);
+}
+.slc-stop-label {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: #D4AF37;
+    letter-spacing: 0.4px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+.slc-msg-empty {
+    color: rgba(255,255,255,0.55);
+    font-style: italic;
+    font-size: 12.5px;
+}
+/* Ensure panel is always clickable when visible */
+.sl-concierge-panel.sl-concierge-panel-v5.slc-panel-visible {
+    pointer-events: auto !important;
+}
+/* Ensure FAB is never stuck display:none */
+.sl-concierge-fab.sl-concierge-fab-v5 {
+    display: flex !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Structured response UI — Plan header / stops / CTAs / notice
+   ═══════════════════════════════════════════════════════════════ */
+.slc-notice {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #f0b82e;
+    background: rgba(240, 184, 46, 0.08);
+    border: 1px solid rgba(240, 184, 46, 0.25);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.slc-plan-header {
+    border-left: 3px solid #D4AF37;
+    padding: 4px 0 4px 10px;
+    margin: 2px 0;
+}
+.slc-plan-title {
+    font-weight: 700;
+    font-size: 15px;
+    color: #f5f5f5;
+    letter-spacing: 0.2px;
+}
+.slc-plan-title i { color: #D4AF37; margin-right: 6px; }
+.slc-plan-summary {
+    font-size: 12.5px;
+    color: #b8b8b8;
+    margin-top: 3px;
+    line-height: 1.45;
+}
+
+.slc-stop-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(90deg, rgba(212,175,55,0.14), rgba(212,175,55,0.03));
+    border: 1px solid rgba(212,175,55,0.22);
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: #D4AF37;
+}
+.slc-stop-label .slc-stop-cat { color: #D4AF37; }
+.slc-stop-label .slc-stop-time {
+    color: #e0e0e0;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: none;
+    padding-left: 8px;
+    border-left: 1px solid rgba(212,175,55,0.35);
+}
+.slc-stop-why {
+    color: #c8c8c8;
+    font-size: 12.5px;
+    line-height: 1.4;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+.slc-plan-ctas {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 6px 0 4px;
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(212,175,55,0.18);
+    border-radius: 10px;
+}
+.slc-plan-ctas button {
+    flex: 1 1 auto;
+    background: linear-gradient(135deg, #D4AF37 0%, #b89020 100%);
+    color: #0a0a0a;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: transform 0.12s ease, filter 0.12s ease;
+}
+.slc-plan-ctas button:hover { transform: translateY(-1px); filter: brightness(1.08); }
+.slc-plan-ctas .slc-btn-plan-invite,
+.slc-plan-ctas .slc-btn-plan-share {
+    background: rgba(255,255,255,0.06);
+    color: #f5f5f5;
+    border: 1px solid rgba(255,255,255,0.14);
+}
+
+.slc-login-prompt {
+    background: linear-gradient(135deg, rgba(212,175,55,0.10), rgba(212,175,55,0.02)) !important;
+    border: 1px solid rgba(212,175,55,0.35) !important;
+    padding: 12px !important;
+}
+.slc-login-prompt-title {
+    font-weight: 700;
+    color: #D4AF37;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+.slc-login-prompt-sub {
+    font-size: 12.5px;
+    color: #c8c8c8;
+    line-height: 1.45;
+    margin-bottom: 10px;
+}
+.slc-login-prompt-actions { display: flex; gap: 8px; }
+.slc-login-prompt-btn,
+.slc-login-prompt-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 0.12s ease;
+}
+.slc-login-prompt-btn {
+    background: linear-gradient(135deg, #D4AF37, #b89020);
+    color: #0a0a0a;
+}
+.slc-login-prompt-btn-outline {
+    border: 1px solid rgba(212,175,55,0.45);
+    color: #D4AF37;
+}
+.slc-login-prompt-btn:hover,
+.slc-login-prompt-btn-outline:hover { transform: translateY(-1px); }
+
+/* Mobile */
+@media (max-width: 640px) {
+    .slc-plan-ctas { flex-direction: column; }
+    .slc-plan-ctas button { flex: 1 1 100%; }
+}

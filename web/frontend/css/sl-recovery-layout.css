@@ -1,0 +1,146 @@
+/* Reconstructed local repair, 2026-10-27. Original right-panel layout rules
+   were absent from the published stylesheets. Scoped to the existing shell. */
+.sl-explore-app > .sl-split-layout {
+  display: flex;
+  flex: 1 1 0%;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+.sl-explore-app .sl-split-layout > .sl-map-area {
+  flex: 1 1 0%;
+  min-width: 0;
+  min-height: 0;
+}
+.sl-explore-app .sl-map-status {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(360px, calc(100% - 32px));
+  z-index: 500;
+  padding: 18px;
+  border: 1px solid rgba(212,175,55,.25);
+  border-radius: 12px;
+  background: #17171a;
+  line-height: 1.5;
+  text-align: center;
+}
+.sl-explore-app .sl-map-status[hidden] { display: none; }
+.sl-explore-app .sl-map-status button {
+  margin-top: 12px;
+  padding: 8px 10px;
+  border: 1px solid rgba(212,175,55,.4);
+  border-radius: 6px;
+  background: #08080c;
+  color: #d4af37;
+  cursor: pointer;
+}
+.sl-explore-app .sl-map-area .leaflet-control-attribution {
+  display: block !important;
+  max-width: 100%;
+  font-size: 10px;
+}
+.sl-explore-app .sl-map-ctrl:disabled,
+.sl-explore-app .sl-map-loc-btn:disabled { opacity: .4; cursor: not-allowed; }
+.sl-explore-app .sl-right-panel {
+  display: flex;
+  flex: 0 0 340px;
+  width: 340px;
+  max-width: 38%;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  background: #08080c;
+  border-left: 1px solid rgba(212,175,55,.12);
+  z-index: 2;
+}
+.sl-explore-app .sl-right-panel-header { padding: 16px; flex: 0 0 auto; }
+.sl-explore-app .sl-right-panel-title { font-size: 16px; margin-bottom: 5px; }
+.sl-explore-app .sl-right-panel-count { font-size: 12px; }
+.sl-explore-app #slRightPanelCards {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 12px 12px;
+}
+.sl-explore-app .sl-rp-card {
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 0;
+  overflow: hidden;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.sl-explore-app .sl-rp-card-img {
+  display: block;
+  flex: 0 0 88px;
+  width: 88px;
+  height: 88px;
+  max-width: 88px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+.sl-explore-app .sl-rp-card-body { min-width: 0; flex: 1 1 0%; }
+.sl-explore-app .sl-rp-card-name { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+.sl-explore-app .sl-rp-card-meta, .sl-explore-app .sl-rp-card-type { font-size: 11px; color: rgba(255,255,255,.65); margin-top: 6px; }
+.sl-explore-app .sl-rp-card-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.sl-explore-app .sl-rp-card-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.sl-explore-app .sl-rp-card-actions button { padding: 5px 7px; border-radius: 6px; border: 1px solid rgba(212,175,55,.25); background: #17171a; color: #d4af37; font: inherit; font-size: 11px; cursor: pointer; }
+/* List mode already provides the complete card grid; do not duplicate it. */
+.sl-explore-app .sl-split-layout:has(.sl-list-view.active) > .sl-right-panel { display: none; }
+/* Keep search and categories usable in list mode instead of covering them with the grid. */
+.sl-explore-app .sl-map-area:has(.sl-list-view.active) { display: flex; flex-direction: column; }
+.sl-explore-app .sl-map-area:has(.sl-list-view.active) > #slMapCanvas {
+  position: absolute; inset: 0; visibility: hidden;
+}
+.sl-explore-app .sl-map-area:has(.sl-list-view.active) > .sl-map-toolbar {
+  position: relative; inset: auto; flex: 0 0 auto; padding: 12px;
+}
+.sl-explore-app .sl-map-area > .sl-list-view.active {
+  position: relative; inset: auto; flex: 1 1 0%; min-height: 0; width: 100%;
+}
+.sl-explore-app .sl-map-area:has(.sl-list-view.active) > .sl-map-status,
+.sl-explore-app .sl-map-area:has(.sl-list-view.active) > .sl-map-ctrls,
+.sl-explore-app .sl-map-area:has(.sl-list-view.active) > .sl-crowd-index { display: none; }
+.sl-explore-app #slListCards { min-height: 0; }
+.sl-filter-overlay .sl-filter-description,
+.sl-filter-overlay .sl-filter-unavailable { color: #b8b8c1; line-height: 1.5; margin: 0 0 18px; }
+.sl-filter-overlay .sl-filter-unavailable { padding: 12px; background: #d4af370a; border-radius: 8px; font-size: 12px; }
+.sl-filter-overlay .sl-discovery-filter-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin-bottom: 20px; }
+.sl-filter-overlay .sl-discovery-filter-grid label { color: #ececf1; font-size: 13px; font-weight: 600; }
+.sl-filter-overlay .sl-discovery-filter-grid input,
+.sl-filter-overlay .sl-discovery-filter-grid select { display: block; width: 100%; min-height: 44px; padding: 10px; margin-top: 7px; border: 1px solid #48464b; border-radius: 8px; color: #fff; background: #15151b; font: inherit; box-sizing: border-box; }
+.sl-filter-overlay #slFilterClose { padding: 8px 12px; min-height: 44px; border: 1px solid #48464b; border-radius: 8px; color: #e2c566; background: #15151b; cursor: pointer; }
+@media (max-width: 767px) {
+  .sl-explore-app .sl-right-panel { display: none; }
+  .sl-filter-overlay .sl-discovery-filter-grid { grid-template-columns: 1fr; }
+}
+
+/* Discovery filters must sit above mobile tabs and every map/header control. */
+#slFilterOverlay {
+  z-index: 100100;
+  inset: 0;
+  box-sizing: border-box;
+  padding-top: 12px;
+}
+#slFilterOverlay .sl-filter-modal {
+  box-sizing: border-box;
+  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+#slFilterOverlay .sl-filter-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding: 12px 0;
+  background: #0d0d14;
+}
+body:has(#slFilterOverlay.active) #slBottomTabs,
+body:has(#slFilterOverlay.active) .sl-bottom-nav { visibility: hidden !important; pointer-events: none !important; }

@@ -1,0 +1,12 @@
+/* Remove active navigation link underline */
+.nav-link.active {
+    color: #D4AF37 !important;
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+    text-decoration: none !important;
+}
+
+.nav-link:hover {
+    color: #F4E4A6 !important;
+    text-decoration: none !important;
+}

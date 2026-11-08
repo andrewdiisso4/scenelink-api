@@ -1,0 +1,151 @@
+/* Universal Navigation Gold Fix - Match Tonight's Picks Style
+ * Apply gold icons and consistent navigation fonts across all pages
+ */
+
+/* Navigation Icons - Gold Color Enhancement */
+.nav-icon-btn {
+    position: relative;
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    color: var(--gold-primary) !important;
+    transition: all 0.3s ease;
+}
+
+.nav-icon-btn:hover {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: var(--gold-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+
+.nav-icon-btn svg {
+    stroke: var(--gold-primary) !important;
+    fill: var(--gold-primary) !important;
+    transition: all 0.3s ease;
+}
+
+.nav-icon-btn:hover svg {
+    stroke: var(--gold-light) !important;
+    fill: var(--gold-light) !important;
+    filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.5));
+}
+
+/* Navigation Links - Enhanced Font and Gold Styling */
+.nav-link {
+    color: var(--text-primary) !important;
+    font-weight: 500 !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.nav-link:hover {
+    color: var(--gold-primary) !important;
+    background: rgba(212, 175, 55, 0.1);
+    border-radius: 8px;
+    padding: 8px 16px;
+    margin: 0 4px;
+}
+
+.nav-link.active {
+    color: var(--gold-primary) !important;
+    font-weight: 600 !important;
+    background: rgba(212, 175, 55, 0.15);
+    border-radius: 8px;
+    padding: 8px 16px;
+    margin: 0 4px;
+}
+
+/* Enhanced Active Underline */
+.nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 2.5px;
+    background: linear-gradient(90deg, #D4AF37, #F4D03F);
+    border-radius: 2px;
+    box-shadow: 0 1px 6px rgba(212, 175, 55, 0.35);
+}
+
+/* Navigation Search Button */
+.nav-search-btn {
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    color: var(--gold-primary) !important;
+}
+
+.nav-search-btn:hover {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: var(--gold-primary);
+}
+
+/* Mobile Navigation Enhancements */
+@media (max-width: 768px) {
+    .nav-icon-btn {
+        background: rgba(212, 175, 55, 0.15);
+        border-color: rgba(212, 175, 55, 0.3);
+    }
+    
+    .nav-icon-btn:hover {
+        background: rgba(212, 175, 55, 0.25);
+    }
+    
+    .nav-link {
+        color: var(--text-primary) !important;
+        font-weight: 500 !important;
+        padding: 12px 20px !important;
+        border-radius: 8px;
+        margin: 4px 0;
+    }
+    
+    .nav-link:hover {
+        background: rgba(212, 175, 55, 0.1);
+        color: var(--gold-primary) !important;
+    }
+    
+    .nav-link.active {
+        background: rgba(212, 175, 55, 0.2);
+        color: var(--gold-primary) !important;
+    }
+}
+
+/* Fix for all pages - ensure consistent navigation styling */
+.header-enhanced .nav-icon-btn,
+.header-enhanced .nav-link,
+.header-enhanced .nav-search-btn {
+    transition: all 0.3s ease;
+}
+
+/* Ensure proper z-index and layering */
+.nav-icon-btn,
+.nav-link,
+.nav-search-btn {
+    position: relative;
+    z-index: 10;
+}
+
+/* Notification Badge Enhancement */
+.nav-icon-btn .notification-badge {
+    background: var(--gold-primary) !important;
+    color: var(--dark-bg) !important;
+    border: 2px solid var(--dark-bg);
+}
+
+/* Logo Enhancement */
+.logo-main {
+    filter: drop-shadow(0 2px 8px rgba(212, 175, 55, 0.3));
+    transition: all 0.3s ease;
+}
+
+.logo-main:hover {
+    filter: drop-shadow(0 4px 12px rgba(212, 175, 55, 0.5));
+    transform: scale(1.05);
+}
+
+/* Remove any conflicting styles */
+.header-enhanced * {
+    transition: color 0.3s ease, background 0.3s ease, border 0.3s ease, transform 0.3s ease;
+}

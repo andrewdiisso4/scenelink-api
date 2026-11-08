@@ -1,0 +1,19 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["TEAMID.app.scenelink.www"],
+        "components": [
+          { "/": "/*", "comment": "Open all SceneLink URLs inside the app" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["TEAMID.app.scenelink.www"]
+  },
+  "activitycontinuation": {
+    "apps": ["TEAMID.app.scenelink.www"]
+  }
+}

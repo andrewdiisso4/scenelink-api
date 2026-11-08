@@ -1,0 +1,477 @@
+/* ==============================================
+   SceneLink AI Concierge v4 — Premium Experience
+   ============================================== */
+
+/* FAB Button */
+.sl-concierge-fab {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #D4AF37, #b8962e);
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(212,175,55,0.4), 0 2px 8px rgba(0,0,0,0.3);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sl-concierge-fab svg {
+    width: 26px;
+    height: 26px;
+    fill: #0a0a0a;
+}
+.sl-concierge-fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 28px rgba(212,175,55,0.5), 0 4px 12px rgba(0,0,0,0.3);
+}
+.sl-concierge-fab.open { display: none; }
+
+/* Panel */
+.sl-concierge-panel {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 420px;
+    max-height: 680px;
+    background: #0d0d12;
+    border: 1px solid rgba(212,175,55,0.15);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 40px rgba(212,175,55,0.08);
+    z-index: 10000;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    backdrop-filter: blur(20px);
+}
+.sl-concierge-panel.open { display: flex; }
+
+/* Header */
+.sl-concierge-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(212,175,55,0.08) 0%, rgba(0,0,0,0) 100%);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.sl-concierge-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.sl-concierge-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #D4AF37, #b8962e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.sl-concierge-avatar svg {
+    width: 20px;
+    height: 20px;
+    fill: #0a0a0a;
+}
+.sl-concierge-header-info h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.3px;
+}
+.sl-concierge-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+}
+.sl-concierge-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: concierge-pulse 2s infinite;
+}
+@keyframes concierge-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+.sl-concierge-status span {
+    font-size: 11px;
+    color: #22c55e;
+    font-weight: 500;
+}
+.sl-concierge-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.06);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    color: #888;
+}
+.sl-concierge-close:hover {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+}
+.sl-concierge-close svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Messages Area */
+.sl-concierge-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 16px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212,175,55,0.2) transparent;
+}
+.sl-concierge-messages::-webkit-scrollbar { width: 4px; }
+.sl-concierge-messages::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.2); border-radius: 4px; }
+
+/* Message Bubbles */
+.sl-msg {
+    max-width: 92%;
+    animation: msg-in 0.3s ease-out;
+}
+@keyframes msg-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.sl-msg-bot {
+    align-self: flex-start;
+}
+.sl-msg-user {
+    align-self: flex-end;
+}
+.sl-msg-bot .sl-msg-bubble {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 4px 16px 16px 16px;
+    padding: 12px 16px;
+    color: #e0e0e0;
+    font-size: 13.5px;
+    line-height: 1.55;
+}
+.sl-msg-user .sl-msg-bubble {
+    background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(212,175,55,0.08));
+    border: 1px solid rgba(212,175,55,0.2);
+    border-radius: 16px 4px 16px 16px;
+    padding: 12px 16px;
+    color: #f0e6c8;
+    font-size: 13.5px;
+    line-height: 1.55;
+}
+
+/* Quick Action Chips */
+.sl-concierge-quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+.sl-quick-action {
+    background: rgba(212,175,55,0.08);
+    border: 1px solid rgba(212,175,55,0.2);
+    color: #D4AF37;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.sl-quick-action:hover {
+    background: rgba(212,175,55,0.18);
+    border-color: rgba(212,175,55,0.4);
+    transform: translateY(-1px);
+}
+
+/* ===== PREMIUM VENUE CARDS ===== */
+.sl-venue-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-top: 8px;
+    transition: all 0.25s;
+}
+.sl-venue-card:hover {
+    border-color: rgba(212,175,55,0.25);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+/* Venue Photo */
+.sl-venue-photo {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    display: block;
+    background: rgba(255,255,255,0.03);
+}
+
+/* Venue Card Body */
+.sl-venue-card-body {
+    padding: 14px 16px;
+}
+
+/* Name + Rating row */
+.sl-venue-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.sl-venue-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.3;
+}
+.sl-venue-rating {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    background: rgba(212,175,55,0.1);
+    border: 1px solid rgba(212,175,55,0.2);
+    border-radius: 8px;
+    padding: 3px 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #D4AF37;
+}
+.sl-venue-rating .star {
+    color: #D4AF37;
+    font-size: 12px;
+}
+
+/* Location + Type row */
+.sl-venue-location {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: #999;
+    margin-bottom: 8px;
+}
+.sl-venue-location i {
+    color: #D4AF37;
+    font-size: 10px;
+}
+.sl-venue-location .sep {
+    color: #444;
+}
+
+/* Description */
+.sl-venue-desc {
+    font-size: 12.5px;
+    color: #aaa;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Info chips row */
+.sl-venue-info-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+.sl-venue-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: #bbb;
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
+    padding: 3px 8px;
+}
+.sl-venue-chip i {
+    font-size: 9px;
+    color: #D4AF37;
+}
+
+/* Tags */
+.sl-venue-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 12px;
+}
+.sl-venue-tag {
+    background: rgba(212,175,55,0.08);
+    border: 1px solid rgba(212,175,55,0.15);
+    color: #c4a42e;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+
+/* Action Buttons */
+.sl-venue-actions {
+    display: flex;
+    gap: 6px;
+    padding-top: 2px;
+}
+.sl-venue-action-btn {
+    flex: 1;
+    padding: 8px 0;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border: none;
+}
+.sl-venue-action-btn.primary {
+    background: linear-gradient(135deg, #D4AF37, #b8962e);
+    color: #0a0a0a;
+}
+.sl-venue-action-btn.primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(212,175,55,0.3);
+}
+.sl-venue-action-btn.secondary {
+    background: rgba(212,175,55,0.08);
+    border: 1px solid rgba(212,175,55,0.2);
+    color: #D4AF37;
+}
+.sl-venue-action-btn.secondary:hover {
+    background: rgba(212,175,55,0.15);
+}
+.sl-venue-action-btn.icon-only {
+    flex: 0 0 36px;
+    width: 36px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #999;
+}
+.sl-venue-action-btn.icon-only:hover {
+    color: #D4AF37;
+    border-color: rgba(212,175,55,0.3);
+    background: rgba(212,175,55,0.08);
+}
+.sl-venue-action-btn.icon-only.saved {
+    color: #ef4444;
+    border-color: rgba(239,68,68,0.3);
+    background: rgba(239,68,68,0.08);
+}
+
+/* Event Cards */
+.sl-event-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-top: 8px;
+}
+.sl-event-card:hover { border-color: rgba(212,175,55,0.2); }
+.sl-event-name { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.sl-event-meta { font-size: 12px; color: #999; margin-bottom: 4px; }
+.sl-event-meta span { margin-right: 10px; }
+.sl-event-desc { font-size: 12px; color: #aaa; line-height: 1.5; }
+.sl-event-tags { display: flex; gap: 5px; margin-top: 6px; }
+
+/* Typing indicator */
+.sl-typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 8px 16px;
+}
+.sl-typing-indicator span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #D4AF37;
+    animation: typing-bounce 1.2s infinite;
+}
+.sl-typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+.sl-typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes typing-bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* Input */
+.sl-concierge-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    background: rgba(0,0,0,0.2);
+}
+.sl-concierge-input input {
+    flex: 1;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 10px 14px;
+    color: #fff;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.sl-concierge-input input:focus {
+    border-color: rgba(212,175,55,0.4);
+}
+.sl-concierge-input input::placeholder { color: #666; }
+.sl-concierge-input button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #D4AF37, #b8962e);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+.sl-concierge-input button:hover { transform: scale(1.05); }
+.sl-concierge-input button svg {
+    width: 18px;
+    height: 18px;
+    fill: #0a0a0a;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .sl-concierge-panel {
+        width: calc(100vw - 16px);
+        max-height: calc(100vh - 80px);
+        bottom: 8px;
+        right: 8px;
+        border-radius: 16px;
+    }
+}

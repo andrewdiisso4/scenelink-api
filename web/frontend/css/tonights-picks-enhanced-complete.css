@@ -1,0 +1,326 @@
+/* Tonight's Picks Complete Enhancement */
+
+/* Enhanced Search Bar */
+.tonights-picks-search-container {
+    max-width: 700px;
+    margin: 0 auto 40px;
+    position: relative;
+}
+
+.tonights-picks-search {
+    width: 100%;
+    padding: 18px 60px 18px 25px;
+    border: 2px solid rgba(212, 175, 55, 0.3);
+    border-radius: 50px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 16px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+}
+
+.tonights-picks-search::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.tonights-picks-search:focus {
+    outline: none;
+    border-color: var(--accent-gold);
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1), 0 8px 24px rgba(0, 0, 0, 0.2);
+    transform: translateY(-2px);
+}
+
+.tonights-picks-search-btn {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover));
+    border: none;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    color: #000;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+
+.tonights-picks-search-btn:hover {
+    transform: translateY(-50%) scale(1.1) rotate(5deg);
+    box-shadow: 0 6px 16px rgba(212, 175, 55, 0.4);
+}
+
+/* Enhanced Time Segments */
+.time-segments-enhanced {
+    display: flex;
+    gap: 15px;
+    margin: 50px 0 40px;
+    flex-wrap: wrap;
+    justify-content: center;
+    position: relative;
+}
+
+.time-segment-enhanced {
+    padding: 16px 32px;
+    border: 2px solid rgba(212, 175, 55, 0.2);
+    border-radius: 50px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+}
+
+.time-segment-enhanced::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.2), transparent);
+    transition: left 0.6s ease;
+}
+
+.time-segment-enhanced:hover::before {
+    left: 100%;
+}
+
+.time-segment-enhanced:hover {
+    background: var(--accent-gold);
+    color: #000;
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 12px 24px rgba(212, 175, 55, 0.3);
+    border-color: var(--accent-gold);
+}
+
+.time-segment-enhanced.active {
+    background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover));
+    color: #000;
+    border-color: var(--accent-gold);
+    box-shadow: 0 8px 20px rgba(212, 175, 55, 0.3);
+}
+
+/* Enhanced Tonight's Top Picks Button */
+.tonight-top-picks-enhanced {
+    background: linear-gradient(135deg, var(--accent-gold), #b8941f, #d4af37);
+    color: #000;
+    border: none;
+    padding: 20px 45px;
+    border-radius: 50px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 10px 25px rgba(212, 175, 55, 0.35);
+    position: relative;
+    overflow: hidden;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.tonight-top-picks-enhanced::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.8s ease;
+}
+
+.tonight-top-picks-enhanced:hover::before {
+    left: 100%;
+}
+
+.tonight-top-picks-enhanced:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 15px 35px rgba(212, 175, 55, 0.45);
+}
+
+.tonight-top-picks-enhanced:active {
+    transform: translateY(-2px) scale(1.02);
+}
+
+/* Enhanced Venue Cards */
+.venue-card-enhanced {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    border-radius: 20px;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    backdrop-filter: blur(10px);
+}
+
+.venue-card-enhanced:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    border-color: var(--accent-gold);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.venue-card-image-enhanced {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: brightness(0.95);
+}
+
+.venue-card-enhanced:hover .venue-card-image-enhanced {
+    transform: scale(1.08);
+    filter: brightness(1.05);
+}
+
+.venue-save-btn-enhanced {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(212, 175, 55, 0.5);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: var(--accent-gold);
+    z-index: 10;
+}
+
+.venue-save-btn-enhanced:hover {
+    background: var(--accent-gold);
+    color: #000;
+    transform: scale(1.15) rotate(5deg);
+    box-shadow: 0 6px 16px rgba(212, 175, 55, 0.4);
+}
+
+.venue-save-btn-enhanced.saved {
+    background: var(--accent-gold);
+    color: #000;
+    animation: saveHeartbeat 0.6s ease;
+}
+
+@keyframes saveHeartbeat {
+    0%, 100% { transform: scale(1); }
+    25% { transform: scale(1.2); }
+    50% { transform: scale(0.9); }
+    75% { transform: scale(1.1); }
+}
+
+/* Hide Open Right Now Section */
+.open-right-now-section {
+    display: none !important;
+}
+
+/* Venue Details Enhancement */
+.venue-card-content-enhanced {
+    padding: 20px;
+}
+
+.venue-card-title-enhanced {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #fff;
+}
+
+.venue-card-details-enhanced {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.venue-card-meta-enhanced {
+    display: flex;
+    gap: 15px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.venue-meta-item-enhanced {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    color: var(--accent-gold);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .time-segments-enhanced {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .tonights-picks-search-container {
+        margin: 0 20px 30px;
+    }
+    
+    .tonight-top-picks-enhanced {
+        padding: 16px 30px;
+        font-size: 16px;
+    }
+    
+    .venue-card-image-enhanced {
+        height: 160px;
+    }
+}
+
+/* Search Results Dropdown */
+.search-results-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: rgba(20, 20, 20, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 20px;
+    margin-top: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+}
+
+.search-results-dropdown.active {
+    display: block;
+}
+
+.search-result-item {
+    padding: 15px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.search-result-item:hover {
+    background: rgba(212, 175, 55, 0.1);
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}

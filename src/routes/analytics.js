@@ -1,6 +1,6 @@
 const express = require('express');
 const pool = require('../config/database');
-const { optionalAuth } = require('../middleware/auth');
+const { optionalAuth, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -44,8 +44,8 @@ router.post('/event', optionalAuth, async (req, res) => {
             placeholders.push(`($${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++})`);
             values.push(
                 String(e.event).slice(0, 64),
-                authedUserId || (e.user_id || null),
-                authedUserId ? false : (e.anon !== false),
+                authedUserId || null,
+                !authedUserId,
                 e.session_id ? String(e.session_id).slice(0, 128) : null,
                 e.url ? String(e.url).slice(0, 500) : null,
                 e.referrer ? String(e.referrer).slice(0, 500) : null,
@@ -79,11 +79,7 @@ function stripMeta(e){
 }
 
 // GET /api/analytics/summary — admin-only snapshot
-router.get('/summary', async (req, res) => {
-    const adminSecret = req.headers['x-admin-secret'] || req.query.admin_secret;
-    if (adminSecret !== process.env.ADMIN_SECRET) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+router.get('/summary', requireAdmin, require('../launch/shared').noStore, async (req, res) => {
     try {
         const [total, byEvent, recent] = await Promise.all([
             pool.query(`SELECT COUNT(*)::int AS n FROM analytics_events WHERE created_at > NOW() - INTERVAL '7 days'`),

@@ -11,13 +11,14 @@
  *   message count rises  ->  A reads the thread  ->  unread clears  ->  A
  *   shares a list with B  ->  moderation (report/block/unblock) round-trips.
  *
- * Two real accounts, production by default. Verifies PERSISTENCE by re-reading
+ * Two fictional accounts, explicit disposable local target required. Verifies PERSISTENCE by re-reading
  * after each mutation. Exits non-zero on any required failure.
  *
- * Usage:  node qa/phase9a-social-e2e.mjs
- *         BASE=https://scenelink-api-prod.onrender.com/api node qa/phase9a-social-e2e.mjs
+ * Verify local DB isolation and disable SMTP/provider side effects first.
+ * Usage: QA_ISOLATED_DATABASE=true BASE=http://127.0.0.1:3001/api node qa/phase9a-social-e2e.mjs
  */
-const BASE = process.env.BASE || 'https://scenelink-api-prod.onrender.com/api';
+import { localTarget, localFetch } from './local-target.mjs';
+const BASE = localTarget();
 const TS = Date.now();
 let pass = 0, fail = 0;
 const failures = [];
@@ -30,7 +31,7 @@ function ok(name, cond, extra) {
 async function req(method, path, token, body) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = 'Bearer ' + token;
-  const res = await fetch(BASE + path, { method, headers, body: body != null ? JSON.stringify(body) : undefined });
+  const res = await localFetch(BASE, path, { method, headers, body: body != null ? JSON.stringify(body) : undefined });
   let data = null;
   const txt = await res.text();
   try { data = txt ? JSON.parse(txt) : null; } catch (_) { data = { raw: txt }; }

@@ -1,0 +1,1315 @@
+/* ============================================================
+   SCENELINK PRODUCT EVOLUTION — CSS
+   "The fastest way to decide where to go tonight"
+   Layers on top of all existing styles
+   ============================================================ */
+
+/* ============================================================
+   0. CSS VARIABLES & FOUNDATIONS
+   ============================================================ */
+:root {
+    --sl-gold: #D4AF37;
+    --sl-gold-dim: rgba(212, 175, 55, 0.15);
+    --sl-gold-glow: rgba(212, 175, 55, 0.3);
+    --sl-bg: #0a0a0a;
+    --sl-bg-card: rgba(255, 255, 255, 0.03);
+    --sl-bg-card-hover: rgba(255, 255, 255, 0.06);
+    --sl-border: rgba(255, 255, 255, 0.06);
+    --sl-border-hover: rgba(212, 175, 55, 0.25);
+    --sl-text: #ffffff;
+    --sl-text-dim: rgba(255, 255, 255, 0.5);
+    --sl-text-muted: rgba(255, 255, 255, 0.35);
+    --sl-red: #ef4444;
+    --sl-green: #22c55e;
+    --sl-blue: #3b82f6;
+    --sl-orange: #f97316;
+    --sl-radius: 16px;
+    --sl-radius-sm: 10px;
+    --sl-radius-xs: 6px;
+    --sl-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================================
+   1. TONIGHT MODE — HERO REPLACEMENT
+   ============================================================ */
+.sl-tonight-hero {
+    position: relative;
+    padding: 0 24px;
+    margin-top: -20px;
+}
+
+.sl-tonight-hero-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 0 10px;
+}
+
+.sl-tonight-headline {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.sl-tonight-headline h2 {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--sl-text);
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+.sl-tonight-headline h2 span {
+    color: var(--sl-gold);
+}
+
+.sl-live-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--sl-red);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.sl-live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--sl-red);
+    animation: sl-pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes sl-pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.sl-tonight-stats {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.sl-tonight-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--sl-text-dim);
+}
+
+.sl-tonight-stat i {
+    color: var(--sl-gold);
+    font-size: 12px;
+}
+
+.sl-tonight-stat strong {
+    color: var(--sl-text);
+    font-weight: 700;
+}
+
+/* Decision Shortcuts Bar */
+.sl-shortcuts-bar {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 8px 24px 20px;
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.sl-shortcuts-bar::-webkit-scrollbar { display: none; }
+
+.sl-shortcut-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 24px;
+    border: 1px solid var(--sl-border);
+    background: var(--sl-bg-card);
+    color: var(--sl-text);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s var(--sl-ease);
+}
+
+.sl-shortcut-btn:hover {
+    border-color: var(--sl-border-hover);
+    background: var(--sl-bg-card-hover);
+    transform: translateY(-1px);
+}
+
+.sl-shortcut-btn.active,
+.sl-shortcut-btn.gold {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05));
+    border-color: rgba(212, 175, 55, 0.3);
+    color: var(--sl-gold);
+}
+
+.sl-shortcut-btn i {
+    font-size: 14px;
+}
+
+/* ============================================================
+   2. OUT TONIGHT STATUS BAR
+   ============================================================ */
+.sl-out-tonight-bar {
+    max-width: 1280px;
+    margin: 0 auto 20px;
+    padding: 0 24px;
+}
+
+.sl-out-tonight-inner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--sl-bg-card);
+    border: 1px solid var(--sl-border);
+    border-radius: var(--sl-radius);
+    padding: 12px 20px;
+}
+
+.sl-out-tonight-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--sl-text-dim);
+    white-space: nowrap;
+}
+
+.sl-status-toggles {
+    display: flex;
+    gap: 8px;
+}
+
+.sl-status-toggle {
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--sl-border);
+    background: transparent;
+    color: var(--sl-text-dim);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s var(--sl-ease);
+}
+
+.sl-status-toggle:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    color: var(--sl-text);
+}
+
+.sl-status-toggle.active {
+    background: linear-gradient(135deg, var(--sl-gold), #b8962e);
+    border-color: var(--sl-gold);
+    color: #0a0a0a;
+}
+
+.sl-status-toggle.active-red {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: var(--sl-red);
+}
+
+.sl-friends-out {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--sl-text-dim);
+}
+
+.sl-friends-avatars {
+    display: flex;
+    margin-right: 4px;
+}
+
+.sl-friends-avatars .sl-mini-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--sl-bg);
+    margin-left: -8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #0a0a0a;
+}
+
+.sl-friends-avatars .sl-mini-avatar:first-child { margin-left: 0; }
+
+/* ============================================================
+   3. SECTION HEADERS
+   ============================================================ */
+.sl-feed-section {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 24px 32px;
+}
+
+.sl-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.sl-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--sl-text);
+    margin: 0;
+}
+
+.sl-section-title i {
+    font-size: 16px;
+}
+
+.sl-section-badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.sl-badge-hot {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--sl-red);
+}
+
+.sl-badge-rising {
+    background: rgba(249, 115, 22, 0.12);
+    color: var(--sl-orange);
+}
+
+.sl-badge-gem {
+    background: rgba(168, 85, 247, 0.12);
+    color: #a855f7;
+}
+
+.sl-badge-vibe {
+    background: rgba(212, 175, 55, 0.12);
+    color: var(--sl-gold);
+}
+
+.sl-see-all {
+    font-size: 13px;
+    color: var(--sl-gold);
+    text-decoration: none;
+    font-weight: 600;
+    cursor: pointer;
+    background: none;
+    border: none;
+    transition: opacity 0.2s;
+}
+
+.sl-see-all:hover { opacity: 0.7; }
+
+/* ============================================================
+   4. VENUE CARDS — THE CORE DECISION UNIT
+   ============================================================ */
+.sl-venue-scroll {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 4px;
+}
+
+.sl-venue-scroll::-webkit-scrollbar { display: none; }
+
+.sl-venue-card {
+    flex: 0 0 300px;
+    scroll-snap-align: start;
+    background: var(--sl-bg-card);
+    border: 1px solid var(--sl-border);
+    border-radius: var(--sl-radius);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.25s var(--sl-ease);
+    position: relative;
+}
+
+.sl-venue-card:hover {
+    border-color: var(--sl-border-hover);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Card Image */
+.sl-vc-image {
+    position: relative;
+    height: 180px;
+    overflow: hidden;
+}
+
+.sl-vc-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s var(--sl-ease);
+}
+
+.sl-venue-card:hover .sl-vc-image img {
+    transform: scale(1.05);
+}
+
+.sl-vc-image-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%);
+}
+
+/* Energy Badge */
+.sl-energy-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.sl-energy-badge.energy-high {
+    background: rgba(239, 68, 68, 0.85);
+    color: white;
+}
+
+.sl-energy-badge.energy-med {
+    background: rgba(249, 115, 22, 0.85);
+    color: white;
+}
+
+.sl-energy-badge.energy-low {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.sl-energy-badge.energy-chill {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* Status Tag */
+.sl-status-tag {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.sl-status-packed {
+    background: rgba(239, 68, 68, 0.85);
+    color: white;
+}
+
+.sl-status-busy {
+    background: rgba(249, 115, 22, 0.85);
+    color: white;
+}
+
+.sl-status-filling {
+    background: rgba(234, 179, 8, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.sl-status-chill {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+/* FOMO Tag */
+.sl-fomo-tag {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.sl-fomo-tag i {
+    font-size: 10px;
+    color: var(--sl-gold);
+}
+
+/* Social Signal on Card */
+.sl-social-signal {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(6px);
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+/* Card Body */
+.sl-vc-body {
+    padding: 14px 16px;
+}
+
+.sl-vc-top-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.sl-vc-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--sl-text);
+    line-height: 1.3;
+    margin: 0;
+}
+
+.sl-vc-rating {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--sl-gold);
+    white-space: nowrap;
+}
+
+.sl-vc-rating i {
+    font-size: 11px;
+}
+
+.sl-vc-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--sl-text-dim);
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.sl-vc-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.sl-vc-meta .sl-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--sl-text-muted);
+}
+
+/* Vibe Tags */
+.sl-vc-vibes {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.sl-vibe-tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--sl-text-dim);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Energy Bar */
+.sl-energy-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.sl-energy-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--sl-text-dim);
+    white-space: nowrap;
+}
+
+.sl-energy-track {
+    flex: 1;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.sl-energy-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s var(--sl-ease);
+}
+
+.sl-energy-fill.energy-high { background: linear-gradient(90deg, var(--sl-orange), var(--sl-red)); }
+.sl-energy-fill.energy-med { background: linear-gradient(90deg, #eab308, var(--sl-orange)); }
+.sl-energy-fill.energy-low { background: linear-gradient(90deg, var(--sl-green), #86efac); }
+.sl-energy-fill.energy-chill { background: linear-gradient(90deg, var(--sl-blue), #93c5fd); }
+
+.sl-energy-value {
+    font-size: 12px;
+    font-weight: 800;
+    min-width: 20px;
+    text-align: right;
+}
+
+.sl-energy-value.energy-high { color: var(--sl-red); }
+.sl-energy-value.energy-med { color: var(--sl-orange); }
+.sl-energy-value.energy-low { color: var(--sl-green); }
+.sl-energy-value.energy-chill { color: var(--sl-blue); }
+
+/* Quick Actions */
+.sl-vc-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--sl-border);
+}
+
+.sl-vc-action {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 0;
+    border: none;
+    background: transparent;
+    color: var(--sl-text-dim);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: var(--sl-radius-xs);
+    transition: all 0.2s var(--sl-ease);
+}
+
+.sl-vc-action:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--sl-text);
+}
+
+.sl-vc-action.action-save:hover { color: var(--sl-gold); }
+.sl-vc-action.action-map:hover { color: var(--sl-blue); }
+.sl-vc-action.action-send:hover { color: var(--sl-green); }
+
+.sl-vc-action i {
+    font-size: 13px;
+}
+
+/* ============================================================
+   5. WHERE PEOPLE ARE GOING — SOCIAL STRIP
+   ============================================================ */
+.sl-social-strip {
+    max-width: 1280px;
+    margin: 0 auto 28px;
+    padding: 0 24px;
+}
+
+.sl-social-strip-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.sl-social-strip-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--sl-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sl-social-strip-title i {
+    color: var(--sl-gold);
+}
+
+.sl-activity-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+}
+
+.sl-activity-scroll::-webkit-scrollbar { display: none; }
+
+.sl-activity-item {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--sl-bg-card);
+    border: 1px solid var(--sl-border);
+    border-radius: var(--sl-radius-sm);
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all 0.2s var(--sl-ease);
+    white-space: nowrap;
+}
+
+.sl-activity-item:hover {
+    border-color: var(--sl-border-hover);
+    background: var(--sl-bg-card-hover);
+}
+
+.sl-activity-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0a0a0a;
+    flex-shrink: 0;
+}
+
+.sl-activity-text {
+    font-size: 12px;
+    color: var(--sl-text-dim);
+    line-height: 1.4;
+}
+
+.sl-activity-text strong {
+    color: var(--sl-text);
+    font-weight: 600;
+}
+
+.sl-activity-text .sl-gold {
+    color: var(--sl-gold);
+    font-weight: 600;
+}
+
+.sl-activity-time {
+    font-size: 10px;
+    color: var(--sl-text-muted);
+    margin-left: 8px;
+}
+
+/* ============================================================
+   6. JOIN THE MOVE — HERD BEHAVIOR
+   ============================================================ */
+.sl-join-move {
+    max-width: 1280px;
+    margin: 0 auto 32px;
+    padding: 0 24px;
+}
+
+.sl-join-move-card {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.06), rgba(212, 175, 55, 0.02));
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    border-radius: var(--sl-radius);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    cursor: pointer;
+    transition: all 0.25s var(--sl-ease);
+}
+
+.sl-join-move-card:hover {
+    border-color: rgba(212, 175, 55, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(212, 175, 55, 0.1);
+}
+
+.sl-join-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--sl-gold), #b8962e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: #0a0a0a;
+    flex-shrink: 0;
+}
+
+.sl-join-info {
+    flex: 1;
+}
+
+.sl-join-info h4 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--sl-text);
+    margin: 0 0 4px;
+}
+
+.sl-join-info p {
+    font-size: 13px;
+    color: var(--sl-text-dim);
+    margin: 0;
+}
+
+.sl-join-info p strong {
+    color: var(--sl-gold);
+}
+
+.sl-join-arrow {
+    font-size: 20px;
+    color: var(--sl-gold);
+    transition: transform 0.2s;
+}
+
+.sl-join-move-card:hover .sl-join-arrow {
+    transform: translateX(4px);
+}
+
+/* ============================================================
+   7. TONIGHT PLAN — SEQUENCE BUILDER
+   ============================================================ */
+.sl-tonight-plan {
+    max-width: 1280px;
+    margin: 0 auto 32px;
+    padding: 0 24px;
+}
+
+.sl-plan-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.sl-plan-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--sl-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sl-plan-title i { color: var(--sl-gold); }
+
+.sl-plan-steps {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.sl-plan-steps::-webkit-scrollbar { display: none; }
+
+.sl-plan-step {
+    flex: 0 0 200px;
+    position: relative;
+    background: var(--sl-bg-card);
+    border: 1px dashed rgba(255, 255, 255, 0.08);
+    border-radius: var(--sl-radius);
+    padding: 20px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s var(--sl-ease);
+}
+
+.sl-plan-step:hover {
+    border-color: var(--sl-border-hover);
+    border-style: solid;
+    background: var(--sl-bg-card-hover);
+}
+
+.sl-plan-step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--sl-gold-dim);
+    color: var(--sl-gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+    margin: 0 auto 10px;
+}
+
+.sl-plan-step-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--sl-text);
+    margin-bottom: 4px;
+}
+
+.sl-plan-step-sub {
+    font-size: 11px;
+    color: var(--sl-text-muted);
+}
+
+.sl-plan-step-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.sl-plan-connector {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    color: var(--sl-text-muted);
+    font-size: 16px;
+}
+
+/* Filled plan step */
+.sl-plan-step.filled {
+    border-style: solid;
+    border-color: rgba(212, 175, 55, 0.2);
+    background: rgba(212, 175, 55, 0.04);
+}
+
+.sl-plan-step.filled .sl-plan-step-num {
+    background: var(--sl-gold);
+    color: #0a0a0a;
+}
+
+/* ============================================================
+   8. SAVE MODAL — ENHANCED
+   ============================================================ */
+.sl-save-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.25s var(--sl-ease);
+}
+
+.sl-save-modal-overlay.open {
+    display: flex;
+    opacity: 1;
+}
+
+.sl-save-modal {
+    width: 400px;
+    max-width: calc(100vw - 40px);
+    max-height: 80vh;
+    background: rgba(12, 12, 18, 0.98);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 20px;
+    overflow: hidden;
+    transform: scale(0.95);
+    transition: transform 0.25s var(--sl-ease);
+}
+
+.sl-save-modal-overlay.open .sl-save-modal {
+    transform: scale(1);
+}
+
+.sl-save-modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--sl-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.sl-save-modal-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--sl-text);
+    margin: 0;
+}
+
+.sl-save-modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--sl-text-dim);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.sl-save-modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.sl-save-modal-body {
+    padding: 16px 24px;
+    overflow-y: auto;
+    max-height: 50vh;
+}
+
+.sl-save-option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: var(--sl-radius-sm);
+    cursor: pointer;
+    transition: background 0.15s var(--sl-ease);
+    margin-bottom: 4px;
+}
+
+.sl-save-option:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.sl-save-option-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.sl-save-option-text h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--sl-text);
+    margin: 0 0 2px;
+}
+
+.sl-save-option-text p {
+    font-size: 12px;
+    color: var(--sl-text-muted);
+    margin: 0;
+}
+
+.sl-save-option.tonight-save .sl-save-option-icon {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--sl-red);
+}
+
+.sl-save-option.favorites-save .sl-save-option-icon {
+    background: var(--sl-gold-dim);
+    color: var(--sl-gold);
+}
+
+.sl-save-option.list-save .sl-save-option-icon {
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--sl-blue);
+}
+
+.sl-save-option.new-list-save .sl-save-option-icon {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--sl-text-dim);
+}
+
+/* ============================================================
+   9. SHARE MODAL
+   ============================================================ */
+.sl-share-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 10001;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.sl-share-modal-overlay.open { display: flex; }
+
+.sl-share-modal {
+    width: 380px;
+    max-width: calc(100vw - 40px);
+    background: rgba(12, 12, 18, 0.98);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 20px;
+    padding: 24px;
+}
+
+.sl-share-venue-preview {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--sl-bg-card);
+    border-radius: var(--sl-radius-sm);
+    padding: 12px;
+    margin-bottom: 20px;
+}
+
+.sl-share-venue-preview img {
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
+    object-fit: cover;
+}
+
+.sl-share-venue-info h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--sl-text);
+    margin: 0 0 4px;
+}
+
+.sl-share-venue-info p {
+    font-size: 12px;
+    color: var(--sl-text-dim);
+    margin: 0;
+}
+
+.sl-share-actions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.sl-share-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 8px;
+    border-radius: var(--sl-radius-sm);
+    border: 1px solid var(--sl-border);
+    background: transparent;
+    color: var(--sl-text-dim);
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s var(--sl-ease);
+}
+
+.sl-share-btn:hover {
+    border-color: var(--sl-border-hover);
+    background: var(--sl-bg-card-hover);
+    color: var(--sl-text);
+}
+
+.sl-share-btn i {
+    font-size: 20px;
+}
+
+/* ============================================================
+   10. MAP PULSE MARKERS
+   ============================================================ */
+.sl-pulse-marker {
+    position: relative;
+}
+
+.sl-pulse-marker .pulse-ring {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    animation: sl-marker-pulse 2s ease-out infinite;
+    opacity: 0;
+}
+
+.sl-pulse-marker.energy-high .pulse-ring {
+    border: 2px solid var(--sl-red);
+    animation-duration: 1.2s;
+}
+
+.sl-pulse-marker.energy-med .pulse-ring {
+    border: 2px solid var(--sl-orange);
+    animation-duration: 1.8s;
+}
+
+.sl-pulse-marker.energy-low .pulse-ring {
+    border: 2px solid var(--sl-green);
+    animation-duration: 2.5s;
+}
+
+@keyframes sl-marker-pulse {
+    0% { transform: scale(1); opacity: 0.5; }
+    100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* ============================================================
+   11. TOAST NOTIFICATIONS
+   ============================================================ */
+.sl-evo-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: rgba(12, 12, 18, 0.95);
+    border: 1px solid var(--sl-border);
+    border-radius: 14px;
+    padding: 12px 24px;
+    color: var(--sl-text);
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 99999;
+    transition: transform 0.3s var(--sl-ease), opacity 0.3s;
+    opacity: 0;
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sl-evo-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.sl-evo-toast i {
+    color: var(--sl-gold);
+}
+
+/* ============================================================
+   12. RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+    .sl-tonight-hero-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .sl-tonight-stats {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .sl-venue-card {
+        flex: 0 0 270px;
+    }
+    
+    .sl-out-tonight-inner {
+        flex-wrap: wrap;
+    }
+    
+    .sl-friends-out {
+        margin-left: 0;
+        width: 100%;
+    }
+    
+    .sl-join-move-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .sl-share-actions {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ============================================================
+   13. HOMEPAGE SECTION HIDE (when Tonight Mode active)
+   ============================================================ */
+body.tonight-mode .premium-search-section,
+body.tonight-mode .explore-city-section,
+body.tonight-mode .social-layer-section,
+body.tonight-mode .social-feed-preview,
+body.tonight-mode .hospitality-excellence-enhanced,
+body.tonight-mode .group-planning-showcase-v2 {
+    display: none !important;
+}
+
+/* Keep hero but shrink it */
+body.tonight-mode .hero-v2 {
+    min-height: auto !important;
+    max-height: 200px;
+    overflow: hidden;
+}
+
+body.tonight-mode .hero-content-wrapper {
+    padding: 40px 0 20px !important;
+}
+
+body.tonight-mode .hero-phone-mockup {
+    display: none !important;
+}
+
+body.tonight-mode .hero-subtitle-main,
+body.tonight-mode .hero-cta-row {
+    display: none !important;
+}
+
+body.tonight-mode .hero-title-main {
+    font-size: 28px !important;
+    margin-bottom: 0 !important;
+}
+/* ── Nightlife venue card energy bar ── */
+.sl-energy-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+.sl-energy-bar-track {
+    flex: 1;
+    height: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.sl-energy-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #D4AF37, #ff6b35);
+    transition: width 0.6s cubic-bezier(0.22,1,0.36,1);
+}
+.sl-energy-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.5);
+    white-space: nowrap;
+    min-width: 54px;
+    text-align: right;
+}

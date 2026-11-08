@@ -1,0 +1,1284 @@
+/**
+ * SceneLink Lists System - Modern Clean Design
+ * Aligned with profile page aesthetics - minimal animations, clean layout
+ */
+
+/* ============================================
+   CSS VARIABLES
+   ============================================ */
+:root {
+    --ls-bg: #0d0d0d;
+    --ls-card: #1a1a1a;
+    --ls-card-hover: #1f1f1f;
+    --ls-border: rgba(255,255,255,0.08);
+    --ls-border-hover: rgba(212,175,55,0.25);
+    --ls-gold: #D4AF37;
+    --ls-gold-dim: rgba(212,175,55,0.15);
+    --ls-text: #ffffff;
+    --ls-text-secondary: #b0b0b0;
+    --ls-text-muted: #666;
+    --ls-danger: #f44336;
+    --ls-success: #4ade80;
+    --ls-radius: 12px;
+    --ls-radius-sm: 8px;
+}
+
+/* ============================================
+   LISTS PAGE LAYOUT
+   ============================================ */
+.lists-page {
+    min-height: 100vh;
+    background: var(--ls-bg);
+    padding-bottom: 40px;
+}
+
+/* ============================================
+   HERO SECTION - Clean, minimal
+   ============================================ */
+.lists-hero {
+    text-align: center;
+    padding: 100px 20px 30px;
+    background: linear-gradient(180deg, rgba(212,175,55,0.06) 0%, transparent 100%);
+}
+
+.lists-hero h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--ls-text);
+    margin: 0 0 8px 0;
+}
+
+.lists-hero > p {
+    color: var(--ls-text-secondary);
+    font-size: 1rem;
+    margin: 0 0 24px 0;
+}
+
+/* Stats Bar */
+.lists-stats {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    flex-wrap: wrap;
+}
+
+.lists-stat {
+    text-align: center;
+}
+
+.lists-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--ls-gold);
+}
+
+.lists-stat-label {
+    font-size: 0.75rem;
+    color: var(--ls-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+/* ============================================
+   CONTAINER & ACTION BAR
+   ============================================ */
+.lists-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.lists-action-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.lists-search {
+    flex: 1;
+    min-width: 200px;
+    position: relative;
+}
+
+.lists-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    opacity: 0.5;
+}
+
+.lists-search input {
+    width: 100%;
+    background: var(--ls-card);
+    border: 1px solid var(--ls-border);
+    border-radius: var(--ls-radius-sm);
+    color: var(--ls-text);
+    padding: 10px 12px 10px 36px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.lists-search input:focus {
+    border-color: var(--ls-gold);
+}
+
+.lists-filter-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--ls-card);
+    border-radius: var(--ls-radius-sm);
+    padding: 3px;
+    border: 1px solid var(--ls-border);
+}
+
+.lists-filter-tab {
+    background: transparent;
+    border: none;
+    color: var(--ls-text-muted);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.lists-filter-tab.active,
+.lists-filter-tab:hover {
+    background: var(--ls-gold-dim);
+    color: var(--ls-gold);
+}
+
+.btn-create-list {
+    background: var(--ls-gold);
+    color: #000;
+    border: none;
+    padding: 10px 20px;
+    border-radius: var(--ls-radius-sm);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+}
+
+.btn-create-list:hover {
+    opacity: 0.9;
+}
+
+/* ============================================
+   LISTS GRID - Clean card layout
+   ============================================ */
+.lists-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+/* ============================================
+   LIST CARD - Profile-aligned modern style
+   ============================================ */
+.list-card {
+    background: var(--ls-card);
+    border: 1px solid var(--ls-border);
+    border-radius: var(--ls-radius);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.list-card:hover {
+    border-color: var(--ls-border-hover);
+    background: var(--ls-card-hover);
+}
+
+.list-card-images {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 80px 80px;
+    gap: 2px;
+    overflow: hidden;
+}
+
+.list-card-images.single-image {
+    grid-template-columns: 1fr;
+    grid-template-rows: 160px;
+}
+
+.list-card-images img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.list-card-images .placeholder-img {
+    background: linear-gradient(135deg, rgba(212,175,55,0.1), rgba(212,175,55,0.05));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+}
+
+.list-card-body {
+    padding: 16px;
+}
+
+.list-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 6px;
+}
+
+.list-card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ls-text);
+    margin: 0;
+    line-height: 1.3;
+}
+
+.list-card-privacy {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.06);
+    color: var(--ls-text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-transform: capitalize;
+}
+
+.list-card-privacy.public {
+    background: var(--ls-gold-dim);
+    color: var(--ls-gold);
+}
+
+.list-card-desc {
+    color: var(--ls-text-secondary);
+    font-size: 0.85rem;
+    margin: 0 0 10px 0;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.list-card-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 0.75rem;
+    color: var(--ls-text-muted);
+    margin-bottom: 10px;
+}
+
+.list-card-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.list-card-tag {
+    background: var(--ls-gold-dim);
+    color: var(--ls-gold);
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+}
+
+.list-card-actions {
+    display: flex;
+    gap: 6px;
+    border-top: 1px solid var(--ls-border);
+    padding-top: 12px;
+}
+
+.list-card-action {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--ls-border);
+    color: var(--ls-text-secondary);
+    padding: 7px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.list-card-action:hover {
+    border-color: var(--ls-border-hover);
+    color: var(--ls-gold);
+}
+
+.list-card-action.primary {
+    background: var(--ls-gold);
+    border-color: var(--ls-gold);
+    color: #000;
+    font-weight: 600;
+}
+
+.list-card-action.primary:hover {
+    opacity: 0.9;
+}
+
+/* ============================================
+   CREATE / EDIT MODAL
+   ============================================ */
+.lists-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.lists-modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.lists-modal {
+    background: var(--ls-card);
+    border: 1px solid var(--ls-border);
+    border-radius: var(--ls-radius);
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.lists-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 20px 0;
+}
+
+.lists-modal-header h2 {
+    color: var(--ls-text);
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+.lists-modal-close {
+    background: transparent;
+    border: none;
+    color: var(--ls-text-muted);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px;
+    transition: color 0.2s;
+}
+
+.lists-modal-close:hover {
+    color: var(--ls-text);
+}
+
+.lists-modal-body {
+    padding: 20px;
+}
+
+.lists-form-group {
+    margin-bottom: 16px;
+}
+
+.lists-form-group label {
+    display: block;
+    color: var(--ls-text-secondary);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.lists-form-group input,
+.lists-form-group textarea,
+.lists-form-group select {
+    width: 100%;
+    background: var(--ls-bg);
+    border: 1px solid var(--ls-border);
+    border-radius: var(--ls-radius-sm);
+    color: var(--ls-text);
+    padding: 10px 12px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.lists-form-group input:focus,
+.lists-form-group textarea:focus,
+.lists-form-group select:focus {
+    border-color: var(--ls-gold);
+}
+
+.lists-form-group textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.lists-form-group select {
+    cursor: pointer;
+}
+
+.lists-emoji-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.lists-emoji-option {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--ls-radius-sm);
+    cursor: pointer;
+    font-size: 18px;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+}
+
+.lists-emoji-option:hover {
+    border-color: var(--ls-border-hover);
+}
+
+.lists-emoji-option.selected {
+    border-color: var(--ls-gold);
+    background: var(--ls-gold-dim);
+}
+
+.lists-modal-footer {
+    display: flex;
+    gap: 10px;
+    padding: 0 20px 20px;
+    justify-content: flex-end;
+}
+
+.btn-modal-secondary {
+    background: transparent;
+    border: 1px solid var(--ls-border);
+    color: var(--ls-text-secondary);
+    padding: 10px 20px;
+    border-radius: var(--ls-radius-sm);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.btn-modal-secondary:hover {
+    border-color: var(--ls-text-muted);
+    color: var(--ls-text);
+}
+
+.btn-modal-primary {
+    background: var(--ls-gold);
+    border: none;
+    color: #000;
+    padding: 10px 24px;
+    border-radius: var(--ls-radius-sm);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: opacity 0.2s;
+}
+
+.btn-modal-primary:hover {
+    opacity: 0.9;
+}
+
+/* ============================================
+   LIST DETAIL VIEW - Full overlay
+   ============================================ */
+.list-detail-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--ls-bg);
+    z-index: 9999;
+    overflow-y: auto;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.list-detail-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Back Navigation - Prominent breadcrumb bar */
+.list-detail-nav {
+    position: sticky;
+    top: 0;
+    z-index: 10001;
+    background: rgba(13,13,13,0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--ls-border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.list-detail-back {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    color: var(--ls-gold);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: var(--ls-radius-sm);
+    transition: background 0.2s;
+}
+
+.list-detail-back:hover {
+    background: var(--ls-gold-dim);
+}
+
+.list-detail-back svg {
+    width: 18px;
+    height: 18px;
+    stroke: var(--ls-gold);
+    fill: none;
+    stroke-width: 2;
+}
+
+.list-detail-nav-title {
+    color: var(--ls-text);
+    font-size: 0.9rem;
+    font-weight: 600;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.list-detail-nav-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.list-detail-nav-btn {
+    background: transparent;
+    border: 1px solid var(--ls-border);
+    color: var(--ls-text-secondary);
+    padding: 6px 12px;
+    border-radius: var(--ls-radius-sm);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.list-detail-nav-btn:hover {
+    border-color: var(--ls-border-hover);
+    color: var(--ls-gold);
+}
+
+/* Detail Header */
+.list-detail-header {
+    padding: 30px 20px;
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.list-detail-emoji {
+    font-size: 40px;
+    margin-bottom: 8px;
+}
+
+.list-detail-title {
+    color: var(--ls-text);
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0 0 6px 0;
+}
+
+.list-detail-desc {
+    color: var(--ls-text-secondary);
+    font-size: 0.95rem;
+    margin: 0 0 16px 0;
+}
+
+.list-detail-meta {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: var(--ls-text-muted);
+    margin-bottom: 20px;
+}
+
+.list-detail-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.list-detail-action-btn {
+    padding: 9px 18px;
+    border-radius: var(--ls-radius-sm);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+    border: none;
+}
+
+.list-detail-action-btn.primary {
+    background: var(--ls-gold);
+    color: #000;
+}
+
+.list-detail-action-btn.primary:hover {
+    opacity: 0.9;
+}
+
+.list-detail-action-btn.secondary {
+    background: transparent;
+    border: 1px solid var(--ls-border);
+    color: var(--ls-text-secondary);
+}
+
+.list-detail-action-btn.secondary:hover {
+    border-color: var(--ls-border-hover);
+    color: var(--ls-gold);
+}
+
+/* Detail Items */
+.list-detail-items {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+}
+
+/* ============================================
+   LIST ITEM ROW - Clean layout
+   ============================================ */
+.list-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    background: var(--ls-card);
+    border: 1px solid var(--ls-border);
+    border-radius: var(--ls-radius);
+    margin-bottom: 10px;
+    transition: border-color 0.2s;
+}
+
+.list-item:hover {
+    border-color: var(--ls-border-hover);
+}
+
+.list-item-image {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--ls-radius-sm);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.list-item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.list-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.list-item-name {
+    color: var(--ls-text);
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0 0 2px 0;
+}
+
+.list-item-type {
+    color: var(--ls-gold);
+    font-size: 0.8rem;
+    margin: 0 0 4px 0;
+}
+
+.list-item-details {
+    display: flex;
+    gap: 10px;
+    font-size: 0.75rem;
+    color: var(--ls-text-muted);
+    flex-wrap: wrap;
+}
+
+.list-item-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.list-item-action {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--ls-radius-sm);
+    border: 1px solid var(--ls-border);
+    background: transparent;
+    color: var(--ls-text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.list-item-action:hover {
+    border-color: var(--ls-border-hover);
+    color: var(--ls-gold);
+}
+
+.list-item-action.danger:hover {
+    border-color: var(--ls-danger);
+    color: var(--ls-danger);
+}
+
+/* Item being removed (undo state) */
+.list-item.removing {
+    opacity: 0.4;
+    background: rgba(244,67,54,0.05);
+    border-color: rgba(244,67,54,0.15);
+}
+
+.list-item.removing .list-item-undo {
+    display: flex;
+}
+
+.list-item-undo {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.list-item-undo-btn {
+    background: var(--ls-gold);
+    border: none;
+    color: #000;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ============================================
+   SAVE TO LIST DROPDOWN (cross-page)
+   ============================================ */
+.save-to-list-dropdown {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--ls-card);
+    border: 1px solid var(--ls-border);
+    border-radius: var(--ls-radius);
+    width: 320px;
+    max-height: 420px;
+    z-index: 10002;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.save-to-list-dropdown.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.save-to-list-dropdown h3 {
+    padding: 16px;
+    margin: 0;
+    font-size: 1rem;
+    color: var(--ls-text);
+    border-bottom: 1px solid var(--ls-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.save-to-list-close {
+    background: transparent;
+    border: none;
+    color: var(--ls-text-muted);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px;
+    transition: color 0.2s;
+}
+
+.save-to-list-close:hover {
+    color: var(--ls-text);
+}
+
+.save-to-list-items {
+    overflow-y: auto;
+    flex: 1;
+    padding: 8px;
+}
+
+.save-to-list-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--ls-radius-sm);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.save-to-list-item:hover {
+    background: rgba(255,255,255,0.04);
+}
+
+.save-to-list-item .emoji {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.save-to-list-item .name {
+    flex: 1;
+    color: var(--ls-text);
+    font-size: 14px;
+}
+
+.save-to-list-item .count {
+    color: var(--ls-text-muted);
+    font-size: 12px;
+}
+
+.save-to-list-item .check {
+    color: var(--ls-gold);
+    font-size: 16px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.save-to-list-item.selected {
+    background: var(--ls-gold-dim);
+}
+
+.save-to-list-item.selected .check {
+    opacity: 1;
+}
+
+.save-to-list-new {
+    padding: 14px 16px;
+    border-top: 1px solid var(--ls-border);
+    color: var(--ls-gold);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s;
+}
+
+.save-to-list-new:hover {
+    background: var(--ls-gold-dim);
+}
+
+.save-to-list-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 10001;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.save-to-list-backdrop.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ============================================
+   PLAN NIGHT OUT MODAL
+   ============================================ */
+.plan-night-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 10002;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.plan-night-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.plan-night-modal {
+    background: var(--ls-card);
+    border: 1px solid var(--ls-border);
+    border-radius: var(--ls-radius);
+    width: 100%;
+    max-width: 500px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.plan-night-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--ls-border);
+}
+
+.plan-night-header h2 {
+    color: var(--ls-text);
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+.plan-night-close {
+    background: transparent;
+    border: none;
+    color: var(--ls-text-muted);
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.plan-night-body {
+    padding: 20px;
+}
+
+.plan-night-section {
+    margin-bottom: 20px;
+}
+
+.plan-night-section label {
+    display: block;
+    color: var(--ls-text-secondary);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.plan-night-section input,
+.plan-night-section textarea {
+    width: 100%;
+    background: var(--ls-bg);
+    border: 1px solid var(--ls-border);
+    border-radius: var(--ls-radius-sm);
+    color: var(--ls-text);
+    padding: 10px 12px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.plan-night-section input:focus,
+.plan-night-section textarea:focus {
+    border-color: var(--ls-gold);
+}
+
+.plan-night-venues {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.plan-night-venue {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: var(--ls-bg);
+    border-radius: var(--ls-radius-sm);
+    border: 1px solid var(--ls-border);
+}
+
+.plan-night-venue-order {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--ls-gold);
+    color: #000;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.plan-night-venue-name {
+    flex: 1;
+    color: var(--ls-text);
+    font-size: 14px;
+}
+
+.plan-night-venue-type {
+    color: var(--ls-text-muted);
+    font-size: 12px;
+}
+
+.plan-night-friends {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.plan-night-friend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--ls-gold-dim);
+    border-radius: 20px;
+    color: var(--ls-gold);
+    font-size: 13px;
+}
+
+.plan-night-friend .remove {
+    cursor: pointer;
+    opacity: 0.6;
+}
+
+.plan-night-friend .remove:hover {
+    opacity: 1;
+}
+
+.plan-night-add-friend {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.plan-night-add-friend input {
+    flex: 1;
+}
+
+.plan-night-add-friend button {
+    background: var(--ls-gold-dim);
+    border: 1px solid var(--ls-border);
+    color: var(--ls-gold);
+    padding: 8px 14px;
+    border-radius: var(--ls-radius-sm);
+    cursor: pointer;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.plan-night-footer {
+    display: flex;
+    gap: 10px;
+    padding: 0 20px 20px;
+    justify-content: flex-end;
+}
+
+.plan-night-footer .btn-share {
+    background: var(--ls-gold);
+    border: none;
+    color: #000;
+    padding: 10px 24px;
+    border-radius: var(--ls-radius-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.plan-night-footer .btn-cancel {
+    background: transparent;
+    border: 1px solid var(--ls-border);
+    color: var(--ls-text-secondary);
+    padding: 10px 20px;
+    border-radius: var(--ls-radius-sm);
+    cursor: pointer;
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
+.lists-empty {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.lists-empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.6;
+}
+
+.lists-empty h3 {
+    color: var(--ls-text);
+    font-size: 1.1rem;
+    margin: 0 0 8px 0;
+}
+
+.lists-empty p {
+    color: var(--ls-text-muted);
+    font-size: 0.9rem;
+    margin: 0 0 20px 0;
+}
+
+/* ============================================
+   TOAST NOTIFICATION
+   ============================================ */
+.lists-toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ls-card);
+    border: 1px solid var(--ls-border);
+    color: var(--ls-text);
+    padding: 12px 24px;
+    border-radius: var(--ls-radius-sm);
+    font-size: 14px;
+    z-index: 10010;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+.lists-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Undo toast */
+.lists-toast.with-undo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    pointer-events: auto;
+}
+
+.lists-toast .toast-undo-btn {
+    background: var(--ls-gold);
+    border: none;
+    color: #000;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 768px) {
+    .lists-hero {
+        padding: 80px 16px 20px;
+    }
+    
+    .lists-hero h1 {
+        font-size: 1.5rem;
+    }
+    
+    .lists-stats {
+        gap: 20px;
+    }
+    
+    .lists-action-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .lists-search {
+        min-width: unset;
+    }
+    
+    .lists-filter-tabs {
+        justify-content: center;
+    }
+    
+    .lists-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .list-detail-nav {
+        padding: 10px 14px;
+    }
+    
+    .list-detail-nav-title {
+        display: none;
+    }
+    
+    .list-item {
+        flex-wrap: wrap;
+    }
+    
+    .list-item-image {
+        width: 56px;
+        height: 56px;
+    }
+    
+    .list-detail-actions {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 0 20px;
+    }
+    
+    .plan-night-modal {
+        max-height: 95vh;
+    }
+}
+
+@media (max-width: 480px) {
+    .list-card-actions {
+        flex-wrap: wrap;
+    }
+    
+    .save-to-list-dropdown {
+        width: calc(100% - 40px);
+    }
+}

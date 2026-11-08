@@ -1,0 +1,86 @@
+/* Persisted private planning, not local-storage plans or reservations. */
+(function () {
+  'use strict';
+  const host = document.getElementById('slConnectedPlans'); if (!host) return;
+  const C = window.SLConnected, E = C.esc, enc = encodeURIComponent;
+  let generation=0, searchGeneration=0, selected=null, detail=null, friends=[], rooms=[], pendingId=null, pendingBody=null, notice='', loadMore=false, busy=false;
+  const initialVenue = new URL(location.href).searchParams.get('venue_id');
+  function auth() { if(C.token())return true; if(window.SLAuthUI)window.SLAuthUI.open('login'); return false; }
+  const button=(act,text,attrs,secondary)=>'<button type="button" data-act="'+act+'" '+(attrs||'')+' class="'+(secondary?'sl-secondary':'')+'">'+E(text)+'</button>';
+  function skeleton() {
+    host.innerHTML='<h1>Plan with friends</h1><p class="sl-muted">Private plans, real invitations and shared venue votes.</p><div class="sl-notice">A group decision or SceneLink RSVP is <strong>not a reservation</strong>. In-site reservations are not connected yet. Choosing a venue does not submit a booking request.</div><p id="slPlanStatus" role="status" tabindex="-1"></p><div id="slPlanContent"></div>';
+  }
+  function status(text) { notice=text||''; const el=document.getElementById('slPlanStatus');if(el)el.textContent=notice; }
+  function memberLabel(member) {return E(member.display_name||member.username||'Member')+' <span class="sl-label">'+E(member.status==='accepted'?'Joined':member.status==='pending'?'Invited — awaiting response':member.status)+'</span>';}
+  function renderRoom(r) {
+    const planning=r.state==='planning', owner=r.is_owner, options=r.options||[];
+    const accepted=(r.members||[]).filter(m=>m.status==='accepted');
+    let html='<section class="sl-panel"><div class="sl-row sl-between"><h2>'+E(r.name)+'</h2>'+button('refresh-room','Refresh','',true)+'</div><p>'+E(r.description||'')+'</p><p>'+E(r.event_date?String(r.event_date).slice(0,10):'Date not chosen')+' · '+E(r.state==='confirmed'?'Venue selected — not booked':r.state)+'</p><p class="sl-muted">Owner: '+E(r.owner_name||'Plan owner')+'. '+accepted.length+' accepted member'+(accepted.length===1?'':'s')+' besides the owner.</p>';
+    html+='<h3>Members and invitations</h3><ul>'+(r.members||[]).map(m=>'<li>'+memberLabel(m)+(owner&&['accepted','pending'].includes(m.status)?' '+button('remove-member','Remove','data-user="'+E(m.id)+'"',true):'')+'</li>').join('')+'</ul>';
+    if(owner&&planning)html+='<form id="slInviteFriend"><label for="slRoomFriend">Invite an accepted friend</label><select id="slRoomFriend" required><option value="">Choose a friend</option>'+friends.filter(f=>!(r.members||[]).some(m=>m.id===f.id&&['accepted','pending'].includes(m.status))).map(f=>'<option value="'+E(f.id)+'">'+E(f.display_name||f.username)+' (@'+E(f.username)+')</option>').join('')+'</select><p class="sl-muted">Invitations stay pending until your friend accepts. No email or external message is sent.</p><button type="submit">Send in-app invitation</button></form>';
+    html+='<h3>Venue options</h3>'+(!options.length?'<p>No venues shortlisted yet. Search to add a real venue.</p>':'');
+    html+=options.map(o=>'<article class="sl-item"><div class="sl-row sl-between"><h3>'+E(o.name)+'</h3>'+button('venue-detail','Details','data-venue="'+E(o.venue_id)+'"',true)+'</div><p class="sl-muted">'+E([o.type,o.neighborhood].filter(Boolean).join(' · '))+'</p>'+(r.selected_venue_id===o.venue_id?'<p class="sl-notice">Selected by your group. <strong>Not a venue booking.</strong></p>':'')+'<p>'+Number(o.yes_count||0)+' yes · '+Number(o.maybe_count||0)+' maybe · '+Number(o.no_count||0)+' no — votes from members</p>'+
+      (planning&&o.is_active?'<div class="sl-row">'+['yes','maybe','no'].map(choice=>'<button type="button" class="sl-secondary" data-act="vote" data-venue="'+E(o.venue_id)+'" data-choice="'+choice+'" aria-pressed="'+(o.my_vote===choice)+'">'+choice[0].toUpperCase()+choice.slice(1)+'</button>').join('')+(o.my_vote?button('vote','Clear vote','data-venue="'+E(o.venue_id)+'" data-choice="clear"',true):'')+(owner?button('decide','Select for the group','data-venue="'+E(o.venue_id)+'"')+button('remove-option','Remove option','data-venue="'+E(o.venue_id)+'"',true):'')+'</div>':(!o.is_active?'<p>Venue unavailable for new votes.</p>':''))+'</article>').join('');
+    if(planning)html+='<form id="slVenueSearchForm"><label for="slPlanVenueSearch">Search the venue directory</label><div class="sl-row"><input id="slPlanVenueSearch" type="search" minlength="2" maxlength="160" placeholder="Venue, city or neighborhood" required><button type="submit">Search venues</button></div></form><div id="slPlanVenueResults" aria-live="polite"></div>';
+    if(initialVenue&&planning&&!options.some(o=>o.venue_id===initialVenue))html+='<p>'+button('add-option','Add the venue you selected','data-venue="'+E(initialVenue)+'"')+'</p>';
+    html+='<div class="sl-row">'+(owner?(planning?button('cancel-room','Cancel plan','',true):button('reopen-room','Reopen planning','',true)):button('leave-room','Leave plan','',true))+'<a href="/messages">Open Messages</a></div><p class="sl-muted">Messages are separate conversations, not an invented group chat.</p></section>';
+    return html;
+  }
+  async function load(append) {
+    const seq=++generation; detail=null;
+    if(!C.token()){rooms=[];friends=[];selected=null;skeleton();document.getElementById('slPlanContent').innerHTML='<section class="sl-panel"><h2>Make plans together</h2><p>Sign in to create a plan, find friends and respond to invitations. You can keep browsing without signing in.</p>'+button('login','Sign in / Sign up')+' <a href="/explore">Browse venues</a></section>';return;}
+    if(!append){rooms=[];skeleton();document.getElementById('slPlanStatus').textContent='Loading your account plans…';}
+    try {
+      const [r,f,inv,requests] = await Promise.all([C.request('/rooms?limit=30&offset='+(append?rooms.length:0)),C.request('/friends?limit=100'),C.request('/rooms/invitations'),C.request('/friends/pending')]);
+      if(seq!==generation)return;
+      if(!Array.isArray(r.rooms)||!Array.isArray(f.friends)||!Array.isArray(inv.invitations))throw new Error('The planning service returned an incomplete response.');
+      rooms=append?rooms.concat(r.rooms.filter(x=>!rooms.some(old=>old.id===x.id))):r.rooms; friends=f.friends; loadMore=!!r.has_more;
+      const content=document.getElementById('slPlanContent');
+      content.innerHTML='<div class="sl-columns"><div><section class="sl-panel"><h2>Your plans</h2>'+rooms.map(x=>'<p>'+button('open-room',x.name,'data-room="'+E(x.id)+'"',x.id!==selected)+' <small>'+E(x.state==='confirmed'?'Venue selected':x.state)+'</small></p>').join('')+(!rooms.length?'<p>No private plans yet.</p>':'')+(loadMore?button('more-rooms','Load more plans','',true):'')+'</section><section class="sl-panel"><h2>Create a private plan</h2><form id="slCreateRoom"><label for="slRoomName">Plan name</label><input id="slRoomName" required maxlength="100" placeholder="Friday dinner"><label for="slRoomDate">Date (optional)</label><input id="slRoomDate" type="date"><label for="slRoomDescription">Notes (optional)</label><textarea id="slRoomDescription" maxlength="1000"></textarea><p><button type="submit">Create plan</button></p></form></section><section class="sl-panel"><h2>Plan invitations</h2>'+(inv.invitations.length?inv.invitations.map(x=>'<article class="sl-item"><strong>'+E(x.name)+'</strong><p>From '+E(x.owner_name)+'</p><div class="sl-row">'+button('accept-invite','Accept','data-room="'+E(x.id)+'"')+button('decline-invite','Decline','data-room="'+E(x.id)+'"',true)+'</div></article>').join(''):'<p>No pending invitations.</p>')+'</section></div><div><div id="slRoomDetail"><section class="sl-panel"><h2>Choose a plan</h2><p>Create or open a plan to invite friends, shortlist venues and vote together.</p></section></div><section class="sl-panel"><h2>Friends</h2><form id="slFriendSearchForm"><label for="slFriendSearch">Find a person by name or username</label><input type="search" id="slFriendSearch" minlength="2" maxlength="80" required autocomplete="off"><p><button type="submit">Find people</button></p></form><div id="slFriendResults" aria-live="polite"></div><h3>Friend requests</h3>'+renderRequests(requests)+'<h3>Accepted friends</h3>'+(friends.length?'<ul>'+friends.map(x=>'<li><a href="/profile?user='+enc(x.username||x.id)+'">'+E(x.display_name||x.username)+'</a> (@'+E(x.username)+')</li>').join('')+'</ul>':'<p>No accepted friends yet. Search above and choose the person before sending a request.</p>')+(f.has_more?'<p class="sl-muted">Showing the first 100 friends. Use profiles to find additional friends.</p>':'')+'</section><section class="sl-panel"><h2>Previous itineraries</h2><p>Existing saved itineraries have not been deleted. They are separate from these new private group plans.</p>'+button('legacy','Load saved itineraries','',true)+'<div id="slLegacyPlans"></div></section></div></div>';
+      status(notice);
+      if(selected)await openRoom(selected);
+    }catch(e){if(seq!==generation)return;status(e.message);document.getElementById('slPlanContent').innerHTML='<section class="sl-panel"><h2>Planning unavailable</h2><p>Your saved plans have not been replaced with local or sample data.</p>'+button('reload','Retry')+'</section>';}
+  }
+  function renderRequests(data){const incoming=data.incoming||[],outgoing=data.outgoing||[];return incoming.map(x=>'<article class="sl-item"><strong>'+E(x.display_name||x.username)+'</strong> (@'+E(x.username)+')<div class="sl-row">'+button('accept-friend','Accept request','data-friendship="'+E(x.friendship_id)+'"')+button('decline-friend','Decline','data-friendship="'+E(x.friendship_id)+'"',true)+'</div></article>').join('')+outgoing.map(x=>'<p>Request pending: '+E(x.display_name||x.username)+'</p>').join('')+(!incoming.length&&!outgoing.length?'<p>No pending friend requests.</p>':'');}
+  async function openRoom(id){selected=id;const seq=++generation,box=document.getElementById('slRoomDetail');if(!box)return;box.textContent='Loading selected plan…';try{const d=await C.request('/rooms/'+enc(id));if(seq!==generation)return;if(!d.room)throw new Error('Plan response incomplete.');detail=d.room;box.innerHTML=renderRoom(detail);}catch(e){if(seq!==generation)return;detail=null;box.innerHTML='<section class="sl-panel"><h2>Plan unavailable</h2><p>'+E(e.message)+'</p>'+button('refresh-room','Retry','',true)+'</section>';}}
+  async function perform(buttonEl,fn,message){if(busy)return;busy=true;const epoch=C.token();buttonEl.disabled=true;try{const r=await fn();if(r && r.ok===false)throw new Error(r.error||'Change not saved');if(epoch!==C.token())return;status(message);await load();}catch(e){if(epoch!==C.token())return;status(e.message);if(e.status===409||e.status===428){if(selected)await openRoom(selected);}if(e.status===401)auth();}finally{busy=false;if(buttonEl.isConnected)buttonEl.disabled=false;}}
+  const mutate=(path,method,body)=>C.once(method+path,async()=>{const d=await C.request(path,{method,body});if(d.ok!==true)throw new Error('The service did not confirm this change. Refresh before retrying.');return d;});
+  host.addEventListener('click',async e=>{
+    const b=e.target.closest('button[data-act]');if(!b)return;const act=b.dataset.act,rid=b.dataset.room||selected,vid=b.dataset.venue;
+    if(act==='login'){auth();return;} if(act==='reload'){await load();return;}if(act==='more-rooms'){await load(true);return;}
+    if(act==='open-room'||act==='refresh-room'){await openRoom(rid);return;}
+    if(act==='venue-detail'){window.SLVenueDetail.open(vid);return;}
+    if(act==='legacy'){b.disabled=true;try{const d=await C.request('/plans');const list=d.plans||[];document.getElementById('slLegacyPlans').innerHTML=list.length?list.map(p=>'<article class="sl-item"><strong>'+E(p.name||p.title)+'</strong><p>'+E(p.plan_date||'Date not provided')+' · Saved itinerary, not a reservation.</p></article>').join(''):'<p>No previous itineraries.</p>';}catch(err){status(err.message);}finally{b.disabled=false;}return;}
+    if(!auth())return;
+    if(act==='request-friend'){await perform(b,async()=>{const d=await C.request('/friends/request',{method:'POST',body:{user_id:b.dataset.user}});if(!['pending','accepted'].includes(d.status))throw new Error('Friend request not confirmed');},'Friend relationship saved. Pending requests require the other person to accept.');return;}
+    if(act==='accept-friend'||act==='decline-friend'){await perform(b,async()=>{const d=await C.request('/friends/'+(act==='accept-friend'?'accept':'decline'),{method:'POST',body:{friendship_id:b.dataset.friendship}});if(d.status!==(act==='accept-friend'?'accepted':'declined'))throw new Error('Response not confirmed');},act==='accept-friend'?'Friend request accepted. You can now invite this friend.':'Friend request declined.');return;}
+    if(act==='accept-invite'||act==='decline-invite'){if(act==='accept-invite')selected=rid;await perform(b,()=>mutate('/rooms/'+enc(rid)+'/invitation','PUT',{response:act==='accept-invite'?'accepted':'declined'}),act==='accept-invite'?'Invitation accepted. You joined the private plan.':'Invitation declined.');return;}
+    if(!detail||detail.id!==rid){status('Refresh the selected plan first.');return;}
+    const path='/rooms/'+enc(rid);
+    if(act==='add-option')await perform(b,()=>mutate(path+'/options/'+enc(vid),'PUT',{}),'Venue added to this plan.');
+    if(act==='vote')await perform(b,()=>mutate(path+'/options/'+enc(vid)+'/vote','PUT',{choice:b.dataset.choice==='clear'?null:b.dataset.choice}),'Your vote was saved to this plan.');
+    if(act==='decide')await perform(b,()=>mutate(path+'/decision','PUT',{venue_id:vid,revision:detail.revision}),'Group venue selected. No reservation has been made.');
+    if(act==='remove-option')await perform(b,()=>mutate(path+'/options/'+enc(vid),'DELETE',{revision:detail.revision}),'Venue option removed.');
+    if(act==='remove-member')await perform(b,()=>mutate(path+'/members/'+enc(b.dataset.user),'DELETE'),'Member or invitation removed.');
+    if(act==='cancel-room'||act==='reopen-room')await perform(b,()=>mutate(path+'/state','PUT',{state:act==='cancel-room'?'cancelled':'planning',revision:detail.revision}),act==='cancel-room'?'Plan cancelled. This does not cancel any external booking.':'Plan reopened.');
+    if(act==='leave-room')await perform(b,async()=>{const me=await C.request('/users/me');await mutate(path+'/members/'+enc(me.user.id),'DELETE');selected=null;},'You left this plan.');
+  });
+  host.addEventListener('submit',async e=>{
+    const form=e.target;if(!form.matches('form'))return;e.preventDefault();if(!auth())return;const b=form.querySelector('button[type=submit]'),seq=++searchGeneration;
+    if(form.id==='slCreateRoom'){
+      const body={name:form.querySelector('#slRoomName').value.trim(),description:form.querySelector('#slRoomDescription').value.trim(),event_date:form.querySelector('#slRoomDate').value||null};
+      const signature=JSON.stringify(body);if(signature!==pendingBody){pendingId=crypto.randomUUID();pendingBody=signature;}body.client_id=pendingId;
+      await perform(b,async()=>{const d=await C.request('/rooms',{method:'POST',body});if(!d.room||!d.room.id)throw new Error('Plan creation was not confirmed');selected=d.room.id;pendingId=null;pendingBody=null;},'Private plan saved. Invite friends when you are ready.');return;
+    }
+    if(form.id==='slInviteFriend'){await perform(b,()=>mutate('/rooms/'+enc(selected)+'/invitations','POST',{user_id:form.querySelector('select').value}),'Invitation saved in SceneLink. Awaiting your friend’s response.');return;}
+    b.disabled=true;
+    try{
+      if(form.id==='slFriendSearchForm'){const q=form.querySelector('input').value.trim(),d=await C.request('/users/search?q='+enc(q)+'&limit=20');if(seq!==searchGeneration)return;const users=d.results||[];document.getElementById('slFriendResults').innerHTML=users.length?users.map(u=>'<article class="sl-item"><strong>'+E(u.display_name||u.username)+'</strong> (@'+E(u.username)+') '+(friends.some(f=>f.id===u.id)?'<span>Already friends</span>':button('request-friend','Send friend request','data-user="'+E(u.id)+'"',true))+'</article>').join(''):'<p>No people match this search.</p>';}
+      if(form.id==='slVenueSearchForm'){const q=form.querySelector('input').value.trim(),rid=selected,d=await window.SLVenueData.list({q,limit:20});if(seq!==searchGeneration||rid!==selected)return;document.getElementById('slPlanVenueResults').innerHTML=d.venues.length?d.venues.map(v=>'<article class="sl-item"><strong>'+E(v.name)+'</strong><p>'+E([v.neighborhood,v.city,v.address].filter(Boolean).join(' · '))+'</p>'+button('add-option','Add to this plan','data-venue="'+E(v.id)+'"',true)+'</article>').join('')+(d.has_more?'<p>Showing 20 matches. Refine your search for more specific results.</p>':''):'<p>No venues match your search.</p>';}
+    }catch(err){status(err.message);}finally{if(b.isConnected)b.disabled=false;}
+  });
+  window.addEventListener('sl-auth-changed',()=>{++searchGeneration;notice='';load();});
+  window.addEventListener('sl-auth-ready',()=>load());
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&C.token()&&!busy)load();});
+  skeleton();load();
+})();

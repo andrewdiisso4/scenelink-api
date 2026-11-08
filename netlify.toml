@@ -1,0 +1,105 @@
+# SceneLink V2 Netlify Configuration
+[build]
+  base = "web/frontend"
+  publish = "."
+  command = "node scripts/generate-env.js"
+
+# Proxy /api/* to Render backend (no CORS, bypass edge cache)
+[[redirects]]
+  from = "/api/*"
+  to = "https://scenelink-api-prod.onrender.com/api/:splat"
+  status = 200
+  force = true
+  headers = {X-From = "Netlify"}
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(self), camera=(), microphone=(), interest-cohort=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    # Conservative CSP — allows Google Maps, Leaflet/OSM tiles, Sentry, GA4, Font Awesome, our API.
+    # 'unsafe-inline' kept for style/script (inline handlers present in legacy HTML).
+    # Phase 5M: added Google Identity Services + Apple Sign-In to script/connect/frame for OAuth.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://www.googletagmanager.com https://www.google-analytics.com https://browser.sentry-cdn.com https://js.sentry-cdn.com https://accounts.google.com https://apis.google.com https://appleid.cdn-apple.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://appleid.cdn-apple.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://scenelink-api-prod.onrender.com https://maps.googleapis.com https://*.tile.openstreetmap.org https://api.openstreetmap.org https://*.basemaps.cartocdn.com https://unpkg.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io https://accounts.google.com https://appleid.apple.com; frame-src 'self' https://www.openstreetmap.org https://www.google.com https://maps.google.com https://accounts.google.com https://appleid.apple.com; object-src 'none'; base-uri 'self'; form-action 'self' https://appleid.apple.com;"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/icons/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/env.js"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
+
+# Universal Links: Apple App Site Association file MUST be served as application/json
+# and MUST NOT redirect. It is fetched by iOS directly from /.well-known/apple-app-site-association
+[[headers]]
+  for = "/.well-known/apple-app-site-association"
+  [headers.values]
+    Content-Type = "application/json"
+    Cache-Control = "public, max-age=3600"
+
+# Phase 5M: Netlify strips dot-directories from ZIP deploys, so the canonical path
+# /.well-known/apple-app-site-association is internally rewritten (200) to
+# /well-known-public/apple-app-site-association in _redirects. Set the Content-Type
+# on BOTH paths so the iOS verifier accepts whichever it sees during rewrite.
+[[headers]]
+  for = "/well-known-public/apple-app-site-association"
+  [headers.values]
+    Content-Type = "application/json"
+    Cache-Control = "public, max-age=3600"
+
+# Android App Links: assetlinks.json declares which app handles our deep links
+[[headers]]
+  for = "/.well-known/assetlinks.json"
+  [headers.values]
+    Content-Type = "application/json"
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/well-known-public/assetlinks.json"
+  [headers.values]
+    Content-Type = "application/json"
+    Cache-Control = "public, max-age=3600"
+# Phase 5N: production version marker — must serve as JSON with no caching
+# so owners / debugging tools can fetch /version.json and instantly see which
+# deploy is actually live in front of them.
+[[headers]]
+  for = "/version.json"
+  [headers.values]
+    Content-Type = "application/json"
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/css/sl-phase8d-hotfix.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/js/sl-phase8d-recovery.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

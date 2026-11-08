@@ -1,0 +1,61 @@
+# Proxy /api/* to Render backend (force proxy, bypass cache)
+/api/*  https://scenelink-api-prod.onrender.com/api/:splat  200!
+
+# Root — serve index.html
+/  /index.html  200
+
+# Explicit page routes (must come before SPA fallback)
+/explore          /explore.html          200
+/nightlife        /nightlife.html        200
+/events           /events.html           200
+/tonight          /tonight.html          200
+/profile          /profile.html          200
+/social-feed      /social-feed.html      200
+/social           /social-feed.html      200
+/social.html      /social-feed.html      301
+/plan-with-friends /plan-with-friends.html 200
+/group-planning   /plan-with-friends.html 200
+/group             /plan-with-friends.html 200
+/plan-night       /plan-with-friends.html 200
+/plan             /plan-with-friends.html 200
+/plan.html        /plan-with-friends.html 301
+/saved            /my-lists.html         200
+/favorites        /my-lists.html         200
+/about            /about.html            200
+/contact          /contact.html          200
+/business         /business.html         200
+/privacy          /privacy.html          200
+/terms            /terms.html            200
+/my-lists         /my-lists.html         200
+/messages         /messages.html         200
+/admin            /admin.html            200
+
+# Aliases — old/external links / push notifications / deep links
+/saved.html       /my-lists.html         301
+/lists            /my-lists.html         301
+/lists.html       /my-lists.html         301
+/plans            /plan-with-friends.html 301
+/plans.html       /plan-with-friends.html 301
+/friends          /profile.html          301
+/friends.html     /profile.html          301
+/feed             /social-feed.html      301
+/feed.html        /social-feed.html      301
+/concierge        /contact.html          301
+/concierge.html   /contact.html          301
+/ai               /contact.html          301
+/ai-concierge     /contact.html          301
+
+# Phase 5M: Apple Universal Links + Android App Links must be reachable at /.well-known/*
+# Netlify ZIP deploys strip dot-directories, so we host the files at /well-known-public/* and rewrite.
+# Use 200 (rewrite) so the URL bar / iOS / Android verifier sees the canonical path.
+/.well-known/apple-app-site-association  /well-known-public/apple-app-site-association  200
+/.well-known/assetlinks.json             /well-known-public/assetlinks.json             200
+
+
+# Paired account recovery pages
+/reset-password /reset-password.html 200
+/verify-email /verify-email.html 200
+
+# Soft 404 for unknown routes: send to custom 404 page with 404 status
+# (Real static files like /favicon.ico, /robots.txt, /sitemap.xml are served directly)
+/*  /404.html  404

@@ -1,0 +1,212 @@
+/* ===================================================================
+   SceneLink — Phase 5D-A Venue Popup Premium Upgrade
+   Modernizes #slVenueWrap .sl-venue-card with:
+   - larger hero image up top
+   - clear name + meta line + tags
+   - premium gold CTA row
+   - functioning close X (always visible, properly styled)
+   - mobile-friendly bottom-sheet feel
+   =================================================================== */
+
+/* Wrapper — bottom-sheet, centered, with safe-area padding */
+.sl-venue-card-wrap {
+    bottom: max(24px, env(safe-area-inset-bottom, 24px)) !important;
+    width: calc(100% - 24px) !important;
+    max-width: 460px !important;
+    z-index: 9000 !important;
+}
+
+/* Card — vertical layout, premium black/gold */
+.sl-venue-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 0 !important;
+    background: linear-gradient(180deg, rgba(20,20,28,0.98) 0%, rgba(8,8,12,0.98) 100%) !important;
+    border: 1.5px solid rgba(212,175,55,0.28) !important;
+    border-radius: 22px !important;
+    overflow: hidden !important;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.7), 0 0 32px rgba(212,175,55,0.06) !important;
+    cursor: default !important;
+    position: relative;
+}
+
+/* Hero image — large 16:9, top of card */
+.sl-venue-card .sl-venue-card-img {
+    width: 100% !important;
+    height: 200px !important;
+    border-radius: 0 !important;
+    border: none !important;
+    object-fit: cover !important;
+    display: block !important;
+}
+
+/* Info area — padded, vertical */
+.sl-venue-card .sl-venue-card-info {
+    padding: 18px 18px 12px 18px !important;
+    flex: initial !important;
+}
+
+.sl-venue-card .sl-venue-card-name {
+    font-size: 22px !important;
+    font-weight: 800 !important;
+    color: #fff !important;
+    margin-bottom: 8px !important;
+    letter-spacing: -0.3px !important;
+    white-space: normal !important;
+    text-overflow: clip !important;
+    overflow: visible !important;
+    line-height: 1.2 !important;
+}
+
+.sl-venue-card .sl-venue-card-meta {
+    font-size: 13px !important;
+    color: rgba(255,255,255,0.65) !important;
+    margin-bottom: 10px !important;
+    flex-wrap: wrap;
+    row-gap: 4px;
+}
+
+.sl-venue-card .sl-venue-card-meta .fire,
+.sl-venue-card .sl-venue-card-meta .star {
+    color: #D4AF37 !important;
+}
+
+.sl-venue-card .sl-venue-card-type {
+    font-size: 12px !important;
+    color: rgba(255,255,255,0.45) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    margin-bottom: 2px !important;
+}
+
+/* Action row — horizontal, full width */
+.sl-venue-card .sl-venue-card-actions {
+    flex-direction: row !important;
+    gap: 8px !important;
+    padding: 0 18px 18px 18px !important;
+    align-items: stretch !important;
+}
+
+.sl-venue-card .sl-venue-cta {
+    flex: 1 !important;
+    padding: 12px 14px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    border-radius: 12px !important;
+    justify-content: center !important;
+    box-shadow: 0 6px 20px rgba(212,175,55,0.28);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease !important;
+}
+.sl-venue-card .sl-venue-cta:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 10px 28px rgba(212,175,55,0.4);
+}
+.sl-venue-card .sl-venue-cta:active {
+    transform: translateY(0) !important;
+}
+
+.sl-venue-card .sl-venue-cta-plan {
+    box-shadow: none;
+}
+
+.sl-venue-card .sl-venue-save-btn,
+.sl-venue-card .sl-venue-detail-btn {
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+    padding: 0 !important;
+    align-self: stretch !important;
+    border-radius: 12px !important;
+    background: rgba(255,255,255,0.05) !important;
+    border: 1.5px solid rgba(212,175,55,0.25) !important;
+    color: #D4AF37 !important;
+    transition: background 0.18s ease, transform 0.18s ease, border-color 0.18s ease !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.sl-venue-card .sl-venue-save-btn:hover,
+.sl-venue-card .sl-venue-detail-btn:hover {
+    background: rgba(212,175,55,0.15) !important;
+    border-color: rgba(212,175,55,0.55) !important;
+    transform: translateY(-1px);
+}
+.sl-venue-card .sl-venue-save-btn.saved {
+    background: linear-gradient(135deg, #D4AF37, #B8941F) !important;
+    color: #0a0a0a !important;
+    border-color: transparent !important;
+}
+
+/* CLOSE X — premium round button, top-right of card */
+.sl-venue-card-wrap .sl-venue-close {
+    position: absolute !important;
+    top: 12px !important;
+    right: 12px !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    background: rgba(0,0,0,0.72) !important;
+    border: 1.5px solid rgba(255,255,255,0.18) !important;
+    color: #fff !important;
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
+    z-index: 10 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 0 !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.sl-venue-card-wrap .sl-venue-close:hover {
+    background: rgba(212,175,55,0.95) !important;
+    color: #0a0a0a !important;
+    border-color: #D4AF37 !important;
+    transform: scale(1.06) !important;
+}
+.sl-venue-card-wrap .sl-venue-close:active {
+    transform: scale(0.95) !important;
+}
+
+/* Mobile — even more bottom-sheet feel */
+@media (max-width: 600px) {
+    .sl-venue-card-wrap {
+        max-width: none !important;
+        width: calc(100% - 16px) !important;
+        bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important;
+    }
+    .sl-venue-card .sl-venue-card-img {
+        height: 168px !important;
+    }
+    .sl-venue-card .sl-venue-card-name {
+        font-size: 19px !important;
+    }
+    .sl-venue-card .sl-venue-cta {
+        font-size: 12px !important;
+        padding: 11px 10px !important;
+    }
+    .sl-venue-card-wrap .sl-venue-close {
+        width: 40px !important;
+        height: 40px !important;
+        top: 14px !important;
+        right: 14px !important;
+    }
+}
+
+/* Hide pink/magenta if anything tries to inject it */
+.sl-venue-card *,
+.sl-venue-card-wrap * {
+    /* allow gold gradient through, but neutralize bright pink tones */
+}
+.sl-venue-card [style*="magenta"],
+.sl-venue-card [style*="#FF00FF"],
+.sl-venue-card [style*="#ff00ff"],
+.sl-venue-card [style*="hotpink"] {
+    background: rgba(212,175,55,0.12) !important;
+    color: #D4AF37 !important;
+}

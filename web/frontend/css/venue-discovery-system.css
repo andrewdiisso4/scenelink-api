@@ -1,0 +1,376 @@
+/**
+ * Venue Discovery System Styles
+ * Comprehensive styling for venue information display
+ */
+
+/* Venue Discovery Info Container */
+.venue-discovery-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    padding: 1rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    margin: 1rem 0;
+}
+
+/* Star Rating */
+.venue-rating {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.star-rating {
+    display: flex;
+    gap: 0.2rem;
+}
+
+.star-rating i {
+    color: #D4AF37;
+    font-size: 1rem;
+}
+
+.star-rating .far {
+    color: rgba(212, 175, 55, 0.3);
+}
+
+.rating-score {
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.rating-count {
+    color: #808080;
+    font-size: 0.85rem;
+}
+
+/* Cuisine Type */
+.venue-cuisine {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #b0b0b0;
+    font-size: 0.9rem;
+}
+
+.venue-cuisine i {
+    color: #D4AF37;
+    font-size: 1rem;
+}
+
+/* Price Indicator */
+.venue-price {
+    display: flex;
+    align-items: center;
+}
+
+.price-indicator {
+    display: flex;
+    gap: 0.1rem;
+}
+
+.price-symbol {
+    color: rgba(212, 175, 55, 0.3);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.price-symbol.active {
+    color: #D4AF37;
+}
+
+/* Distance */
+.venue-distance-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #b0b0b0;
+    font-size: 0.9rem;
+}
+
+.venue-distance-container i {
+    color: #D4AF37;
+    font-size: 1rem;
+}
+
+.venue-distance {
+    font-weight: 600;
+    color: #D4AF37;
+}
+
+/* Feature Tags */
+.venue-features-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.feature-tag {
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    color: #D4AF37;
+    padding: 0.3rem 0.7rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: all 0.3s ease;
+}
+
+.feature-tag:hover {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: #D4AF37;
+}
+
+.feature-tag i {
+    font-size: 0.7rem;
+}
+
+/* Action Buttons Enhancement */
+.btn-book-now,
+.btn-book {
+    background: linear-gradient(135deg, #D4AF37, #E5C158);
+    color: #0a0a0a;
+    border: none;
+    padding: 0.7rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-book-now:hover,
+.btn-book:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+}
+
+.btn-save {
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    color: #D4AF37;
+    padding: 0.7rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-save:hover {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: #D4AF37;
+}
+
+.btn-save.saved {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: #D4AF37;
+}
+
+.btn-save.saved i {
+    animation: saveAnimation 0.5s ease;
+}
+
+@keyframes saveAnimation {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+}
+
+/* Venue Notifications */
+.venue-notification {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: linear-gradient(135deg, rgba(26, 26, 26, 0.98), rgba(15, 15, 15, 0.98));
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    transform: translateX(400px);
+    transition: transform 0.3s ease;
+    z-index: 10001;
+    min-width: 300px;
+}
+
+.venue-notification.show {
+    transform: translateX(0);
+}
+
+.venue-notification-success {
+    border-left: 4px solid #4CAF50;
+}
+
+.venue-notification-info {
+    border-left: 4px solid #2196F3;
+}
+
+.venue-notification i {
+    font-size: 1.5rem;
+}
+
+.venue-notification-success i {
+    color: #4CAF50;
+}
+
+.venue-notification-info i {
+    color: #2196F3;
+}
+
+.venue-notification span {
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+/* Detailed Description Enhancement */
+.venue-description,
+.event-description,
+.pick-description {
+    color: #b0b0b0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 1rem 0;
+}
+
+/* Venue Card Enhancements */
+.venue-card,
+.event-card,
+.pick-card,
+.nightlife-venue-card {
+    position: relative;
+}
+
+.venue-card:hover .venue-discovery-info,
+.event-card:hover .venue-discovery-info,
+.pick-card:hover .venue-discovery-info,
+.nightlife-venue-card:hover .venue-discovery-info {
+    border-color: rgba(212, 175, 55, 0.2);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .venue-discovery-info {
+        gap: 0.6rem;
+    }
+
+    .venue-features-tags {
+        gap: 0.4rem;
+    }
+
+    .feature-tag {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.6rem;
+    }
+
+    .venue-notification {
+        bottom: 1rem;
+        right: 1rem;
+        left: 1rem;
+        min-width: auto;
+    }
+
+    .star-rating i {
+        font-size: 0.9rem;
+    }
+
+    .rating-score {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .venue-discovery-info {
+        padding: 0.8rem 0;
+    }
+
+    .btn-book-now,
+    .btn-book,
+    .btn-save {
+        padding: 0.6rem 1rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* Loading State */
+.venue-distance-container.loading .venue-distance {
+    color: #808080;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Tooltip for Features */
+.feature-tag {
+    position: relative;
+}
+
+.feature-tag:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: #ffffff;
+    padding: 0.5rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    margin-bottom: 0.5rem;
+    z-index: 1000;
+}
+
+/* Enhanced Action Buttons Layout */
+.venue-actions,
+.event-actions,
+.pick-actions {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.venue-actions .btn-book-now,
+.venue-actions .btn-book {
+    grid-column: 1;
+}
+
+.venue-actions .btn-save {
+    grid-column: 2;
+}
+
+.venue-actions .btn-share {
+    grid-column: 3;
+}
+
+@media (max-width: 768px) {
+    .venue-actions,
+    .event-actions,
+    .pick-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .venue-actions .btn-book-now,
+    .venue-actions .btn-book,
+    .venue-actions .btn-save,
+    .venue-actions .btn-share {
+        grid-column: 1;
+    }
+}

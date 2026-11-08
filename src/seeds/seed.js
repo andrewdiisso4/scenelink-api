@@ -20,6 +20,9 @@ function loadJSON(filename) {
 }
 
 async function seedDatabase(pool) {
+  if (process.env.NODE_ENV === 'production' || process.env.ALLOW_DEMO_SEED !== 'true') {
+    throw new Error('Demo seeding requires a non-production environment and ALLOW_DEMO_SEED=true');
+  }
   console.log('🌱 Seeding database...');
 
   // ==================== SEED VENUES ====================
@@ -104,50 +107,8 @@ async function seedDatabase(pool) {
     console.log(`  ✅ ${count.rows[0].count} venues in database`);
   }
 
-  // ==================== SEED EVENTS ====================
-  const eventData = loadJSON('events.json');
-  if (eventData) {
-    const events = eventData.events || eventData;
-    console.log(`  🎉 Inserting ${events.length} events...`);
-
-    // Wipe old events before re-seed so counts stay accurate
-    await pool.query("DELETE FROM events WHERE created_at < NOW() - INTERVAL '10 seconds'").catch(()=>{});
-    let eInserted = 0, eFailed = 0;
-    for (const e of events) {
-      try {
-        // Look up venue_id by slug if not provided
-        let venueId = e.venue_id || null;
-        if (!venueId && e.venue_slug) {
-          const vr = await pool.query('SELECT id FROM venues WHERE slug=$1 LIMIT 1', [e.venue_slug]);
-          if (vr.rows[0]) venueId = vr.rows[0].id;
-        }
-        await pool.query(
-          `INSERT INTO events (
-            title, description, category, venue_id, venue_name, venue_slug,
-            venue_neighborhood, image_url, date, start_time, end_time, price,
-            is_featured, is_live, attending_count, rating, created_at
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
-          [
-            e.title, e.description, e.category || 'General',
-            venueId, e.venue_name || '', e.venue_slug || '',
-            e.venue_neighborhood || '', e.image_url || '',
-            e.date || null, e.start_time || '', e.end_time || null,
-            e.price || 'Free',
-            e.is_featured || false, e.is_live || false,
-            e.rsvp_count || e.attending_count || 0, e.rating || 0,
-            e.created_at || new Date().toISOString(),
-          ]
-        );
-        eInserted++;
-      } catch (err) {
-        eFailed++;
-        if (eFailed < 5) console.error(`  ❌ Failed to insert event "${e.title}":`, err.message);
-      }
-    }
-    console.log(`  📊 events: inserted=${eInserted} failed=${eFailed}`);
-    const count = await pool.query('SELECT COUNT(*) FROM events');
-    console.log(`  ✅ ${count.rows[0].count} events in database`);
-  }
+  // Events are never seeded or deleted here. Real source observations enter
+  // inactive staging and require separate operator review before publication.
 
   // ==================== SEED ACTIVITIES ====================
   const activityData = loadJSON('activity.json');

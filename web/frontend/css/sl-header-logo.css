@@ -1,0 +1,99 @@
+/* =============================================================
+ * SceneLink — Global Header Logo (Single Source of Truth)
+ * Loaded LAST across all pages. Wins over any page-specific CSS.
+ * Target: 80px logo height, consistent across every page.
+ * ============================================================= */
+
+/* Covers every logo selector used anywhere in the codebase */
+.sl-logo img,
+.sl-logo,
+.sl-brand img,
+.sl-brand-logo,
+.sl-brand-logo img,
+.sl-nav-logo,
+.sl-nav-logo img,
+.sl-header-logo,
+.sl-header-logo img,
+.sl-top-logo,
+.sl-top-logo img,
+.nav-logo,
+.nav-logo img,
+.navbar-logo,
+.navbar-logo img,
+.sl-explore-logo,
+.sl-explore-logo img,
+.nightlife-logo,
+.nightlife-logo img,
+.site-logo,
+.site-logo img,
+.brand-logo,
+.brand-logo img,
+header .logo,
+header .logo img,
+.header .logo,
+.header .logo img,
+.sl-header .logo,
+.sl-header .logo img,
+.sl-nav .logo,
+.sl-nav .logo img,
+.sl-topnav .logo,
+.sl-topnav .logo img,
+a[class*="logo"] img,
+.nav-brand img,
+.nav-brand {
+    height: 80px !important;
+    max-height: 80px !important;
+    width: auto !important;
+    object-fit: contain !important;
+}
+
+/* Loose catch-all for <img> with alt="SceneLink" */
+img[alt="SceneLink"],
+img[alt="SceneLink Logo"],
+img[alt*="SceneLink" i][src*="logo" i],
+img[src*="logo" i][src*="scenelink" i] {
+    height: 80px !important;
+    max-height: 80px !important;
+    width: auto !important;
+    object-fit: contain !important;
+}
+
+/* Header container sizing — give the logo room */
+.sl-header,
+.sl-topnav,
+.site-header,
+header.sl-nav,
+nav.sl-nav,
+nav.navbar {
+    min-height: 96px !important;
+}
+
+/* Tablet/mobile — shrink slightly but still larger than old size */
+@media (max-width: 768px) {
+    .sl-logo img,
+    .sl-logo,
+    .sl-brand img,
+    .sl-brand-logo,
+    .sl-brand-logo img,
+    .sl-nav-logo,
+    .sl-nav-logo img,
+    .sl-header-logo,
+    .sl-header-logo img,
+    .sl-explore-logo,
+    .sl-explore-logo img,
+    .nightlife-logo,
+    .nightlife-logo img,
+    .nav-logo,
+    .nav-logo img,
+    .navbar-logo,
+    .navbar-logo img,
+    header .logo img,
+    .nav-brand img,
+    img[alt="SceneLink"],
+    img[alt="SceneLink Logo"],
+    img[alt*="SceneLink" i][src*="logo" i] {
+        height: 64px !important;
+        max-height: 64px !important;
+    }
+    .sl-header, .sl-topnav, .site-header, header.sl-nav, nav.sl-nav, nav.navbar { min-height: 80px !important; }
+}

@@ -1,0 +1,8 @@
+{
+  "phase": "social-candidate",
+  "sw_version": "sl-connected-20261108-5",
+  "timestamp": "2026-11-08T01:28:47.094275+00:00",
+  "status": "local_not_deployed",
+  "requires_paired_backend": true,
+  "summary": "Connected social candidate with full-catalog discovery, recoverable maps and safe inactive event ingestion. Real provider, visual/mobile and coordinated-release acceptance remain pending; in-site booking unavailable."
+}

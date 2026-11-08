@@ -7,7 +7,7 @@
  *   DELETE /api/plans/:id             — delete own plan
  *
  * New:
- *   GET    /api/plans/:id             — plan detail (accessible to owner + accepted members + invitees)
+ *   GET    /api/plans/:id             — historical plan detail (owner + accepted members only)
  *   POST   /api/plans/:id/stops       — { venue_id, arrival_time?, notes?, sort_order? }
  *   PUT    /api/plans/:id/stops/:stopId  — update time/notes/sort_order
  *   DELETE /api/plans/:id/stops/:stopId
@@ -20,32 +20,28 @@
 
 const express = require('express');
 const pool = require('../config/database');
+const {savedVenue,availableVenueSQL} = require('../services/venue-helpers');
+const H = require('../launch/shared');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
+router.use(H.noStore);
+// New collaboration uses /rooms. Preserve historical plan rows, but do not let
+// weaker legacy invitation/share handlers bypass the canonical block/privacy policy.
+for(const path of ['/:id/invites','/:id/invites/:inviteId/accept','/:id/invites/:inviteId/decline','/:id/share']) {
+  router.post(path,requireAuth,(_req,res)=>res.status(409).json({error:'Use a private decision room for new invitations and shared plans.',code:'USE_DECISION_ROOMS'}));
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function userCanViewPlan(planId, userId) {
-  const r = await pool.query(
-    `SELECT p.id
-       FROM plans p
-       LEFT JOIN plan_members pm ON pm.plan_id=p.id AND pm.user_id=$2
-       LEFT JOIN plan_invites pi ON pi.plan_id=p.id AND pi.invitee_id=$2 AND pi.status='pending'
-      WHERE p.id=$1 AND (p.user_id=$2 OR pm.user_id IS NOT NULL OR pi.invitee_id IS NOT NULL)
-      LIMIT 1`,
-    [planId, userId]
-  );
-  return r.rows.length > 0;
+async function userCanViewPlan(planId,userId) {
+  const r=await pool.query(`SELECT p.id FROM plans p JOIN users owner ON owner.id=p.user_id
+    WHERE p.id=$1 AND ${H.actorSQL('owner','$2')}
+      AND (p.user_id=$2 OR EXISTS(SELECT 1 FROM plan_members pm WHERE pm.plan_id=p.id AND pm.user_id=$2))
+    LIMIT 1`,[planId,userId]);
+  return r.rows.length>0;
 }
-async function userIsOwnerOrMember(planId, userId) {
-  const r = await pool.query(
-    `SELECT 1 FROM plans p
-       LEFT JOIN plan_members pm ON pm.plan_id=p.id AND pm.user_id=$2
-      WHERE p.id=$1 AND (p.user_id=$2 OR pm.user_id IS NOT NULL) LIMIT 1`,
-    [planId, userId]
-  );
-  return r.rows.length > 0;
-}
+async function userIsOwnerOrMember(planId,userId) {return userCanViewPlan(planId,userId);}
 async function userIsOwner(planId, userId) {
   const r = await pool.query('SELECT 1 FROM plans WHERE id=$1 AND user_id=$2', [planId, userId]);
   return r.rows.length > 0;
@@ -61,7 +57,8 @@ async function resolveUserIdFromBody(body) {
   }
   return null;
 }
-async function fetchPlanFull(planId) {
+async function fetchPlanFull(planId,viewer) {
+  if(!await userCanViewPlan(planId,viewer))return null;
   const p = await pool.query(
     `SELECT id, user_id, name, date, description, status, created_at, updated_at FROM plans WHERE id=$1`,
     [planId]
@@ -71,7 +68,8 @@ async function fetchPlanFull(planId) {
   const [stops, members, invites] = await Promise.all([
     pool.query(
       `SELECT s.id, s.venue_id, s.sort_order, s.arrival_time, s.notes,
-              v.name AS venue_name, v.slug AS venue_slug, v.image_url, v.neighborhood, v.type, v.rating, v.price_label
+              v.name AS venue_name, v.slug AS venue_slug, v.image_url, v.neighborhood, v.type, NULL::numeric AS rating, v.price_label,
+              v.source,v.reservation_url,v.opentable_url,v.resy_url,v.website,(${availableVenueSQL('v')}) AS venue_available
          FROM plan_stops s JOIN venues v ON v.id=s.venue_id
         WHERE s.plan_id=$1 ORDER BY s.sort_order ASC, s.created_at ASC`,
       [planId]
@@ -79,20 +77,21 @@ async function fetchPlanFull(planId) {
     pool.query(
       `SELECT u.id, u.username, u.display_name, u.avatar_url, pm.role
          FROM plan_members pm JOIN users u ON u.id=pm.user_id
-        WHERE pm.plan_id=$1`,
-      [planId]
+        WHERE pm.plan_id=$1 AND ${H.actorSQL('u','$2')}`,
+      [planId,viewer]
     ),
     pool.query(
       `SELECT pi.id AS invite_id, pi.status, pi.invitee_id, pi.inviter_id, pi.created_at,
               u.username, u.display_name, u.avatar_url
          FROM plan_invites pi JOIN users u ON u.id=pi.invitee_id
-        WHERE pi.plan_id=$1`,
-      [planId]
+        WHERE pi.plan_id=$1 AND (pi.invitee_id=$2 OR $2=$3) AND ${H.actorSQL('u','$2')}`,
+      [planId,viewer,plan.user_id]
     )
   ]);
   // Legacy plan_venues (for rows created before stops) — show if no stop row for that venue
   const pvResult = await pool.query(
-    `SELECT pv.venue_id, v.name, v.slug, v.image_url, v.neighborhood, v.type, v.rating, v.price_label
+    `SELECT pv.venue_id, v.name, v.slug, v.image_url, v.neighborhood, v.type, NULL::numeric AS rating, v.price_label,
+              v.source,v.reservation_url,v.opentable_url,v.resy_url,v.website,(${availableVenueSQL('v')}) AS venue_available
        FROM plan_venues pv JOIN venues v ON v.id=pv.venue_id
       WHERE pv.plan_id=$1`, [planId]
   );
@@ -101,8 +100,12 @@ async function fetchPlanFull(planId) {
 
   return {
     ...plan,
-    stops: stops.rows,
-    legacy_venues: legacyOnly,
+    stops: stops.rows.map(savedVenue),
+    legacy_venues: legacyOnly.map(savedVenue),
+    legacy_plan: true,
+    collaboration_endpoint: '/rooms',
+    confirmed_is_reservation: false,
+    booking_status: 'not_booked',
     members: members.rows,
     invites: invites.rows
   };
@@ -122,7 +125,7 @@ router.get('/', requireAuth, async (req, res) => {
     );
     const out = [];
     for (const row of plansR.rows) {
-      const full = await fetchPlanFull(row.id);
+      const full = await fetchPlanFull(row.id,me);
       if (full) out.push(full);
     }
     out.sort((a, b) => {
@@ -175,11 +178,11 @@ router.get('/invites/incoming', requireAuth, async (req, res) => {
          FROM plan_invites pi
          JOIN plans p ON p.id = pi.plan_id
          JOIN users u ON u.id = pi.inviter_id
-        WHERE pi.invitee_id = $1 AND pi.status = 'pending'
+        WHERE pi.invitee_id = $1 AND pi.status = 'pending' AND ${H.actorSQL('u','$1')}
         ORDER BY pi.created_at DESC`,
       [me]
     );
-    res.json({ invites: r.rows });
+    res.json({ invites: r.rows, legacy_read_only: true, collaboration_endpoint: '/rooms' });
   } catch (err) {
     console.error('[plans] incoming invites error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -192,7 +195,7 @@ router.get('/:id', requireAuth, async (req, res) => {
     const id = req.params.id;
     if (!UUID_RE.test(id)) return res.status(400).json({ error: 'Invalid plan id' });
     if (!(await userCanViewPlan(id, me))) return res.status(404).json({ error: 'Plan not found' });
-    const full = await fetchPlanFull(id);
+    const full = await fetchPlanFull(id,me);
     if (!full) return res.status(404).json({ error: 'Plan not found' });
     res.json({ plan: full });
   } catch (err) {
@@ -224,7 +227,7 @@ router.post('/:planId/venues', requireAuth, async (req, res) => {
     const { venue_id } = req.body || {};
     if (!UUID_RE.test(planId)) return res.status(400).json({ error: 'Invalid plan id' });
     if (!venue_id || !UUID_RE.test(venue_id)) return res.status(400).json({ error: 'venue_id required' });
-    const venue = await pool.query('SELECT id FROM venues WHERE id=$1 AND is_active=true LIMIT 1', [venue_id]);
+    const venue = await pool.query(`SELECT id FROM venues WHERE id=$1 AND ${availableVenueSQL('')} LIMIT 1`, [venue_id]);
     if (!venue.rows.length) return res.status(404).json({ error: 'Venue not found' });
     if (!(await userIsOwnerOrMember(planId, me))) return res.status(404).json({ error: 'Plan not found' });
 
@@ -265,7 +268,7 @@ router.post('/:id/stops', requireAuth, async (req, res) => {
     const { venue_id, arrival_time, notes, sort_order } = req.body || {};
     if (!UUID_RE.test(id)) return res.status(400).json({ error: 'Invalid plan id' });
     if (!venue_id || !UUID_RE.test(venue_id)) return res.status(400).json({ error: 'venue_id required' });
-    const venue = await pool.query('SELECT id FROM venues WHERE id=$1 AND is_active=true LIMIT 1', [venue_id]);
+    const venue = await pool.query(`SELECT id FROM venues WHERE id=$1 AND ${availableVenueSQL('')} LIMIT 1`, [venue_id]);
     if (!venue.rows.length) return res.status(404).json({ error: 'Venue not found' });
     if (!(await userIsOwnerOrMember(id, me))) return res.status(404).json({ error: 'Plan not found' });
 

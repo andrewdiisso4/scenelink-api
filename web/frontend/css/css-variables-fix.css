@@ -1,0 +1,151 @@
+/* CSS Variables Fix - Ensures all required variables are defined */
+:root {
+  /* Spacing Variables */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+  --spacing-4xl: 80px;
+  
+  /* Color Variables */
+  --dark-primary: #0a0a0a;
+  --dark-surface: #141414;
+  --dark-card: #1a1a1a;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --border-color: #333333;
+  --accent-gold: #d4af37;
+  --accent-gold-hover: #b8941f;
+  --error-red: #e74c3c;
+  --success-green: #27ae60;
+  --warning-yellow: #f39c12;
+  
+  /* Radius Variables */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+  
+  /* Font Variables */
+  --font-family-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* Transition Variables */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+  
+  /* Shadow Variables */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Ensure body has proper background */
+body {
+  background: var(--dark-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family-primary);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* Basic container styling */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-lg);
+}
+
+/* Ensure header is visible */
+.header-enhanced {
+  display: flex !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  background: rgba(20, 20, 20, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.1) !important;
+  z-index: 1000 !important;
+}
+
+.nav-enhanced {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 var(--spacing-xl) !important;
+  max-width: 1400px !important;
+  margin: 0 auto !important;
+  height: 70px !important;
+}
+
+.nav-center {
+  display: flex !important;
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  gap: var(--spacing-xl) !important;
+  flex: 1 !important;
+  justify-content: center !important;
+}
+
+.nav-link {
+  color: var(--text-secondary) !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  font-size: 0.95rem !important;
+  padding: var(--spacing-sm) var(--spacing-md) !important;
+  border-radius: var(--radius-md) !important;
+  transition: all 0.3s ease !important;
+  display: block !important;
+}
+
+.nav-link:hover {
+  color: var(--accent-gold) !important;
+}
+
+.nav-link.active {
+  color: var(--accent-gold) !important;
+  font-weight: 600 !important;
+}
+
+/* Basic page header styling */
+.page-header {
+  padding: calc(var(--spacing-3xl) + 80px) var(--spacing-xl) var(--spacing-3xl) !important;
+  text-align: center !important;
+  position: relative !important;
+  margin-top: -40px !important;
+  background: linear-gradient(135deg, 
+    rgba(212, 175, 55, 0.1), 
+    rgba(20, 20, 20, 0.95)) !important;
+}
+
+.page-header h1 {
+  color: var(--text-primary) !important;
+  font-size: clamp(2.5rem, 5vw, 4rem) !important;
+  font-weight: 700 !important;
+  margin-bottom: var(--spacing-md) !important;
+}
+
+.page-header p {
+  color: var(--text-secondary) !important;
+  font-size: 1.2rem !important;
+  margin-bottom: 0 !important;
+}
+
+/* Ensure main content is visible */
+main, .main-content, .content {
+  padding-top: 100px !important;
+  min-height: calc(100vh - 200px) !important;
+}

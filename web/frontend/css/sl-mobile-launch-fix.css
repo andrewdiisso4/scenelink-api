@@ -1,0 +1,329 @@
+/* SceneLink — Mobile Launch Fix
+ * Comprehensive mobile polish targeting real blockers:
+ * - Horizontal scroll
+ * - Dropdowns hidden behind maps
+ * - Clipped buttons
+ * - Overlapping search bars
+ * - Modal overflow
+ * - Map + list toggle UX
+ * Tested: 375px, 390px, 414px, 768px
+ * v1.0 — 2026-05-03
+ */
+
+/* ============ GLOBAL: Prevent horizontal scroll ============ */
+@media (max-width: 820px) {
+    html, body {
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+    }
+
+    /* Containers: respect viewport width */
+    .container,
+    .sl-container,
+    .page-wrap,
+    main,
+    section {
+        max-width: 100% !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+        box-sizing: border-box;
+    }
+
+    /* Prevent fixed-width elements from pushing layout */
+    img, video, iframe, canvas {
+        max-width: 100% !important;
+        height: auto;
+    }
+
+    /* Tables -> scroll internally, not page */
+    table { display: block; overflow-x: auto; max-width: 100%; }
+}
+
+/* ============ MOBILE MENU ============ */
+@media (max-width: 820px) {
+    /* Mobile menu must always be topmost */
+    .mobile-menu,
+    .mobile-nav,
+    .sl-mobile-menu,
+    .nav-mobile,
+    #mobileMenu,
+    [class*="mobile-menu"] {
+        z-index: 99990 !important;
+    }
+
+    /* Hamburger button: tappable, visible */
+    .mobile-menu-toggle,
+    .hamburger,
+    .menu-toggle,
+    .nav-toggle,
+    [aria-label*="menu" i] {
+        min-width: 44px !important;
+        min-height: 44px !important;
+        padding: 10px !important;
+    }
+}
+
+/* ============ DROPDOWNS / POPOVERS ABOVE MAPS ============ */
+@media (max-width: 820px) {
+    /* Maps must sit below dropdowns */
+    .map-container,
+    #map,
+    .leaflet-container,
+    .mapboxgl-map,
+    .gm-style,
+    [class*="map-"] {
+        z-index: 1 !important;
+    }
+
+    /* Any select/dropdown/search results stays above map */
+    select,
+    .dropdown-menu,
+    .search-results,
+    .autocomplete-results,
+    .sl-dropdown,
+    .filter-dropdown,
+    [role="listbox"],
+    [class*="autocomplete"] {
+        z-index: 500 !important;
+    }
+
+    /* Filters panel on mobile */
+    .filters-panel,
+    .sl-filters,
+    #filters,
+    [class*="filters-bar"] {
+        z-index: 10 !important;
+        position: relative;
+    }
+}
+
+/* ============ MODALS ============ */
+@media (max-width: 820px) {
+    /* All modals fit screen */
+    .modal,
+    .modal-content,
+    .sl-modal,
+    .sl-auth-overlay .sl-auth-modal,
+    .pwf-modal,
+    .bz-modal,
+    [class*="modal-content"],
+    [class*="-modal"]:not(.modal-overlay) {
+        max-width: calc(100vw - 24px) !important;
+        max-height: calc(100vh - 48px) !important;
+        width: auto !important;
+        margin: 12px auto !important;
+        box-sizing: border-box;
+        overflow-y: auto !important;
+    }
+
+    /* Modal overlays fill screen */
+    .modal-overlay,
+    .sl-auth-overlay,
+    .pwf-modal-overlay,
+    [class*="modal-overlay"] {
+        padding: 12px !important;
+        box-sizing: border-box;
+    }
+
+    /* Close buttons always tappable */
+    .modal-close,
+    .sl-auth-close,
+    .pwf-modal-close,
+    [class*="modal-close"],
+    [aria-label="Close" i] {
+        min-width: 40px !important;
+        min-height: 40px !important;
+        touch-action: manipulation;
+    }
+}
+
+/* ============ BUTTONS / INPUTS — no clipping ============ */
+@media (max-width: 820px) {
+    button, .btn, .sl-btn, input[type="button"], input[type="submit"] {
+        min-height: 44px;
+        touch-action: manipulation;
+    }
+
+    input[type="text"], input[type="email"], input[type="password"],
+    input[type="search"], input[type="tel"], textarea, select {
+        font-size: 16px !important; /* prevent iOS zoom-on-focus */
+        min-height: 44px;
+        box-sizing: border-box;
+    }
+
+    textarea { min-height: 88px; }
+}
+
+/* ============ SEARCH BARS — no overlap ============ */
+@media (max-width: 820px) {
+    /* If two search bars exist (top + map toolbar), space them */
+    .search-bar + .search-bar,
+    .sl-search + .sl-search {
+        margin-top: 8px;
+    }
+
+    /* Hero search doesn't clip */
+    .hero-search,
+    .search-hero,
+    [class*="hero-search"] {
+        max-width: 100% !important;
+        padding: 0 12px !important;
+    }
+}
+
+/* ============ MAP VIEW — mobile ============ */
+@media (max-width: 820px) {
+    /* Map list toggle bar pinned top on mobile */
+    .map-list-toggle,
+    .view-toggle,
+    .sl-view-switcher,
+    [class*="map-toggle"] {
+        position: sticky !important;
+        top: 56px; /* below header */
+        z-index: 40 !important;
+        background: #0d0d0d;
+        padding: 8px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    /* Map height: respect viewport, leave space for list */
+    .map-container,
+    #map,
+    .leaflet-container,
+    .mapboxgl-map {
+        height: 65vh !important;
+        min-height: 400px !important;
+        max-height: 70vh !important;
+        width: 100% !important;
+    }
+
+    /* Popup on mobile: fits screen, has close */
+    .leaflet-popup,
+    .mapboxgl-popup,
+    .sl-map-popup,
+    [class*="map-popup"] {
+        max-width: calc(100vw - 32px) !important;
+    }
+
+    .leaflet-popup-content,
+    .mapboxgl-popup-content,
+    .sl-map-popup-content {
+        max-width: calc(100vw - 40px) !important;
+        width: auto !important;
+        padding: 16px !important;
+        box-sizing: border-box;
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+
+    /* Zoom controls tappable */
+    .leaflet-control-zoom a,
+    .mapboxgl-ctrl button {
+        min-width: 40px !important;
+        min-height: 40px !important;
+    }
+}
+
+/* ============ FOOTER SOCIAL ICONS ============ */
+@media (max-width: 820px) {
+    .footer-social,
+    .social-links,
+    .social-links-large,
+    [class*="social-links"] {
+        display: flex !important;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+    }
+
+    .footer-social a,
+    .social-links a,
+    .social-link,
+    .social-link-large {
+        min-width: 44px !important;
+        min-height: 44px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+}
+
+/* ============ CONTACT AI SUPPORT (contact page) — mobile ============ */
+@media (max-width: 600px) {
+    .sl-cai-panel {
+        bottom: 0 !important;
+        right: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+    }
+}
+
+/* ============ AUTH MODAL close button — make obvious on mobile ============ */
+@media (max-width: 820px) {
+    .sl-auth-close,
+    .pwf-modal-close,
+    .modal-close {
+        width: 44px !important;
+        height: 44px !important;
+        font-size: 24px !important;
+    }
+}
+
+/* ============ BUSINESS PAGE — mobile dashboard ============ */
+@media (max-width: 820px) {
+    .bd-card,
+    .bz-card {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+
+    .bd-stats-grid,
+    [class*="stats-grid"] {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
+}
+
+/* ============ PROFILE — mobile sign-in ============ */
+@media (max-width: 820px) {
+    /* Ensure profile sign-in CTA is reachable */
+    .btn-header-primary.sl-auth-trigger {
+        min-height: 40px !important;
+        padding: 8px 16px !important;
+        font-size: 14px !important;
+    }
+}
+
+/* ============ NAVIGATION HEADER — prevent overflow ============ */
+@media (max-width: 820px) {
+    .nav-links,
+    .navbar-nav,
+    .main-nav ul {
+        /* on mobile, these should be in the mobile menu, not inline */
+    }
+
+    .navbar,
+    .header,
+    .sl-header,
+    header {
+        max-width: 100vw !important;
+        overflow-x: visible;
+    }
+}
+/* ============ EXPLORE PAGE: prevent duplicate search bars ============ */
+/* If any legacy script injects .explore-search-enhanced or .sl-old-search, hide it */
+.explore-search-enhanced,
+.sl-old-search,
+.sl-legacy-search-bar,
+[data-legacy-search] {
+    display: none !important;
+}
+
+/* Ensure the current search bar sits above everything */
+.sl-map-searchbar {
+    position: relative;
+    z-index: 5;
+}

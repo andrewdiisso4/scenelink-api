@@ -1,0 +1,866 @@
+/* Tonight's Picks Final Social Features CSS */
+
+/* Friends Going Section */
+.friends-going-section {
+    padding: 4rem 0;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    margin: 2rem 0;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.section-title h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    color: #ffffff;
+}
+
+.section-title p {
+    font-size: 1.1rem;
+    color: #b8b8b8;
+    margin: 0;
+}
+
+.section-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Friend Activity Cards */
+.friends-activity-grid {
+    display: grid;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.friend-activity-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.friend-activity-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.friend-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.friend-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.friend-activity-content {
+    flex: 1;
+}
+
+.friend-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 0.25rem;
+}
+
+.friend-action {
+    font-size: 1rem;
+    color: #e0e0e0;
+    margin-bottom: 0.5rem;
+}
+
+.friend-action strong {
+    color: #4a9eff;
+}
+
+.activity-details {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.activity-time,
+.group-size {
+    font-size: 0.9rem;
+    color: #b8b8b8;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.friend-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.venue-mini-card {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 0.75rem;
+    flex-shrink: 0;
+    min-width: 200px;
+}
+
+.venue-mini-card img {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.venue-mini-info {
+    flex: 1;
+}
+
+.venue-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 0.25rem;
+}
+
+.venue-category {
+    font-size: 0.8rem;
+    color: #b8b8b8;
+    margin-bottom: 0.25rem;
+}
+
+.venue-rating {
+    font-size: 0.8rem;
+    color: #ffa500;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: #1a1a2e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #b8b8b8;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #e0e0e0;
+    margin-bottom: 0.5rem;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #4a9eff;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.form-group input::placeholder {
+    color: #666;
+}
+
+.friend-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.friend-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.friend-checkbox:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.friend-checkbox input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.friend-checkbox span {
+    color: #e0e0e0;
+}
+
+/* Invite Options */
+.invite-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.invite-option {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    align-items: center;
+}
+
+.invite-option i {
+    font-size: 2rem;
+    color: #4a9eff;
+    flex-shrink: 0;
+}
+
+.invite-option-content {
+    flex: 1;
+}
+
+.invite-option-content h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 0.25rem 0;
+}
+
+.invite-option-content p {
+    font-size: 0.9rem;
+    color: #b8b8b8;
+    margin: 0 0 0.75rem 0;
+}
+
+/* Enhanced Venue Cards */
+.venue-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.venue-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.15);
+    border-color: rgba(212, 175, 55, 0.25);
+}
+
+.venue-card:active {
+    transform: translateY(-2px);
+    transition: transform 0.1s ease;
+}
+
+.venue-card-image-container {
+    position: relative;
+    height: 240px;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.3));
+}
+
+.venue-card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    loading: lazy;
+}
+
+.venue-card:hover .venue-card-image {
+    transform: scale(1.08);
+}
+
+.venue-card-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.7) 100%);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 1rem;
+}
+
+.venue-rating {
+    background: rgba(0, 0, 0, 0.8);
+    color: #ffa500;
+    padding: 0.25rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.open-now-badge {
+    background: #4caf50;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.venue-card-content {
+    padding: 1.75rem;
+}
+
+.venue-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    gap: 0.75rem;
+}
+
+.venue-card-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0;
+    flex: 1;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+}
+
+.venue-card-badge {
+    background: rgba(212, 175, 55, 0.15);
+    color: #d4af37;
+    padding: 0.375rem 0.875rem;
+    border-radius: 18px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.venue-card-meta {
+    margin-bottom: 1.25rem;
+}
+
+.venue-location {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    color: #d0d0d0;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.venue-distance {
+    color: #d4af37;
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.venue-details {
+    display: flex;
+    gap: 1.25rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.venue-price {
+    color: #4caf50;
+    font-weight: 600;
+}
+
+.venue-time {
+    color: #ffa500;
+    font-weight: 600;
+}
+
+.venue-description {
+    margin-bottom: 1.25rem;
+}
+
+.venue-description p {
+    color: #d8d8d8;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
+    font-weight: 400;
+}
+
+.venue-tonight-status {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin-bottom: 1.25rem;
+    padding: 0.875rem;
+    background: rgba(212, 175, 55, 0.08);
+    border-radius: 10px;
+    border-left: 3px solid #d4af37;
+}
+
+.venue-tonight-status i {
+    color: #d4af37;
+    font-size: 0.95rem;
+}
+
+.venue-tonight-status span {
+    color: #d0d0d0;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.venue-vibes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.vibe-tag {
+    background: rgba(255, 255, 255, 0.1);
+    color: #b8b8b8;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.venue-actions {
+    display: flex;
+    gap: 0.875rem;
+    margin-top: 1.5rem;
+    align-items: center;
+}
+
+.venue-actions .btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.9);
+    padding: 0.625rem 1rem;
+    border-radius: 10px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    min-height: 40px;
+}
+
+.venue-actions .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+.venue-actions .btn-primary {
+    background: linear-gradient(135deg, #d4af37 0%, #f4e4bc 100%);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    color: #0a0a0a;
+    padding: 0.625rem 1.25rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 40px;
+    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.2);
+}
+
+.venue-actions .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4), 0 2px 4px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #c9a835 0%, #e8dcc0 100%);
+}
+
+/* Notifications */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 2000;
+    min-width: 250px;
+    background: #1a1a2e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    animation: slideIn 0.3s ease;
+}
+
+.notification-success {
+    border-left: 4px solid #4caf50;
+}
+
+.notification-info {
+    border-left: 4px solid #4a9eff;
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #ffffff;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Neighborhood Selector */
+.neighborhood-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.neighborhood-selector label {
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.neighborhood-selector select {
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.neighborhood-selector select:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #4a9eff;
+}
+
+.neighborhood-selector select:focus {
+    outline: none;
+    border-color: #4a9eff;
+    box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.1);
+}
+
+/* Dynamic Summary */
+.dynamic-summary {
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    background: rgba(74, 158, 255, 0.1);
+    border-radius: 8px;
+    border-left: 3px solid #4a9eff;
+    font-size: 0.9rem;
+    color: #e0e0e0;
+}
+
+.dynamic-summary span {
+    color: #ffffff;
+    font-weight: 500;
+}
+
+/* Enhanced Vibe Chips */
+.vibe-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.vibe-chip {
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 25px;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vibe-chip:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.vibe-chip.active {
+    background: #4a9eff;
+    border-color: #4a9eff;
+    color: #ffffff;
+}
+
+.vibe-chip i {
+    margin-right: 0.5rem;
+    font-size: 0.8rem;
+}
+
+/* Quick View Section */
+.quick-view-section {
+    padding: 3rem 0;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 16px;
+    margin: 2rem 0;
+}
+
+.quick-view-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.quick-view-header h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 0.5rem 0;
+}
+
+.quick-view-header p {
+    font-size: 1rem;
+    color: #b8b8b8;
+    margin: 0;
+}
+
+.quick-view-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.quick-view-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.quick-view-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(8px);
+    border-color: rgba(74, 158, 255, 0.3);
+}
+
+.quick-view-item-image {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.quick-view-item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.quick-view-item-content {
+    flex: 1;
+}
+
+.quick-view-item-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 0.25rem 0;
+}
+
+.quick-view-item-details {
+    font-size: 0.9rem;
+    color: #b8b8b8;
+    margin: 0 0 0.5rem 0;
+}
+
+.quick-view-item-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+}
+
+.quick-view-item-rating {
+    color: #ffa500;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.quick-view-item-price {
+    color: #4caf50;
+}
+
+.quick-view-item-distance {
+    color: #4a9eff;
+}
+
+.quick-view-item-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.quick-view-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .friends-going-section {
+        padding: 2rem 0;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .section-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .friend-activity-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .venue-mini-card {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 1rem;
+    }
+    
+    .invite-option {
+        flex-direction: column;
+        text-align: center;
+    }
+}

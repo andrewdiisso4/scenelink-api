@@ -1,0 +1,67 @@
+name: SceneLink connected release checks
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: connected-release-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .node-version
+      - run: npm ci --ignore-scripts
+      - run: npm run check && npm test
+      - run: npm ci --ignore-scripts --prefix web
+      - run: npm test --prefix web && npm run test:social --prefix web
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [api, ingestion, upgrade]
+    services:
+      postgres:
+        image: postgres:18.3
+        env:
+          POSTGRES_DB: scenelink_test_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: scenelink_ci_disposable_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d scenelink_test_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:scenelink_ci_disposable_only@127.0.0.1:5432/scenelink_test_ci
+      SCENELINK_TEST_ALLOW_SCHEMA_INIT: 'yes'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .node-version
+      - run: npm ci --ignore-scripts
+      - name: Native API acceptance
+        if: matrix.suite == 'api'
+        env:
+          SCENELINK_API_ROOT: ${{ github.workspace }}
+        run: node --unhandled-rejections=strict qa/connected-launch-integration.cjs
+      - name: Inactive ingestion acceptance
+        if: matrix.suite == 'ingestion'
+        env:
+          SCENELINK_INGESTION_ENGINE: native
+        run: node --test qa/event-ingestion-integration.cjs
+      - name: Synthetic existing-schema upgrade acceptance
+        if: matrix.suite == 'upgrade'
+        run: node qa/legacy-message-upgrade.mjs

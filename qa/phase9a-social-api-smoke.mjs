@@ -2,14 +2,15 @@
  * Phase 9A — Social API Smoke Test
  *
  * Exercises EVERY endpoint the frontend SL.social.* client depends on, using
- * TWO real accounts (A and B) against production (or BASE override).
+ * TWO fictional accounts (A and B) against an isolated local test database.
  *
- * Usage:  node qa/phase9a-social-api-smoke.mjs
- *         BASE=https://scenelink-api-prod.onrender.com/api node qa/phase9a-social-api-smoke.mjs
+ * Verify local DB isolation and disable SMTP/provider side effects first.
+ * Usage: QA_ISOLATED_DATABASE=true BASE=http://127.0.0.1:3001/api node qa/phase9a-social-api-smoke.mjs
  *
  * Exits non-zero if any required check fails.
  */
-const BASE = process.env.BASE || 'https://scenelink-api-prod.onrender.com/api';
+import { localTarget, localFetch } from './local-target.mjs';
+const BASE = localTarget();
 const TS = Date.now();
 let pass = 0, fail = 0;
 const failures = [];
@@ -22,7 +23,7 @@ function ok(name, cond, extra) {
 async function req(method, path, token, body) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = 'Bearer ' + token;
-  const res = await fetch(BASE + path, { method, headers, body: body != null ? JSON.stringify(body) : undefined });
+  const res = await localFetch(BASE, path, { method, headers, body: body != null ? JSON.stringify(body) : undefined });
   let data = null;
   const txt = await res.text();
   try { data = txt ? JSON.parse(txt) : null; } catch (_) { data = { raw: txt }; }
@@ -179,7 +180,7 @@ async function signup(tag) {
   console.log('  media enabled:', cap.data && cap.data.enabled);
 
   // ── Realtime guard ──
-  const sse = await fetch(BASE + '/events/stream', { headers: {} });
+  const sse = await localFetch(BASE, '/events/stream', { headers: {} });
   ok('GET /events/stream requires auth (401)', sse.status === 401, { status: sse.status });
 
   console.log('\n=== RESULT ===');

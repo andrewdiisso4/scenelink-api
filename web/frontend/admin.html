@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/sl-connected-api.js?v=connected-20261108-5" defer></script>
+<script src="/js/sl-connected-actions.js?v=connected-20261108-5" defer></script>
+<link rel="stylesheet" href="/css/sl-connected.css?v=connected-20261108-5">
+  <!-- sl-observability:v1 -->
+  <script src="/env.js"></script>
+  <script src="/js/sl-avatar.js?v=connected-20261108-5"></script>
+  <script src="/js/sl-social-core.js?v=connected-20261108-5" defer></script>
+  <!-- Phase 7A perf -->
+  <script src="/js/sl-fetch-guard.js?v=connected-20261108-5" defer></script>
+  <script src="/js/sl-perf-loader.js?v=connected-20261108-5" defer></script>
+  <script src="/js/sl-observability.js?v=connected-20261108-5" defer></script>
+  <script src="/js/sl-version-marker.js?v=connected-20261108-5" defer></script>
+  <script src="/js/sl-stale-version-detector.js?v=connected-20261108-5" defer></script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SceneLink Admin Portal</title>
+<link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-5"><noscript><link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261108-5"></noscript>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css?v=connected-20261108-5" crossorigin="anonymous" referrerpolicy="no-referrer">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="robots" content="noindex, nofollow">
+
+<!-- SceneLink unified auth bundle -->
+<link rel="stylesheet" href="css/sl-auth-ui.css?v=connected-20261108-5">
+<script defer src="js/config.js?v=connected-20261108-5"></script>
+<script defer src="js/sl-api.js?v=connected-20261108-5"></script>
+<script defer src="js/sl-auth-core.js?v=connected-20261108-5"></script>
+<script defer src="js/sl-auth-ui.js?v=connected-20261108-5"></script>
+<script defer src="js/sl-auth.js?v=connected-20261108-5"></script>
+<script defer src="js/sl-auth-gate.js?v=connected-20261108-5"></script>
+  <script defer src="js/sl-nav-gate.js?v=connected-20261108-5"></script>
+  <script defer src="js/sl-unread-poller.js?v=connected-20261108-5"></script>
+
+<!-- PapaParse for CSV -->
+<script defer src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#d4af37;
+  --gold-light:#f4d35e;
+  --gold-dark:#b8860b;
+  --gold-grad:linear-gradient(135deg,#d4af37 0%,#f4d35e 50%,#b8860b 100%);
+  --bg:#080808;
+  --bg2:#101010;
+  --bg3:#181818;
+  --bg4:#222;
+  --border:rgba(255,255,255,0.08);
+  --border-gold:rgba(212,175,55,0.25);
+  --text:rgba(255,255,255,0.92);
+  --text2:rgba(255,255,255,0.62);
+  --text3:rgba(255,255,255,0.38);
+  --green:#2ecc71;
+  --red:#e74c3c;
+  --blue:#3498db;
+  --orange:#f39c12;
+}
+html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
+body{overflow-x:hidden}
+button{font-family:inherit}
+input,select,textarea{font-family:inherit}
+a{color:var(--gold);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ── Gate / Deny screens ── */
+#sl-admin-gate,#sl-admin-deny,#sl-admin-loading{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
+.gate-card{background:var(--bg2);border:1px solid var(--border-gold);border-radius:20px;padding:40px;width:100%;max-width:420px;text-align:center;box-shadow:0 20px 80px rgba(0,0,0,0.8)}
+.gate-logo{font-size:28px;font-weight:800;background:var(--gold-grad);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:6px;letter-spacing:-0.5px}
+.gate-sub{color:var(--text2);font-size:14px;margin-bottom:28px}
+.gate-row{margin-bottom:12px;text-align:left}
+.gate-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:13px 16px;color:var(--text);font-size:14px;outline:none;transition:border-color 0.2s}
+.gate-input:focus{border-color:var(--gold)}
+.gate-btn{width:100%;background:var(--gold-grad);color:#000;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;transition:filter 0.2s;margin-top:6px}
+.gate-btn:hover{filter:brightness(1.1)}
+.gate-btn.secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border);margin-top:10px}
+.gate-error{color:var(--red);font-size:13px;margin-top:10px;min-height:18px}
+.gate-hint{color:var(--text3);font-size:12px;margin-top:20px;line-height:1.5}
+
+#sl-admin-loading .gate-logo{animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* ── Layout ── */
+#sl-admin-app{display:none}
+.admin-sidebar{position:fixed;top:0;left:0;bottom:0;width:240px;background:var(--bg2);border-right:1px solid var(--border);padding:24px 0;z-index:100;overflow-y:auto}
+.admin-main{margin-left:240px;padding:28px 32px 64px;min-height:100vh}
+.sidebar-logo{padding:0 20px 20px;border-bottom:1px solid var(--border);margin-bottom:12px}
+.sidebar-logo-text{font-size:18px;font-weight:800;background:var(--gold-grad);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:-0.3px}
+.sidebar-logo-sub{font-size:11px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:1px}
+.sidebar-section{padding:14px 20px 6px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px}
+.sidebar-nav a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:var(--text2);font-size:13px;font-weight:500;transition:all 0.18s;border-left:3px solid transparent;cursor:pointer}
+.sidebar-nav a:hover{color:var(--text);background:rgba(255,255,255,0.03);text-decoration:none}
+.sidebar-nav a.active{color:var(--gold);border-left-color:var(--gold);background:rgba(212,175,55,0.06)}
+.sidebar-nav a i{width:16px;text-align:center}
+.sidebar-bottom{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border);font-size:12px;color:var(--text3)}
+.sidebar-user{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.sidebar-avatar{width:32px;height:32px;border-radius:50%;background:var(--gold-grad);color:#000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+.sidebar-user-info{flex:1;min-width:0}
+.sidebar-username{color:var(--text);font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar-role{color:var(--gold);font-size:10px;text-transform:uppercase;letter-spacing:1px}
+.sidebar-logout{display:block;color:var(--text3);font-size:11px;cursor:pointer;margin-top:6px}
+.sidebar-logout:hover{color:var(--red)}
+
+/* ── Header ── */
+.admin-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;gap:16px;flex-wrap:wrap}
+.admin-page-title{font-size:24px;font-weight:700;color:var(--text);letter-spacing:-0.3px}
+.admin-page-sub{font-size:13px;color:var(--text2);margin-top:4px}
+.header-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* ── Buttons ── */
+.btn{padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all 0.2s;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn-primary{background:var(--gold-grad);color:#000}
+.btn-primary:hover{filter:brightness(1.1)}
+.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--bg4);border-color:var(--border-gold)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{color:var(--text);border-color:var(--border-gold)}
+.btn-danger{background:var(--red);color:#fff}
+.btn-danger:hover{filter:brightness(1.1)}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
+.btn-xs{padding:4px 10px;font-size:11px;border-radius:6px}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+
+/* ── Stat Cards ── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:32px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:20px;position:relative;overflow:hidden;transition:all 0.2s}
+.stat-card:hover{border-color:var(--border-gold);transform:translateY(-2px)}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gold-grad);opacity:0.7}
+.stat-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-weight:600}
+.stat-value{font-size:28px;font-weight:700;color:var(--text);line-height:1}
+.stat-sub{font-size:12px;color:var(--text2);margin-top:8px}
+.stat-trend{font-size:11px;padding:2px 8px;border-radius:4px;display:inline-block;margin-top:6px}
+.stat-trend.up{background:rgba(46,204,113,0.15);color:var(--green)}
+.stat-trend.down{background:rgba(231,76,60,0.15);color:var(--red)}
+
+/* ── Panels / Cards ── */
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:24px;margin-bottom:20px}
+.panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.panel-title{font-size:16px;font-weight:700;color:var(--text)}
+.panel-sub{font-size:12px;color:var(--text2);margin-top:2px}
+
+/* ── Table ── */
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;background:var(--bg2);font-size:13px}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border)}
+th{background:var(--bg3);font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;position:sticky;top:0}
+tr:hover td{background:rgba(255,255,255,0.02)}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.loading-state{text-align:center;padding:40px;color:var(--text3)}
+.loading-spinner{width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Form ── */
+.form-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.form-field{flex:1;min-width:200px}
+.form-label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;outline:none;transition:border-color 0.2s}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--gold)}
+.form-textarea{min-height:80px;resize:vertical}
+
+/* ── Chips ── */
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;background:var(--bg3);color:var(--text2)}
+.chip.good{background:rgba(46,204,113,0.18);color:var(--green)}
+.chip.warn{background:rgba(243,156,18,0.18);color:var(--orange)}
+.chip.bad{background:rgba(231,76,60,0.18);color:var(--red)}
+.chip.gold{background:rgba(212,175,55,0.18);color:var(--gold)}
+.chip.blue{background:rgba(52,152,219,0.18);color:var(--blue)}
+
+/* ── CSV Drop zone ── */
+.dropzone{border:2px dashed var(--border);border-radius:12px;padding:40px 24px;text-align:center;background:var(--bg3);transition:all 0.2s;cursor:pointer}
+.dropzone:hover,.dropzone.dragging{border-color:var(--gold);background:rgba(212,175,55,0.04)}
+.dropzone-icon{font-size:36px;color:var(--gold);margin-bottom:12px}
+.dropzone-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px}
+.dropzone-sub{font-size:12px;color:var(--text2)}
+.dropzone input[type=file]{display:none}
+
+/* ── OSM Categories ── */
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:16px}
+.cat-chip{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);cursor:pointer;transition:all 0.2s;font-size:13px}
+.cat-chip:hover{border-color:var(--border-gold)}
+.cat-chip.selected{background:rgba(212,175,55,0.12);border-color:var(--gold);color:var(--gold)}
+.cat-chip input{accent-color:var(--gold)}
+
+/* ── Preview results ── */
+.preview-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px}
+.preview-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+
+/* ── Alert / Toast ── */
+.alert{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:12px;display:flex;gap:10px;align-items:flex-start}
+.alert-info{background:rgba(52,152,219,0.1);border:1px solid rgba(52,152,219,0.3);color:var(--blue)}
+.alert-warning{background:rgba(243,156,18,0.1);border:1px solid rgba(243,156,18,0.3);color:var(--orange)}
+.alert-error{background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);color:var(--red)}
+.alert-success{background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);color:var(--green)}
+
+.toast-stack{position:fixed;top:20px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:8px;max-width:360px}
+.toast{padding:12px 16px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);color:var(--text);font-size:13px;box-shadow:0 10px 40px rgba(0,0,0,0.5);animation:toastIn 0.3s ease-out;display:flex;gap:8px;align-items:flex-start}
+.toast.success{border-color:var(--green)}
+.toast.error{border-color:var(--red)}
+.toast.warning{border-color:var(--orange)}
+.toast.info{border-color:var(--blue)}
+@keyframes toastIn{from{transform:translateX(120%);opacity:0}to{transform:none;opacity:1}}
+
+/* ── Sections ── */
+.admin-section{display:none}
+.admin-section.active{display:block}
+
+/* ── Responsive ── */
+@media (max-width:900px){
+  .admin-sidebar{transform:translateX(-100%);transition:transform 0.3s}
+  .admin-sidebar.open{transform:none}
+  .admin-main{margin-left:0;padding:16px}
+  .mobile-menu-btn{display:inline-flex !important}
+}
+.mobile-menu-btn{display:none;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;cursor:pointer;font-size:14px}
+
+/* ── Badge for sidebar ── */
+.sidebar-badge{margin-left:auto;background:var(--gold);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px}
+
+/* ── Filter bar ── */
+.filter-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.filter-bar .form-input,.filter-bar .form-select{min-width:160px;flex:0 0 auto}
+.filter-bar .grow{flex:1;min-width:240px}
+
+/* ── Modal ── */
+.sl-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9998;display:none;align-items:center;justify-content:center;padding:20px}
+.sl-modal-overlay.open{display:flex}
+.sl-modal{background:var(--bg2);border:1px solid var(--border-gold);border-radius:16px;padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto}
+.sl-modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.sl-modal-title{font-size:17px;font-weight:700;color:var(--text)}
+.sl-modal-close{background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer}
+.sl-modal-close:hover{color:var(--text)}
+.sl-modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+
+/* ── Misc ── */
+.text-muted{color:var(--text3)}
+.mono{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.flex{display:flex}
+.gap-8{gap:8px}
+.gap-12{gap:12px}
+.mt-16{margin-top:16px}
+.mb-16{margin-bottom:16px}
+.hidden{display:none !important}
+</style>
+    <link rel="stylesheet" href="css/sl-bundle-5k.css?v=connected-20261108-5">
+
+<script src="js/sl-venue-corrections.js?v=connected-20261108-5" defer></script>
+
+    
+
+    
+    <script defer src="js/sl-nav-controller.js?v=connected-20261108-5"></script>
+    <script src="js/sl-avatar.js?v=connected-20261108-5" defer></script>
+  <link rel="stylesheet" href="css/sl-phase8-home.css?v=connected-20261108-5">
+  <link rel="stylesheet" href="css/sl-universal-search.css?v=connected-20261108-5">
+  <link rel="stylesheet" href="css/sl-phase8d-hotfix.css?v=connected-20261108-5">
+  <link rel="stylesheet" href="css/sl-phase8f-polish.css?v=connected-20261108-5">
+  <link rel="stylesheet" href="/css/sl-recovery-truthfulness.css?v=connected-20261108-5">
+</head>
+<body>
+
+<!-- ── Loading screen ── -->
+<div id="sl-admin-loading">
+  <div class="gate-card">
+    <div class="gate-logo">🎵 SceneLink</div>
+    <div class="gate-sub">Verifying access…</div>
+    <div class="loading-spinner" style="margin-top:20px"></div>
+  </div>
+</div>
+
+<!-- ── Login Gate (fallback for admin secret) ── -->
+<div id="sl-admin-gate" style="display:none">
+  <div class="gate-card">
+    <div class="gate-logo">🎵 SceneLink</div>
+    <div class="gate-sub">Admin Portal</div>
+    <div class="gate-row">
+      <input type="email" class="gate-input" id="adminEmail" placeholder="Admin email" autocomplete="username">
+    </div>
+    <div class="gate-row">
+      <input type="password" class="gate-input" id="adminPassword" placeholder="Password" autocomplete="current-password">
+    </div>
+    <button class="gate-btn" id="adminLoginBtn">Sign in</button>
+    <div class="gate-error" id="gateError"></div>
+    <div class="gate-hint">
+      Or <a href="#" id="useSecretLink">use admin secret</a>
+    </div>
+    <div id="secretGate" class="hidden" style="margin-top:16px">
+      <input type="password" class="gate-input" id="adminSecret" placeholder="Admin secret">
+      <button class="gate-btn" id="useSecretBtn" style="margin-top:8px">Access with secret</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Deny screen ── -->
+<div id="sl-admin-deny" style="display:none">
+  <div class="gate-card">
+    <div class="gate-logo" style="color:var(--red);-webkit-text-fill-color:var(--red);background:none">⛔ Access Denied</div>
+    <div class="gate-sub">This portal is restricted to SceneLink administrators.</div>
+    <button class="gate-btn secondary" onclick="window.location.href='/'">Return to site</button>
+    <button class="gate-btn secondary" id="denyLogout">Sign out</button>
+  </div>
+</div>
+
+<!-- ── Toast Stack ── -->
+<div class="toast-stack" id="toastStack"></div>
+
+<!-- ── Admin App ── -->
+<div id="sl-admin-app">
+
+  <!-- Sidebar -->
+  <aside class="admin-sidebar" id="adminSidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-text">🎵 SceneLink</div>
+      <div class="sidebar-logo-sub">Admin Portal</div>
+    </div>
+
+    <div class="sidebar-section">Dashboard</div>
+    <nav class="sidebar-nav">
+      <a data-section="overview" class="active"><i class="fas fa-gauge-high"></i> Overview</a>
+    </nav>
+
+    <div class="sidebar-section">Venues</div>
+    <nav class="sidebar-nav">
+      <a data-section="venues"><i class="fas fa-map-marker-alt"></i> Browse Venues</a>
+      <a data-section="csv-import"><i class="fas fa-file-csv"></i> CSV Import</a>
+      <a data-section="osm-import"><i class="fas fa-globe"></i> OSM Import</a>
+      <a data-section="import-history"><i class="fas fa-history"></i> Import History</a>
+      <a data-section="data-quality"><i class="fas fa-shield-halved"></i> Data Quality</a>
+    </nav>
+
+    <div class="sidebar-section">Content</div>
+    <nav class="sidebar-nav">
+      <a data-section="events"><i class="fas fa-calendar-check"></i> Events</a>
+    </nav>
+
+    <div class="sidebar-section">People</div>
+    <nav class="sidebar-nav">
+      <a data-section="users"><i class="fas fa-users"></i> Users <span class="sidebar-badge" id="sb-users-count"></span></a>
+      <a data-section="contacts"><i class="fas fa-envelope"></i> Contact Messages <span class="sidebar-badge" id="sb-contacts-count" style="display:none"></span></a>
+      <a data-section="business"><i class="fas fa-store"></i> Business Accounts</a>
+    </nav>
+
+    <div class="sidebar-section">System</div>
+    <nav class="sidebar-nav">
+      <a data-section="api-status"><i class="fas fa-heart-pulse"></i> API Status</a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sbAvatar">A</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-username" id="sbUsername">admin</div>
+          <div class="sidebar-role">Administrator</div>
+        </div>
+      </div>
+      <a class="sidebar-logout" id="sbLogout"><i class="fas fa-right-from-bracket"></i> Sign out</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="admin-main">
+
+    <div class="admin-header">
+      <div>
+        <button class="mobile-menu-btn" onclick="document.getElementById('adminSidebar').classList.toggle('open')">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="admin-page-title" id="pageTitle">Overview</div>
+        <div class="admin-page-sub" id="pageSub">SceneLink operations dashboard</div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-ghost" id="refreshBtn"><i class="fas fa-rotate"></i> Refresh</button>
+      </div>
+    </div>
+
+    <!-- ── Overview ── -->
+    <section class="admin-section active" id="section-overview">
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><div class="stat-label">Total Venues</div><div class="stat-value" id="stat-total">—</div><div class="stat-sub" id="stat-total-sub">loading…</div></div>
+        <div class="stat-card"><div class="stat-label">Active</div><div class="stat-value" id="stat-active">—</div><div class="stat-sub">published</div></div>
+        <div class="stat-card"><div class="stat-label">Missing Website</div><div class="stat-value" id="stat-no-web">—</div><div class="stat-sub">quality gap</div></div>
+        <div class="stat-card"><div class="stat-label">Missing Coords</div><div class="stat-value" id="stat-no-coords">—</div><div class="stat-sub">map critical</div></div>
+        <div class="stat-card"><div class="stat-label">OSM Venues</div><div class="stat-value" id="stat-osm">—</div><div class="stat-sub">OpenStreetMap</div></div>
+        <div class="stat-card"><div class="stat-label">Avg Quality</div><div class="stat-value" id="stat-quality">—</div><div class="stat-sub">0–100 score</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Quick Actions</div>
+            <div class="panel-sub">Common admin tasks</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <button class="btn btn-primary" data-goto="csv-import"><i class="fas fa-file-csv"></i> Upload CSV</button>
+          <button class="btn btn-primary" data-goto="osm-import"><i class="fas fa-globe"></i> Import from OSM</button>
+          <button class="btn btn-secondary" data-goto="data-quality"><i class="fas fa-shield-halved"></i> Data Quality</button>
+          <button class="btn btn-secondary" id="recomputeQualityBtn"><i class="fas fa-recycle"></i> Recompute Quality Scores</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Venues by Source</div>
+            <div class="panel-sub">Distribution of venue origins</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Source</th><th class="num">Count</th><th class="num">Active</th><th class="num">With Website</th><th class="num">With Coords</th></tr></thead>
+            <tbody id="sourcesTbody"><tr><td colspan="5" class="loading-state"><div class="loading-spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Venues ── -->
+    <section class="admin-section" id="section-venues">
+      <div class="panel">
+        <div class="filter-bar">
+          <input type="search" class="form-input grow" id="venuesSearch" placeholder="Search by name, address, city, neighborhood…">
+          <select class="form-select" id="venuesSource">
+            <option value="">All sources</option>
+            <option value="curated">Curated</option>
+            <option value="csv">CSV</option>
+            <option value="osm">OSM</option>
+            <option value="openstreetmap">OpenStreetMap</option>
+          </select>
+          <select class="form-select" id="venuesQuality">
+            <option value="">All quality</option>
+            <option value="complete">Complete</option>
+            <option value="needs_image">Needs image</option>
+            <option value="needs_neighborhood">Needs neighborhood</option>
+            <option value="needs_category">Needs category</option>
+            <option value="needs_coordinates">Needs coordinates</option>
+            <option value="needs_vibe_tags">Needs vibe tags</option>
+            <option value="low_quality">Low quality</option>
+          </select>
+          <button class="btn btn-primary" id="venuesApplyFilters"><i class="fas fa-filter"></i> Filter</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>City</th>
+                <th>Source</th>
+                <th>Quality</th>
+                <th>Website</th>
+                <th>Coords</th>
+                <th>Active</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="venuesTbody"><tr><td colspan="9" class="loading-state"><div class="loading-spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+
+        <div class="flex gap-12 mt-16" style="justify-content:space-between;align-items:center">
+          <div class="text-muted" style="font-size:12px" id="venuesCount">—</div>
+          <div class="flex gap-8">
+            <button class="btn btn-ghost btn-sm" id="venuesPrev"><i class="fas fa-chevron-left"></i> Prev</button>
+            <button class="btn btn-ghost btn-sm" id="venuesNext">Next <i class="fas fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CSV Import ── -->
+    <section class="admin-section" id="section-csv-import">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">CSV Venue Import</div>
+            <div class="panel-sub">Upload a CSV. Required columns: <code>name, city</code>. Recommended: <code>address, neighborhood, latitude, longitude, website, phone, type, category, description, price_range, vibe_tags</code>.</div>
+          </div>
+          <button class="btn btn-ghost" id="downloadTemplateBtn"><i class="fas fa-download"></i> Template</button>
+        </div>
+
+        <label class="dropzone" id="csvDropzone">
+          <input type="file" id="csvFile" accept=".csv,text/csv">
+          <div class="dropzone-icon"><i class="fas fa-file-csv"></i></div>
+          <div class="dropzone-title">Drop CSV file or click to browse</div>
+          <div class="dropzone-sub">Max 10 MB. UTF-8 encoded.</div>
+        </label>
+
+        <div id="csvPreviewWrap" class="hidden mt-16">
+          <div class="alert alert-info"><i class="fas fa-info-circle"></i> <span id="csvPreviewStats">—</span></div>
+          <div class="table-wrap" style="max-height:400px;overflow-y:auto">
+            <table id="csvPreviewTable">
+              <thead id="csvPreviewHead"></thead>
+              <tbody id="csvPreviewBody"></tbody>
+            </table>
+          </div>
+          <div class="flex gap-12 mt-16" style="justify-content:flex-end">
+            <button class="btn btn-ghost" id="csvClearBtn">Clear</button>
+            <button class="btn btn-primary" id="csvImportBtn"><i class="fas fa-cloud-upload-alt"></i> Import <span id="csvImportCount"></span> Venues</button>
+          </div>
+        </div>
+
+        <div id="csvResultWrap" class="hidden mt-16"></div>
+      </div>
+    </section>
+
+    <!-- ── OSM Import ── -->
+    <section class="admin-section" id="section-osm-import">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">OpenStreetMap Import</div>
+            <div class="panel-sub">Pull verified venue data from OpenStreetMap via Overpass API with safety rails.</div>
+          </div>
+        </div>
+
+        <div class="alert alert-info">
+          <i class="fas fa-shield-halved"></i>
+          <div>Safe mode enabled: max bbox 0.5°, max 500 results per query, 10-minute cache, multiple endpoint fallbacks.</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">City preset</label>
+            <select class="form-select" id="osmPreset">
+              <option value="">— select city —</option>
+              <option value="boston">Boston, MA</option>
+              <option value="cambridge">Cambridge, MA</option>
+              <option value="somerville">Somerville, MA</option>
+              <option value="custom">Custom bbox…</option>
+            </select>
+          </div>
+          <div class="form-field" id="osmBboxWrap" style="display:none">
+            <label class="form-label">Custom bbox (south,west,north,east)</label>
+            <input type="text" class="form-input" id="osmBbox" placeholder="42.30,-71.20,42.40,-71.00">
+          </div>
+        </div>
+
+        <label class="form-label" style="margin-top:10px">Categories to import</label>
+        <div class="cat-grid" id="osmCategories"></div>
+
+        <div class="flex gap-12 mt-16" style="flex-wrap:wrap">
+          <button class="btn btn-secondary" id="osmPreviewBtn"><i class="fas fa-eye"></i> Preview Count</button>
+          <button class="btn btn-primary" id="osmImportBtn" disabled><i class="fas fa-cloud-download-alt"></i> Import Venues</button>
+        </div>
+
+        <div id="osmResultWrap" class="mt-16"></div>
+      </div>
+    </section>
+
+    <!-- ── Import History ── -->
+    <section class="admin-section" id="section-import-history">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Import History</div>
+            <div class="panel-sub">Audit log of all CSV / OSM imports</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Source</th>
+                <th>Label</th>
+                <th class="num">Total</th>
+                <th class="num">Inserted</th>
+                <th class="num">Updated</th>
+                <th class="num">Skipped</th>
+                <th class="num">Errors</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="historyTbody"><tr><td colspan="10" class="loading-state"><div class="loading-spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Data Quality ── -->
+    <section class="admin-section" id="section-data-quality">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Data Quality Dashboard</div>
+            <div class="panel-sub">Identify venues with missing or low-quality data</div>
+          </div>
+          <button class="btn btn-secondary" id="recomputeQualityBtn2"><i class="fas fa-recycle"></i> Recompute Scores</button>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Complete</div><div class="stat-value" id="dq-complete">—</div><div class="stat-sub">all fields present</div></div>
+          <div class="stat-card"><div class="stat-label">Needs Image</div><div class="stat-value" id="dq-no-image">—</div><div class="stat-sub">no image_url</div></div>
+          <div class="stat-card"><div class="stat-label">Needs Website</div><div class="stat-value" id="dq-no-website">—</div><div class="stat-sub">no website URL</div></div>
+          <div class="stat-card"><div class="stat-label">Needs Neighborhood</div><div class="stat-value" id="dq-no-nhood">—</div><div class="stat-sub">no neighborhood</div></div>
+          <div class="stat-card"><div class="stat-label">Low Quality</div><div class="stat-value" id="dq-low">—</div><div class="stat-sub">score < 40</div></div>
+        </div>
+
+        <div class="filter-bar mt-16">
+          <button class="btn btn-ghost btn-sm" data-dq-filter="no_website">Missing website</button>
+          <button class="btn btn-ghost btn-sm" data-dq-filter="no_coords">Missing coords</button>
+          <button class="btn btn-ghost btn-sm" data-dq-filter="no_phone">Missing phone</button>
+          <button class="btn btn-ghost btn-sm" data-dq-filter="no_type">Missing type</button>
+          <button class="btn btn-ghost btn-sm" data-dq-filter="no_neighborhood">Missing neighborhood</button>
+          <button class="btn btn-ghost btn-sm" data-dq-filter="stub">Stub only</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Venue</th><th>City</th><th>Source</th><th>Score</th><th>Issues</th><th></th></tr></thead>
+            <tbody id="dqTbody"><tr><td colspan="6" class="loading-state"><div class="loading-spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Users (read only) ── -->
+    <section class="admin-section" id="section-users">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Users</div>
+            <div class="panel-sub">All registered SceneLink users · real-time from database</div>
+          </div>
+          <div class="flex gap-8">
+            <input type="search" class="form-input" id="usersSearch" placeholder="Search email or name…" style="min-width:220px">
+            <button class="btn btn-primary" id="usersSearchBtn"><i class="fas fa-search"></i></button>
+          </div>
+        </div>
+        <div class="stats-grid" id="userStatsGrid" style="margin-bottom:16px">
+          <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value" id="ustat-total">—</div><div class="stat-sub">all time</div></div>
+          <div class="stat-card"><div class="stat-label">This Week</div><div class="stat-value" id="ustat-week">—</div><div class="stat-sub">new signups</div></div>
+          <div class="stat-card"><div class="stat-label">Today</div><div class="stat-value" id="ustat-today">—</div><div class="stat-sub">signups</div></div>
+          <div class="stat-card"><div class="stat-label">Favorites</div><div class="stat-value" id="ustat-favs">—</div><div class="stat-sub">saved venues</div></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Display Name</th><th>Email</th><th>Username</th><th>Role</th><th>Favorites</th><th>Check-ins</th><th>Joined</th></tr></thead>
+            <tbody id="usersTbody"><tr><td colspan="7" class="loading-state"><div class="loading-spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+        <div class="flex gap-12 mt-16" style="justify-content:space-between;align-items:center">
+          <div class="text-muted" style="font-size:12px" id="usersCount">—</div>
+          <div class="flex gap-8">
+            <button class="btn btn-ghost btn-sm" id="usersPrev"><i class="fas fa-chevron-left"></i> Prev</button>
+            <button class="btn btn-ghost btn-sm" id="usersNext">Next <i class="fas fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Contacts ── -->
+    <section class="admin-section" id="section-contacts">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Contact Messages</div>
+            <div class="panel-sub">Messages submitted via the contact form · stored in DB</div>
+          </div>
+          <div class="flex gap-8">
+            <select class="form-select" id="contactsFilter">
+              <option value="">All</option>
+              <option value="new">New</option>
+              <option value="read">Read</option>
+              <option value="resolved">Resolved</option>
+            </select>
+            <button class="btn btn-primary" id="contactsRefreshBtn"><i class="fas fa-rotate"></i> Refresh</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>From</th><th>Email</th><th>Subject</th><th>Preview</th><th>Status</th><th>Received</th><th></th></tr></thead>
+            <tbody id="contactsTbody"><tr><td colspan="7" class="loading-state"><div class="loading-spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+        <div class="text-muted mt-16" style="font-size:12px" id="contactsCount">—</div>
+      </div>
+    </section>
+
+    <!-- ── Business Users ── -->
+    <section class="admin-section" id="section-business">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Business Accounts</div>
+            <div class="panel-sub">Venue owners who have claimed or registered a business account</div>
+          </div>
+          <button class="btn btn-ghost" id="businessRefreshBtn"><i class="fas fa-rotate"></i> Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Email</th><th>Venue Name</th><th>Tier</th><th>Status</th><th>Linked Venue</th><th>Registered</th><th>Actions</th></tr></thead>
+            <tbody id="businessTbody"><tr><td colspan="7" class="loading-state"><div class="loading-spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+        <div class="text-muted mt-16" style="font-size:12px" id="businessCount">—</div>
+      </div>
+    </section>
+
+    <!-- ── Events ── -->
+    <section class="admin-section" id="section-events">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Events Curation</div>
+            <div class="panel-sub">Create, feature, and manage events shown on /events.html</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" id="eventsRefreshBtn"><i class="fas fa-rotate"></i> Refresh</button>
+            <button class="btn btn-primary" id="eventsNewBtn"><i class="fas fa-plus"></i> New Event</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Title</th><th>Venue</th><th>Category</th><th>Featured</th><th>Actions</th></tr></thead>
+            <tbody id="eventsTbody"><tr><td colspan="6" class="loading-state"><div class="loading-spinner"></div></td></tr></tbody>
+          </table>
+        </div>
+        <div class="text-muted mt-16" style="font-size:12px" id="eventsCount">—</div>
+      </div>
+
+      <!-- Event editor modal -->
+      <div id="eventModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:var(--bg2);border:1px solid var(--border-gold);border-radius:16px;max-width:600px;width:100%;padding:28px;max-height:90vh;overflow-y:auto;">
+          <h3 id="eventModalTitle" style="margin:0 0 20px;color:var(--gold);font-size:18px;">New Event</h3>
+          <input type="hidden" id="evId">
+          <div style="display:grid;gap:12px">
+            <div>
+              <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Title *</label>
+              <input id="evTitle" class="gate-input" placeholder="Event title">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Date *</label>
+                <input id="evDate" class="gate-input" type="date">
+              </div>
+              <div>
+                <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Category</label>
+                <input id="evCategory" class="gate-input" placeholder="Music, Food, Comedy...">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Start Time</label>
+                <input id="evStartTime" class="gate-input" placeholder="8:00 PM">
+              </div>
+              <div>
+                <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Price</label>
+                <input id="evPrice" class="gate-input" placeholder="Free or From $25">
+              </div>
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Venue (optional)</label>
+              <input id="evVenueSearch" class="gate-input" placeholder="Search venue by name...">
+              <div id="evVenueResults" style="margin-top:6px;max-height:120px;overflow-y:auto;"></div>
+              <input type="hidden" id="evVenueId">
+              <input id="evVenueName" class="gate-input" placeholder="Venue name (or auto-filled)" style="margin-top:6px">
+              <input id="evVenueNeighborhood" class="gate-input" placeholder="Neighborhood" style="margin-top:6px">
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Image URL</label>
+              <input id="evImageUrl" class="gate-input" placeholder="https://...">
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Description</label>
+              <textarea id="evDescription" class="gate-input" rows="3" style="resize:vertical"></textarea>
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Event URL (ticket page)</label>
+              <input id="evEventUrl" class="gate-input" placeholder="https://...">
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text)">
+              <input type="checkbox" id="evFeatured"> Featured (show on Events page hero)
+            </label>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
+            <button class="btn btn-ghost" id="eventModalCancel">Cancel</button>
+            <button class="btn btn-primary" id="eventModalSave">Save</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── API Status ── -->
+    <section class="admin-section" id="section-api-status">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">API Health</div>
+            <div class="panel-sub">Live backend status and configuration</div>
+          </div>
+        </div>
+        <div id="apiStatusBody">
+          <div class="loading-state"><div class="loading-spinner"></div></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ── Venue Edit Modal ── -->
+<div class="sl-modal-overlay" id="venueModal">
+  <div class="sl-modal">
+    <div class="sl-modal-header">
+      <div class="sl-modal-title">Edit Venue</div>
+      <button class="sl-modal-close" id="venueModalClose">×</button>
+    </div>
+    <div id="venueModalBody"></div>
+    <div class="sl-modal-footer">
+      <button class="btn btn-ghost" id="venueModalCancel">Cancel</button>
+      <button class="btn btn-primary" id="venueModalSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<script defer src="js/sl-admin-portal.js?v=connected-20261108-5"></script>
+
+    <script defer src="js/ai-concierge-v5.js?v=connected-20261108-5"></script>
+  <script src="js/sl-phase8-launch.js?v=connected-20261108-5" defer></script>
+<script src="js/sl-phase8-completion.js?v=connected-20261108-5" defer></script>
+  <script src="js/sl-universal-search.js?v=connected-20261108-5" defer></script>
+  <script src="js/sl-social-network.js?v=connected-20261108-5" defer></script>
+  <script src="js/sl-phase8d-recovery.js?v=connected-20261108-5" defer></script>
+  <script src="/js/sl-social-integration-9a.js?v=connected-20261108-5" defer></script>
+<script src="/js/sl-verification-banner.js?v=connected-20261108-5" defer></script>
+</body>
+</html>

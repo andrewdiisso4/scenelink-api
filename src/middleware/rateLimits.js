@@ -1,28 +1,16 @@
 // ============================================================================
 // Shared rate limiters for sensitive endpoints
 // ============================================================================
-// Degrades gracefully: if express-rate-limit is not installed, uses a no-op.
-
-let rateLimit;
-try {
-    rateLimit = require('express-rate-limit');
-} catch (e) {
-    console.warn('[rate-limit] express-rate-limit not installed — falling back to no-op');
-    rateLimit = () => (req, res, next) => next();
-}
+// Required dependency: never silently disable abuse controls.
+const rateLimit = require('express-rate-limit');
 
 // Standard-headers enabled so browsers + reverse proxies can read limits.
 const common = {
     standardHeaders: true,
     legacyHeaders: false,
-    // Key by CF-Connecting-IP / X-Forwarded-For if present (Render sits behind a proxy)
-    keyGenerator: (req /*, res */) => {
-        return (
-            req.headers['cf-connecting-ip'] ||
-            (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
-            req.ip
-        );
-    },
+    // Express derives the client IP using the configured trusted proxy hop.
+    // Do not let arbitrary CF/XFF header values select a fresh rate bucket.
+    keyGenerator: req => req.ip,
     skip: (req) => req.method === 'OPTIONS', // never rate-limit CORS preflight
 };
 

@@ -1,0 +1,61 @@
+/* Header Consistency Enhanced - 72px logo */
+
+.nav-enhanced .logo-container .logo-main,
+.nav-enhanced .logo-container img.logo-main,
+.header-enhanced .logo-container .logo-main,
+.header-enhanced .logo-container img.logo-main {
+    width: auto !important;
+    height: 80px !important;
+    max-height: 80px !important;
+    min-height: 80px !important;
+    object-fit: contain !important;
+}
+
+/* Nav link spacing to accommodate larger logo */
+.nav-enhanced .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nav-enhanced .nav-links a {
+    padding: 8px 14px;
+    font-size: 0.92rem;
+    white-space: nowrap;
+}
+
+/* Active state styling */
+.nav-enhanced .nav-links a.active {
+    color: #D4AF37 !important;
+    position: relative;
+}
+
+.nav-enhanced .nav-links a.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, #D4AF37, #F4D03F);
+    border-radius: 2px;
+}
+
+@media (max-width: 768px) {
+    .nav-enhanced .logo-container .logo-main,
+    .header-enhanced .logo-container .logo-main {
+        height: 80px !important;
+        max-height: 80px !important;
+        min-height: 80px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-enhanced .logo-container .logo-main,
+    .header-enhanced .logo-container .logo-main {
+        height: 80px !important;
+        max-height: 80px !important;
+        min-height: 80px !important;
+    }
+}

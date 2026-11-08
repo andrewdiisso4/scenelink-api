@@ -1,0 +1,919 @@
+/* Enhanced Features CSS - AI Search, Advanced Filters, Collaborative Lists */
+
+/* ============================================
+   AI SEARCH SUGGESTIONS
+   ============================================ */
+
+.search-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #1a1a1a;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    margin-top: 8px;
+    max-height: 500px;
+    overflow-y: auto;
+    z-index: 1000;
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.search-suggestions.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+}
+
+.suggestion-section {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.suggestion-section:last-child {
+    border-bottom: none;
+}
+
+.suggestion-header {
+    padding: 8px 16px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #808080;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.suggestion-item {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.suggestion-item:hover {
+    background: rgba(212, 175, 55, 0.1);
+}
+
+.suggestion-item i {
+    color: #D4AF37;
+    width: 20px;
+    text-align: center;
+}
+
+.smart-suggestion {
+    font-weight: 500;
+}
+
+.venue-suggestion {
+    justify-content: space-between;
+}
+
+.venue-suggestion-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.venue-suggestion-info strong {
+    color: #ffffff;
+}
+
+.venue-type {
+    font-size: 0.875rem;
+    color: #b0b0b0;
+}
+
+.venue-suggestion-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.875rem;
+}
+
+.venue-suggestion-meta .rating {
+    color: #D4AF37;
+}
+
+.venue-suggestion-meta .price {
+    color: #b0b0b0;
+}
+
+.category-suggestion {
+    justify-content: space-between;
+}
+
+.category-suggestion .count {
+    background: rgba(212, 175, 55, 0.2);
+    color: #D4AF37;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.recent-search {
+    position: relative;
+    padding-right: 40px;
+}
+
+.remove-search {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #808080;
+    cursor: pointer;
+    padding: 4px;
+    opacity: 0;
+    transition: all 0.2s ease;
+}
+
+.recent-search:hover .remove-search {
+    opacity: 1;
+}
+
+.remove-search:hover {
+    color: #f44336;
+}
+
+/* Voice Search Animation */
+.voice-btn.listening {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+/* ============================================
+   ADVANCED FILTERS MODAL
+   ============================================ */
+
+.advanced-filters-modal {
+    max-width: 700px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.filter-group {
+    margin-bottom: 24px;
+}
+
+.filter-group h3 {
+    font-size: 1rem;
+    margin-bottom: 12px;
+    color: #ffffff;
+}
+
+.filter-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.filter-checkbox,
+.filter-radio {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-checkbox:hover,
+.filter-radio:hover {
+    background: rgba(212, 175, 55, 0.1);
+}
+
+.filter-checkbox input,
+.filter-radio input {
+    cursor: pointer;
+}
+
+.filter-checkbox input:checked + span,
+.filter-radio input:checked + span {
+    color: #D4AF37;
+    font-weight: 600;
+}
+
+.rating-slider,
+.distance-slider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.rating-slider input,
+.distance-slider input {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.rating-slider input::-webkit-slider-thumb,
+.distance-slider input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #D4AF37;
+    cursor: pointer;
+}
+
+.rating-slider input::-moz-range-thumb,
+.distance-slider input::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #D4AF37;
+    cursor: pointer;
+    border: none;
+}
+
+#ratingValue,
+#distanceValue {
+    min-width: 60px;
+    text-align: right;
+    color: #D4AF37;
+    font-weight: 600;
+}
+
+/* ============================================
+   FILTER CHIPS
+   ============================================ */
+
+#activeFiltersContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.filter-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(212, 175, 55, 0.2);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 20px;
+    font-size: 0.875rem;
+    color: #D4AF37;
+}
+
+.filter-chip-remove {
+    background: none;
+    border: none;
+    color: #D4AF37;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s ease;
+}
+
+.filter-chip-remove:hover {
+    color: #E5C158;
+}
+
+.clear-all-btn {
+    padding: 8px 16px;
+    background: rgba(244, 67, 54, 0.2);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    border-radius: 20px;
+    color: #f44336;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clear-all-btn:hover {
+    background: rgba(244, 67, 54, 0.3);
+}
+
+/* ============================================
+   COLLABORATIVE LISTS
+   ============================================ */
+
+.list-card {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.list-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.list-info h3 {
+    font-size: 1.25rem;
+    margin-bottom: 8px;
+    color: #ffffff;
+}
+
+.list-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.privacy-badge,
+.collab-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    text-transform: capitalize;
+}
+
+.collab-badge {
+    background: rgba(212, 175, 55, 0.2);
+    color: #D4AF37;
+}
+
+.list-actions-menu {
+    position: relative;
+}
+
+.menu-btn {
+    background: none;
+    border: none;
+    color: #b0b0b0;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.menu-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.list-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: #1a1a1a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    min-width: 150px;
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+    transition: all 0.2s ease;
+    z-index: 100;
+}
+
+.list-menu.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+}
+
+.list-menu button {
+    width: 100%;
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    color: #ffffff;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s ease;
+}
+
+.list-menu button:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.list-menu button.danger {
+    color: #f44336;
+}
+
+.list-menu button.danger:hover {
+    background: rgba(244, 67, 54, 0.1);
+}
+
+.list-description {
+    color: #b0b0b0;
+    font-size: 0.875rem;
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+.list-stats {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.list-stats .stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.875rem;
+    color: #b0b0b0;
+}
+
+.list-stats .stat i {
+    color: #D4AF37;
+}
+
+.list-preview {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+}
+
+.list-preview img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.list-preview .more-count {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    font-weight: 600;
+    color: #D4AF37;
+    flex-shrink: 0;
+}
+
+.list-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.collaborators-preview {
+    display: flex;
+    align-items: center;
+}
+
+.collaborators-preview img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #1a1a1a;
+    margin-left: -8px;
+}
+
+.collaborators-preview img:first-child {
+    margin-left: 0;
+}
+
+/* Create List Modal */
+.create-list-modal {
+    max-width: 600px;
+}
+
+.privacy-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.privacy-option {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.privacy-option:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.privacy-option input:checked ~ .option-content {
+    color: #D4AF37;
+}
+
+.privacy-option input:checked {
+    border-color: #D4AF37;
+}
+
+.privacy-option input {
+    margin-right: 12px;
+    cursor: pointer;
+}
+
+.option-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.option-content i {
+    font-size: 1.5rem;
+    color: #D4AF37;
+}
+
+.option-content div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.option-content strong {
+    color: #ffffff;
+    font-size: 1rem;
+}
+
+.option-content span {
+    color: #b0b0b0;
+    font-size: 0.875rem;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.checkbox-label input {
+    cursor: pointer;
+}
+
+/* ============================================
+   GROUP PLANNING ENHANCEMENTS
+   ============================================ */
+
+.event-card {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+}
+
+.event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.event-info h3 {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+    color: #ffffff;
+}
+
+.event-meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 0.875rem;
+    color: #b0b0b0;
+}
+
+.event-meta span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.event-meta i {
+    color: #D4AF37;
+}
+
+.status-badge {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.status-planning {
+    background: rgba(33, 150, 243, 0.2);
+    color: #2196F3;
+}
+
+.status-confirmed {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4CAF50;
+}
+
+.status-upcoming {
+    background: rgba(255, 152, 0, 0.2);
+    color: #FF9800;
+}
+
+.status-completed {
+    background: rgba(158, 158, 158, 0.2);
+    color: #9E9E9E;
+}
+
+.event-description {
+    color: #b0b0b0;
+    margin-bottom: 16px;
+    line-height: 1.6;
+}
+
+.event-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.event-stats .stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    color: #b0b0b0;
+}
+
+.event-stats .stat i {
+    color: #D4AF37;
+}
+
+.participants-preview {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.participants-preview img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid #1a1a1a;
+    margin-left: -12px;
+}
+
+.participants-preview img:first-child {
+    margin-left: 0;
+}
+
+.participants-preview .more-count {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(212, 175, 55, 0.2);
+    border-radius: 50%;
+    border: 2px solid #1a1a1a;
+    margin-left: -12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #D4AF37;
+}
+
+.voting-section {
+    margin-bottom: 20px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+}
+
+.voting-section h4 {
+    margin-bottom: 16px;
+    color: #ffffff;
+}
+
+.venue-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.venue-option {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: #1a1a1a;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.venue-option:hover {
+    border-color: rgba(212, 175, 55, 0.3);
+}
+
+.venue-option.voted {
+    border-color: #D4AF37;
+    background: rgba(212, 175, 55, 0.1);
+}
+
+.venue-option img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.venue-option .venue-info {
+    flex: 1;
+}
+
+.venue-option h5 {
+    font-size: 1.125rem;
+    margin-bottom: 4px;
+    color: #ffffff;
+}
+
+.venue-option p {
+    color: #b0b0b0;
+    font-size: 0.875rem;
+    margin-bottom: 8px;
+}
+
+.venue-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 0.875rem;
+}
+
+.venue-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #b0b0b0;
+}
+
+.venue-meta i {
+    color: #D4AF37;
+}
+
+.vote-section {
+    display: flex;
+    align-items: center;
+}
+
+.vote-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    color: #b0b0b0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.vote-btn:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: rgba(212, 175, 55, 0.3);
+    color: #D4AF37;
+}
+
+.vote-btn.voted {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: #D4AF37;
+    color: #D4AF37;
+}
+
+.vote-btn i {
+    font-size: 1.25rem;
+}
+
+.vote-btn span {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.event-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* Empty States */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: #D4AF37;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    font-size: 1.5rem;
+    margin-bottom: 12px;
+    color: #ffffff;
+}
+
+.empty-state p {
+    color: #b0b0b0;
+    margin-bottom: 24px;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+@media (max-width: 768px) {
+    .search-suggestions {
+        max-height: 400px;
+    }
+    
+    .filter-options {
+        grid-template-columns: 1fr;
+    }
+    
+    .list-header {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .list-footer {
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-start;
+    }
+    
+    .event-header {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .event-meta {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .venue-option {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .venue-option img {
+        width: 100%;
+        height: 200px;
+    }
+    
+    .event-actions {
+        flex-direction: column;
+    }
+    
+    .event-actions button {
+        width: 100%;
+    }
+}

@@ -14,6 +14,11 @@
 
 const express = require('express');
 const router = express.Router();
+// Demo fixtures and known credentials must never be provisioned in production.
+router.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' || process.env.ALLOW_DEMO_SEED !== 'true') return res.status(404).json({ error: 'Endpoint not found' });
+  next();
+});
 const bcrypt = require('bcryptjs');
 const pool = require('../config/database');
 

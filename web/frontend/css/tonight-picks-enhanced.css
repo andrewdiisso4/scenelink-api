@@ -1,0 +1,944 @@
+/**
+ * Tonight's Picks Enhanced Styles
+ * Comprehensive styling for personalized recommendations
+ */
+
+/* ==================== HERO CAROUSEL ==================== */
+
+.picks-carousel-section {
+    position: relative;
+    height: 600px;
+    margin-bottom: 3rem;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.carousel-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.carousel-slide.active {
+    opacity: 1;
+}
+
+.carousel-image {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.carousel-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.carousel-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to top, rgba(10, 10, 10, 0.95) 0%, rgba(10, 10, 10, 0.3) 100%);
+    display: flex;
+    align-items: flex-end;
+    padding: 3rem;
+}
+
+.carousel-content {
+    max-width: 700px;
+}
+
+.pick-badge {
+    background: #D4AF37;
+    color: #0a0a0a;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+    margin-bottom: 1rem;
+}
+
+.carousel-content h2 {
+    color: #ffffff;
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+.pick-venue {
+    color: #D4AF37;
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pick-rating {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #D4AF37;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.price-level {
+    color: #b0b0b0;
+    margin-left: 0.5rem;
+}
+
+.pick-description {
+    color: #b0b0b0;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.carousel-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.carousel-actions button {
+    padding: 1rem 2rem;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+}
+
+.carousel-navigation {
+    position: absolute;
+    bottom: 2rem;
+    right: 2rem;
+    display: flex;
+    gap: 1rem;
+    z-index: 10;
+}
+
+.carousel-nav-btn {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.carousel-nav-btn:hover {
+    background: rgba(212, 175, 55, 0.3);
+    border-color: #D4AF37;
+}
+
+/* ==================== FILTERS & CATEGORIES ==================== */
+
+.picks-filters-section {
+    background: #1a1a1a;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.filters-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.filters-header h3 {
+    color: #ffffff;
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+#refreshPicks {
+    background: rgba(212, 175, 55, 0.2);
+    border: 1px solid #D4AF37;
+    color: #D4AF37;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#refreshPicks:hover {
+    background: rgba(212, 175, 55, 0.3);
+    transform: translateY(-2px);
+}
+
+.category-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+}
+
+.category-filter {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #b0b0b0;
+    padding: 0.6rem 1.2rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.category-filter:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: rgba(212, 175, 55, 0.3);
+    color: #D4AF37;
+}
+
+.category-filter.active {
+    background: #D4AF37;
+    border-color: #D4AF37;
+    color: #0a0a0a;
+}
+
+/* ==================== PICKS GRID ==================== */
+
+.picks-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.picks-list-header h2 {
+    color: #ffffff;
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+#picksCount {
+    color: #808080;
+    font-size: 0.95rem;
+}
+
+#picksGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.pick-card {
+    background: #1a1a1a;
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.pick-card.animate-in {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.pick-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 40px rgba(212, 175, 55, 0.15);
+}
+
+.pick-image {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    overflow: hidden;
+}
+
+.pick-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.pick-card:hover .pick-image img {
+    transform: scale(1.1);
+}
+
+.pick-type-badge {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    background: rgba(212, 175, 55, 0.95);
+    color: #0a0a0a;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.special-offer-badge {
+    position: absolute;
+    top: 1rem;
+    right: 4rem;
+    background: rgba(244, 67, 54, 0.95);
+    color: #ffffff;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.pick-save-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    border: none;
+    color: #ffffff;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.pick-save-btn:hover {
+    background: rgba(212, 175, 55, 0.9);
+    color: #0a0a0a;
+    transform: scale(1.1);
+}
+
+.pick-save-btn.saved {
+    background: rgba(212, 175, 55, 0.9);
+    color: #0a0a0a;
+}
+
+.pick-content {
+    padding: 1.5rem;
+}
+
+.pick-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.7rem;
+}
+
+.pick-title {
+    color: #ffffff;
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0;
+    flex: 1;
+}
+
+.pick-venue-name,
+.pick-time-slot {
+    color: #b0b0b0;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pick-venue-name i,
+.pick-time-slot i {
+    color: #D4AF37;
+    width: 14px;
+}
+
+.why-recommended {
+    background: rgba(212, 175, 55, 0.1);
+    border-left: 3px solid #D4AF37;
+    padding: 0.7rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.why-recommended i {
+    color: #D4AF37;
+    margin-top: 0.2rem;
+}
+
+.why-recommended span {
+    color: #D4AF37;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.pick-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.pick-tag {
+    background: rgba(212, 175, 55, 0.15);
+    color: #D4AF37;
+    padding: 0.3rem 0.7rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.pick-info-row {
+    display: flex;
+    gap: 1rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #808080;
+    font-size: 0.85rem;
+}
+
+.info-item i {
+    color: #D4AF37;
+}
+
+.special-offer-box {
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    color: #F44336;
+    padding: 0.7rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* Social Connections */
+.social-connections {
+    background: rgba(212, 175, 55, 0.08);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 12px;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.friends-liked,
+.friends-going {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #D4AF37;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.friends-liked:last-child,
+.friends-going:last-child {
+    margin-bottom: 0;
+}
+
+.friends-liked i,
+.friends-going i {
+    font-size: 1rem;
+}
+
+.friends-going span {
+    color: #b0b0b0;
+}
+
+.social-score-bar {
+    margin: 1rem 0;
+}
+
+.score-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.score-label span:first-child {
+    color: #b0b0b0;
+    font-weight: 600;
+}
+
+.score-value {
+    color: #D4AF37;
+    font-weight: 700;
+}
+
+.score-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.score-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #D4AF37, #E5C158);
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+
+.pick-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+
+.pick-actions button {
+    padding: 0.7rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border: none;
+}
+
+.btn-details {
+    background: #D4AF37;
+    color: #0a0a0a;
+}
+
+.btn-details:hover {
+    background: #E5C158;
+    transform: translateY(-2px);
+}
+
+.btn-book,
+.btn-share {
+    background: rgba(255, 255, 255, 0.05);
+    color: #b0b0b0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-book:hover,
+.btn-share:hover {
+    background: rgba(212, 175, 55, 0.1);
+    color: #D4AF37;
+    border-color: rgba(212, 175, 55, 0.3);
+}
+
+/* ==================== PICK DETAILS MODAL ==================== */
+
+.pick-details-content {
+    background: #1a1a1a;
+    border-radius: 20px;
+    max-width: 800px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.pick-details-image {
+    width: 100%;
+    height: 350px;
+    overflow: hidden;
+    border-radius: 20px 20px 0 0;
+    position: relative;
+}
+
+.pick-details-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.pick-details-body {
+    padding: 2rem;
+}
+
+.pick-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+}
+
+.pick-details-header h2 {
+    color: #ffffff;
+    font-size: 2rem;
+    margin: 0 0 0.5rem 0;
+}
+
+.pick-venue-large {
+    color: #D4AF37;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pick-rating-large {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #D4AF37;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.pick-save-btn-large {
+    background: rgba(212, 175, 55, 0.2);
+    border: 2px solid #D4AF37;
+    color: #D4AF37;
+    padding: 0.7rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.pick-save-btn-large:hover {
+    background: rgba(212, 175, 55, 0.3);
+}
+
+.pick-save-btn-large.saved {
+    background: #D4AF37;
+    color: #0a0a0a;
+}
+
+.pick-detail-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pick-detail-section:last-of-type {
+    border-bottom: none;
+}
+
+.pick-detail-section h3 {
+    color: #ffffff;
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pick-detail-section h3 i {
+    color: #D4AF37;
+}
+
+.pick-detail-section p {
+    color: #b0b0b0;
+    line-height: 1.7;
+    margin-bottom: 0.5rem;
+}
+
+.recommendation-reason {
+    background: rgba(212, 175, 55, 0.1);
+    border-left: 3px solid #D4AF37;
+    padding: 1rem;
+    color: #D4AF37 !important;
+    font-weight: 600;
+    border-radius: 4px;
+}
+
+.special-offer-section {
+    background: rgba(244, 67, 54, 0.05);
+    border: 1px solid rgba(244, 67, 54, 0.2);
+    padding: 1.5rem;
+    border-radius: 12px;
+}
+
+.special-offer-text {
+    color: #F44336 !important;
+    font-weight: 600;
+    font-size: 1.1rem !important;
+}
+
+.tags-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+}
+
+.tag-large {
+    background: rgba(212, 175, 55, 0.15);
+    color: #D4AF37;
+    padding: 0.5rem 1rem;
+    border-radius: 16px;
+    font-weight: 600;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+/* Social Detail Section */
+.social-section {
+    background: rgba(212, 175, 55, 0.05);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 16px;
+    padding: 2rem !important;
+}
+
+.social-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.social-stat {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+}
+
+.social-stat i {
+    font-size: 2rem;
+    color: #D4AF37;
+}
+
+.social-stat strong {
+    display: block;
+    color: #ffffff;
+    font-size: 1.5rem;
+    margin-bottom: 0.2rem;
+}
+
+.social-stat span {
+    color: #b0b0b0;
+    font-size: 0.85rem;
+}
+
+.friend-reviews h4 {
+    color: #ffffff;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+}
+
+.friend-review {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.friend-review:last-child {
+    margin-bottom: 0;
+}
+
+.review-header {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-bottom: 0.7rem;
+}
+
+.friend-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #D4AF37, #E5C158);
+    color: #0a0a0a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.review-info strong {
+    color: #ffffff;
+    display: block;
+    font-size: 0.95rem;
+}
+
+.review-rating {
+    color: #D4AF37;
+    font-size: 0.9rem;
+}
+
+.review-comment {
+    color: #b0b0b0;
+    font-style: italic;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.info-item-large {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    color: #b0b0b0;
+}
+
+.info-item-large i {
+    color: #D4AF37;
+    font-size: 1.2rem;
+}
+
+.pick-modal-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
+
+.pick-modal-actions button {
+    flex: 1;
+    min-width: 180px;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* ==================== NO PICKS STATE ==================== */
+
+.no-picks {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #808080;
+}
+
+.no-picks i {
+    font-size: 4rem;
+    color: #D4AF37;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.no-picks h3 {
+    color: #ffffff;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+/* ==================== RESPONSIVE DESIGN ==================== */
+
+@media (max-width: 1024px) {
+    #picksGrid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .picks-carousel-section {
+        height: 500px;
+    }
+
+    .carousel-overlay {
+        padding: 2rem;
+    }
+
+    .carousel-content h2 {
+        font-size: 2rem;
+    }
+
+    .carousel-actions {
+        flex-direction: column;
+    }
+
+    .carousel-actions button {
+        width: 100%;
+    }
+
+    #picksGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .pick-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .pick-modal-actions {
+        flex-direction: column;
+    }
+
+    .pick-modal-actions button {
+        width: 100%;
+    }
+
+    .pick-details-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .pick-save-btn-large {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .carousel-content h2 {
+        font-size: 1.5rem;
+    }
+
+    .pick-venue {
+        font-size: 1rem;
+    }
+
+    .category-filters {
+        justify-content: center;
+    }
+}

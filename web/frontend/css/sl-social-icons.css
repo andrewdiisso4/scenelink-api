@@ -1,0 +1,64 @@
+/* =====================================================
+ * SceneLink - Social Icon Parity (launch-polish)
+ * Ensures X icon renders at the exact same visual weight
+ * as Instagram, Facebook, YouTube in all footers.
+ * ===================================================== */
+
+/* Target the social icon links in footer + profile social row */
+footer .social-links a,
+footer .footer-social a,
+.profile-social-link,
+.footer-social-links a {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: rgba(255,255,255,0.7);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    transition: all 0.2s ease;
+    text-decoration: none;
+    font-size: 16px;
+}
+
+footer .social-links a:hover,
+footer .footer-social a:hover,
+.profile-social-link:hover,
+.footer-social-links a:hover {
+    color: #D4AF37;
+    background: rgba(212,175,55,0.12);
+    border-color: rgba(212,175,55,0.35);
+    transform: translateY(-2px);
+}
+
+footer .social-links a i,
+footer .footer-social a i,
+.profile-social-link i,
+.footer-social-links a i {
+    font-size: 16px;
+    width: 1em;
+    height: 1em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+/* X icon specifically — force svg sizing parity with glyph icons */
+.sl-social-x i,
+.sl-social-x .fa-x-twitter,
+i.fa-x-twitter,
+i.fab.fa-x-twitter {
+    font-size: 15px !important; /* X glyph is visually slightly heavier, compensate */
+    width: 15px;
+    height: 15px;
+}
+.sl-social-x svg,
+i.fa-x-twitter svg,
+i.fab.fa-x-twitter svg {
+    width: 15px !important;
+    height: 15px !important;
+    vertical-align: middle;
+}

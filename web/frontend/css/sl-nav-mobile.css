@@ -1,0 +1,309 @@
+/* ==========================================================================
+   SL-NAV-MOBILE — Single authoritative mobile nav layer
+   Phase 5D-E. Loaded LAST. Wins over any legacy header/nav CSS.
+   Drives: header, hamburger, .nav-center mobile drawer, body.menu-open lock,
+            account/avatar dropdown positioning.
+   ========================================================================== */
+
+/* -- Header base (lock z-index high enough above content) ----------------- */
+.header-enhanced{
+  position:sticky; top:0; left:0; right:0;
+  z-index:9000;
+  background:rgba(10,10,10,0.92);
+  backdrop-filter:saturate(160%) blur(14px);
+  -webkit-backdrop-filter:saturate(160%) blur(14px);
+  border-bottom:1px solid rgba(212,175,55,0.18);
+  padding-top:env(safe-area-inset-top,0);
+}
+.header-enhanced .nav-enhanced{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:1rem; padding:0.6rem 1rem; max-width:1400px; margin:0 auto;
+}
+.header-enhanced .nav-left{flex:0 0 auto; display:flex; align-items:center;}
+.header-enhanced .nav-right{flex:0 0 auto; display:flex; align-items:center; gap:.5rem;}
+.header-enhanced .logo-main{height:48px !important; width:auto !important;}
+
+/* -- Hamburger (only visible on mobile) ----------------------------------- */
+.header-enhanced .mobile-menu-btn{
+  display:none;
+  width:44px; height:44px;
+  flex-direction:column; align-items:center; justify-content:center;
+  gap:5px; padding:0; margin:0;
+  background:transparent; border:1px solid rgba(212,175,55,0.4);
+  border-radius:10px; cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  position:relative; z-index:9100;
+  touch-action:manipulation;
+}
+.header-enhanced .mobile-menu-btn span{
+  display:block; width:22px; height:2px; background:#D4AF37; border-radius:2px;
+  transition:transform .25s ease, opacity .2s ease;
+}
+.header-enhanced .mobile-menu-btn.is-open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+.header-enhanced .mobile-menu-btn.is-open span:nth-child(2){opacity:0;}
+.header-enhanced .mobile-menu-btn.is-open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+
+/* ==========================================================================
+   MOBILE BREAKPOINT — primary fix lives here.
+   Selector specificity is intentionally high to beat 16 legacy stylesheets.
+   ========================================================================== */
+@media (max-width: 900px){
+  .header-enhanced .mobile-menu-btn{display:flex !important;}
+
+  /* The nav drawer — hidden by default, slides in from right */
+  .header-enhanced .nav-center{
+    position:fixed !important;
+    top:0 !important;
+    right:0 !important;
+    left:auto !important;
+    width:min(86vw, 340px) !important;
+    height:100vh !important;
+    height:100dvh !important;
+    margin:0 !important;
+    padding:calc(env(safe-area-inset-top,0) + 80px) 0 calc(env(safe-area-inset-bottom,0) + 24px) 0 !important;
+    background:rgba(10,10,10,0.985) !important;
+    backdrop-filter:saturate(160%) blur(20px);
+    -webkit-backdrop-filter:saturate(160%) blur(20px);
+    border-left:1px solid rgba(212,175,55,0.25) !important;
+    box-shadow:-12px 0 36px rgba(0,0,0,0.6);
+    list-style:none !important;
+    display:flex !important;            /* always rendered, slid offscreen */
+    flex-direction:column !important;
+    align-items:stretch !important;
+    justify-content:flex-start !important;
+    gap:0 !important;
+    transform:translate3d(100%,0,0) !important;
+    transition:transform .28s cubic-bezier(.2,.8,.2,1) !important;
+    z-index:9050 !important;
+    overflow-y:auto !important;
+    -webkit-overflow-scrolling:touch;
+    pointer-events:none;
+  }
+
+  /* OPEN STATE — driven by body.menu-open (single source of truth) */
+  body.menu-open .header-enhanced .nav-center{
+    transform:translate3d(0,0,0) !important;
+    pointer-events:auto !important;
+  }
+
+  /* Nav links inside drawer */
+  .header-enhanced .nav-center > li{
+    width:100% !important; list-style:none !important; margin:0 !important;
+  }
+  .header-enhanced .nav-center > li > .nav-link{
+    display:flex !important; align-items:center;
+    width:100% !important; min-height:52px;
+    padding:14px 22px !important;
+    border-bottom:1px solid rgba(255,255,255,0.05);
+    color:#fff !important; text-decoration:none !important;
+    font-size:1rem !important; font-weight:500 !important;
+    text-align:left !important;
+  }
+  .header-enhanced .nav-center > li > .nav-link.active{
+    color:#D4AF37 !important;
+    background:linear-gradient(90deg, rgba(212,175,55,0.12), transparent);
+    border-left:3px solid #D4AF37;
+    padding-left:19px !important;
+  }
+
+  /* Hide nav-center underline ::after on mobile */
+  .header-enhanced .nav-center .nav-link::after{display:none !important;}
+
+  /* Backdrop scrim — covers content but sits BELOW the drawer */
+  body.menu-open::before{
+    content:""; position:fixed; inset:0;
+    background:rgba(0,0,0,0.55);
+    z-index:9040;        /* drawer is 9050, so scrim is below */
+    backdrop-filter:blur(4px);
+    -webkit-backdrop-filter:blur(4px);
+    pointer-events:none; /* scrim is decorative; tap-outside is handled in JS */
+  }
+
+  /* Lock body scroll */
+  body.menu-open{overflow:hidden !important; touch-action:none;}
+
+  /* Hide nav-right login button while drawer open (we surface it inside drawer) */
+  .header-enhanced .nav-right{
+    gap:.4rem;
+  }
+  .header-enhanced .nav-right .btn-header-primary{
+    padding:8px 14px !important; font-size:.85rem !important;
+  }
+}
+
+/* ==========================================================================
+   DESKTOP BEHAVIOUR — make sure mobile-only rules don't bleed up
+   ========================================================================== */
+@media (min-width: 901px){
+  .header-enhanced .mobile-menu-btn{display:none !important;}
+  .header-enhanced .nav-center{
+    position:static !important;
+    transform:none !important;
+    width:auto !important; height:auto !important;
+    flex-direction:row !important;
+    background:transparent !important;
+    box-shadow:none !important; border:0 !important;
+    padding:0 !important;
+    pointer-events:auto !important;
+  }
+  body.menu-open::before{display:none;}
+  body.menu-open{overflow:auto !important; touch-action:auto;}
+}
+
+/* ==========================================================================
+   ACCOUNT / AUTH DROPDOWN — fixed positioning, never offscreen
+   ========================================================================== */
+.sl-auth-modal{
+  position:fixed !important;
+  z-index:10000 !important;
+  max-width:calc(100vw - 24px);
+  max-height:calc(100vh - 24px);
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  box-shadow:0 24px 60px rgba(0,0,0,0.55);
+  border-radius:14px;
+}
+
+@media (max-width: 600px){
+  .sl-auth-modal{
+    top:auto !important; left:50% !important; right:auto !important;
+    bottom:max(env(safe-area-inset-bottom,0), 12px) !important;
+    transform:translateX(-50%) !important;
+    width:calc(100vw - 24px) !important;
+    max-width:420px;
+  }
+}
+
+/* ==========================================================================
+   TAP TARGETS — 44px minimum on mobile for App-Store quality
+   ========================================================================== */
+@media (max-width: 900px){
+  .header-enhanced .btn-header-primary,
+  .header-enhanced .nav-link,
+  .header-enhanced .mobile-menu-btn{
+    min-height:44px;
+  }
+}
+
+/* ==========================================================================
+   ALTERNATE HEADER (explore.html, nightlife.html)
+   .sl-explore-header.sl-unified-nav > .sl-header-nav (no native hamburger)
+   sl-nav-controller.js injects a .mobile-menu-btn into the header.
+   ========================================================================== */
+
+/* Make the alt header positioned (so the injected hamburger anchors correctly) */
+.sl-explore-header,
+.sl-unified-nav{
+  position:relative;
+}
+
+/* Hamburger when injected into alt header — same look as canonical */
+.sl-explore-header .mobile-menu-btn,
+.sl-unified-nav .mobile-menu-btn{
+  display:none;
+  position:absolute;
+  top:50%;
+  right:14px;
+  transform:translateY(-50%);
+  width:44px; height:44px;
+  flex-direction:column; align-items:center; justify-content:center;
+  gap:5px; padding:0; margin:0;
+  background:transparent; border:1px solid rgba(212,175,55,0.4);
+  border-radius:10px; cursor:pointer;
+  z-index:9100;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+.sl-explore-header .mobile-menu-btn span,
+.sl-unified-nav .mobile-menu-btn span{
+  display:block; width:22px; height:2px; background:#D4AF37; border-radius:2px;
+  transition:transform .25s ease, opacity .2s ease;
+}
+.sl-explore-header .mobile-menu-btn.is-open span:nth-child(1),
+.sl-unified-nav .mobile-menu-btn.is-open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+.sl-explore-header .mobile-menu-btn.is-open span:nth-child(2),
+.sl-unified-nav .mobile-menu-btn.is-open span:nth-child(2){opacity:0;}
+.sl-explore-header .mobile-menu-btn.is-open span:nth-child(3),
+.sl-unified-nav .mobile-menu-btn.is-open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+
+@media (max-width: 900px){
+  .sl-explore-header .mobile-menu-btn,
+  .sl-unified-nav .mobile-menu-btn{ display:flex !important; }
+
+  /* The .sl-header-nav becomes a slide-in drawer on mobile */
+  .sl-explore-header .sl-header-nav,
+  .sl-unified-nav .sl-header-nav,
+  .sl-header-nav.sl-mobile-drawer{
+    position:fixed !important;
+    top:0 !important;
+    right:0 !important;
+    left:auto !important;
+    width:min(86vw, 340px) !important;
+    height:100vh !important;
+    height:100dvh !important;
+    margin:0 !important;
+    padding:calc(env(safe-area-inset-top,0) + 80px) 0 calc(env(safe-area-inset-bottom,0) + 24px) 0 !important;
+    background:rgba(10,10,10,0.985) !important;
+    backdrop-filter:saturate(160%) blur(20px);
+    -webkit-backdrop-filter:saturate(160%) blur(20px);
+    border-left:1px solid rgba(212,175,55,0.25) !important;
+    box-shadow:-12px 0 36px rgba(0,0,0,0.6);
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:stretch !important;
+    gap:0 !important;
+    transform:translate3d(100%,0,0) !important;
+    transition:transform .28s cubic-bezier(.2,.8,.2,1) !important;
+    z-index:9050 !important;
+    overflow-y:auto !important;
+    pointer-events:none;
+  }
+  body.menu-open .sl-explore-header .sl-header-nav,
+  body.menu-open .sl-unified-nav .sl-header-nav,
+  body.menu-open .sl-header-nav.sl-mobile-drawer{
+    transform:translate3d(0,0,0) !important;
+    pointer-events:auto !important;
+  }
+
+  .sl-explore-header .sl-header-nav-link,
+  .sl-unified-nav .sl-header-nav-link{
+    display:flex !important; align-items:center;
+    width:100% !important; min-height:52px;
+    padding:14px 22px !important;
+    border-bottom:1px solid rgba(255,255,255,0.05);
+    color:#fff !important; text-decoration:none !important;
+    font-size:1rem !important; font-weight:500 !important;
+    text-align:left !important;
+  }
+  .sl-explore-header .sl-header-nav-link.active,
+  .sl-unified-nav .sl-header-nav-link.active{
+    color:#D4AF37 !important;
+    background:linear-gradient(90deg, rgba(212,175,55,0.12), transparent);
+    border-left:3px solid #D4AF37;
+    padding-left:19px !important;
+  }
+}
+
+/* ==========================================================================
+   ALT HEADER mobile spacing — make room for the injected hamburger
+   ========================================================================== */
+@media (max-width: 900px){
+  .sl-explore-header,
+  .sl-unified-nav{
+    padding-right:64px !important; /* reserve space for hamburger */
+  }
+  .sl-explore-header .sl-auth-trigger,
+  .sl-unified-nav .sl-auth-trigger,
+  .sl-explore-header .btn-header-primary,
+  .sl-unified-nav .btn-header-primary{
+    font-size:.8rem !important;
+    padding:6px 10px !important;
+    white-space:nowrap;
+  }
+  /* Hamburger sits ABOVE auth buttons */
+  .sl-explore-header .mobile-menu-btn,
+  .sl-unified-nav .mobile-menu-btn{
+    z-index:9100 !important;
+    background:rgba(20,20,20,0.85) !important;
+  }
+}

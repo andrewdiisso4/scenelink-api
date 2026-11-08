@@ -1,0 +1,459 @@
+/* Tonight's Picks - Flagship Screen Final Polish */
+
+/* 1. Flagship Layout - Consistent Content Width & Spacing Scale */
+.hero-section,
+.filters-container,
+.main-content .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+/* Vertical spacing scale: 16px / 24px / 32px */
+.hero-section {
+    padding: 3rem 0; /* 48px */
+}
+
+.filters-container {
+    padding: 2rem 0 2.5rem 0; /* 32px top, 40px bottom */
+}
+
+.main-content .container {
+    margin-bottom: 4rem; /* 64px */
+}
+
+.section-header {
+    margin-bottom: 2rem; /* 32px */
+}
+
+.pick-category-card-enhanced {
+    margin-bottom: 2.5rem; /* 40px */
+}
+
+/* 2. Hero & Top Filters - Clean Unified Header */
+.hero-section {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hero-content {
+    text-align: center;
+    padding: 2rem 0; /* 32px */
+}
+
+.hero-content h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 1rem; /* 16px */
+    letter-spacing: -0.02em;
+}
+
+.hero-content p {
+    font-size: 1.125rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 400;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Modern Segmented Control for Time Filters */
+.time-filter-group {
+    display: inline-flex;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+    margin: 0 auto 2rem auto; /* 32px bottom */
+    width: fit-content;
+}
+
+.time-filter-btn {
+    padding: 0.75rem 1.75rem;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 44px;
+}
+
+.time-filter-btn:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.time-filter-btn.active {
+    background: rgba(212, 175, 55, 0.25);
+    color: #d4af37;
+    font-weight: 700;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.15);
+}
+
+/* Vibe Chips - Pill-shaped & Consistent */
+.vibe-chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto;
+    max-width: 100%;
+}
+
+.vibe-chip {
+    padding: 0.625rem 1.5rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 25px;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.vibe-chip:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.95);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.vibe-chip.active {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: rgba(212, 175, 55, 0.4);
+    color: #d4af37;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.15);
+}
+
+/* 3. Venue Cards & Featured Listings - Compact & Consistent */
+.venue-card,
+.featured-card-enhanced,
+.pick-category-card-enhanced {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.venue-card:hover,
+.featured-card-enhanced:hover,
+.pick-category-card-enhanced:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(212, 175, 55, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Featured Card - More Compact */
+.featured-card-enhanced {
+    margin-bottom: 2rem; /* 32px */
+}
+
+.featured-card-image-container {
+    height: 240px; /* Reduced from 280px */
+}
+
+/* Venue Card - Compact & Readable */
+.venue-card {
+    margin-bottom: 1.5rem; /* 24px */
+}
+
+.venue-card-image-container {
+    height: 140px; /* Reduced from 160px */
+}
+
+.venue-card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Consistent Typography Hierarchy */
+.venue-card-name {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 0.5rem; /* 8px */
+    line-height: 1.3;
+}
+
+.venue-card-meta {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.65);
+    margin-bottom: 0.75rem; /* 12px */
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.venue-card-tonight {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 1rem; /* 16px */
+}
+
+/* Consistent CTA Styling */
+.venue-card-cta,
+.view-details-btn {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(244, 228, 188, 0.2) 100%);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    color: #d4af37;
+    padding: 0.625rem 1.25rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    width: 100%;
+}
+
+.venue-card-cta:hover,
+.view-details-btn:hover {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(244, 228, 188, 0.3) 100%);
+    border-color: rgba(212, 175, 55, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+}
+
+/* Save/Heart Icons */
+.venue-card-actions {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.venue-card-save {
+    width: 36px;
+    height: 36px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.venue-card-save:hover {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: rgba(212, 175, 55, 0.4);
+    color: #d4af37;
+}
+
+.venue-card-save.saved {
+    background: rgba(212, 175, 55, 0.3);
+    border-color: rgba(212, 175, 55, 0.5);
+    color: #d4af37;
+}
+
+/* 4. Section Headers - Consistent Styling */
+.section-header {
+    text-align: left;
+    margin-bottom: 2rem; /* 32px */
+}
+
+.section-title h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 0.5rem; /* 8px */
+}
+
+.section-title p {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+}
+
+/* 5. Neighborhood Selector & Dynamic Summary */
+.neighborhood-selector,
+.dynamic-summary {
+    text-align: center;
+    margin-bottom: 1.5rem; /* 24px */
+}
+
+.neighborhood-selector label {
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    margin-right: 0.75rem;
+}
+
+.neighborhood-selector select {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.dynamic-summary {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.95rem;
+}
+
+.dynamic-summary span {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+}
+
+/* 6. Mobile Responsiveness - Final QA */
+@media (max-width: 768px) {
+    .hero-section,
+    .filters-container,
+    .main-content .container {
+        padding: 0 1rem;
+    }
+    
+    .hero-section {
+        padding: 2rem 0; /* 32px */
+    }
+    
+    .hero-content h1 {
+        font-size: 2rem;
+    }
+    
+    .hero-content p {
+        font-size: 1rem;
+    }
+    
+    .filters-container {
+        padding: 1.5rem 0 2rem 0;
+    }
+    
+    .time-filter-group {
+        width: 100%;
+        justify-content: center;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    
+    .time-filter-group::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .time-filter-btn {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.875rem;
+        flex: 0 0 auto;
+    }
+    
+    .vibe-chips-container {
+        gap: 0.5rem;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0.25rem;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    
+    .vibe-chips-container::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .vibe-chip {
+        padding: 0.5rem 1.25rem;
+        font-size: 0.85rem;
+        flex: 0 0 auto;
+    }
+    
+    .venue-card-image-container {
+        height: 120px;
+    }
+    
+    .featured-card-image-container {
+        height: 180px;
+    }
+    
+    .section-title h2 {
+        font-size: 1.5rem;
+    }
+    
+    .venue-card-content {
+        padding: 1rem;
+    }
+}
+
+/* Desktop Grid Optimization */
+@media (min-width: 769px) {
+    .venue-grid-horizontal {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem; /* 24px */
+    }
+    
+    .picks-categories-grid {
+        gap: 2rem; /* 32px */
+    }
+}
+
+/* 7. Final Visual Polish & Micro-interactions */
+/* Subtle transitions for all interactive elements */
+button,
+.venue-card,
+.vibe-chip,
+.time-filter-btn,
+.venue-card-cta,
+.view-details-btn {
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Clear hover states */
+.venue-card:hover {
+    border-color: rgba(212, 175, 55, 0.3);
+}
+
+/* Focus states for accessibility */
+button:focus-visible,
+.venue-card-cta:focus-visible,
+.view-details-btn:focus-visible {
+    outline: 2px solid rgba(212, 175, 55, 0.6);
+    outline-offset: 2px;
+}
+
+/* Remove any debug/test elements */
+.debug-element,
+.test-ui,
+.placeholder-text {
+    display: none !important;
+}
+
+/* Ensure consistent SceneLink theme colors */
+:root {
+    --scenelink-gold: #d4af37;
+    --scenelink-gold-light: rgba(212, 175, 55, 0.2);
+    --scenelink-gold-dark: rgba(212, 175, 55, 0.8);
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.7);
+    --text-tertiary: rgba(255, 255, 255, 0.5);
+    --bg-card: rgba(255, 255, 255, 0.04);
+    --bg-card-hover: rgba(255, 255, 255, 0.06);
+    --border-card: rgba(255, 255, 255, 0.08);
+    --border-card-hover: rgba(212, 175, 55, 0.25);
+}

@@ -1,0 +1,15 @@
+{
+  "scopeKey": "fictional-fixture-only",
+  "observedAt": "2026-11-01T12:00:00Z",
+  "status": "complete",
+  "records": [
+    {
+      "source": "ticketmaster",
+      "external_id": "fictional-fixture-not-a-real-event",
+      "title": "Fictional ingestion test only",
+      "provider_status": "onsale",
+      "requires_review": true,
+      "is_active": false
+    }
+  ]
+}

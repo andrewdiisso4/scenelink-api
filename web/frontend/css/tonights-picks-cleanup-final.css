@@ -1,0 +1,328 @@
+/* Tonight's Picks - Final Cleanup & Refinement */
+
+/* 1. Remove non-functional circle save icons */
+.venue-card-save {
+    display: none !important;
+}
+
+.venue-card-actions {
+    display: none !important;
+}
+
+/* 2. Ensure consistent content width and alignment */
+.hero-section,
+.filters-container,
+.main-content .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+/* 3. Modern segmented control for time filters */
+.time-filter-group {
+    display: inline-flex;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+    margin: 0 auto 2rem auto;
+    width: fit-content;
+}
+
+.time-filter-btn {
+    padding: 0.75rem 1.75rem;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 44px;
+}
+
+.time-filter-btn:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.time-filter-btn.active {
+    background: rgba(212, 175, 55, 0.25);
+    color: #d4af37;
+    font-weight: 700;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.15);
+}
+
+/* 4. Pill-shaped vibe chips */
+.vibe-chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto;
+    max-width: 100%;
+}
+
+.vibe-chip {
+    padding: 0.625rem 1.5rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 25px;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.vibe-chip:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.95);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.vibe-chip.active {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: rgba(212, 175, 55, 0.4);
+    color: #d4af37;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.15);
+}
+
+/* 5. Standardized card styling */
+.venue-card,
+.featured-card-enhanced,
+.pick-category-card-enhanced {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+/* Ensure existing venue card classes are also styled */
+[class*="venue-card"] {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+[class*="venue-card"]:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(212, 175, 55, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.venue-card:hover,
+.featured-card-enhanced:hover,
+.pick-category-card-enhanced:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(212, 175, 55, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* 6. Consistent image heights */
+.featured-card-image-container {
+    height: 240px;
+}
+
+.venue-card-image-container,
+[class*="venue-card"] [class*="image-container"] {
+    height: 140px;
+}
+
+.venue-card-image,
+.featured-card-image,
+[class*="venue-card"] [class*="image"] {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* 7. Consistent typography hierarchy */
+.venue-card-name,
+[class*="venue-card"] [class*="name"],
+[class*="venue-card"] [class*="title"] {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+}
+
+.venue-card-meta,
+[class*="venue-card"] [class*="meta"] {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.65);
+    margin-bottom: 0.75rem;
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.venue-card-tonight,
+[class*="venue-card"] [class*="tonight"] {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 1rem;
+}
+
+.venue-card-content,
+[class*="venue-card"] [class*="content"] {
+    padding: 1.25rem;
+}
+
+/* 8. Consistent CTA styling */
+.venue-card-cta,
+.view-details-btn,
+[class*="venue-card"] .btn-primary {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(244, 228, 188, 0.2) 100%);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    color: #d4af37;
+    padding: 0.625rem 1.25rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    width: 100%;
+}
+
+.venue-card-cta:hover,
+.view-details-btn:hover,
+[class*="venue-card"] .btn-primary:hover {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(244, 228, 188, 0.3) 100%);
+    border-color: rgba(212, 175, 55, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+}
+
+/* Hide save button from venue actions */
+[class*="venue-card"] .btn-secondary,
+[class*="venue-card"] .venue-actions .btn-secondary {
+    display: none !important;
+}
+
+/* 9. Consistent section headings */
+.section-header {
+    text-align: left;
+    margin-bottom: 2rem;
+}
+
+.section-title h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+}
+
+.section-title p {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+}
+
+/* 10. Mobile responsiveness */
+@media (max-width: 768px) {
+    .hero-section,
+    .filters-container,
+    .main-content .container {
+        padding: 0 1rem;
+    }
+    
+    .time-filter-group {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    
+    .time-filter-group::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .time-filter-btn {
+        flex: 0 0 auto;
+    }
+    
+    .vibe-chips-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0.25rem;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    
+    .vibe-chips-container::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .vibe-chip {
+        flex: 0 0 auto;
+    }
+    
+    .venue-card-image-container {
+        height: 120px;
+    }
+    
+    .featured-card-image-container {
+        height: 180px;
+    }
+    
+    .venue-card-content {
+        padding: 1rem;
+    }
+}
+
+/* 11. Desktop grid */
+@media (min-width: 769px) {
+    .venue-grid-horizontal {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .picks-categories-grid {
+        gap: 2rem;
+    }
+}
+
+/* 12. Final visual polish */
+button,
+.venue-card,
+.vibe-chip,
+.time-filter-btn,
+.venue-card-cta {
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:focus-visible,
+.venue-card-cta:focus-visible,
+.view-details-btn:focus-visible {
+    outline: 2px solid rgba(212, 175, 55, 0.6);
+    outline-offset: 2px;
+}
