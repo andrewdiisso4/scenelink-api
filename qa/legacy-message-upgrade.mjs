@@ -79,6 +79,11 @@ try{
  assert.equal(BigInt((await pool.query('SELECT change_seq FROM messages WHERE id=$1',[later])).rows[0].change_seq),BigInt(v)+1n);}finally{await c1.query('ROLLBACK');if(pending)await pending.catch(()=>{});c1.release();c2.release();}pass('legacy writer waits behind canonical transaction and commits next sequence');
  const many=await Promise.all(Array.from({length:12},(_,i)=>oldWrite(pool,'Concurrent legacy '+i)));const seqs=(await pool.query('SELECT change_seq FROM messages WHERE id=ANY($1::uuid[])',[many])).rows.map(x=>x.change_seq);assert.equal(new Set(seqs).size,12);pass('12 simultaneous legacy writers allocate unique per-conversation versions');
  const rollback=await pool.connect();const pre=(await pool.query('SELECT message_version FROM conversations WHERE id=$1',[cid])).rows[0].message_version;try{await rollback.query('BEGIN');await oldWrite(rollback,'Rolled back');}finally{await rollback.query('ROLLBACK');rollback.release();}assert.equal((await pool.query('SELECT message_version FROM conversations WHERE id=$1',[cid])).rows[0].message_version,pre);pass('legacy rollback atomically restores version and message');
+ const beforeWelcome=(await pool.query('SELECT id,email,email_verified_at,verified_email,auth_version FROM users ORDER BY id')).rows;
+ const welcome014=await fs.readFile(path.join(backend,'migrations/014_signup_welcome_email.sql'),'utf8');
+ await pool.query(welcome014);await pool.query(welcome014);
+ assert.deepEqual((await pool.query('SELECT id,email,email_verified_at,verified_email,auth_version FROM users ORDER BY id')).rows,beforeWelcome);
+ assert.equal((await pool.query('SELECT count(*)::int n FROM signup_welcome_emails')).rows[0].n,0);pass('welcome014 repeats on populated legacy schema without ownership changes or welcome backfill');
  // Exercise actual new HTTP handlers against upgraded old-main database.
  process.env.DATABASE_URL=url;process.env.NODE_ENV='test';process.env.JWT_SECRET=crypto.randomBytes(48).toString('hex');process.env.EMAIL_PROVIDER='disabled';
  for(const n of ['SMTP_HOST','SMTP_USER','SMTP_PASS','CLOUDINARY_URL','CLOUDINARY_UPLOAD_PRESET','SENTRY_DSN','OPENAI_API_KEY','ADMIN_SECRET'])delete process.env[n];
@@ -86,6 +91,11 @@ try{
  const app=req('./src/server');await req('./src/routes/business').initialize();server=await new Promise(r=>{const s=app.listen(0,'127.0.0.1',()=>r(s));});
  const token=req('./src/middleware/auth').generateToken({id:a,role:'user',auth_version:0});
  async function api(method,p,body,status=200){const r=await fetch('http://127.0.0.1:'+server.address().port+'/api'+p,{method,redirect:'error',signal:AbortSignal.timeout(10000),headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},...(body===undefined?{}:{body:JSON.stringify(body)})});const j=await r.json();assert.equal(r.status,status,method+' '+p+' '+JSON.stringify(j));return j;}
+ const signup={email:'new-after-welcome@example.invalid',username:'new_after_welcome',password:'Synthetic password 123'};
+ const newUser=await api('POST','/auth/signup',signup,201);assert.equal(newUser.user.email_verified,false);assert.equal(newUser.verification_required,true);
+ await api('POST','/auth/signup',signup,409);await api('POST','/auth/login',{email:signup.email,password:signup.password});
+ const welcomeRows=(await pool.query('SELECT user_id,status FROM signup_welcome_emails')).rows;assert.deepEqual(welcomeRows,[{user_id:newUser.user.id,status:'pending'}]);
+ pass('canonical signup after legacy upgrade queues exactly one welcome; duplicate signup/login do not resend');
  const route='/conversations/'+cid+'/messages/'+id;
  await api('PATCH',route,{body:'Edited body',revision:1});assert.equal((await pool.query('SELECT send_body_hash FROM messages WHERE id=$1',[id])).rows[0].send_body_hash,row.send_body_hash);pass('actual candidate edit preserves legacy original-body hash');
  const retry=await api('POST','/conversations/'+cid+'/messages',{client_id:id,body:'Legacy after compatibility 🦊'});assert.equal(retry.replayed,true);assert.equal(retry.message.body,'Edited body');pass('original-body retry after edit replays edited record');

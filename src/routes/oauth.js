@@ -9,7 +9,8 @@ const pool = require('../config/database');
 const { generateToken } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimits');
 const { verified } = require('../launch/verification');
-const { noStore } = require('../launch/shared');
+const { noStore, transaction } = require('../launch/shared');
+const welcome = require('../services/welcome');
 router.use(noStore, authLimiter);
 
 // ── Google OAuth ──────────────────────────────────────────────────────────────
@@ -181,14 +182,19 @@ async function upsertOAuthUser({ email, display_name, avatar_url, oauth_provider
     const username = generateUsername(email);
     const avatarFallback = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(display_name || email)}`;
 
-    const insertResult = await pool.query(
+    const newUser = await transaction(pool, async db => {
+      const insertResult = await db.query(
         `INSERT INTO users (email, password_hash, display_name, username, avatar_url, bio, neighborhood, oauth_provider, oauth_id, email_verified_at, verified_email)
          VALUES ($1::text, NULL, $2, $3, $4, '', 'Back Bay', $5, $6, NOW(), lower($1::text))
          RETURNING id, email, display_name, username, avatar_url, bio, neighborhood, city, role, created_at, auth_version, is_active, is_suspended`,
         [email, display_name, username, avatar_url || avatarFallback, oauth_provider, oauth_id]
     );
 
-    const newUser = insertResult.rows[0];
+      const created = insertResult.rows[0];
+      await welcome.enqueue(db, created);
+      return created;
+    });
+    welcome.kick();
     newUser.email_verified = true;
     newUser._is_new = true;
     return newUser;

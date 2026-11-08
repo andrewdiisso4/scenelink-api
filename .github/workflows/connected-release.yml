@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [api, ingestion, upgrade]
+        suite: [api, ingestion, upgrade, welcome]
     services:
       postgres:
         image: postgres:18.3
@@ -65,3 +65,8 @@ jobs:
       - name: Synthetic existing-schema upgrade acceptance
         if: matrix.suite == 'upgrade'
         run: node qa/legacy-message-upgrade.mjs
+      - name: Native signup welcome queue acceptance
+        if: matrix.suite == 'welcome'
+        env:
+          TEST_WELCOME_DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+        run: node --test qa/welcome-email.test.cjs

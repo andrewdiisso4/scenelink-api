@@ -1,6 +1,7 @@
 'use strict';
 const crypto=require('node:crypto');
 const H=require('./shared');
+const welcome=require('../services/welcome');
 const SELF='id,email,username,display_name,avatar_url,bio,neighborhood,city,role,created_at,is_private,allow_messages,profile_revision,social_links,discoverable,show_achievements,share_read_receipts,(email_verified_at IS NOT NULL AND verified_email=lower(email)) AS email_verified';
 function password(value){if(typeof value!=='string'||value.length<8||Buffer.byteLength(value,'utf8')>72||value.includes('\u0000'))throw new H.HttpError(400,'Use a password of at least 8 characters and at most 72 UTF-8 bytes');return value;}
 function email(value){const s=H.text(value,'email',254,{required:true}).toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))throw new H.HttpError(400,'Enter a valid email');return s;}
@@ -12,10 +13,13 @@ function install({router,pool,auth,write,authLimit,resetLimit,bcrypt,mailer,env=
   router.post('/auth/signup',H.noStore,authLimit,H.wrap(async(req,res)=>{
     const b=req.body||{},em=email(b.email),pw=password(b.password),name=username(b.username),display=H.text(b.display_name||name,'display name',80,{required:true});
     const hash=await bcrypt.hash(pw,12);
-    const r=await pool.query(`INSERT INTO users(email,password_hash,username,display_name,avatar_url,bio,neighborhood) VALUES($1,$2,$3,$4,NULL,'','') RETURNING ${SELF},auth_version`,[em,hash,name,display]);
-    const user=r.rows[0],token=auth.generateToken(user);delete user.auth_version;
-    // Welcome mail is optional; account persistence does not depend on mail delivery.
-    if(mailer?.isReady())setImmediate(async()=>{try{await mailer.sendMail({to:user.email,...mailer.welcomeEmail(user)});}catch(_){console.error('[identity] welcome-mail-failed');}});
+    const user=await H.transaction(pool,async db=>{
+      const r=await db.query(`INSERT INTO users(email,password_hash,username,display_name,avatar_url,bio,neighborhood) VALUES($1,$2,$3,$4,NULL,'','') RETURNING ${SELF},auth_version`,[em,hash,name,display]);
+      await welcome.enqueue(db,r.rows[0]);return r.rows[0];
+    });
+    const token=auth.generateToken(user);delete user.auth_version;
+    // Queued with account creation; SMTP delivery cannot fail or delay signup.
+    welcome.kick();
     res.status(201).json({user,token,verification_required:!user.email_verified,verification_delivery:mailer?.isReady()?'not_requested':'unavailable'});
   }));
   router.post('/auth/login',H.noStore,authLimit,H.wrap(async(req,res)=>{

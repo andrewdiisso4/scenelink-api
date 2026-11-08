@@ -42,6 +42,9 @@ async function main(){
   c=await api('POST','/auth/signup',{email:'jordan@example.invalid',username:'jordan_test',display_name:'Jordan Test',password},null,201);
   secondA=await api('POST','/auth/login',{email:'alex@example.invalid',password});assert.notEqual(secondA.token,a.token);
   assert.equal((await api('GET','/auth/me',undefined,a.token)).user.id,a.user.id);
+  assert.equal((await pool.query('SELECT count(*)::int n FROM signup_welcome_emails')).rows[0].n,3);
+  await api('POST','/auth/signup',{email:'alex@example.invalid',username:'alex_test',password},null,409);
+  assert.equal((await pool.query('SELECT count(*)::int n FROM signup_welcome_emails')).rows[0].n,3);
  });
  await check('unverified sessions stay read-only but retain privacy, block, report and account controls',async()=>{
   assert.equal(a.user.email_verified,false);assert.equal(a.verification_required,true);
@@ -114,11 +117,28 @@ async function main(){
    await api('POST','/auth/google',{id_token:'isolated-provider-adapter-fixture'},null,401);
    payload.email_verified=true;const oauth=await api('POST','/auth/google',{id_token:'isolated-provider-adapter-fixture'});assert.equal(oauth.user.email_verified,true);
    assert.equal((await api('GET','/auth/me',undefined,oauth.token)).user.email_verified,true);
+   assert.equal((await pool.query('SELECT status FROM signup_welcome_emails WHERE user_id=$1',[oauth.user.id])).rows[0].status,'pending');
+   const again=await api('POST','/auth/google',{id_token:'isolated-provider-adapter-fixture'});assert.equal(again.is_new,false);
+   assert.equal((await pool.query('SELECT count(*)::int n FROM signup_welcome_emails WHERE user_id=$1',[oauth.user.id])).rows[0].n,1);
    await api('POST','/auth/signup',{email:'oauth-link-unverified@example.invalid',username:'oauth_link_pending',password},null,201);
    payload={...payload,sub:'different-isolated-provider',email:'oauth-link-unverified@example.invalid'};
    await api('POST','/auth/google',{id_token:'isolated-provider-adapter-fixture'},null,409);
    assert.equal((await pool.query("SELECT email_verified_at FROM users WHERE email='oauth-link-unverified@example.invalid'")).rows[0].email_verified_at,null);
   } finally {OAuth2Client.prototype.verifyIdToken=oldVerify;if(oldClient===undefined)delete process.env.GOOGLE_CLIENT_ID;else process.env.GOOGLE_CLIENT_ID=oldClient;}
+ });
+ await check('new Apple signup queues one welcome and repeat sign-in does not queue extras',async()=>{
+  // Isolate this offline provider fixture from later business auth rate-limit scenarios.
+  const limiter=req('./src/middleware/rateLimits').authLimiter;limiter.resetKey('127.0.0.1');
+  const jwt=req('jsonwebtoken'),jwksPath=req.resolve('jwks-rsa');req(jwksPath);const savedJwks=require.cache[jwksPath].exports;
+  const {privateKey,publicKey}=crypto.generateKeyPairSync('rsa',{modulusLength:2048});const oldClient=process.env.APPLE_CLIENT_ID;
+  try {
+   process.env.APPLE_CLIENT_ID='isolated-apple-client.invalid';require.cache[jwksPath].exports=()=>({getSigningKey:(kid,cb)=>cb(null,{getPublicKey:()=>publicKey.export({type:'spki',format:'pem'})})});
+   const id_token=jwt.sign({sub:'isolated-apple-subject',email:'apple-fixture@example.invalid',email_verified:true},privateKey,{algorithm:'RS256',keyid:'local-key',issuer:'https://appleid.apple.com',audience:process.env.APPLE_CLIENT_ID,expiresIn:'5m'});
+   const first=await api('POST','/auth/apple',{id_token,user:{name:{firstName:'Local',lastName:'Apple'}}});assert.equal(first.is_new,true);
+   const second=await api('POST','/auth/apple',{id_token});assert.equal(second.is_new,false);assert.equal(second.user.id,first.user.id);
+   assert.equal((await pool.query('SELECT count(*)::int n FROM signup_welcome_emails WHERE user_id=$1',[first.user.id])).rows[0].n,1);
+   assert.equal((await pool.query('SELECT status FROM signup_welcome_emails WHERE user_id=$1',[first.user.id])).rows[0].status,'pending');
+  } finally {limiter.resetKey('127.0.0.1');require.cache[jwksPath].exports=savedJwks;if(oldClient===undefined)delete process.env.APPLE_CLIENT_ID;else process.env.APPLE_CLIENT_ID=oldClient;}
  });
  await check('literal search and accurate count from real rows',async()=>{
   for(const [id,name,slug]of[[venue,'Harbor & Pine','test-harbor-pine'],[crypto.randomUUID(),'Harbor & Pine Annex','test-harbor-pine-annex']])await pool.query("INSERT INTO venues(id,name,slug,type,neighborhood,cuisine,description,is_active,lat,lng) VALUES($1,$2,$3,'restaurant','South Boston','Italian','Fictional QA venue only',true,42.34,-71.04)",[id,name,slug]);

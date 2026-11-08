@@ -14,6 +14,8 @@ async function start({app,pool,initialize,port,env=process.env}) {
   if(!rsvps.rows.length)throw new Error('Required event RSVP migration 012 is missing');
   const social=await pool.query("SELECT version FROM launch_schema_versions WHERE version='social-profile-messaging-2026-10-30'");
   if(!social.rows.length)throw new Error('Required social profile/messaging migration 013 is missing');
+  const welcome=await pool.query("SELECT version FROM launch_schema_versions WHERE version='signup-welcome-2026-11-08'");
+  if(!welcome.rows.length)throw new Error('Required signup welcome migration 014 is missing');
   await pool.query('SELECT auth_version FROM users LIMIT 0');
   await pool.query('SELECT audience FROM posts LIMIT 0');
   await pool.query('SELECT last_read_message_id FROM conversation_participants LIMIT 0');
