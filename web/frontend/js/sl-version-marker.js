@@ -17,11 +17,11 @@
 (function(){
   'use strict';
   var V = {
-    phase: 'social-candidate',
-    sw_version: 'sl-connected-20261108-6',
-    deploy: 'connected-20261108-6',
-    built: '2026-11-08T05:37:09.747723+00:00',
-    backend_commit: 'paired-local-candidate-required'
+    phase: 'responsive-release',
+    sw_version: 'sl-connected-20261108-7',
+    deploy: 'connected-20261108-7',
+    built: '2026-11-08T21:20:46.427418+00:00',
+    backend_change: 'none'
   };
   // Always-available global
   try { window.SCENELINK_VERSION = V; } catch(_){}

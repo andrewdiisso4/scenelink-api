@@ -469,3 +469,47 @@ footer .footer-logo-img {
   .header-enhanced .nav-enhanced:has(> .sl-universal-search) .sl-usearch-wrap,
   .header-enhanced .nav-right:has(#slHdrSocial) .sl-bell-wrap { display: none !important; }
 }
+
+/* The homepage has its own header: keep its menu after the injected search
+   in normal flow, rather than at a fixed top offset that covers Home. Match
+   universal search's tablet breakpoint, including 761–860px layouts. */
+@media (max-width: 860px) {
+  .sl-phase8-nav { height: auto; min-height: 68px; }
+  .sl-phase8-nav-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "brand actions" "search search" "links links";
+    gap: 8px;
+    padding: 10px 0;
+  }
+  .sl-phase8-logo { grid-area: brand; }
+  .sl-phase8-actions { grid-area: actions; }
+  .sl-phase8-mobile-menu { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; }
+  .sl-phase8-nav .sl-universal-search {
+    grid-area: search; min-width: 0; max-width: none; width: 100%; margin: 0;
+  }
+  .sl-phase8-nav .slus-panel { position: absolute; top: calc(100% + 8px); left: 0; right: 0; }
+  .sl-phase8-links {
+    grid-area: links; position: static; display: none; box-sizing: border-box;
+    width: 100%; margin: 0; padding: 10px; flex-direction: column; align-items: stretch;
+    background: rgba(8,8,10,.98); border: 1px solid rgba(255,255,255,.10); border-radius: 18px;
+    max-height: calc(100svh - 230px); overflow-y: auto; overscroll-behavior: contain;
+  }
+  .sl-phase8-links.open { display: flex; }
+  .sl-phase8-links > a, .sl-phase8-links > button { min-height: 44px; box-sizing: border-box; flex-shrink: 0; }
+  .sl-phase8-nav:has(.sl-phase8-links.open) .slus-panel { display: none; }
+}
+
+/* The provider's 64px badge stays untouched and usable. Reserve a separate
+   bottom lane only while its iframe is present; :has also handles late injection.
+   This is app layout, not a provider visibility or stacking override. */
+@media (max-width: 860px) {
+  body.sl-has-tabs:has(iframe#nl-badge-frame) {
+    padding-bottom: calc(144px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  body:has(iframe#nl-badge-frame) .sl-bottom-tabs { bottom: 80px !important; }
+  body.sl-has-tabs:has(iframe#nl-badge-frame) .sl-concierge-fab,
+  body.sl-has-tabs:has(iframe#nl-badge-frame) .sl-concierge-fab-v5 {
+    bottom: calc(158px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}

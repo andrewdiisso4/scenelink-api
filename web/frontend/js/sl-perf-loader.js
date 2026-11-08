@@ -94,13 +94,13 @@
   function loadConcierge() {
     if (aiConciergeLoaded) return;
     aiConciergeLoaded = true;
-    ['css/ai-concierge.css?v=connected-20261108-6', 'css/ai-concierge-v5.css?v=connected-20261108-6'].forEach(function (h) {
+    ['css/ai-concierge.css?v=connected-20261108-7', 'css/ai-concierge-v5.css?v=connected-20261108-7'].forEach(function (h) {
       var l = document.createElement('link');
       l.rel = 'stylesheet'; l.href = h;
       document.head.appendChild(l);
     });
     var s = document.createElement('script');
-    s.src = 'js/ai-concierge-v5.js?v=connected-20261108-6';
+    s.src = 'js/ai-concierge-v5.js?v=connected-20261108-7';
     s.defer = true;
     document.head.appendChild(s);
   }
