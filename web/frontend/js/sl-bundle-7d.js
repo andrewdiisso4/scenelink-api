@@ -3007,6 +3007,8 @@ if (typeof module !== 'undefined' && module.exports) {
  */
 (function () {
   'use strict';
+  // The canonical integration owns notifications on these pages. Do not mount a second legacy bell.
+  if (document.querySelector('script[src*="sl-social-integration-9a.js"]')) return;
 
   function ready(fn) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);

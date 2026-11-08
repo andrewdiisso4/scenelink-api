@@ -11,6 +11,12 @@ This review branch is not permission to skip verification. No production migrati
 - Production Node was verified as20.20.2. This candidate pins24.22.1; account for that upgrade explicitly.
 - Dashboard recovery offered a three-day PITR window, with latest available timestamp2026-11-08T02:34:03Z when inspected. No logical export was listed. Recovery availability is not a successful restore rehearsal.
 
+## Frontend refinement identity
+
+Cache release `connected-20261108-6` integrates the reviewed notification/session and plan-edit/recovery patches. See `SOCIAL_REFINEMENTS_RELEASE.md` for provenance and acceptance scope. All seven reviewed source/test identities remain unchanged by cache finalization. The added release checks cover bundle/source and asset-manifest parity, service-worker cache rollover and the isolated static build entrypoint.
+
+Local Chromium acceptance used synthetic account bootstrap and a disposable local API/database. It does not complete production credential entry, verification/recovery delivery, physical-phone/Safari, backup restoration or production migration checks. Verify the exact final published commit and its CI rather than treating local acceptance as production readiness.
+
 ## Before main or deployment
 
 1. Verify the frozen commit, complete CI and preserve the exact build/source identities.

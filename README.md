@@ -10,6 +10,7 @@ SceneLink brings discovery, profiles, friends, direct messages and night-out pla
 - `qa/`: API, ingestion and migration regression tests using fictional data and disposable local databases.
 - `netlify.toml`: website build context, preserving the existing API proxy and deployment rules.
 - `RELEASE_CHECKLIST.md`: required production checks and cutover order.
+- `SOCIAL_REFINEMENTS_RELEASE.md`: notification/plan integration provenance and exact acceptance limits for cache release `connected-20261108-6`.
 
 Node24.22.1 is pinned in `.node-version`. Production PostgreSQL18.3 was identified during release inspection. Test databases must be fresh, literal-loopback `scenelink_test_*` databases; test scripts reject production-looking targets.
 
@@ -26,7 +27,7 @@ The GitHub workflow additionally runs native PostgreSQL18.3 API, inactive ingest
 
 ## Current functionality and limits
 
-The candidate includes editable profiles, consent-based friendships, persistent direct text messaging, venue discovery/saves, private collaborative plans, voting and private-by-default event RSVPs. Local two-account browser checks covered these journeys and narrow layouts. Physical phones, Safari, production account verification/recovery and real media/OAuth providers remain separate acceptance work.
+The candidate includes editable profiles, consent-based friendships, persistent direct text messaging, venue discovery/saves, private collaborative plans, voting and private-by-default event RSVPs. Local two-account browser checks covered these journeys and narrow layouts. The notification/plan refinement adds account-safe notification handling, direct plan invitation links, owner editing with retained drafts and revision-conflict review, and privacy-safe owner recovery. Its browser acceptance used fictional bootstrapped accounts with the real local API, not production credential entry or provider authentication. Physical phones, Safari, production account verification/recovery and real media/OAuth providers remain separate acceptance work.
 
 RSVPs and venue selections are not bookings. In-site reservations and ticket purchases remain unavailable until an authorized provider is integrated. Event ingestion stages inactive records for review and is not enabled automatically. Existing unreviewed events must not be automatically promoted.
 

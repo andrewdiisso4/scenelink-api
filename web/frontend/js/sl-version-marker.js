@@ -18,9 +18,9 @@
   'use strict';
   var V = {
     phase: 'social-candidate',
-    sw_version: 'sl-connected-20261108-5',
-    deploy: 'connected-20261108-5',
-    built: '2026-11-08T01:28:47.094275+00:00',
+    sw_version: 'sl-connected-20261108-6',
+    deploy: 'connected-20261108-6',
+    built: '2026-11-08T05:37:09.747723+00:00',
     backend_commit: 'paired-local-candidate-required'
   };
   // Always-available global

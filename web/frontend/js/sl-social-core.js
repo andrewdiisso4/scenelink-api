@@ -54,6 +54,7 @@
       return res.text().then(function (txt) {
         var data = null;
         try { data = txt ? JSON.parse(txt) : null; } catch (_) { data = { raw: txt }; }
+        if (tok !== token()) return { ok: false, status: 401, sessionChanged: true, data: null, error: 'Your session changed. Please retry.' };
         if (res.status === 401) return { ok: false, status: 401, loggedOut: true, data: data, error: 'Not logged in' };
         if (res.status === 403) return { ok: false, status: 403, forbidden: true, data: data, error: (data && data.error) || 'Forbidden' };
         if (res.status === 404) return { ok: false, status: 404, notFound: true, data: data, error: (data && data.error) || 'Not found' };
@@ -198,7 +199,7 @@
   var rt = (function () {
     var es = null, backoff = 1000, MAXB = 30000, pollTimer = null, listeners = [];
     var lastUnread = { notifications: 0, messages: 0 };
-    var stopped = false;
+    var stopped = false, session = '', generation = 0;
 
     function emit(u) {
       lastUnread = u;
@@ -210,7 +211,9 @@
       stopPolling();
       pollTimer = setInterval(function () {
         if (document.hidden || !isLoggedIn()) return;
+        var captured = session, epoch = generation;
         Promise.all([social.getUnreadNotifications(), social.getUnreadMessages()]).then(function (r) {
+          if (stopped || epoch !== generation || captured !== token() || !r[0].ok || !r[1].ok) return;
           var n = (r[0].ok && r[0].data && r[0].data.unread) || 0;
           var m = (r[1].ok && r[1].data && r[1].data.unread) || 0;
           emit({ notifications: n, messages: m });
@@ -222,19 +225,21 @@
     function connect() {
       if (stopped || !isLoggedIn() || document.hidden) return;
       // Canonical API intentionally disables query-token SSE. Never put JWTs in URLs.
+      var captured = session, epoch = generation;
       Promise.all([social.getUnreadNotifications(), social.getUnreadMessages()]).then(function(r){
-        if (!stopped && r[0].ok && r[1].ok) emit({notifications:r[0].data.unread||0,messages:r[1].data.unread||0});
+        if (!stopped && epoch === generation && captured === token() && r[0].ok && r[1].ok) emit({notifications:r[0].data.unread||0,messages:r[1].data.unread||0});
       });
       startPolling();
     }
 
     function start() {
+      if (session !== token()) { session = token(); generation++; emit({ notifications: 0, messages: 0 }); }
       stopped = false;
       if (!isLoggedIn()) return;
       connect();
     }
     function stop() {
-      stopped = true;
+      stopped = true; session = ''; generation++; emit({ notifications: 0, messages: 0 });
       if (es) { try { es.close(); } catch (_) {} es = null; }
       stopPolling();
     }
