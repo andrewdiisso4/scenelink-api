@@ -3,14 +3,9 @@
  *
  * SINGLE source of truth for: favorites, lists, plans (itinerary), check-ins.
  *
- * - Logged-in: reads/writes via /api + mirrors to localStorage cache for fast paint
- * - Logged-out: localStorage-only (fully persistent until sign-in; migrated to API on auth)
- *
- * Exposes: window.SLState
- * Fires:   'sl-state-change' (detail: { kind: 'favorites'|'lists'|'plan'|'all' })
- *
- * All pages use this. Legacy keys (sl_saved_venues, tp-saved-v2, sl_favorites, sl_lists,
- * sl_user_lists, tp-plan-v2, sl_plan, sl_itinerary) are consolidated here.
+ * Account API responses hydrate tab-only memory. Browser-only legacy data is never
+ * silently imported into another account or used as proof that a save succeeded.
+ * Exposes window.SLState and emits sl-state-change for legacy renderers.
  */
 (function () {
   'use strict';
@@ -23,18 +18,26 @@
     lastSync:   'sl_state_last_sync'
   };
 
+  // Account-scoped tab memory only. Existing browser-only keys are left untouched
+  // and are never silently imported into a signed-in account.
+  var memory={}, memorySession=currentSession(), hydrationSerial=0;
+  function currentSession(){try{return localStorage.getItem('sl_jwt_token')||'';}catch(_){return '';}}
+  function isAccountKey(k){return Object.keys(KEYS).some(function(name){return KEYS[name]===k;});}
+
   // Legacy keys to migrate from (in priority order — first found wins)
   var LEGACY_FAV_KEYS = ['sl_saved_venues', 'tp-saved-v2', 'sl_favorites'];
   var LEGACY_LISTS_KEYS = ['sl_lists', 'sl_user_lists'];
   var LEGACY_PLAN_KEYS = ['tp-plan-v2', 'sl_plan', 'sl_itinerary'];
 
   function safeGet(k, fallback) {
+    if(isAccountKey(k))return memorySession===currentSession()&&Object.prototype.hasOwnProperty.call(memory,k)?memory[k]:fallback;
     try {
       var v = localStorage.getItem(k);
       return v ? JSON.parse(v) : fallback;
     } catch (_) { return fallback; }
   }
   function safeSet(k, v) {
+    if(isAccountKey(k)){if(memorySession!==currentSession())return false;memory[k]=v;return true;}
     try { localStorage.setItem(k, JSON.stringify(v)); return true; }
     catch (_) { return false; }
   }
@@ -127,7 +130,7 @@
     }
   }
 
-  migrate();
+  // Legacy local data is not authoritative account state; no automatic migration.
 
   // ---- Emit state change events ----
   function emit(kind, detail) {
@@ -192,15 +195,11 @@
     // Only valid UUIDs can round-trip through Postgres
     var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!UUID_RE.test(String(venueId))) return;
-    // POST /favorites/toggle is idempotent by current state on server; if it mismatches, we re-send
-    SLApi.toggleFavorite(venueId)
-      .then(function (r) {
-        if (r && typeof r.favorited === 'boolean' && r.favorited !== expectFavorited) {
-          // Server state differs — toggle once more to align
-          return SLApi.toggleFavorite(venueId);
-        }
-      })
-      .catch(function () { /* offline or not logged in; localStorage remains truth */ });
+    if(window.SLVenueActions&&window.SLVenueActions.setFavorite){
+      window.SLVenueActions.setFavorite(venueId,expectFavorited).then(function(){hydrateFromServer();}).catch(function(){});
+    } else if(window.SLConnected){
+      window.SLConnected.request('/favorites/'+encodeURIComponent(venueId),{method:expectFavorited?'POST':'DELETE'}).then(function(){hydrateFromServer();}).catch(function(){});
+    }
   }
 
   // =====================================================================
@@ -405,7 +404,7 @@
   function hydrateFromServer() {
     if (!window.SLApi || !window.SLApi.isLoggedIn()) return Promise.resolve();
 
-    var jobs = [];
+    var jobs = [],captured=currentSession(),serial=++hydrationSerial;
 
     // Favorites
     jobs.push(SLApi.favorites().then(function (r) {
@@ -423,20 +422,8 @@
         });
       }).filter(Boolean);
 
-      // Union of server + local (server wins for duplicates)
-      var local = getFavorites();
-      var seen = {};
-      var merged = [];
-      serverFavs.forEach(function (v) { seen[v.id] = true; merged.push(v); });
-      local.forEach(function (v) { if (!seen[v.id]) merged.push(v); });
-      safeSet(KEYS.favorites, merged);
-
-      // Push any local-only favorites to the server
-      local.forEach(function (v) {
-        if (!serverFavs.some(function (s) { return s.id === v.id; })) {
-          syncFavoriteToApi(v.id, true);
-        }
-      });
+      if(serial!==hydrationSerial || captured!==currentSession())return;
+      safeSet(KEYS.favorites, serverFavs);
     }).catch(function () {}));
 
     // Lists
@@ -451,13 +438,15 @@
           serverSynced: true
         };
       });
-      if (serverLists.length) safeSet(KEYS.lists, serverLists);
+      if(serial!==hydrationSerial || captured!==currentSession())return;
+      safeSet(KEYS.lists, serverLists);
     }).catch(function () {}));
 
     // Plans — use newest for the active plan
     jobs.push(SLApi.plans().then(function (r) {
       var plans = (r && r.plans) || [];
-      if (!plans.length) return;
+      if(serial!==hydrationSerial || captured!==currentSession())return;
+      if (!plans.length) {safeSet(KEYS.plan,{id:null,name:'',date:null,venues:[]});return;}
       // Active plan = first plan in list, or today's plan if found
       var today = new Date().toISOString().slice(0, 10);
       var active = plans.find(function (p) { return p.date && String(p.date).startsWith(today); }) || plans[0];
@@ -475,6 +464,7 @@
     }).catch(function () {}));
 
     return Promise.all(jobs).then(function () {
+      if(serial!==hydrationSerial || captured!==currentSession())return;
       safeSet(KEYS.lastSync, nowIso());
       emit('all', { action: 'hydrate' });
     });
@@ -482,13 +472,14 @@
 
   // Trigger hydration on auth change
   function onAuthChange() {
+    var next=currentSession();if(next!==memorySession){memorySession=next;memory={};hydrationSerial++;planEnsurePromise=null;emit('all',{action:'account-change'});}
     if (window.SLApi && window.SLApi.isLoggedIn()) {
       hydrateFromServer();
     }
   }
 
-  window.addEventListener('sl-auth-change', onAuthChange);
-  document.addEventListener('sl-auth-change', onAuthChange);
+  ['sl-auth-change','sl-auth-changed','sl-auth-ready'].forEach(function(type){window.addEventListener(type,onAuthChange);document.addEventListener(type,onAuthChange);});
+  window.addEventListener('storage',function(e){if(e.key===null||e.key==='sl_jwt_token')onAuthChange();});
 
   // Also try once on load
   setTimeout(function () {

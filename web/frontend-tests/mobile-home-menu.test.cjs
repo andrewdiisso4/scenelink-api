@@ -22,6 +22,9 @@ test('homepage menu reserves its own row after search at the shared mobile break
 test('real homepage menu supports repeated toggles, Escape, link and outside dismissal', async () => {
   const doc = new JSDOM(read('index.html'), { url: 'https://scenelink.test/', runScripts: 'outside-only' });
   const w = doc.window;
+  // Disconnect observers before jsdom teardown, just as unloading a browser document would.
+  const observers = [], Observer = w.MutationObserver;
+  w.MutationObserver = class extends Observer { constructor(callback) { super(callback); observers.push(this); } };
   // No network or production interactions. These two scripts own menu interaction.
   w.fetch = async () => ({ ok: true, text: async () => '{"venues":[]}' });
   await new Promise(resolve => w.document.addEventListener('DOMContentLoaded', resolve, { once: true }));
@@ -30,19 +33,28 @@ test('real homepage menu supports repeated toggles, Escape, link and outside dis
   const button = w.document.querySelector('[data-phase8-menu]');
   const links = w.document.getElementById('phase8NavLinks');
   try {
+    assert.equal(button.getAttribute('aria-expanded'), 'false');
+    assert.equal(button.getAttribute('aria-controls'), links.id);
     for (let repeat = 0; repeat < 3; repeat++) {
       button.click(); assert(links.classList.contains('open'));
+      assert.equal(button.getAttribute('aria-expanded'), 'true');
       button.click(); assert(!links.classList.contains('open'));
+      assert.equal(button.getAttribute('aria-expanded'), 'false');
     }
     button.click();
+    links.querySelector('a').focus();
     w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     assert(!links.classList.contains('open'));
+    assert.equal(button.getAttribute('aria-expanded'), 'false');
+    assert.equal(w.document.activeElement, button);
     button.click();
     links.querySelector('a').addEventListener('click', event => event.preventDefault());
     links.querySelector('a').click(); assert(!links.classList.contains('open'));
+    assert.equal(button.getAttribute('aria-expanded'), 'false');
     button.click(); w.document.querySelector('main').click(); assert(!links.classList.contains('open'));
+    assert.equal(button.getAttribute('aria-expanded'), 'false');
     assert.equal(w.location.href, 'https://scenelink.test/');
-  } finally { w.close(); }
+  } finally { observers.forEach(observer => observer.disconnect()); w.close(); }
 });
 
 test('provider badge lane shifts only app controls and preserves the iframe', () => {

@@ -10,7 +10,7 @@ const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '../frontend');
-const tag = 'connected-20261108-7';
+const tag = 'connected-20261109-2';
 const version = 'sl-' + tag;
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 
@@ -24,10 +24,12 @@ function filesIn(dir, prefix = '') {
 test('release marker, service-worker shell and every published asset hash agree', () => {
   const metadata = JSON.parse(read('version.json'));
   assert.equal(metadata.sw_version, version);
-  assert.equal(metadata.status, 'prepared_for_deployment');
-  assert.equal(metadata.requires_paired_backend, false);
-  assert.equal(metadata.phase, 'responsive-release');
-  assert(read('js/sl-version-marker.js').includes("backend_change: 'none'"));
+  assert.equal(metadata.status, 'local_candidate_not_deployed');
+  assert.equal(metadata.requires_paired_backend, true);
+  assert.equal(metadata.required_migration, '016_private_list_invitations.sql');
+  assert.equal(metadata.rollout_order, 'backend_migrations_and_API_before_frontend');
+  assert.equal(metadata.phase, 'integrated-design-lists');
+  assert(read('js/sl-version-marker.js').includes("backend_change: 'private-list-invitations-016'"));
   for (const file of ['version.json', 'js/sl-version-marker.js', 'sw.js']) {
     assert(!/social-candidate|paired-local-candidate-required|local_not_deployed/.test(read(file)), file);
   }
@@ -47,14 +49,14 @@ test('release marker, service-worker shell and every published asset hash agree'
   assert.deepEqual(Object.keys(manifest).sort(), filesIn(root));
   for (const [file, expected] of Object.entries(manifest)) {
     assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root, file))).digest('hex'), expected, file);
-    if (/\.(?:html|js|json)$/.test(file)) assert(!read(file).includes('connected-20261108-6'), file);
+    if (/\.(?:html|js|json)$/.test(file)) assert(!read(file).includes('connected-20261108-7'), file);
   }
 });
 
 test('service-worker install and activation evict the previous release without removing unrelated caches', async () => {
   const listeners = {}, deleted = [], fetched = [], cached = [], messages = [];
   const current = 'sl-shell-' + version;
-  const previous = 'sl-shell-sl-connected-20261108-6';
+  const previous = 'sl-shell-sl-connected-20261108-7';
   const names = new Set([current, previous, 'unrelated-app-cache']);
   let claimed = 0, skipped = 0;
   const context = {
@@ -86,7 +88,7 @@ test('service-worker install and activation evict the previous release without r
   assert(fetched.includes('/js/sl-social-integration-9a.js?v=' + tag));
   assert(fetched.includes('/js/sl-connected-plans.js?v=' + tag));
   // An old tab may create an old-version runtime cache before activation.
-  names.add('sl-runtime-sl-connected-20261108-6');
+  names.add('sl-runtime-sl-connected-20261108-7');
   listeners.activate({ waitUntil: promise => { completion = promise; } });
   await completion;
   assert.equal(claimed, 1);

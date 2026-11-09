@@ -30,7 +30,9 @@ function makeAuth({jwt,pool,secret,adminSecret}) {
       const path=(req.originalUrl||req.url||'').split('?')[0].replace(/\/+$/,'').toLowerCase();
       const withdrawingOwnRsvp=req.method==='DELETE'&&/^\/api\/events\/[0-9a-f-]{36}\/rsvp$/.test(path);
       const deletingOwnMessage=req.method==='DELETE'&&/^\/api\/conversations\/[0-9a-f-]{36}\/messages\/[0-9a-f-]{36}$/.test(path);
-      if(!deletingOwnMessage && !withdrawingOwnRsvp && !['/api/auth/verification/request','/api/auth/logout','/api/auth/logout-all','/api/auth/account','/api/users/me/settings','/api/reports'].includes(path) && !/^\/api\/users\/[0-9a-f-]{36}\/block$/i.test(path))return res.status(403).json({error:'Verify your email before participating on SceneLink.',code:'EMAIL_VERIFICATION_REQUIRED'});
+      const withdrawingListMembership=req.method==='DELETE'&&/^\/api\/lists\/[0-9a-f-]{36}\/members\/[0-9a-f-]{36}$/.test(path);
+      const decliningList=req.method==='PUT'&&/^\/api\/lists\/[0-9a-f-]{36}\/invitation$/.test(path)&&req.body?.response==='declined';
+      if(!withdrawingListMembership && !decliningList && !deletingOwnMessage && !withdrawingOwnRsvp && !['/api/auth/verification/request','/api/auth/logout','/api/auth/logout-all','/api/auth/account','/api/users/me/settings','/api/reports'].includes(path) && !/^\/api\/users\/[0-9a-f-]{36}\/block$/i.test(path))return res.status(403).json({error:'Verify your email before participating on SceneLink.',code:'EMAIL_VERIFICATION_REQUIRED'});
     }
     req.user=user;req.authTokenHash=tokenHash;req.authExpires=decoded.exp;
     res.setHeader('Cache-Control','private, no-store');return next();

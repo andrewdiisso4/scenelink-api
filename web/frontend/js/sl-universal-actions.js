@@ -132,7 +132,7 @@
   function refreshAll() {
     document.querySelectorAll('[data-sl-action="save"]').forEach(function (btn) {
       var v = extractVenue(btn);
-      if (v) setSavedIcon(btn, window.SLState.isFavorite(v.id));
+      if (v) {var saved=window.SLVenueActions&&window.SLVenueActions.isSaved?window.SLVenueActions.isSaved(v.id):undefined;setSavedIcon(btn,typeof saved==='boolean'?saved:false);}
     });
     document.querySelectorAll('[data-sl-action="plan"]').forEach(function (btn) {
       var v = extractVenue(btn);

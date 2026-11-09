@@ -37,14 +37,14 @@ class HeaderConsistencyApplier {
     addUniversalHeaderCSS() {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = 'css/universal-enhanced-header.css?v=connected-20261108-7';
+        link.href = 'css/universal-enhanced-header.css?v=connected-20261109-2';
         document.head.appendChild(link);
         console.log('Added universal header CSS');
     }
 
     addUniversalHeaderJS() {
         const script = document.createElement('script');
-        script.src = 'js/universal-header-consistency.js?v=connected-20261108-7';
+        script.src = 'js/universal-header-consistency.js?v=connected-20261109-2';
         document.body.appendChild(script);
         console.log('Added universal header JS');
     }
@@ -223,7 +223,7 @@ class HeaderConsistencyApplier {
         // Ensure deployment system is loaded
         if (!document.querySelector('script[src*="enhanced-deployment-system.js"]')) {
             const script = document.createElement('script');
-            script.src = 'js/enhanced-deployment-system.js?v=connected-20261108-7';
+            script.src = 'js/enhanced-deployment-system.js?v=connected-20261109-2';
             document.body.appendChild(script);
             console.log('Added enhanced deployment system');
         }

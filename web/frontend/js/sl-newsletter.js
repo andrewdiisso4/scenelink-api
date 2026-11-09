@@ -10,6 +10,9 @@
 
   function initNewsletterForms() {
     document.querySelectorAll('.footer-newsletter-form').forEach(function (form) {
+      // Current forms are owned by sl-phase8-completion.js. Do not attach a
+      // second request handler, regardless of deferred bundle load order.
+      if (form.hasAttribute('data-sl-newsletter')) return;
       if (form.getAttribute('data-sl-newsletter-wired')) return;
       form.setAttribute('data-sl-newsletter-wired', '1');
 

@@ -163,32 +163,44 @@
     signMediaUpload:    function (kind) { return POST('/media/sign', { kind: kind || 'post' }); },
     recordMedia:        function (payload) { return POST('/media/record', payload); },
 
-    // High-level: upload an image File via Cloudinary signed upload (if enabled).
-    // Returns { ok, url } or { ok:false, error }.
+    // Upload only through the server-owned contract. Never accept provider credentials
+    // or browser-supplied asset registrations, and never continue across accounts.
     uploadMedia: function (file, kind) {
-      return social.signMediaUpload(kind).then(function (sig) {
-        if (!sig.ok) return { ok: false, error: sig.error || 'Media not available', enabled: false };
-        var s = sig.data;
-        var fd = new FormData();
-        fd.append('file', file);
-        fd.append('api_key', s.apiKey);
-        fd.append('timestamp', s.timestamp);
-        fd.append('folder', s.folder);
-        fd.append('signature', s.signature);
-        return fetch(s.uploadUrl, { method: 'POST', body: fd })
-          .then(function (r) { return r.json(); })
-          .then(function (up) {
-            if (!up || !up.secure_url) return { ok: false, error: 'Upload failed' };
-            return social.recordMedia({
-              url: up.secure_url, thumb_url: up.secure_url,
-              width: up.width, height: up.height, mime_type: up.resource_type,
-              bytes: up.bytes, kind: kind || 'post'
-            }).then(function (rec) {
-              if (!rec.ok) return { ok: false, error: rec.error || 'Could not register uploaded image' };
-              return { ok: true, url: up.secure_url, asset: rec.data && rec.data.asset };
-            });
-          })
-          .catch(function () { return { ok: false, error: 'Upload error' }; });
+      kind=kind || 'post';
+      var captured=token(), maxBytes=4*1024*1024;
+      var changed=function(){return captured!==token();};
+      var sessionError=function(){return {ok:false,status:401,sessionChanged:true,error:'Your session changed. Choose the photo again in your current account.'};};
+      if(!captured)return Promise.resolve({ok:false,status:401,loggedOut:true,error:'Sign in before uploading a photo.'});
+      if(!['avatar','post'].includes(kind))return Promise.resolve({ok:false,error:'Unsupported photo type.'});
+      if(!file || !['image/png','image/jpeg','image/webp'].includes(file.type) || !Number.isFinite(file.size) || file.size<1 || file.size>maxBytes)
+        return Promise.resolve({ok:false,error:'Use a PNG, JPEG or WebP image up to 4 MB.'});
+      return social.getMediaCapability().then(function(cap){
+        if(changed())return sessionError();
+        if(!cap.ok)return cap;
+        if(!cap.data || cap.data.enabled!==true || cap.data.contract!=='server-upload-v1')return {ok:false,enabled:false,error:'Photo uploads are not connected.'};
+        if(Number(cap.data.max_bytes)>0 && file.size>Math.min(maxBytes,Number(cap.data.max_bytes)))return {ok:false,error:'This photo exceeds the upload size limit.'};
+        return new Promise(function(resolve){
+          var reader;
+          try {
+            reader=new FileReader();
+            reader.onerror=reader.onabort=function(){resolve(changed()?sessionError():{ok:false,error:'The photo could not be read. Choose it again.'});};
+            reader.onload=function(){
+              if(changed()){resolve(sessionError());return;}
+              if(typeof reader.result!=='string' || !/^data:image\/(png|jpeg|webp);base64,/.test(reader.result)){resolve({ok:false,error:'The photo could not be read.'});return;}
+              POST('/media/upload',{kind:kind,data:reader.result}).then(function(result){
+                if(changed()){resolve(sessionError());return;}
+                if(!result.ok){resolve(result);return;}
+                var data=result.data || {},asset=data.asset;
+                if(data.pending_review===true){resolve({ok:false,pending_review:true,error:'This photo is awaiting provider review. It has not been attached to your profile or post.'});return;}
+                var url;
+                try {url=new URL(asset && asset.url);if(url.protocol!=='https:'||url.username||url.password)throw Error();}catch(_){resolve({ok:false,error:'The service did not confirm a saved photo.'});return;}
+                if(!asset || typeof asset.id!=='string' || !asset.id || asset.kind!==kind){resolve({ok:false,error:'The service did not confirm a saved photo.'});return;}
+                resolve({ok:true,url:url.href,asset:asset});
+              }).catch(function(){resolve(changed()?sessionError():{ok:false,error:'Upload confirmation failed. No photo was attached to this draft.'});});
+            };
+            reader.readAsDataURL(file);
+          } catch(_){resolve(changed()?sessionError():{ok:false,error:'The photo could not be read. Choose it again.'});}
+        });
       });
     },
   };

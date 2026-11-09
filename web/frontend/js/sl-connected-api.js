@@ -40,6 +40,15 @@
     if (pending.has(id)) return pending.get(id);
     const promise = Promise.resolve().then(action).finally(() => pending.delete(id)); pending.set(id, promise); return promise;
   }
+  function coordinate(value, limit) {
+    // Do not coerce booleans, arrays, objects or blank strings into invented pins.
+    if (typeof value === 'string') {
+      value = value.trim();
+      if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value)) return null;
+      value = Number(value);
+    }
+    return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= limit ? value : null;
+  }
   function normalize(v) {
     if (!v || typeof v !== 'object' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,179}$/.test(String(v.id||'')) || typeof v.name !== 'string' || !v.name) throw error('Incomplete venue record', 502);
     const out = Object.assign({}, v);
@@ -47,8 +56,8 @@
     ['rating','review_count','buzz_score','going_count','friends_going','attending_count','is_open_now','reservation_live'].forEach(k => out[k] = null);
     ['trending','featured','spotlight'].forEach(k => out[k] = false);
     out.metrics_status = 'unverified';
-    out.lat = v.lat == null || v.lat === '' ? null : Number(v.lat); out.lng = v.lng == null || v.lng === '' ? null : Number(v.lng);
-    if (!Number.isFinite(out.lat) || Math.abs(out.lat) > 90 || !Number.isFinite(out.lng) || Math.abs(out.lng) > 180) out.lat = out.lng = null;
+    out.lat = coordinate(v.lat, 90); out.lng = coordinate(v.lng, 180);
+    if (out.lat === null || out.lng === null) out.lat = out.lng = null;
     ['website','reservation_url','opentable_url','resy_url','google_maps_url'].forEach(k => out[k] = safeUrl(v[k]));
     const b = v.booking || {}, bookingUrl = b.status === 'external_link' ? safeUrl(b.url) : null;
     out.booking = {status:bookingUrl ? 'external_link':'not_available', url:bookingUrl, provider:bookingUrl ? new URL(bookingUrl).hostname.replace(/^www\./,'') : null,

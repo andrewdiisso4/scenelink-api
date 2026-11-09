@@ -11,7 +11,7 @@ function setup(){
 }
 test('all brand image references resolve with exact filesystem case',()=>{
  let checked=0;
- function walk(dir){for(const item of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,item.name);if(item.isDirectory())walk(p);else if(/\.(html|css|js)$/.test(p)){for(const m of fs.readFileSync(p,'utf8').matchAll(/(?:images\/)(scenelink[\w-]+\.(?:png|jpg|webp))/gi)){checked++;assert(fs.existsSync(path.join(root,'images',m[1])),p+': '+m[1]);}}}}
+ function walk(dir){for(const item of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,item.name);if(item.isDirectory())walk(p);else if(/\.(html|css|js)$/.test(p)){for(const m of fs.readFileSync(p,'utf8').matchAll(/(?:images\/)((?:brand\/)?scenelink[\w-]+\.(?:png|jpg|webp))/gi)){checked++;assert(fs.existsSync(path.join(root,'images',m[1])),p+': '+m[1]);}}}}
  walk(root);assert(checked>25);
 });
 test('first-visit deep link suppresses onboarding and guest save returns focus to selected venue',async()=>{
@@ -40,7 +40,7 @@ test('shared desktop header separates links from search/account and preserves na
  for(const file of ['profile.html','messages.html','social-feed.html','my-lists.html'])assert(fs.readFileSync(path.join(root,file),'utf8').includes('css/sl-phase8f-polish.css'));
 });
 test('UI hotfix uses a new asset/cache version and its build helper cannot restore the stale version',()=>{
- const tag='connected-20261108-7';
+ const tag='connected-20261109-2';
  const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
  assert(sw.includes("const VERSION = 'sl-"+tag+"'"));
  assert(sw.includes('c.match(req)')); // Query-string version remains part of the cache key.

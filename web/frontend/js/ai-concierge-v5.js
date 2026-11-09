@@ -8,7 +8,7 @@
     window.__slConciergeV5 = true;
 
     // Kill any previous instance cleanly
-    document.querySelectorAll('.sl-concierge-fab, .sl-concierge-panel, .sl-panel, .sl-fab, [class*="concierge-fab"]:not(.sl-concierge-fab-v5), [class*="concierge-panel"]:not(.sl-concierge-panel-v5)').forEach(function (el) {
+    document.querySelectorAll('.sl-concierge-fab, .sl-concierge-panel, [class*="concierge-fab"]:not(.sl-concierge-fab-v5), [class*="concierge-panel"]:not(.sl-concierge-panel-v5)').forEach(function (el) {
         try { el.remove(); } catch (_) {}
     });
     window.__slConciergeV3 = true; // blocks v3 from reinitializing

@@ -1,4 +1,5 @@
 'use strict';
+const Lists=require('../services/list-membership');
 const H=require('./shared'),Profile=require('./profile'),Achievements=require('./achievements');
 const FIELDS='u.id,u.username,u.display_name,u.avatar_url,u.neighborhood,u.city,u.bio,u.created_at,u.is_private,u.allow_messages,u.social_links,u.show_achievements';
 function install({router,pool,auth,write}) {
@@ -53,6 +54,7 @@ function install({router,pool,auth,write}) {
       const exists=await db.query('SELECT id FROM users WHERE id=$1',[target]);if(!exists.rows.length)throw new H.HttpError(404,'User unavailable');
       const r=await db.query('INSERT INTO user_blocks(blocker_id,blocked_id,reason) VALUES($1,$2,$3) ON CONFLICT(blocker_id,blocked_id) DO NOTHING RETURNING id',[me,target,reason||null]);
       await db.query("UPDATE friendships SET status='declined',updated_at=NOW() WHERE user_a_id=LEAST($1::uuid,$2::uuid) AND user_b_id=GREATEST($1::uuid,$2::uuid)",[me,target]);
+      await Lists.revokePair(db,me,target);
       await db.query('DELETE FROM notifications WHERE (user_id=$1 AND actor_id=$2) OR (user_id=$2 AND actor_id=$1)',[me,target]);
       return{success:true,blocked_id:target,already_blocked:!r.rows.length};
     });res.status(201).json(result);
@@ -112,6 +114,7 @@ function install({router,pool,auth,write}) {
       const r=await db.query(`DELETE FROM friendships WHERE user_a_id=LEAST($1::uuid,$2::uuid) AND user_b_id=GREATEST($1::uuid,$2::uuid)
         AND (status='accepted' OR (status='pending' AND requester_id=$1)) RETURNING id`,[me,target]);
       if(!r.rows.length)throw new H.HttpError(404,'Friend or outgoing request unavailable');
+      await Lists.revokePair(db,me,target);
     });res.json({removed:true,user_id:target});
   }));
 }

@@ -73,7 +73,6 @@
     },
     forgotPassword: function(email){ return req('/auth/forgot-password', { method:'POST', body:{ email: email }}); },
     resetPassword: function(resetToken, password){ return req('/auth/reset-password', { method:'POST', body:{ token: resetToken, password: password }}); },
-    deleteAccount: function(password, reason){ return req('/auth/account', { method:'DELETE', body:{ password: password || '', reason: reason || '' }}).then(function(d){ if(!d || d.deleted !== true) throw new Error('Deletion was not confirmed'); clearToken(); return d; }); },
     updateProfile: function(body){
       return req('/auth/profile', { method:'PUT', body: body });
     },
@@ -302,7 +301,7 @@
     // ---- compliance (App Store required)
     deleteAccount: function(password, reason){
       return req('/auth/account', { method:'DELETE', body:{ password: password || '', reason: reason || null } })
-        .then(function(d){ clearToken(); return d; });
+        .then(function(d){ if(!d || d.deleted !== true) throw new Error('Deletion was not confirmed. Please try again.'); return d; });
     },
 
     // ---- content reports (UGC moderation)

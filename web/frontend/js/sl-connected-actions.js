@@ -1,34 +1,51 @@
-/* Confirm venue saves with the server before reflecting success. */
+/* Server-confirmed saves and list membership. No local-only persistence claims. */
 (function(){
  'use strict';
- const C=window.SLConnected;
- function toast(message,kind){if(window.SLToast)window.SLToast(message,4000,kind||'info');}
- async function save(id,button){
-   if(!id)return;
-   if(!C.token()){if(window.SLAuthUI)window.SLAuthUI.open('login');return;}
-   if(button)button.disabled=true;
-   try{
-     await C.once('favorite:'+id,async()=>{
-       const existing=await C.request('/favorites');
-       if(!Array.isArray(existing.favorites))throw new Error('Saved venues could not be checked. Please retry.');
-       const saved=existing.favorites.some(v=>(v.venue_id||v.id)===id);
-       const d=await C.request('/favorites/'+encodeURIComponent(id),{method:saved?'DELETE':'POST'});
-       if(d.favorited!==!saved)throw new Error('The save change was not confirmed. Refresh before trying again.');
-       if(!window._slSavedVenues)window._slSavedVenues={};
-       if(d.favorited)window._slSavedVenues[id]={id:id};else delete window._slSavedVenues[id];
-       if(button){button.classList.toggle('saved',d.favorited);button.classList.toggle('sl-saved',d.favorited);button.setAttribute('aria-pressed',String(d.favorited));const icon=button.querySelector('i');if(icon)icon.className=d.favorited?'fas fa-heart':'far fa-heart';}
-       window.dispatchEvent(new CustomEvent('sl-lists-changed',{detail:{venue_id:id,favorited:d.favorited}}));
-       toast(d.favorited?'Venue saved to your account.':'Venue removed from your saved list.','success');
-     });
-   }catch(e){toast(e.message,'error');}finally{if(button&&button.isConnected)button.disabled=false;}
+ const C=window.SLConnected;if(!C)return;const E=C.esc,enc=encodeURIComponent;
+ let session=C.token(),epoch=0,favorites=null,loadSerial=0,picker=null,pickerFocus,pickerOverflow,saveQueue=Promise.resolve();
+ const attempts=new Map(),inflight=new Map();
+ const current=(s,e)=>s===C.token()&&e===epoch;
+ const idFor=b=>{const card=b.closest('[data-sl-venue-id],[data-venue-id]');return b.dataset.slVenueId||b.dataset.venueId||b.dataset.id||(card&&(card.dataset.slVenueId||card.dataset.venueId));};
+ function notify(message,kind){if(window.SLToast){window.SLToast(message,4000,kind||'info');return;}let el=document.getElementById('slVenueActionStatus');if(!el){el=document.createElement('p');el.id='slVenueActionStatus';el.setAttribute('role','status');el.className='sl-connected';document.body.appendChild(el);}el.textContent=message;}
+ function requireAccount(opener){if(C.token())return true;if(window.SLAuthUI)window.SLAuthUI.open('login',opener);return false;}
+ function savedSet(data){if(!Array.isArray(data.favorites))throw new Error('Saved venues could not be checked. Please retry.');return new Set(data.favorites.map(v=>v.venue_id||v.id));}
+ function syncButtons(){
+   if(!window.document)return;
+   document.querySelectorAll('[data-sl-action="save"],.sl-rp-save').forEach(b=>{const id=idFor(b),saved=!!(favorites&&favorites.has(id));b.classList.toggle('saved',saved);b.classList.toggle('sl-saved',saved);b.setAttribute('aria-pressed',String(saved));b.disabled=inflight.has(id);const icon=b.querySelector('i');if(icon&&/heart|bookmark/.test(icon.className)){icon.classList.toggle('fas',saved);icon.classList.toggle('far',!saved);}const text=b.querySelector('.sl-btn-label,.btn-label');if(text&&text.textContent!==(saved?'Saved':'Save'))text.textContent=saved?'Saved':'Save';});
  }
- window.SLVenueActions={save};
- document.addEventListener('click',e=>{
-   const b=e.target.closest('[data-sl-action="save"],[data-sl-action="plan"],.sl-rp-save');if(!b)return;
-   const card=b.closest('[data-sl-venue-id],[data-venue-id]');
-   const id=b.dataset.slVenueId||b.dataset.venueId||b.dataset.id||(card&&(card.dataset.slVenueId||card.dataset.venueId));
-   if(!id)return;
-   e.preventDefault();e.stopImmediatePropagation();
-   if(b.dataset.slAction==='plan')window.location.href='/plan-with-friends?venue_id='+encodeURIComponent(id);else save(id,b);
- },true);
+ function updateState(data){favorites=savedSet(data);window._slSavedVenues=Object.fromEntries(data.favorites.map(v=>[v.venue_id||v.id,v]));syncButtons();}
+ async function refresh(){const s=C.token(),e=epoch,serial=++loadSerial;if(!s){favorites=new Set();window._slSavedVenues={};syncButtons();return;}try{const d=await C.request('/favorites');if(current(s,e)&&serial===loadSerial)updateState(d);}catch(_){/* Unknown save state must not be replaced with invented saved records. */}}
+ async function commit(id,desired){
+   if(inflight.has(id))return inflight.get(id);
+   const s=C.token(),e=epoch;loadSerial++;if(!s)throw C.error('Sign in to save this venue.',401);
+   const prior=saveQueue;const task=(async()=>{
+     await prior;if(!current(s,e))throw C.error('Your account changed.',401);let attempt=attempts.get(id),before=await C.request('/favorites');if(!current(s,e))throw C.error('Your account changed.',401);
+     updateState(before);
+     if(typeof desired==='boolean'&&(!attempt||attempt.desired!==desired))attempt={desired};
+     if(!attempt)attempt={desired:!favorites.has(id)};attempts.set(id,attempt);
+     if(favorites.has(id)!==attempt.desired){const d=await C.request('/favorites/'+enc(id),{method:attempt.desired?'POST':'DELETE'});if(!current(s,e))throw C.error('Your account changed.',401);if(d.favorited!==attempt.desired)throw new Error('The change was not confirmed. Retry to check the same save action.');}
+     const after=await C.request('/favorites');if(!current(s,e))throw C.error('Your account changed.',401);const set=savedSet(after);if(set.has(id)!==attempt.desired)throw new Error('Your saved venues changed elsewhere. Refresh and try again.');
+     loadSerial++;updateState(after);attempts.delete(id);window.dispatchEvent(new CustomEvent('sl-lists-changed',{detail:{venue_id:id,favorited:attempt.desired,confirmed:true}}));return {favorited:attempt.desired,venue_id:id};
+   })();saveQueue=task.catch(()=>{});inflight.set(id,task);syncButtons();
+   try{return await task;}finally{if(current(s,e)){inflight.delete(id);syncButtons();}}
+ }
+ async function save(id,button){if(!id||!requireAccount(button))return null;const s=C.token(),e=epoch;if(button)button.disabled=true;try{const d=await commit(id);if(current(s,e))notify(d.favorited?'Venue saved to your account.':'Venue removed from saved venues.','success');return d;}catch(error){if(current(s,e))notify(error.message+' Retry keeps the same save choice.','error');return null;}finally{if(current(s,e)&&button&&button.isConnected)button.disabled=false;}}
+ function closePicker(){if(!picker)return;picker.remove();picker=null;document.body.style.overflow=pickerOverflow||'';if(pickerFocus&&pickerFocus.isConnected)pickerFocus.focus();}
+ async function addToList(venueId,opener){
+   if(!venueId||!requireAccount(opener))return;closePicker();const s=C.token(),e=epoch;pickerFocus=opener||document.activeElement;pickerOverflow=document.body.style.overflow;
+   const modal=document.createElement('div');picker=modal;modal.id='slListPicker';modal.className='sl-vd-overlay sl-open';modal.innerHTML='<section class="sl-connected" role="dialog" aria-modal="true" aria-labelledby="slListPickerTitle" tabindex="-1"><button type="button" class="sl-secondary" data-close-picker>Close</button><h2 id="slListPickerTitle">Add to a list</h2><p>Choose one of your lists or a shared list you can contribute to.</p><div data-picker-body>Loading your lists…</div><p data-picker-status role="status"></p><a href="/my-lists">Create or manage lists</a></section>';document.body.appendChild(modal);document.body.style.overflow='hidden';modal.querySelector('[data-close-picker]').focus();
+   const valid=()=>current(s,e)&&picker===modal;
+   modal.addEventListener('click',event=>{if(event.target===modal||event.target.closest('[data-close-picker]'))closePicker();});
+   modal.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closePicker();}if(event.key==='Tab'){const controls=[...modal.querySelectorAll('button:not([disabled]),input,select,a[href]')];if(event.shiftKey&&document.activeElement===controls[0]){event.preventDefault();controls.at(-1).focus();}else if(!event.shiftKey&&document.activeElement===controls.at(-1)){event.preventDefault();controls[0].focus();}}});
+   let listOffset=0,listRows=[];async function load(more){try{const d=await C.request('/lists'+(more?'?limit=100&offset='+listOffset:''));if(!valid())return;if(!Array.isArray(d.lists))throw new Error('The lists response was incomplete.');if(more){listRows=[...new Map([...listRows,...d.lists].map(l=>[l.id,l])).values()];listOffset+=d.lists.length;}else{listRows=d.lists;listOffset=d.lists.length;}const selected=modal.querySelector('select')?.value;const lists=listRows.filter(l=>l.can_add_venues===true||l.is_owner===true||l.is_owner===undefined);
+     modal.querySelector('[data-picker-body]').innerHTML=lists.length?'<form data-picker-form><label for="slPickList">List</label><select id="slPickList" required>'+lists.map(l=>'<option value="'+E(l.id)+'">'+E(l.name)+(l.is_owner===false?' · shared':'')+'</option>').join('')+'</select><p><button type="submit">Add venue</button></p></form>':'<p>No editable lists in the loaded results.</p>';if(d.has_more)modal.querySelector('[data-picker-body]').insertAdjacentHTML('beforeend','<button type="button" data-more-lists>Load more lists</button>');
+     const moreButton=modal.querySelector('[data-more-lists]');if(moreButton)moreButton.onclick=()=>{moreButton.disabled=true;load(true);};const form=modal.querySelector('form');if(!form)return;if(selected)form.querySelector('select').value=selected;let busy=false;form.onsubmit=async event=>{event.preventDefault();if(busy||!valid())return;busy=true;const button=form.querySelector('button'),id=form.querySelector('select').value;button.disabled=true;const status=modal.querySelector('[data-picker-status]');status.textContent='Adding venue…';try{const d=await C.request('/lists/'+enc(id)+'/venues',{method:'POST',body:{venue_id:venueId}});if(!valid())return;if(d.success!==true&&d.ok!==true)throw new Error('The addition was not confirmed.');const read=await C.request('/lists/'+enc(id));if(!valid())return;if(!read.list||!Array.isArray(read.list.venues)||!read.list.venues.some(v=>(v.venue_id||v.id)===venueId))throw new Error('The list could not be read back. Retry to check the same addition.');status.textContent='Venue is in '+read.list.name+'.';window.dispatchEvent(new CustomEvent('sl-lists-changed',{detail:{list_id:id,confirmed:true}}));}catch(error){if(valid())status.textContent=error.message;}finally{if(valid()){busy=false;button.disabled=false;}}};
+   }catch(error){if(valid()){modal.querySelector('[data-picker-body]').innerHTML='<p>Lists could not be loaded.</p><button type="button" data-retry-picker>Retry</button>';modal.querySelector('[data-picker-status]').textContent=error.message;modal.querySelector('[data-retry-picker]').onclick=()=>load(false);}}}
+   await load();
+ }
+ function authChanged(){const next=C.token();if(next===session)return;session=next;epoch++;loadSerial++;favorites=null;attempts.clear();inflight.clear();saveQueue=Promise.resolve();closePicker();window._slSavedVenues={};const status=document.getElementById('slVenueActionStatus');if(status)status.textContent='';syncButtons();refresh();}
+ window.SLVenueActions={save,setFavorite:commit,addToList,refresh,syncButtons,isSaved:id=>favorites?favorites.has(id):undefined};
+ document.addEventListener('click',e=>{const b=e.target.closest('[data-sl-action="save"],[data-sl-action="plan"],[data-sl-action="add-to-list"],.sl-rp-save');if(!b)return;const id=idFor(b);if(!id)return;e.preventDefault();e.stopImmediatePropagation();if(b.dataset.slAction==='plan')window.location.href='/plan-with-friends?venue_id='+enc(id);else if(b.dataset.slAction==='add-to-list')addToList(id,b);else save(id,b);},true);
+ ['sl-auth-change','sl-auth-changed','sl-auth-ready'].forEach(type=>{window.addEventListener(type,authChanged);document.addEventListener(type,authChanged);});window.addEventListener('storage',e=>{if(e.key===null||e.key==='sl_jwt_token')authChanged();});
+ function boot(){refresh();new MutationObserver(syncButtons).observe(document.body,{childList:true,subtree:true});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

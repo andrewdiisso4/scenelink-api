@@ -1,8 +1,10 @@
 {
-  "phase": "responsive-release",
-  "sw_version": "sl-connected-20261108-7",
-  "timestamp": "2026-11-08T21:20:46.427418+00:00",
-  "status": "prepared_for_deployment",
-  "requires_paired_backend": false,
-  "summary": "Responsive navigation release prepared for deployment: homepage menu and hosting badge clearance verified in isolated Chromium guest checks. Existing backend and provider settings are unchanged. Production post-deployment verification and physical-device/Safari acceptance remain pending. In-site booking unavailable."
+  "phase": "integrated-design-lists",
+  "sw_version": "sl-connected-20261109-2",
+  "timestamp": "2026-11-09T02:07:08.712860+00:00",
+  "status": "local_candidate_not_deployed",
+  "requires_paired_backend": true,
+  "required_migration": "016_private_list_invitations.sql",
+  "rollout_order": "backend_migrations_and_API_before_frontend",
+  "summary": "Local integration of audited account/navigation/discovery work, official design and private collaborative lists. Requires paired backend migration 016 and matching API before frontend publication. No upload, migration or deployment is authorized or performed by this artifact. Browser acceptance, populated-data upgrade/restore rehearsal and production verification remain separate gates. Storage migration 015, provider setup, venue-source accuracy and in-site booking are not included."
 }

@@ -8,12 +8,14 @@ const reply = body => ({ ok: true, status: 200, json: async () => body });
 const venue = (id, name = id) => ({ id, name, type: 'bar', lat: 42.35, lng: -71.06, source: 'Synthetic test fixture' });
 function leaflet() {
   const state = { maps: 0, markers: new Set(), tileOptions: null, zooms: 0, bounds: [], pans: [], cameraEvents: [] };
-  const map = { removeLayer: marker => state.markers.delete(marker), invalidateSize() { state.cameraEvents.push('resize'); }, fitBounds(points) { state.cameraEvents.push('fit'); state.bounds.push(points.map(point => Array.from(point))); }, panTo(point) { state.cameraEvents.push('pan'); state.pans.push(Array.from(point)); }, setView() {}, remove() {}, zoomIn() { state.zooms++; }, zoomOut() {} };
+  const events = {}, tileEvents = {};
+  state.viewport = [42.3,-71.2,42.4,-71]; state.move = () => events.moveend && events.moveend(); state.tileFail = () => tileEvents.tileerror();
+  const map = { on(name, fn) { events[name] = fn; }, getBounds() { const b = state.viewport; return {getSouth:()=>b[0],getWest:()=>b[1],getNorth:()=>b[2],getEast:()=>b[3]}; }, removeLayer: marker => state.markers.delete(marker), invalidateSize() { state.cameraEvents.push('resize'); }, fitBounds(points) { state.cameraEvents.push('fit'); state.bounds.push(points.map(point => Array.from(point))); }, panTo(point) { state.cameraEvents.push('pan'); state.pans.push(Array.from(point)); }, setView() {}, remove() {}, zoomIn() { state.zooms++; }, zoomOut() {} };
   const L = {
     map() { state.maps++; return map; },
-    tileLayer(url, options) { state.tileUrl = url; state.tileOptions = options; return { addTo() {} }; },
+    tileLayer(url, options) { state.tileUrl = url; state.tileOptions = options; return { addTo() { return this; }, on(name, fn) { tileEvents[name] = fn; return this; }, redraw() { state.redraws = (state.redraws || 0) + 1; } }; },
     divIcon: x => x,
-    marker() { const marker = { addTo() { state.markers.add(marker); return marker; }, on() {} }; return marker; },
+    marker(point, options) { const marker = { options, point, addTo() { state.markers.add(marker); return marker; }, on() {} }; return marker; },
     latLngBounds: x => x
   };
   return { L, state };
@@ -335,4 +337,130 @@ test('sidebar, list and map counts follow the same server filter and clear stale
     assert.equal(h.w.document.querySelector('#slRightPanelCards .sl-rp-card').dataset.venueId, 'filtered');
     assert.equal(h.fake.state.markers.size, 0); assert.deepEqual(h.errors, []);
   } finally { h.dom.window.close(); }
+});
+
+for (const page of ['explore', 'nightlife']) {
+  test(page + ': explicit area search retains query/filters, paginates within bounds, and never refits after pan', async () => {
+    const calls = [];
+    const h = harness(page, async url => {
+      const p = Object.fromEntries(new URL(url, 'https://scenelink.test').searchParams); calls.push(p);
+      return reply({venues:[venue(p.offset === '0' ? 'first' : 'second')], total:2, has_more:p.offset === '0'});
+    }, '?q=dinner&type=bar');
+    try {
+      await tick(); const initialFits = h.fake.state.bounds.length;
+      h.fake.state.move(); await tick();
+      assert.equal(calls.length,1, 'movement must not fetch');
+      assert.match(h.w.document.querySelector('[data-area-status]').textContent, /Map moved/);
+      h.w.document.querySelector('[data-area-search]').click(); await tick();
+      assert.equal(calls.at(-1).bbox, '42.3,-71.2,42.4,-71');
+      assert.equal(calls.at(-1).q,'dinner'); assert.equal(calls.at(-1).type,'bar');
+      assert.equal(new URL(h.w.location.href).searchParams.get('bbox'),calls.at(-1).bbox);
+      assert.equal(h.fake.state.bounds.length,initialFits);
+      [...h.w.document.querySelectorAll('#slListCards button')].find(b=>b.textContent==='Load more venues').click(); await tick();
+      assert.equal(calls.at(-1).offset,'1'); assert.equal(calls.at(-1).bbox,calls.at(-2).bbox);
+      assert.equal(h.fake.state.markers.size,2);
+      h.w.document.querySelector('[data-cat="lounge"]').click(); await tick();
+      assert.equal(calls.at(-1).offset,'0'); assert.equal(calls.at(-1).type,'lounge'); assert(calls.at(-1).bbox);
+      h.w.document.querySelector('[data-area-clear]').click(); await tick();
+      assert(!calls.at(-1).bbox); assert(!new URL(h.w.location.href).searchParams.has('bbox'));
+      assert.deepEqual(h.errors,[]);
+    } finally { h.dom.window.close(); }
+  });
+  test(page + ': latest area wins over stale failed request, retry preserves area, and names identify keyboard markers', async () => {
+    const pending=[];
+    const h=harness(page,url=>new Promise((resolve,reject)=>pending.push({url,resolve,reject})));
+    try {
+      await tick(); pending[0].resolve(reply({venues:[venue('initial')],total:1})); await tick();
+      h.w.document.querySelector('[data-area-search]').click(); await tick();
+      h.fake.state.viewport=[42.2,-71.1,42.3,-71]; h.fake.state.move();
+      h.w.document.querySelector('[data-area-search]').click(); await tick();
+      pending[2].resolve(reply({venues:[venue('named','Actual Venue Name'),{...venue('invalid'),lat:999},{...venue('missing'),lat:null}],total:3})); await tick();
+      pending[1].reject(new Error('old failure')); await tick();
+      assert.equal(h.fake.state.markers.size,1);
+      const marker=[...h.fake.state.markers][0]; assert.equal(marker.options.title,'Actual Venue Name'); assert.equal(marker.options.alt,'Actual Venue Name'); assert.equal(marker.options.keyboard,true);
+      assert.match(h.w.document.getElementById('slListCount').textContent,/3 of 3/);
+      assert.equal(new URL(h.w.location.href).searchParams.get('bbox'),'42.2,-71.1,42.3,-71');
+      h.w.document.querySelector('[data-area-search]').click(); await tick(); pending[3].reject(new Error('current failure')); await tick();
+      assert.equal(h.fake.state.markers.size,0);
+      [...h.w.document.querySelectorAll('#slListCards button')].find(b=>/Retry/.test(b.textContent)).click(); await tick();
+      assert.equal(new URL(pending[4].url,'https://scenelink.test').searchParams.get('bbox'),'42.2,-71.1,42.3,-71');
+      pending[4].resolve(reply({venues:[venue('recovered')],total:1})); await tick();
+      assert.equal(h.fake.state.markers.size,1); assert.deepEqual(h.errors,[]);
+    } finally {h.dom.window.close();}
+  });
+  test(page + ': tile errors offer list and explicit retry without replacing provider or requesting location', async () => {
+    const h=harness(page,async()=>reply({venues:[venue('one')],total:1}));
+    try {
+      let locations=0; h.w.navigator.geolocation={getCurrentPosition(){locations++;}};
+      await tick(); h.fake.state.tileFail();
+      assert.match(h.w.document.querySelector('.sl-map-status').textContent,/Map tiles unavailable/);
+      h.w.document.querySelector('[data-map-list]').click();
+      assert(h.w.document.getElementById('slListView').classList.contains('active'));
+      h.w.document.querySelector('[data-map-retry]').click(); assert.equal(h.fake.state.redraws,1);
+      assert.equal(h.fake.state.maps,1); assert.equal(locations,0); assert.equal(h.fake.state.markers.size,1);
+      assert.deepEqual(h.errors,[]);
+    } finally {h.dom.window.close();}
+  });
+  test(page + ': URL bounds restore the selected area and venue detail close/back retain it', async () => {
+    const calls=[];
+    const h=harness(page,async url=>{calls.push(url);return reply(url.includes('/reviews')?{reviews:[]}:url.includes('/venues/one')?venue('one'):{venues:[venue('one')],total:1});},'?bbox=42.3,-71.2,42.4,-71');
+    try {
+      await tick(); assert.equal(h.fake.state.bounds.length,1);
+      assert.equal(new URL(calls[0],'https://scenelink.test').searchParams.get('bbox'),'42.3,-71.2,42.4,-71');
+      await h.w.SLVenueDetail.open('one'); await tick();
+      assert(h.w.document.querySelector('.sl-vd-overlay').classList.contains('sl-open'));
+      h.w.history.back(); await tick();
+      assert(!h.w.document.querySelector('.sl-vd-overlay').classList.contains('sl-open'));
+      assert.equal(new URL(h.w.location.href).searchParams.get('bbox'),'42.3,-71.2,42.4,-71');
+      await h.w.SLVenueDetail.open('one'); await tick(); h.w.SLVenueDetail.close(); await tick();
+      assert(!h.w.document.querySelector('.sl-vd-overlay').classList.contains('sl-open'));
+      assert.equal(new URL(h.w.location.href).searchParams.get('bbox'),'42.3,-71.2,42.4,-71'); assert.deepEqual(h.errors,[]);
+    } finally {h.dom.window.close();}
+  });
+}
+for (const page of ['explore','nightlife']) test(page + ': history restores query and area together; malformed bounds never reach API', async () => {
+  const calls=[];
+  const h=harness(page,async url=>{calls.push(Object.fromEntries(new URL(url,'https://scenelink.test').searchParams));return reply({venues:[venue('history')],total:1});},'?bbox=bad');
+  try {
+    await tick(); assert(!calls[0].bbox);
+    h.w.history.pushState({},'', '?q=new&type=lounge&bbox=42.2,-71.2,42.4,-71');
+    h.w.dispatchEvent(new h.w.PopStateEvent('popstate')); await tick();
+    assert.equal(calls.at(-1).q,'new'); assert.equal(calls.at(-1).type,'lounge'); assert.equal(calls.at(-1).bbox,'42.2,-71.2,42.4,-71');
+    assert.equal(h.w.document.getElementById('slSearchInput').value,'new');
+    h.w.history.back(); await tick();
+    assert(!calls.at(-1).bbox); assert(!calls.at(-1).q);
+    const count=calls.length; h.fake.state.viewport=[42.3,181,42.4,182];
+    h.w.document.querySelector('[data-area-search]').click(); await tick();
+    assert.equal(calls.length,count); assert.match(h.w.document.querySelector('[data-area-status]').textContent,/world boundary/);
+    assert.deepEqual(h.errors,[]);
+  } finally {h.dom.window.close();}
+});
+for (const page of ['explore','nightlife']) test(page + ': canonical coordinate pipeline rejects coercion and range errors, preserves real decimal/zero coordinates', async () => {
+  const invalid = [null, undefined, '', ' ', '\t\n', true, false, [], [42], {}, {valueOf:()=>42}, '0x2a', '0b10', '0o10', '42north', 'Infinity', 'NaN', '1e999', NaN, Infinity, -Infinity];
+  const records = invalid.flatMap((value,i) => [{...venue('bad-lat-'+i),lat:value}, {...venue('bad-lng-'+i),lng:value}]);
+  records.push(...[{lat:90.01,lng:0},{lat:-90.01,lng:0},{lat:0,lng:180.01},{lat:0,lng:-180.01},{lat:'91',lng:'0'},{lat:'0',lng:'-181'}].map((point,i)=>({...venue('range-'+i),...point})));
+  const valid = [
+    {id:'zero',lat:0,lng:0}, {id:'decimal',lat:' 42.3500 ',lng:' -71.0600 '},
+    {id:'boundary',lat:'90',lng:'180'}, {id:'negative-boundary',lat:-90,lng:-180},
+    {id:'fraction',lat:'.5',lng:'-.5'}, {id:'exponent',lat:'4.235e1',lng:'-7.106e1'},
+    {id:'signed-zero',lat:'+0',lng:'-0'}
+  ];
+  records.push(...valid.map(point=>({...venue(point.id),...point})));
+  const h=harness(page,async()=>reply({venues:records,total:records.length}));
+  try {
+    await tick();
+    const markers=[...h.fake.state.markers]; assert.equal(markers.length,valid.length);
+    assert.deepEqual(markers.map(m=>m.options.title).sort(),valid.map(v=>v.id).sort());
+    for (const point of valid) {
+      const marker=markers.find(m=>m.options.title===point.id);
+      assert(marker.point[0] === Number(point.lat) && marker.point[1] === Number(point.lng), point.id);
+    }
+    assert.equal(h.w.document.querySelectorAll('.sl-list-card').length,records.length,'unlocated records remain available in the list');
+    const normalized = h.w.__slExploreData.getVenues();
+    for (const v of normalized.filter(v=>v.id.startsWith('bad-')||v.id.startsWith('range-'))) {
+      assert.equal(v.lat,null,v.id); assert.equal(v.lng,null,v.id);
+    }
+    assert.match(h.w.document.getElementById('slCrowdCount').textContent,/7 mapped/);
+    assert.deepEqual(h.errors,[]);
+  } finally {h.dom.window.close();}
 });
