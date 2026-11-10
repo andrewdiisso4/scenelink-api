@@ -1,6 +1,6 @@
-# SceneLink integrated local candidate
+# SceneLink integrated release candidate
 
-Release identity: `connected-20261109-2`. This is a local review candidate, not a deployed release. No GitHub upload, production migration, production service change, provider configuration or external communication was performed as part of this integration.
+Release identity: `connected-20261110-1`. This is a newly rebuilt local candidate from published draft PR #5 head `cbc78a31d425d113d4499e9f831a6662c52cd388`, exact tree `2eab23c5b5c130c542f7e267368364f0e48b1053`. The cbc predecessor passed GitHub Actions run42552093352. This new visual increment is not the earlier November9 visual artifact and has not been pushed or deployed. It requires its own publication, exact-head CI and production release gates. No production migration, provider change or service cutover was performed to prepare it.
 
 ## Included work and provenance
 
@@ -11,7 +11,7 @@ Release identity: `connected-20261109-2`. This is a local review candidate, not 
 - Integration verification: combined release/cache invariants and full My Lists route execution against the real local API and disposable native PostgreSQL.
 - Post-review visual corrections: removed legacy logo height caps, prevented chip shrink/clipping, placed the Concierge search action in normal flow, corrected compound-input specificity, replaced duplicated font fallbacks and newsletter glyphs with SVGs, and removed the eager unstyled Messages Concierge include. Real-browser retest remains separate.
 
-The evidence directory contains frozen source-input manifests, final source hashes, scoped/full patches, validation logs and an archive. Local branch/commit identity is recorded in its manifest. The source checkout retains its original deployment topology; no deployment linkage was changed.
+The separately persisted release handoff includes the frozen visual source manifest, complete file hashes, exact patch and source-only archive. Recovery tools, private backups and database results are excluded from the product tree. Deployment topology is unchanged.
 
 ## Overlap resolution
 
@@ -19,7 +19,7 @@ The evidence directory contains frozen source-input manifests, final source hash
 2. Combined both service-worker additions: design stylesheet/logos and the new connected-list runtime.
 3. Rebuilt both named JavaScript bundles from the final standalone sources, retaining auth/newsletter and favorite/venue action changes together.
 4. Regenerated every local JS/CSS cache reference and frontend asset hash with the new release identity. Corrected inherited frontend-only metadata to require the paired backend and migration 016, and to state local/not-deployed status.
-5. Added local DOM/native-API acceptance to the existing guarded native suite, with its web development dependency installation in CI. No CI execution or remote CI pass is claimed.
+5. Added local DOM/native-API acceptance to the existing guarded native suite, with its web development dependency installation in CI. The cbc predecessor passed exact-head CI. This new increment must pass its own exact-head CI after publication.
 
 ## Migration and deployment order
 
@@ -45,3 +45,7 @@ Use Node 24.22.1 and native PostgreSQL 18.3. Install dependencies with `npm ci -
 - Native ingestion, welcome queue and legacy-upgrade suites use separate fresh test databases as documented in the repository and CI. Never substitute a production connection.
 
 `python3 web/frontend-tools/finalize.py` regenerates bundles, release metadata and asset hashes locally; rerun all frontend checks after any runtime change. It never publishes.
+
+## New visual increment
+
+See VISUAL_REFRESH_RELEASE.md for the newly rebuilt visual scope, validation and limits. All backend code and migrations remain byte-identical to cbc78a31. Cache references, bundles, service worker and asset manifest are regenerated together. This candidate does not claim completion of real venue verification, booking/provider capabilities, separate media/storage migration015, physical-device/Safari or live account/email/provider acceptance.

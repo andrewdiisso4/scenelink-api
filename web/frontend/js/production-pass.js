@@ -384,6 +384,8 @@ window.__prodPassLoaded = true;
        PERSISTENT AUTH REFLECTOR - catches late-loading navs
        ========================================================== */
     function persistentAuthReflect() {
+        // Unified routes use the session-aware canonical navigation gate.
+        if (document.documentElement.dataset.slDesign === 'unified') return;
         try {
             var user = JSON.parse(localStorage.getItem('sl_user') || 'null');
             if (!user) return;

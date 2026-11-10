@@ -1,5 +1,7 @@
 # Coordinated release checklist
 
+Current local candidate: connected-20261110-1. The published cbc78a31 predecessor passed CI; this newly rebuilt increment requires its own publication and exact-head CI. Historical provider, deployment, runtime, database and backup observations below must be rechecked and are not current release evidence.
+
 This review branch is not permission to skip verification. No production migrations or deployments were performed to prepare it.
 
 ## Verified release context
@@ -16,6 +18,10 @@ This review branch is not permission to skip verification. No production migrati
 Cache release `connected-20261108-6` integrates the reviewed notification/session and plan-edit/recovery patches. See `SOCIAL_REFINEMENTS_RELEASE.md` for provenance and acceptance scope. All seven reviewed source/test identities remain unchanged by cache finalization. The added release checks cover bundle/source and asset-manifest parity, service-worker cache rollover and the isolated static build entrypoint.
 
 Local Chromium acceptance used synthetic account bootstrap and a disposable local API/database. It does not complete production credential entry, verification/recovery delivery, physical-phone/Safari, backup restoration or production migration checks. Verify the exact final published commit and its CI rather than treating local acceptance as production readiness.
+
+## Existing-service target
+
+Target only the verified existing services. Legacy render.yaml describes historical free/PostgreSQL15 resource creation and does not describe the existing PostgreSQL18 service configuration. Do not apply that blueprint or create/replace resources from it. Reconfirm current service identities, database targets and Node runtime before cutover; the candidate pins24.22.1.
 
 ## Before main or deployment
 
@@ -38,3 +44,7 @@ Migrations commit independently before server readiness. Failed startup can leav
 ## Post-release
 
 Confirm deployed commit/version, health, HTTPS, cache updates, API proxy, verification/recovery, two-account social/message/plan/RSVP flows and provider failure behavior. Keep unavailable booking capabilities honest. Continue physical-device, accessibility, licensed-data and App Store preparation as separate milestones.
+
+## Old-tab transition
+
+Pre-refresh legacy tabs can show optimistic local list-deletion success until a full reload, although the paired API rejects obsolete requests with428 and preserves server state. Require the matching frontend to be fully loaded before assessing mutations. This remains a transition limitation, not a passed acceptance gate. Verify production cache/SW/full-reload behavior explicitly.

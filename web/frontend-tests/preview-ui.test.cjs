@@ -40,7 +40,7 @@ test('shared desktop header separates links from search/account and preserves na
  for(const file of ['profile.html','messages.html','social-feed.html','my-lists.html'])assert(fs.readFileSync(path.join(root,file),'utf8').includes('css/sl-phase8f-polish.css'));
 });
 test('UI hotfix uses a new asset/cache version and its build helper cannot restore the stale version',()=>{
- const tag='connected-20261109-2';
+ const tag='connected-20261110-1';
  const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
  assert(sw.includes("const VERSION = 'sl-"+tag+"'"));
  assert(sw.includes('c.match(req)')); // Query-string version remains part of the cache key.

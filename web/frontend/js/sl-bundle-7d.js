@@ -1455,6 +1455,8 @@ if (typeof module !== 'undefined' && module.exports) {
   ];
 
   var DROPDOWN_ANCHORS = [
+    '.sl-phase8-actions',
+    '.sl-explore-header',
     '.nav-right',
     '.sl-header-cta',
     '.header-cta',
@@ -1596,7 +1598,7 @@ if (typeof module !== 'undefined' && module.exports) {
       '</div>'
     ].join('');
 
-    if (anchor.classList && (anchor.classList.contains('nav-right') || anchor.classList.contains('sl-header-cta'))) {
+    if (anchor.classList && (anchor.classList.contains('nav-right') || anchor.classList.contains('sl-header-cta') || anchor.classList.contains('sl-phase8-actions') || anchor.classList.contains('sl-explore-header'))) {
       anchor.appendChild(wrap);
     } else {
       if (anchor.parentNode && anchor.parentNode.insertBefore) {

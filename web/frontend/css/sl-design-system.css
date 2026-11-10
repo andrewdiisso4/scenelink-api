@@ -387,3 +387,68 @@ html[data-sl-design] body .sl-icon-svg::after { content: none !important; displa
 html[data-sl-design] body .sl-icon-svg { font-family: inherit !important; }
 html[data-sl-design] body .sl-icon-svg > svg { display: block; width: 1em; height: 1em; flex-shrink: 0; fill: currentColor; }
 html[data-sl-design] body .sl-newsletter-arrow { width: 16px; height: 16px; vertical-align: -.15em; margin-left: 8px; }
+
+/* November visual refresh: restrained surfaces, consistent line controls and
+   compact navigation. Provider badges retain their existing clearance lane. */
+html[data-sl-design] body.sl-phase8-home { padding-top: 0 !important; }
+html[data-sl-design] body .sl-phase8-nav-inner { gap: 14px; min-width: 0; }
+html[data-sl-design] body .sl-phase8-actions { gap: 8px; flex: 0 0 auto; }
+html[data-sl-design] body .sl-phase8-hero {
+  min-height: 640px;
+  background-image: linear-gradient(100deg, rgb(10 14 17 / 88%), rgb(10 14 17 / 62%)), url('../images/scenelinkbghero.webp');
+}
+html[data-sl-design] body .sl-phase8-hero::after { background: linear-gradient(transparent, var(--sl-ui-bg)); }
+html[data-sl-design] body .sl-phase8-hero-grid { gap: 48px; padding: 72px 0 90px; }
+html[data-sl-design] body .sl-phase8-h1 { font-size: clamp(2.8rem, 5vw, 4.6rem); font-weight: 700; letter-spacing: -.055em; line-height: 1.06; }
+html[data-sl-design] body .sl-phase8-subhead { color: var(--sl-ui-muted); font-size: 17px; line-height: 1.65; max-width: 580px; }
+html[data-sl-design] body :is(.sl-phase8-kicker, .sl-phase8-section-eyebrow) { font-weight: 600; letter-spacing: .16em; }
+html[data-sl-design] body .sl-phase8-proof { gap: 16px; margin-top: 32px; }
+html[data-sl-design] body .sl-phase8-proof-item { padding: 16px 0; background: none; border: 0; border-top: 1px solid var(--sl-ui-border); border-radius: 0; backdrop-filter: none; }
+html[data-sl-design] body .sl-phase8-proof-num { color: var(--sl-ui-text); font-size: 20px; font-weight: 600; }
+html[data-sl-design] body .sl-phase8-proof-label { font-size: 10px; font-weight: 500; letter-spacing: .08em; }
+html[data-sl-design] body .sl-phase8-concierge-card { background: rgb(25 30 35 / 94%); border: 1px solid var(--sl-ui-border); border-radius: 20px; padding: 28px; box-shadow: 0 16px 40px rgb(0 0 0 / 18%); }
+html[data-sl-design] body .sl-phase8-concierge-card h2 { font-weight: 600; font-size: 25px; letter-spacing: -.03em; }
+html[data-sl-design] body .sl-phase8-concierge-card p { color: var(--sl-ui-muted); line-height: 1.6; }
+html[data-sl-design] body .sl-phase8-prompt { padding: 14px; border-radius: 12px; background: var(--sl-ui-bg); font-weight: 500; }
+html[data-sl-design] body .sl-phase8-prompt > i { color: var(--sl-ui-gold); flex: 0 0 auto; }
+html[data-sl-design] body :is(.sl-phase8-venue-card, .sl-phase8-feature-card, .sl-phase8-category-card) { border: 1px solid var(--sl-ui-divider); box-shadow: none; border-radius: 16px; }
+html[data-sl-design] body :is(.sl-phase8-venue-card, .sl-phase8-feature-card, .sl-phase8-category-card):hover { transform: none; border-color: var(--sl-ui-border); }
+html[data-sl-design] body .sl-phase8-venue-card::before { animation: none !important; }
+html[data-sl-design] body .sl-icon-svg > svg.sl-line-icon { width: 1.15em; height: 1.15em; fill: none; pointer-events: none; }
+html[data-sl-design] body #sl-user-dropdown { margin-left: 0; flex: 0 0 auto; }
+html[data-sl-design] body #sl-user-dropdown .sl-ud-trigger { min-height: 44px; padding: 6px 10px 6px 6px; border-radius: 12px; background: var(--sl-ui-surface); }
+html[data-sl-design] body #sl-user-dropdown .sl-ud-name { max-width: 105px; }
+html[data-sl-design] body #sl-user-dropdown .sl-ud-caret { font-size: 0; width: 7px; height: 7px; margin: -4px 2px 0 4px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
+html[data-sl-design] body #sl-user-dropdown .sl-ud-menu { border-color: var(--sl-ui-border); background: var(--sl-ui-surface); box-shadow: var(--sl-ui-shadow); }
+html[data-sl-design] body .sl-explore-header > #sl-user-dropdown { order: 8; }
+html[data-sl-design] body .sl-explore-header > .sl-mobile-menu-toggle { order: 9; }
+/* Redundant shortcuts remain available in the canonical account menu. */
+html[data-sl-design] body .sl-phase8-nav:has(#sl-user-dropdown) #slHdrSocial :is(a[href*="messages"], a[href*="profile"]) { display: none !important; }
+@keyframes sl-quiet-enter { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-sl-design] body .sl-phase8-hero-grid > * { animation: sl-quiet-enter 220ms ease-out both; }
+  html[data-sl-design] body .sl-phase8-hero-grid > :last-child { animation-delay: 50ms; }
+  html[data-sl-design] body .sl-phase8-prompt .sl-line-icon { transition: transform 180ms ease; }
+  html[data-sl-design] body .sl-phase8-prompt:hover .sl-line-icon { transform: translateX(2px); }
+}
+@media (min-width: 761px) and (max-width: 1350px) {
+  html[data-sl-design] body .sl-phase8-nav :is(.sl-universal-search, .sl-search-ai-host, .sl-header-search, .sl-us-search-wrap) { display: none !important; }
+  html[data-sl-design] body .sl-phase8-links a { padding-inline: 8px; }
+}
+@media (max-width: 1024px) {
+  html[data-sl-design] body .sl-phase8-hero-grid { grid-template-columns: minmax(0, 1fr); gap: 32px; padding: 52px 0 80px; }
+  html[data-sl-design] body .sl-phase8-prompt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 860px) {
+  html[data-sl-design] body #sl-user-dropdown .sl-ud-name { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  html[data-sl-design] body #sl-user-dropdown .sl-ud-caret { display: none; }
+  html[data-sl-design] body #sl-user-dropdown .sl-ud-trigger { width: 44px; padding: 6px; justify-content: center; }
+}
+@media (max-width: 600px) {
+  html[data-sl-design] body .sl-phase8-hero { min-height: 0; background-image: linear-gradient(rgb(10 14 17 / 74%), rgb(10 14 17 / 90%)), url('../images/scenelinkbghero-mobile.webp'); }
+  html[data-sl-design] body .sl-phase8-hero-grid { padding-top: 40px; gap: 28px; }
+  html[data-sl-design] body .sl-phase8-h1 { font-size: clamp(2.6rem, 11vw, 3.4rem); }
+  html[data-sl-design] body .sl-phase8-concierge-card { padding: 22px 18px; }
+  html[data-sl-design] body .sl-phase8-prompt-grid { grid-template-columns: minmax(0, 1fr); }
+  html[data-sl-design] body .sl-phase8-proof { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+}

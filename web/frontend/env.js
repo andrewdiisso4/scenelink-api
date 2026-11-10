@@ -1,12 +1,9 @@
-/* Auto-generated at deploy time. Do not edit. */
-/* In production this file is regenerated at deploy time from CI env vars.
-   Empty values = feature disabled (no monitoring/analytics) — this is the
-   safe default. Set sentryDsn / gaId to real values to enable. */
+/* Auto-generated at build time. Do not edit. */
 window.__SL_ENV = {
   "sentryDsn": "",
   "env": "production",
   "gaId": "",
   "tracesSampleRate": 0.1,
-  "release": "scenelink-web@phase8f",
-  "buildTime": ""
+  "release": "connected-20261110-1",
+  "buildTime": "2026-11-10T00:14:59.360Z"
 };

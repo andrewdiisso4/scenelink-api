@@ -1,0 +1,22 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {JSDOM}=require('jsdom');
+const root=path.resolve(__dirname,'../frontend');
+const read=f=>fs.readFileSync(path.join(root,f),'utf8');
+const tick=()=>new Promise(r=>setTimeout(r,10));
+test('line control icons preserve action handlers, labels and brand vectors',async()=>{
+ const d=new JSDOM('<button aria-label="Next"><i class="fas fa-arrow-right"></i></button><i class="fab fa-instagram"></i>',{url:'https://scenelink.test/',runScripts:'outside-only'}),w=d.window;
+ try{w.setTimeout=()=>1;let clicked=0;const button=w.document.querySelector('button');button.onclick=()=>clicked++;w.eval(read('js/sl-phase8d-recovery.js'));w.document.dispatchEvent(new w.Event('DOMContentLoaded'));assert.equal(button.querySelector('svg').getAttribute('viewBox'),'0 0 24 24');assert.equal(button.querySelector('i').getAttribute('aria-hidden'),'true');assert.equal(button.getAttribute('aria-label'),'Next');button.click();assert.equal(clicked,1);assert(w.document.querySelector('.fa-instagram svg'));assert(!w.document.querySelector('.fa-instagram .sl-line-icon'));const late=w.document.createElement('i');late.className='fas fa-chevron-down';button.appendChild(late);await tick();assert.equal(late.querySelectorAll('svg.sl-line-icon').length,1);await tick();assert.equal(late.querySelectorAll('svg').length,1);}finally{w.close();}
+});
+test('icon observer disconnects for pagehide and resumes after pageshow',async()=>{
+ const d=new JSDOM('<body></body>',{url:'https://scenelink.test/',runScripts:'outside-only'}),w=d.window;
+ try{w.setTimeout=()=>1;w.eval(read('js/sl-phase8d-recovery.js'));w.document.dispatchEvent(new w.Event('DOMContentLoaded'));await tick();w.dispatchEvent(new w.Event('pagehide'));const late=w.document.createElement('i');late.className='fas fa-arrow-left';w.document.body.appendChild(late);await tick();assert(!late.querySelector('svg'));w.dispatchEvent(new w.Event('pageshow'));await tick();assert(late.querySelector('.sl-line-icon'));}finally{w.close();}
+});
+for(const anchor of ['sl-phase8-actions','sl-explore-header'])test('canonical account menu stays inside '+anchor+' and survives legacy callbacks',async()=>{
+ const markup=anchor==='sl-phase8-actions'?'<header><div class="sl-phase8-actions"><button id="headerSignupBtn" class="sl-auth-trigger btn-header-primary">Log in / Sign up</button></div></header>':'<header class="sl-explore-header"><button id="headerSignupBtn" class="sl-auth-trigger btn-header-primary">Log in / Sign up</button></header>';
+ const d=new JSDOM('<html data-sl-design="unified"><body>'+markup+'</body></html>',{url:'https://scenelink.test/explore.html',runScripts:'outside-only'}),w=d.window,callbacks=[];
+ try{w.setTimeout=fn=>{callbacks.push(fn);return callbacks.length;};w.setInterval=()=>1;w.SL_AVATAR={local:()=>'/fixture-avatar.svg'};w.localStorage.setItem('sl_jwt_token','fictional-session');w.localStorage.setItem('sl_user',JSON.stringify({id:'fixture',display_name:'Fictional User'}));w.eval(read('js/sl-nav-gate.js'));w.eval(read('js/production-pass.js'));w.document.dispatchEvent(new w.Event('DOMContentLoaded'));callbacks.splice(0).forEach(fn=>fn());assert.equal(w.document.querySelectorAll('#sl-user-dropdown').length,1);assert(w.document.querySelector('.'+anchor+' > #sl-user-dropdown'));assert.equal(w.document.querySelectorAll('.sl-user-chip-prod').length,0);assert(w.document.getElementById('headerSignupBtn').classList.contains('sl-auth-trigger'));const trigger=w.document.querySelector('.sl-ud-trigger');trigger.click();assert.equal(trigger.getAttribute('aria-expanded'),'true');w.document.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape'}));assert.equal(trigger.getAttribute('aria-expanded'),'false');}finally{w.close();}
+});
+test('refresh respects reduced motion and provider badge clearance',()=>{
+ const css=read('css/sl-design-system.css'),refresh=css.split('/* November visual refresh:')[1];assert(refresh);assert.match(refresh,/body\.sl-phase8-home \{ padding-top: 0 !important/);assert.match(refresh,/prefers-reduced-motion: no-preference/);assert.match(css,/prefers-reduced-motion: reduce/);assert.match(refresh,/sl-phase8-venue-card::before \{ animation: none !important/);assert.match(refresh,/svg\.sl-line-icon[^}]+fill: none/);assert(!/nl-badge|netlify|iframe/.test(refresh));assert.match(read('css/sl-phase8f-polish.css'),/nl-badge|netlify|badge/i);
+});
