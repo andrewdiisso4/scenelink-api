@@ -131,6 +131,7 @@
       emit();
       return u;
     }).catch(function(err){
+      if(readToken() !== refreshingToken){ state.loading=false; return null; }
       state.loading = false;
       if (err.status === 401 || err.status === 403) {
         // token dead → clean logout

@@ -3,7 +3,7 @@
  * on profile.html. Required for App Store compliance (Guideline 5.1.1(v)).
  *
  * The button opens a confirmation modal that requires password re-entry
- * (or skips password for OAuth accounts).
+ * (including OAuth accounts).
  */
 (function () {
   if (window.__SL_ACCOUNT_SETTINGS__) return;
@@ -38,9 +38,9 @@
       '.sl-acct-btn.neutral{color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.2);}',
       '.sl-acct-btn.neutral:hover{color:#fff;border-color:#D4AF37;}',
       '.sl-acct-ov{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;',
-      ' display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);}',
+      ' display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;overflow:auto;backdrop-filter:blur(6px);}',
       '.sl-acct-m{background:#111;border:1px solid rgba(229,57,53,0.3);border-radius:16px;',
-      ' width:100%;max-width:460px;padding:28px;color:#fff;',
+      ' width:100%;max-width:460px;max-height:calc(100dvh - 40px);overflow:auto;box-sizing:border-box;padding:28px;color:#fff;',
       ' font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}',
       '.sl-acct-m h2{margin:0 0 10px 0;font-size:20px;color:#ff8a80;}',
       '.sl-acct-m p{margin:0 0 16px 0;color:rgba(255,255,255,0.75);font-size:14px;line-height:1.5;}',
@@ -68,7 +68,31 @@
     document.head.appendChild(s);
   }
 
-  function openDeleteModal(isOAuth) {
+  var closeDialog = null, pendingOwners = new Set();
+  function sessionKey(){
+    try { return localStorage.getItem('sl_jwt_token') || ''; } catch (_) { return ''; }
+  }
+
+  var observedSession = sessionKey(), sessionGeneration = 0;
+
+  function updateDeleteButton(){
+    var button = document.getElementById('slAcctDeleteBtn');
+    if (!button) return;
+    button.disabled = pendingOwners.has(sessionKey());
+    button.textContent = button.disabled ? 'Deletion request pending…' : 'Delete my account';
+  }
+  function openDeleteModal() {
+    var owner = sessionKey();
+    if (!owner || pendingOwners.has(owner)) return;
+    if (closeDialog) closeDialog();
+    var returnFocus = document.activeElement;
+    var oldOverflow = document.body.style.overflow;
+    var closed = false, generation = sessionGeneration;
+    function ownsSession(){ return sessionKey() === owner && sessionGeneration === generation; }
+    function ownsDialog(){ return !closed && ownsSession(); }
+    var status = document.getElementById('slAcctStatus');
+    if (status) status.textContent = '';
+
     injectStyle();
     var prev = document.getElementById('slAcctDelOverlay');
     if (prev) prev.remove();
@@ -76,7 +100,7 @@
     var pwField =
       '<p style="font-size:12px;color:rgba(255,255,255,0.6);">Password confirmation is required, including accounts created with Google or Apple. If you have not set a SceneLink password, use email recovery first, then sign in again.</p>' +
       '<button type="button" id="slAcctRecover" style="background:none;border:none;color:#D4AF37;text-decoration:underline;cursor:pointer;margin-bottom:12px">Set or recover my password</button>' +
-      '<label style="font-size:12px;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px;">Re-enter password</label>' +
+      '<label for="slAcctPw" style="font-size:12px;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px;">Re-enter password</label>' +
       '<input type="password" id="slAcctPw" placeholder="Your password" autocomplete="current-password">';
 
     var ov = document.createElement('div');
@@ -93,11 +117,11 @@
           '<li>Your notifications and push-token registrations</li>' +
         '</ul>' +
         '<p style="font-size:12px;color:rgba(255,255,255,0.5);">Type <b style="color:#ff8a80;">DELETE</b> to confirm.</p>' +
-        '<input type="text" id="slAcctConfirm" placeholder="Type DELETE to confirm" autocomplete="off">' +
+        '<input type="text" aria-label="Type DELETE to confirm account deletion" id="slAcctConfirm" placeholder="Type DELETE to confirm" autocomplete="off">' +
         pwField +
-        '<label style="font-size:12px;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px;margin-top:6px;">Reason (optional — helps us improve)</label>' +
+        '<label for="slAcctReason" style="font-size:12px;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px;margin-top:6px;">Reason (optional — helps us improve)</label>' +
         '<textarea id="slAcctReason" maxlength="500" placeholder="Why are you leaving?"></textarea>' +
-        '<div id="slAcctErr" class="sl-acct-err" style="display:none;"></div>' +
+        '<div id="slAcctErr" role="alert" class="sl-acct-err" style="display:none;"></div>' +
         '<div class="sl-acct-actions">' +
           '<button class="cancel" id="slAcctCancel">Keep my account</button>' +
           '<button class="confirm" id="slAcctConfirmBtn" disabled>Delete permanently</button>' +
@@ -107,11 +131,25 @@
     document.body.style.overflow = 'hidden';
 
     function close() {
+      if (closed) return;
+      closed = true;
+      ov.querySelectorAll("input, textarea").forEach(function(input){ input.value = ""; });
+      closeDialog = null;
       try { ov.remove(); } catch(_){}
-      document.body.style.overflow = '';
+      document.body.style.overflow = oldOverflow;
+      if (returnFocus && returnFocus.isConnected && !returnFocus.disabled) returnFocus.focus();
       document.removeEventListener('keydown', onKey);
     }
-    function onKey(e){ if(e.key==='Escape') close(); }
+    closeDialog = close;
+    function onKey(e){
+      if(e.key === 'Escape') { e.preventDefault(); close(); return; }
+      if(e.key !== 'Tab') return;
+      var items = Array.from(ov.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), a[href]'));
+      var first = items[0], last = items[items.length - 1];
+      if (!first) return;
+      if (e.shiftKey && (document.activeElement === first || !ov.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (document.activeElement === last || !ov.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+    }
     document.addEventListener('keydown', onKey);
     document.getElementById('slAcctRecover').addEventListener('click', function(){
       close();
@@ -128,7 +166,7 @@
     function checkReady() {
       var typed = (confirmInput.value || '').trim() === 'DELETE';
       var pwOk = !!(pwInput && pwInput.value.length >= 1);
-      confirmBtn.disabled = !(typed && pwOk);
+      confirmBtn.disabled = deleting || !(typed && pwOk);
     }
     confirmInput.addEventListener('input', checkReady);
     if (pwInput) pwInput.addEventListener('input', checkReady);
@@ -136,7 +174,10 @@
     var deleting = false;
     confirmBtn.addEventListener('click', function () {
       if(deleting || confirmBtn.disabled) return;
+      if (!ownsDialog()) { close(); return; }
       deleting = true;
+      pendingOwners.add(owner);
+      updateDeleteButton();
       var err = document.getElementById('slAcctErr');
       err.style.display = 'none';
       confirmBtn.disabled = true;
@@ -144,19 +185,20 @@
       var pw = pwInput ? pwInput.value : '';
       var reason = (document.getElementById('slAcctReason').value || '').trim().slice(0, 500);
 
-      window.SLApi.deleteAccount(pw, reason).then(function (result) {
+      var request;
+      try { request = window.SLApi.deleteAccount(pw, reason); } catch(e) { request = Promise.reject(e); }
+      pwInput.value = '';
+      Promise.resolve(request).then(function (result) {
+        if (!ownsSession()) return;
         if(!result || result.deleted !== true) throw new Error('Deletion was not confirmed. Please try again.');
-        document.removeEventListener('keydown', onKey);
-        // Clear all local state
-        try { localStorage.removeItem('sl_jwt_token'); } catch(_){}
-        try { localStorage.removeItem('sl_user'); localStorage.removeItem('sl_user_cache'); } catch(_){}
-        try { sessionStorage.clear(); } catch(_){}
-
-
-        // Unregister push tokens if we're in a Capacitor app
+        close();
+        // Preserve native push cleanup while this is still the deleted session.
         if (window.Capacitor && window.SLPush && window.SLPush.unregister) {
-          try { window.SLPush.unregister(); } catch(_){}
+          try { Promise.resolve(window.SLPush.unregister()).catch(function(){}); } catch(_){}
         }
+        // End the deleted session through the shared auth lifecycle. The API already
+        // revoked its sessions; logout also clears caches and broadcasts locally.
+        if (window.SLAuth && window.SLAuth.logout) window.SLAuth.logout({reload:false});
 
         // Show a full-screen confirmation then redirect
         document.body.innerHTML =
@@ -173,8 +215,14 @@
               'padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600;">Return home</a>' +
             '</div>' +
           '</div>';
-        setTimeout(function () { location.href = '/'; }, 3000);
+        setTimeout(function () { if (!sessionKey()) location.href = '/'; }, 3000);
       }).catch(function (e) {
+        if (!ownsSession()) return;
+        if (closed) {
+          var status = document.getElementById('slAcctStatus');
+          if (status) status.textContent = 'Account deletion was not confirmed. Please try again.';
+          return;
+        }
         deleting = false;
         // Phase 6B: if the backend deletion endpoint isn't live yet,
         // pivot to the honest "contact us to delete" path instead of
@@ -198,25 +246,28 @@
               '<h2 id="slAcctDelTitle">Email us to delete</h2>' +
               '<p>Self-service deletion is currently unavailable. Your account has not been deleted. You can contact support to request help.</p>' +
               '<p style="font-size:12px;color:rgba(255,255,255,0.6);">Your email: <b>' +
-                ((window.SLApi && window.SLApi.getCurrentUser && (window.SLApi.getCurrentUser()||{}).email) || 'your account email') +
+                esc((window.SLApi && window.SLApi.getCurrentUser && (window.SLApi.getCurrentUser()||{}).email) || 'your account email') +
               '</b></p>' +
               '<div class="sl-acct-actions" style="margin-top:18px;">' +
-                '<button class="cancel" onclick="document.getElementById(\'slAcctDelOverlay\').remove();document.body.style.overflow=\'\';">Close</button>' +
+                '<button class="cancel" id="slAcctFallbackClose">Close</button>' +
                 '<a class="confirm" style="text-align:center;line-height:1.3;text-decoration:none;display:flex;align-items:center;justify-content:center;" ' +
                 'href="mailto:info@scenelink.app?subject=' + subject + '&body=' + body + '">Email info@scenelink.app</a>' +
               '</div>';
+            modal.querySelector('#slAcctFallbackClose').addEventListener('click', close);
+            modal.querySelector('#slAcctFallbackClose').focus();
           }
           return;
         }
         err.textContent = msg || 'Could not delete account';
         err.style.display = 'block';
-        confirmBtn.disabled = false;
+        checkReady();
         confirmBtn.textContent = 'Delete permanently';
-      });
+        pwInput.focus();
+      }).finally(function(){ pendingOwners.delete(owner); updateDeleteButton(); });
     });
 
     // Autofocus
-    setTimeout(function () { confirmInput.focus(); }, 100);
+    confirmInput.focus();
   }
 
   function injectSection() {
@@ -245,25 +296,22 @@
         '<h3>Danger zone</h3>' +
         '<p>Permanently delete your account and all associated data. This cannot be undone.</p>' +
         '<button class="sl-acct-btn" id="slAcctDeleteBtn">Delete my account</button>' +
+        '<p id="slAcctStatus" role="status" aria-live="polite"></p>' +
       '</div>';
     main.appendChild(section);
+    updateDeleteButton();
 
     document.getElementById('slAcctLogout').addEventListener('click', function () {
       if (!confirm('Sign out of SceneLink?')) return;
-      try { localStorage.removeItem('sl_jwt_token'); } catch(_){}
-      try { localStorage.removeItem('sl_user'); localStorage.removeItem('sl_user_cache'); } catch(_){}
-      location.href = '/';
+      if (window.SLAuth && window.SLAuth.logout) {
+        window.SLAuth.logout({reload:false}).then(function(){
+          if (!sessionKey()) location.href = '/';
+        });
+      }
     });
 
     document.getElementById('slAcctDeleteBtn').addEventListener('click', function () {
-      // Determine if OAuth by checking cached user, then fall back to /me
-      function go(user) {
-        var isOAuth = !!(user && user.oauth_provider);
-        openDeleteModal(isOAuth);
-      }
-      if (window.SL_USER) return go(window.SL_USER);
-      window.SLApi.me().then(function (r) { go(r && r.user); })
-        .catch(function () { go(false); });
+      openDeleteModal();
     });
   }
 
@@ -272,5 +320,18 @@
   } else {
     injectSection();
   }
-  window.addEventListener('sl-auth-ready', injectSection);
+  function refreshAccount(){
+    var current = sessionKey();
+    if (current !== observedSession) { sessionGeneration++; observedSession = current; }
+    if (closeDialog) closeDialog();
+    var section = document.getElementById('slAcctSettings');
+    if (section) section.remove();
+    injectSection();
+  }
+  window.addEventListener('sl:explicit-modal', function(){ if (closeDialog) closeDialog(); });
+  window.addEventListener('sl-auth-ready', refreshAccount);
+  window.addEventListener('sl-auth-changed', refreshAccount);
+  window.addEventListener('storage', function(e){
+    if (!e.key || e.key === 'sl_jwt_token') refreshAccount();
+  });
 })();

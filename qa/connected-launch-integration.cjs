@@ -23,18 +23,21 @@ const req=createRequire(path.join(root,'package.json'));
 let pool,server;const checks=[];
 async function main(){
  pool=req('./src/config/database');const existing=await pool.query("SELECT count(*)::int n FROM information_schema.tables WHERE table_schema='public'");assert.equal(existing.rows[0].n,0,'REFUSED: public schema must be empty; no tables are dropped by this harness');
- await pool.query(fs.readFileSync(path.join(root,'src/config/schema.sql'),'utf8'));
- const migrations=[...['migrations','src/migrations'].flatMap(d=>fs.readdirSync(path.join(root,d)).filter(f=>f.endsWith('.sql')).map(f=>path.join(root,d,f)))].sort((a,b)=>path.basename(a).localeCompare(path.basename(b))||a.localeCompare(b));
- for(const file of migrations)await pool.query(fs.readFileSync(file,'utf8'));
+ // Use the same default initialization as normal startup, not an all-files migration shortcut.
+ // This detects missing release-migration allowlist entries before deployment.
+ delete process.env.RUN_ALL_SQL_MIGRATIONS;
+ const app=req('./src/server');await app.locals.initializeDatabase();
+ assert.equal((await pool.query("SELECT count(*)::int n FROM launch_schema_versions WHERE version='private-list-invitations-2026-11-09'")).rows[0].n,1,'Default startup must apply migration016 without opt-in');
  // Repeating migration 007 must not reset privacy or duplicate schema objects.
  await pool.query(fs.readFileSync(path.join(root,'migrations/007_launch_social_integrity.sql'),'utf8'));
  await pool.query(fs.readFileSync(path.join(root,'migrations/008_connected_decision_rooms.sql'),'utf8'));
  await pool.query(fs.readFileSync(path.join(root,'migrations/009_launch_account_compatibility.sql'),'utf8'));
- const app=req('./src/server');await req('./src/routes/business').initialize();server=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s));});const base='http://127.0.0.1:'+server.address().port+'/api';
+ server=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s));});const base='http://127.0.0.1:'+server.address().port+'/api';
  async function api(method,route,body,token,status=200){const r=await fetch(base+route,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});const data=await r.json();const safe=(k,v)=>/token|password|secret/i.test(k)?'[REDACTED]':v;assert.equal(r.status,status,method+' '+route+' returned '+r.status+': '+JSON.stringify(data,safe));return data;}
  async function check(name,fn){await fn();checks.push({name,result:'pass'});console.log('PASS',name);}
  let a,b,c,secondA,post,conversation,message;
  const password='Local integration password 123';const venue=crypto.randomUUID();
+ await check('default startup applies private-list migration016 without opt-in',async()=>{assert.equal(process.env.RUN_ALL_SQL_MIGRATIONS,undefined);assert.equal((await pool.query("SELECT count(*)::int n FROM launch_schema_versions WHERE version='private-list-invitations-2026-11-09'")).rows[0].n,1);});
  await check('real schema and route contract',async()=>assert.equal((await api('GET','/launch/capabilities')).contract,'social-search-2026-09-09'));
  await check('signup and independent real JWT sessions',async()=>{
   a=await api('POST','/auth/signup',{email:'alex@example.invalid',username:'alex_test',display_name:'Alex Test',password},null,201);
@@ -345,7 +348,7 @@ async function main(){
  });
  await check('favorites/lists are server-persistent and private by default',async()=>{
   await api('POST','/favorites/'+venue,{},a.token);assert.equal((await api('GET','/favorites',undefined,a.token)).favorites.length,1);
-  const list=(await api('POST','/lists',{name:'Local integration saved list'},a.token,201)).list;assert.equal(list.is_public,false);await api('POST','/lists/'+list.id+'/venues',{venue_id:venue},a.token);assert.equal((await api('GET','/lists',undefined,a.token)).lists[0].venues.length,1);await api('GET','/lists/'+list.id,undefined,c.token,403);
+  const list=(await api('POST','/lists',{name:'Local integration saved list'},a.token,201)).list;assert.equal(list.is_public,false);await api('POST','/lists/'+list.id+'/venues',{venue_id:venue},a.token);assert.equal((await api('GET','/lists',undefined,a.token)).lists[0].venues.length,1);await api('GET','/lists/'+list.id,undefined,c.token,404);
  });
  await check('saved catalog remains factual and unavailable venues cannot regain active actions',async()=>{
   const list=(await api('POST','/lists',{name:'Saved unavailable QA'},a.token,201)).list;
@@ -569,6 +572,8 @@ async function main(){
   assert.equal((await pool.query('SELECT count(*)::int n FROM venue_import_batches')).rows[0].n,before);
  });
  await req('./qa/social-messaging-integration.cjs')({api,pool,check,crypto});
+ await req('./qa/list-invitations-integration.cjs')({api,pool,check,crypto,req,root});
+ await req('./qa/integrated-ui-integration.cjs')({api,pool,check,crypto,req,root,base});
  await req('./qa/social-profile-integration.cjs')({api,pool,check,crypto,req,root});
  await req('./qa/event-ingestion-api-integration.cjs')({api,pool,check,crypto,req,root});
  console.log(JSON.stringify({scope:process.env.SCENELINK_TEST_ENGINE==='pglite'?'Real localhost HTTP/JWT/bcrypt and embedded PostgreSQL WASM; not native concurrency proof':'Real localhost HTTP and native PostgreSQL, fictional test data only',checks},null,2));

@@ -82,6 +82,7 @@
         // Wrap input in a relative container if not already
         var parent = inputEl.parentElement;
         if (!parent) return;
+        parent.classList.add('sl-search-ai-host');
         if (getComputedStyle(parent).position === 'static') {
             parent.style.position = 'relative';
         }
@@ -94,12 +95,11 @@
         btn.setAttribute('aria-label', 'Ask SceneLink Concierge');
         btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>';
         btn.style.cssText = [
-            'position:absolute',
-            'right:6px',
-            'top:50%',
-            'transform:translateY(-50%)',
-            'width:34px',
-            'height:34px',
+            'position:static',
+            'flex:0 0 44px',
+            'transform:none',
+            'width:44px',
+            'height:44px',
             'border-radius:10px',
             'border:none',
             'cursor:pointer',
@@ -113,11 +113,11 @@
             'transition:transform .15s ease,box-shadow .15s ease'
         ].join(';');
         btn.onmouseenter = function () {
-            this.style.transform = 'translateY(-50%) scale(1.08)';
+            this.style.transform = 'none';
             this.style.boxShadow = '0 6px 18px rgba(212,175,55,0.55)';
         };
         btn.onmouseleave = function () {
-            this.style.transform = 'translateY(-50%) scale(1)';
+            this.style.transform = 'none';
             this.style.boxShadow = '0 4px 12px rgba(212,175,55,0.35)';
         };
         btn.addEventListener('click', function (e) {
@@ -141,11 +141,8 @@
             }
         });
 
-        // Pad input so text doesn't run under the button
-        try {
-            var currentPadRight = parseInt(getComputedStyle(inputEl).paddingRight || '0', 10);
-            if (currentPadRight < 50) inputEl.style.paddingRight = '50px';
-        } catch (_) {}
+        // The action is in normal flow; no overlay padding is needed.
+
     }
 
     function showAISuggestion(query, inputEl) {

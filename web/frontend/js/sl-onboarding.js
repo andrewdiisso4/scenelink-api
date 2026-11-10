@@ -200,10 +200,10 @@
             <div class="sl-ob-step ${state.step===0?'active':''}">
                 <div class="sl-ob-hero-emoji">🌆</div>
                 <div class="sl-ob-title">Welcome to SceneLink</div>
-                <div class="sl-ob-sub">Boston's smartest way to discover restaurants, bars, and nightlife — powered by real-time data and AI.</div>
+                <div class="sl-ob-sub">Discover Boston restaurants, bars, and nightlife. Confirm current details with each venue.</div>
                 <ul class="sl-ob-feature-list">
                     <li><i class="fas fa-map-marker-alt"></i> Search the Boston venue directory; confirm details with each venue</li>
-                    <li><i class="fas fa-magic"></i> AI Concierge — ask anything, get real answers</li>
+                    <li><i class="fas fa-magic"></i> Ask AI Concierge for venue ideas.</li>
                     <li><i class="fas fa-users"></i> Plan nights with friends, vote on venues</li>
                     <li><i class="fas fa-heart"></i> Save, list, and track your favorites</li>
                 </ul>

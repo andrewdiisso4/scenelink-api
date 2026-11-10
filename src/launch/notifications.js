@@ -1,9 +1,10 @@
 'use strict';
+const Lists=require('../services/list-membership');
 const H=require('./shared'),M=require('./messages'),P=require('./posts');
 const ROOM_NOTICE=`(n.ref_type IS DISTINCT FROM 'room' OR EXISTS(SELECT 1 FROM launch_rooms rr WHERE rr.id=n.ref_id
   AND (rr.owner_id=$1 OR EXISTS(SELECT 1 FROM launch_room_members rm WHERE rm.room_id=rr.id AND rm.user_id=$1 AND (rm.status='accepted' OR rm.status='pending' AND rm.created_at>NOW()-INTERVAL '7 days')))
   AND EXISTS(SELECT 1 FROM users owner WHERE owner.id=rr.owner_id AND ${H.actorSQL('owner')})))`;
-const VISIBLE=`(n.actor_id IS NULL OR EXISTS(SELECT 1 FROM users u WHERE u.id=n.actor_id AND ${H.actorSQL()})) AND ${ROOM_NOTICE}`;
+const VISIBLE=`(n.actor_id IS NULL OR EXISTS(SELECT 1 FROM users u WHERE u.id=n.actor_id AND ${H.actorSQL()})) AND ${ROOM_NOTICE} AND ${Lists.NOTICE}`;
 async function summary(pool,me){
   const r=await pool.query(`SELECT
     (SELECT count(*)::int FROM friendships f JOIN users u ON u.id=CASE WHEN f.user_a_id=$1 THEN f.user_b_id ELSE f.user_a_id END WHERE (f.user_a_id=$1 OR f.user_b_id=$1) AND f.status='accepted' AND ${H.actorSQL()}) AS friends,
@@ -22,7 +23,7 @@ function install({router,pool,auth,write}) {
     const limit=H.integer(req.query.limit,30,1,100),offset=H.integer(req.query.offset,0,0,10000,'offset');
     const r=await pool.query(`SELECT n.*,u.username AS actor_username,u.display_name AS actor_display_name,u.avatar_url AS actor_avatar_url
       FROM notifications n LEFT JOIN users u ON u.id=n.actor_id WHERE n.user_id=$1 AND ${VISIBLE} ORDER BY n.created_at DESC,n.id DESC LIMIT $2 OFFSET $3`,[req.user.id,limit+1,offset]);
-    res.json({notifications:r.rows.slice(0,limit),has_more:r.rows.length>limit,offset});
+    res.json({notifications:r.rows.slice(0,limit).map(n=>({...n,...(n.ref_type==='list'?{destination:{kind:'list',href:'/my-lists?list='+n.ref_id}}:{})})),has_more:r.rows.length>limit,offset});
   }));
   router.get('/notifications/unread-count',...secured,H.wrap(async(req,res)=>{
     const r=await pool.query(`SELECT count(*)::int AS unread FROM notifications n WHERE n.user_id=$1 AND n.read_at IS NULL AND ${VISIBLE}`,[req.user.id]);res.json(r.rows[0]);

@@ -70,10 +70,11 @@ var venueLoadError = false, venueLoading=false, venueOffset=0, venueTotal=0, ven
 async function loadVenues(callback, append) {
     var seq=++venueGeneration, offset=append?venueOffset:0;
     venueLoadError=false;venueLoading=true;venueMore=false;
-    if(!append){mapViewportEstablished=false;mapViewInteracted=false;venues=[];filtered=[];venueTotal=0;venueOffset=0;renderMarkers();deselectVenue();}
+    if(!append){mapViewportEstablished=false;mapViewInteracted=!!areaSearch.bbox();venues=[];filtered=[];venueTotal=0;venueOffset=0;renderMarkers();deselectVenue();}
     showLoadingState();window.dispatchEvent(new Event('sl-venues-changed'));
     try {
-        var data=await window.SLVenueData.list(Object.assign({mode:'nightlife',limit:100,offset:offset,q:searchQ,type:activeChip},filterState));
+        areaSearch.syncURL(Object.assign({},filterState,{q:searchQ,type:activeChip}));
+        var data=await window.SLVenueData.list(Object.assign({mode:'nightlife',limit:100,offset:offset,bbox:areaSearch.bbox(),q:searchQ,type:activeChip},filterState));
         if(seq!==venueGeneration)return;
         var loaded=data.venues.map(mapApiVenue), seen=new Set(venues.map(v=>v.id));
         venues=venues.concat(loaded.filter(function(v){if(seen.has(v.id))return false;seen.add(v.id);return true;}));
@@ -100,6 +101,13 @@ function renderNightlifePagination(){
 // ═══════════════════ STATE ═══════════════════
 var map, markers=[], filtered=[], activeId=null, mapViewInteracted=false, mapViewportEstablished=false, pendingMapSelection=null;
 var currentView='map', activeChip='all', searchQ='';
+var areaSearch = window.SLDiscoveryArea.create(function(){refreshNightlife();},function(params){
+    searchQ=(params.get('q')||params.get('search')||'').trim().toLowerCase();
+    activeChip=window.SLDiscoveryFilters.type(params.get('type')||params.get('cat'));
+    filterState={vibe:params.get('vibe')||'',neighborhood:params.get('neighborhood')||'',price_level:/^[1-4]$/.test(params.get('price_level'))?params.get('price_level'):''};filterState.cuisine=params.get('cuisine')||'';
+    var input=document.getElementById('slSearchInput'); if(input)input.value=searchQ;
+    syncFilterChips(); refreshNightlife();
+});
 var filterState={cuisine:'',vibe:'',neighborhood:'',price_level:''};
 var catIcons = {
     nightclub:{icon:'fa-bolt', cls:'cat-nightclub'},
@@ -115,6 +123,7 @@ function init(){
     // Leaflet loads asynchronously; initialize exactly once when it is ready.
     if (window.SLDiscoveryMap) window.SLDiscoveryMap.mount(function (readyMap) {
         map = readyMap;
+        areaSearch.mount(map);
         renderMarkers();
         mapViewportEstablished=false;
         syncMapViewport();
@@ -143,12 +152,14 @@ function renderMarkers(){
     markers = [];
 
     filtered.forEach(function(v){
-        if(v.lat==null||v.lng==null)return;
+        if(!validMapPoint(v))return;
         var ci = catIcons[v.cat]||catIcons.bar;
         var pulse = v.trending ? '<div class="sl-pin-pulse"></div>' : '';
         var html = '<div class="sl-pin '+ci.cls+'" data-id="'+slEsc(v.id)+'">'+pulse+'<div class="sl-pin-body"><i class="fas '+ci.icon+'"></i></div></div>';
         var icon = L.divIcon({ html:html, className:'', iconSize:[38,42], iconAnchor:[19,42] });
-        var lm = L.marker([v.lat,v.lng],{icon:icon}).addTo(map);
+        var lm = L.marker([v.lat,v.lng],{icon:icon,keyboard:true,title:v.name,alt:v.name}).addTo(map);
+        var markerElement = lm.getElement && lm.getElement();
+            if(markerElement) { markerElement.setAttribute('aria-label',v.name); markerElement.setAttribute('role','button'); }
         lm.on('click',function(){ selectVenue(v.id); });
         markers.push({leaflet:lm, venue:v});
     });
@@ -335,7 +346,7 @@ function updateCrowdIndex(){
 
 // ═══════════════════ APPLY ALL FILTERS ═══════════════════
 function validMapPoint(v){
-    return v && v.lat != null && v.lng != null && Number.isFinite(Number(v.lat)) && Number.isFinite(Number(v.lng)) && Math.abs(Number(v.lat))<=90 && Math.abs(Number(v.lng))<=180;
+    return v && v.lat != null && v.lng != null && String(v.lat).trim() !== '' && String(v.lng).trim() !== '' && Number.isFinite(Number(v.lat)) && Number.isFinite(Number(v.lng)) && Math.abs(Number(v.lat))<=90 && Math.abs(Number(v.lng))<=180;
 }
 function fitCurrentResults(){
     if(!map || currentView !== 'map') return;
@@ -359,7 +370,7 @@ function syncMapViewport(){
             return;
         }
     }
-    if(!mapViewInteracted && !mapViewportEstablished) fitCurrentResults();
+    if(!areaSearch.bbox() && !mapViewInteracted && !mapViewportEstablished) fitCurrentResults();
 }
 
 function applyAll(){
@@ -440,7 +451,7 @@ function renderList(){
             if(planBtn){ e.stopPropagation(); openPlanNight(v); return; }
             if(e.target.closest('.sl-list-view-btn')){ e.stopPropagation(); openDetail(v.id); return; }
             // A map outage or missing coordinates must not break venue discovery.
-            if(!map || v.lat == null || v.lng == null){ openDetail(v.id); return; }
+            if(!map || !validMapPoint(v)){ openDetail(v.id); return; }
             selectVenue(v.id);
             if(currentView==='list'){
                 currentView='map';

@@ -1,0 +1,454 @@
+/* SceneLink shared visual system. Official assets are displayed without altering
+   their pixels. Keep this stylesheet after route styles. It changes presentation,
+   never data, feature availability, hidden states, consent or provider behavior. */
+html[data-sl-design="unified"] {
+  --sl-ui-bg: #101316;
+  --sl-ui-surface: #191e23;
+  --sl-ui-raised: #222930;
+  --sl-ui-border: #49535e;
+  --sl-ui-divider: #303841;
+  --sl-ui-text: #f5f6f7;
+  --sl-ui-muted: #b9c1ca;
+  --sl-ui-gold: #e3bc54;
+  --sl-ui-gold-hover: #f2d17b;
+  --sl-ui-on-gold: #18150d;
+  --sl-ui-radius: 12px;
+  --sl-ui-focus: #f4d88e;
+  --sl-ui-shadow: 0 18px 60px rgb(0 0 0 / 28%);
+  /* Shared aliases used by the independently integrated search controls. */
+  --sl-surface: var(--sl-ui-surface);
+  --sl-text: var(--sl-ui-text);
+  --sl-border: var(--sl-ui-border);
+  --sl-input-bg: var(--sl-ui-surface);
+  --sl-control-bg: var(--sl-ui-surface);
+  --sl-accent: var(--sl-ui-gold);
+  --sl-text-muted: var(--sl-ui-muted);
+  --gold-primary: var(--sl-ui-gold);
+  --gold: var(--sl-ui-gold);
+  --gold-light: var(--sl-ui-gold-hover);
+  --dark-bg: var(--sl-ui-bg);
+  --dark-card: var(--sl-ui-surface);
+  --text-primary: var(--sl-ui-text);
+  --text-secondary: var(--sl-ui-muted);
+  color-scheme: dark;
+  scroll-padding-top: 88px;
+}
+html[data-sl-design] body {
+  color: var(--sl-ui-text);
+  background-color: var(--sl-ui-bg);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+/* One control family, including controls rendered after page load. Display,
+   visibility and positioning are deliberately left to the feature owner. */
+html[data-sl-design] body :is(button, input, select, textarea, .sl-phase8-btn, .sl-btn-primary, .sl-btn-secondary, .sl-primary, .sl-secondary) {
+  box-sizing: border-box;
+  font-family: inherit !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+html[data-sl-design] body :is(button, .sl-phase8-btn, .sl-btn-primary, .sl-btn-secondary, .sl-primary, .sl-secondary) {
+  min-height: 44px !important;
+  border-radius: var(--sl-ui-radius) !important;
+  border: 1px solid var(--sl-ui-border);
+  background-color: var(--sl-ui-surface);
+  color: var(--sl-ui-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  box-shadow: none;
+  text-shadow: none;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  touch-action: manipulation;
+}
+html[data-sl-design] body :is(button, .sl-phase8-btn, .sl-btn-primary, .sl-btn-secondary, .sl-primary, .sl-secondary):not(:disabled):not([aria-disabled="true"]):hover {
+  border-color: var(--sl-ui-gold);
+  background-color: var(--sl-ui-raised);
+  color: var(--sl-ui-text);
+  transform: none;
+}
+/* Primary actions stay warm gold with dark, accessible text. */
+html[data-sl-design] body :is(.sl-phase8-btn.gold, .sl-primary, .sl-btn-primary, .btn-primary, .btn-header-primary, .sl-header-auth-btn, .sl-map-search-btn, .sl-filter-apply, .sl-auth-submit, .sl-auth-btn-primary, .sf-create-btn, .lists-new-btn, .lists-lo-btn, .clm-create, .tv2-build-night-cta, .tv2-plan-btn-primary, .slsp-primary, .slm-primary, .slcp-primary, .slsa-submit, button[type="submit"]):not(.sl-secondary):not(.sl-btn-secondary) {
+  border: 1px solid var(--sl-ui-gold) !important;
+  background: var(--sl-ui-gold) !important;
+  color: var(--sl-ui-on-gold) !important;
+  box-shadow: none !important;
+  font-weight: 700 !important;
+}
+html[data-sl-design] body :is(.sl-phase8-btn.gold, .sl-primary, .sl-btn-primary, .btn-primary, .btn-header-primary, .sl-header-auth-btn, .sl-map-search-btn, .sl-filter-apply, .sl-auth-submit, .sl-auth-btn-primary, .sf-create-btn, .lists-new-btn, .lists-lo-btn, .clm-create, .tv2-build-night-cta, .tv2-plan-btn-primary, .slsp-primary, .slm-primary, .slcp-primary, .slsa-submit, button[type="submit"]):not(:disabled):not([aria-disabled="true"]):hover {
+  background: var(--sl-ui-gold-hover) !important;
+  border-color: var(--sl-ui-gold-hover) !important;
+  color: var(--sl-ui-on-gold) !important;
+}
+html[data-sl-design] body :is(.sl-phase8-btn.dark, .sl-phase8-btn.ghost, .sl-secondary, .sl-btn-secondary, .slsp-btn, .slm-btn, .tv2-plan-btn-outline) {
+  border: 1px solid var(--sl-ui-border) !important;
+  background: var(--sl-ui-surface) !important;
+  color: var(--sl-ui-text) !important;
+}
+html[data-sl-design] body .slm-button:not(.slm-secondary):not(.slm-text-button) {
+  background: var(--sl-ui-gold) !important;
+  border-color: var(--sl-ui-gold) !important;
+  color: var(--sl-ui-on-gold) !important;
+}
+html[data-sl-design] body :is(.slsp-button, .slm-secondary, .sl-link-button) { border-radius: var(--sl-ui-radius) !important; min-height: 44px !important; }
+/* Inputs and native selects share geometry, text, border and focus treatment. */
+html[data-sl-design] body :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="color"]):not([type="submit"]):not([type="button"]), select, textarea) {
+  min-height: 48px !important;
+  max-width: 100%;
+  min-width: 0;
+  padding: 12px 14px !important;
+  border: 1px solid var(--sl-ui-border) !important;
+  border-radius: var(--sl-ui-radius) !important;
+  background-color: var(--sl-ui-surface) !important;
+  color: var(--sl-ui-text) !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  line-height: 1.5 !important;
+  box-shadow: none !important;
+}
+html[data-sl-design] body :is(input, textarea)::placeholder {
+  color: var(--sl-ui-muted) !important;
+  opacity: 1 !important;
+}
+html[data-sl-design] body textarea { resize: vertical; }
+html[data-sl-design] body select:not([multiple]) {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 44px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' stroke='%23e3bc54' stroke-width='1.8'%3E%3Cpath d='m5 8 5 5 5-5'/%3E%3C/svg%3E") !important;
+  background-position: right 14px center !important;
+  background-size: 20px !important;
+  background-repeat: no-repeat !important;
+}
+html[data-sl-design] body select option { color: var(--sl-ui-text); background: var(--sl-ui-surface); }
+html[data-sl-design] body :is(input[type="checkbox"], input[type="radio"]) { accent-color: var(--sl-ui-gold); width: 20px; height: 20px; vertical-align: middle; }
+/* Do not replace the affordance of destructive actions with a gold CTA. */
+html[data-sl-design] body :is(.danger, .sl-danger, .slsp-danger, .slm-danger, [data-tone="danger"]) {
+  color: #ffb1b1 !important;
+  border-color: #8d4e56 !important;
+  background: #2b1c21 !important;
+}
+html[data-sl-design] body :is(button, input, select, textarea):disabled,
+html[data-sl-design] body [aria-disabled="true"] {
+  opacity: .55 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+html[data-sl-design] body :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--sl-ui-focus) !important;
+  outline-offset: 3px !important;
+  box-shadow: none !important;
+}
+html[data-sl-design] body :is(input, select, textarea):focus {
+  border-color: var(--sl-ui-gold) !important;
+}
+/* Category filters and tabs are secondary controls, with a single selected state. */
+html[data-sl-design] body :is(.sl-chip-btn, .sl-phase8-chip, .tv2-chip, .clm-chip, .sf-tab, .lists-tab, .sl-view-btn, .slsp-tab, .sl-phase8-prompt, .slsa-suggestion) {
+  min-height: 44px !important;
+  padding: 10px 14px !important;
+  border: 1px solid var(--sl-ui-border) !important;
+  background: var(--sl-ui-surface) !important;
+  color: var(--sl-ui-text) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+html[data-sl-design] body :is(.sl-chip-btn, .sl-phase8-chip, .tv2-chip, .clm-chip, .sf-tab, .lists-tab, .sl-view-btn, .slsp-tab).active,
+html[data-sl-design] body :is(button[aria-pressed="true"], [role="tab"][aria-selected="true"]) {
+  border-color: var(--sl-ui-gold) !important;
+  background: #302a1b !important;
+  color: #f3d783 !important;
+}
+html[data-sl-design] body :is(.sl-view-toggle, .tv2-filter-bar) { border-color: var(--sl-ui-divider); }
+html[data-sl-design] body .sl-view-toggle { background: transparent; gap: 4px; padding: 0; }
+html[data-sl-design] body :is(.sl-map-searchbar, .slus-search-row, .slus-box) {
+  min-height: 56px !important;
+  padding: 5px 6px 5px 14px !important;
+  gap: 8px;
+  border: 1px solid var(--sl-ui-border) !important;
+  border-radius: 16px !important;
+  background: var(--sl-ui-surface) !important;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 16%) !important;
+}
+html[data-sl-design] body :is(.sl-map-searchbar, .slus-search-row, .slus-box) input {
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  padding: 8px 4px !important;
+  min-height: 44px !important;
+}
+html[data-sl-design] body .sl-map-searchbar .sl-search-icon { color: var(--sl-ui-muted) !important; flex-shrink: 0; }
+html[data-sl-design] body .sl-map-searchbar button { flex-shrink: 0; }
+html[data-sl-design] body :is(.sl-map-loc-btn, .sl-map-ctrl, .sl-phase8-mobile-menu, .mobile-menu-btn) { min-width: 44px; min-height: 44px; }
+html[data-sl-design] body :is(.tv2-search-wrap, .slus-search-row) { position: relative; }
+html[data-sl-design] body .tv2-search-wrap input { padding-left: 44px !important; }
+html[data-sl-design] body .tv2-search-icon { left: 16px; color: var(--sl-ui-muted); z-index: 1; pointer-events: none; }
+html[data-sl-design] body .slus-ai { min-width: 44px; border-radius: 10px !important; color: var(--sl-ui-gold); padding: 8px 10px; }
+html[data-sl-design] body :is(.slus-meta, .slus-kind) { color: var(--sl-ui-muted); }
+html[data-sl-design] body .sl-auth-brand-logo { width: 88px !important; height: 88px !important; border: 0 !important; background: transparent !important; margin: 0 auto 12px !important; padding: 0 !important; }
+html[data-sl-design] body .sl-auth-official-logo { width: 88px; height: 88px; border-radius: 18px; }
+html[data-sl-design] body .sl-auth-tabs { gap: 8px; padding: 4px; border: 1px solid var(--sl-ui-divider); border-radius: 16px; background: var(--sl-ui-surface); }
+html[data-sl-design] body .sl-auth-tab { border: 1px solid transparent; background: transparent; }
+html[data-sl-design] body .sl-auth-tab.active { background: #302a1b; color: #f3d783; border-color: var(--sl-ui-gold); }
+html[data-sl-design] body :is(.sl-auth-label, .sl-newsletter-label) { font-size: 13px; font-weight: 600; color: var(--sl-ui-text); }
+html[data-sl-design] body .sl-auth-input { margin-top: 6px; }
+html[data-sl-design] body :is(.sl-auth-link, .slm-text-button) { padding: 8px 4px; border-color: transparent; background: transparent; color: var(--sl-ui-gold); }
+html[data-sl-design] body :is(.sl-phase8-search-card, .sl-phase8-concierge-card, .sl-panel, .slsp-panel, .slm-card, .sf-card, .sf-create, .tv2-filter-bar) {
+  border-color: var(--sl-ui-divider) !important;
+  border-radius: 20px !important;
+  background-color: var(--sl-ui-surface) !important;
+}
+html[data-sl-design] body :is(.sl-auth-modal, .sl-filter-modal, .clm-modal, .slus-panel, .sl-connected-modal, .slsp-modal) {
+  border: 1px solid var(--sl-ui-border) !important;
+  border-radius: 20px !important;
+  background: var(--sl-ui-bg) !important;
+  box-shadow: var(--sl-ui-shadow) !important;
+}
+html[data-sl-design] body :is(.sl-filter-description, .sl-filter-unavailable, .sl-muted, .slsp-muted, .slm-muted) { color: var(--sl-ui-muted); }
+html[data-sl-design] body #slFilterOverlay .sl-filter-actions { background: var(--sl-ui-bg); }
+/* The original header PNG has transparent margins. The frame displays its
+   original pixels at the intended aspect without creating a modified asset. */
+html[data-sl-design] body a:has(> .sl-brand-wordmark) {
+  position: relative !important;
+  display: inline-block !important;
+  flex: 0 0 156px !important;
+  width: 156px !important;
+  min-width: 156px !important;
+  height: 48px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  background: transparent !important;
+  line-height: 0 !important;
+}
+html[data-sl-design] body img.sl-brand-wordmark,
+html[data-sl-design] body :is(#mainHeader, header, .sl-explore-header) img.sl-brand-wordmark {
+  content: normal !important;
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  width: 266px !important;
+  height: 266px !important;
+  max-width: none !important;
+  max-height: none !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  object-fit: contain !important;
+  transform: translate(-50.9%, -48.6%) !important;
+  filter: none !important;
+}
+html[data-sl-design] body img.sl-brand-fullmark {
+  content: normal !important;
+  display: block !important;
+  width: 160px !important;
+  height: 160px !important;
+  max-width: 100% !important;
+  max-height: none !important;
+  object-fit: contain !important;
+  border-radius: 16px;
+  filter: none !important;
+}
+html[data-sl-design] body :is(.footer-logo-link, .sl-phase8-footer-logo):has(.sl-brand-fullmark) { width: 160px !important; height: auto !important; }
+html[data-sl-design] body .footer-brand-col:has(.sl-brand-fullmark) .footer-brand-tagline { display: none; }
+html[data-sl-design] body :is(.sl-phase8-nav, .header-enhanced, .sl-explore-header, .sl-unified-nav) {
+  background: #101316f5 !important;
+  border-bottom: 1px solid var(--sl-ui-divider) !important;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 12%) !important;
+}
+html[data-sl-design] body :is(.sl-header-nav-link, .sl-phase8-links > a, .nav-link) {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--sl-ui-muted) !important;
+  border-radius: 9px;
+}
+html[data-sl-design] body :is(.sl-header-nav-link, .sl-phase8-links > a, .nav-link):is(.active, :hover, [aria-current="page"]) { color: var(--sl-ui-gold) !important; }
+@media (max-width: 767px) {
+  html[data-sl-design] body a:has(> .sl-brand-wordmark) { flex-basis: 132px !important; width: 132px !important; min-width: 132px !important; height: 44px !important; }
+  html[data-sl-design] body img.sl-brand-wordmark,
+html[data-sl-design] body :is(#mainHeader, header, .sl-explore-header) img.sl-brand-wordmark { width: 230px !important; height: 230px !important; }
+  html[data-sl-design] body .sl-map-searchbar { padding-left: 10px !important; gap: 6px; }
+  html[data-sl-design] body .sl-map-searchbar input { font-size: 16px !important; width: 0; flex: 1 1 0%; }
+  html[data-sl-design] body .sl-map-search-btn { padding: 10px 12px !important; }
+  html[data-sl-design] body :is(.sl-phase8-chip-row, .sl-map-chips, .tv2-filter-row) { gap: 8px; }
+  html[data-sl-design] body .sl-discovery-filter-grid { gap: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-sl-design] { scroll-behavior: auto !important; }
+  html[data-sl-design] body *, html[data-sl-design] body *::before, html[data-sl-design] body *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+/* Newsletter and social footer are a real, accessible form and logo links,
+   not font-dependent decorative glyphs or placeholder actions. */
+html[data-sl-design] body :is(.sl-phase8-newsletter, .footer-newsletter-inner) {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr) !important;
+  align-items: center !important;
+  gap: 32px !important;
+}
+html[data-sl-design] body .sl-phase8-newsletter {
+  border: 1px solid var(--sl-ui-divider) !important;
+  background: linear-gradient(120deg, #282519, #191e23 60%) !important;
+  border-radius: 24px !important;
+  padding: 32px !important;
+}
+html[data-sl-design] body form.sl-newsletter-form {
+  display: block !important;
+  width: 100% !important;
+  max-width: 560px !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+html[data-sl-design] body .sl-newsletter-label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--sl-ui-text); }
+html[data-sl-design] body .sl-newsletter-fields { display: flex; gap: 8px; align-items: stretch; }
+html[data-sl-design] body .sl-newsletter-fields input { flex: 1 1 0; width: 0 !important; }
+html[data-sl-design] body .sl-newsletter-fields button { min-height: 48px !important; padding: 12px 18px !important; flex-shrink: 0; white-space: nowrap; }
+html[data-sl-design] body .sl-newsletter-fields button span { margin-left: 10px; }
+html[data-sl-design] body .sl-newsletter-hint { margin-top: 10px; font-size: 12px !important; line-height: 1.5; color: var(--sl-ui-muted) !important; }
+html[data-sl-design] body .sl-newsletter-hint a { text-decoration: underline; text-underline-offset: 3px; }
+html[data-sl-design] body .sl-newsletter-status { min-height: 20px; margin-top: 8px; font-size: 13px; line-height: 1.5; }
+html[data-sl-design] body .footer-social-icons { display: flex !important; align-items: center; gap: 10px !important; flex-wrap: wrap; }
+html[data-sl-design] body .footer-social-icons a {
+  display: inline-flex !important; align-items: center !important; justify-content: center !important;
+  width: 44px !important; height: 44px !important; min-width: 44px; padding: 11px !important;
+  color: var(--sl-ui-muted) !important; border: 1px solid var(--sl-ui-border) !important;
+  border-radius: 12px !important; background: var(--sl-ui-surface) !important;
+  box-shadow: none !important; transform: none !important;
+}
+html[data-sl-design] body .footer-social-icons a:hover { color: var(--sl-ui-gold) !important; border-color: var(--sl-ui-gold) !important; background: var(--sl-ui-raised) !important; }
+html[data-sl-design] body .footer-social-icons .sl-social-mark { width: 20px; height: 20px; display: block; flex-shrink: 0; }
+@media (max-width: 767px) {
+  html[data-sl-design] body :is(.sl-phase8-newsletter, .footer-newsletter-inner) { grid-template-columns: minmax(0, 1fr) !important; gap: 22px !important; text-align: left !important; }
+  html[data-sl-design] body .sl-phase8-newsletter { padding: 24px 18px !important; }
+}
+@media (max-width: 420px) {
+  html[data-sl-design] body .sl-newsletter-fields { flex-direction: column; }
+  html[data-sl-design] body .sl-newsletter-fields input { width: 100% !important; }
+}
+@media (forced-colors: active) {
+  html[data-sl-design] body :is(button, input, select, textarea, .sl-phase8-btn) { forced-color-adjust: auto; }
+  html[data-sl-design] body select:not([multiple]) { appearance: auto; background-image: none !important; }
+}
+
+/* Browser-verified geometry repairs: compound fields own their frame, chips
+   retain their label width, and the optional Concierge action participates in
+   layout instead of sitting on top of the ordinary Search action. */
+html[data-sl-design] body .sl-map-chips {
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  max-width: 100%;
+  padding: 4px 4px 8px;
+  scroll-padding-inline: 4px;
+}
+html[data-sl-design] body .sl-map-chips > .sl-chip-btn {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: max-content !important;
+  max-width: none !important;
+  white-space: nowrap !important;
+}
+html[data-sl-design] body .sl-search-ai-host {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+html[data-sl-design] body .sl-search-ai-host > input {
+  flex: 1 1 0%;
+  min-width: 0;
+  width: 0;
+}
+html[data-sl-design] body .sl-search-ai-btn {
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+  flex: 0 0 44px !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  margin: 0 !important;
+  padding: 10px !important;
+  border: 1px solid var(--sl-ui-border) !important;
+  background: var(--sl-ui-surface) !important;
+  color: var(--sl-ui-gold) !important;
+  box-shadow: none !important;
+}
+html[data-sl-design] body .sl-icon-svg::before,
+html[data-sl-design] body .sl-icon-svg::after { content: none !important; display: none !important; }
+html[data-sl-design] body .sl-icon-svg { font-family: inherit !important; }
+html[data-sl-design] body .sl-icon-svg > svg { display: block; width: 1em; height: 1em; flex-shrink: 0; fill: currentColor; }
+html[data-sl-design] body .sl-newsletter-arrow { width: 16px; height: 16px; vertical-align: -.15em; margin-left: 8px; }
+
+/* November visual refresh: restrained surfaces, consistent line controls and
+   compact navigation. Provider badges retain their existing clearance lane. */
+html[data-sl-design] body.sl-phase8-home { padding-top: 0 !important; }
+html[data-sl-design] body .sl-phase8-nav-inner { gap: 14px; min-width: 0; }
+html[data-sl-design] body .sl-phase8-actions { gap: 8px; flex: 0 0 auto; }
+html[data-sl-design] body .sl-phase8-hero {
+  min-height: 640px;
+  background-image: linear-gradient(100deg, rgb(10 14 17 / 88%), rgb(10 14 17 / 62%)), url('../images/scenelinkbghero.webp');
+}
+html[data-sl-design] body .sl-phase8-hero::after { background: linear-gradient(transparent, var(--sl-ui-bg)); }
+html[data-sl-design] body .sl-phase8-hero-grid { gap: 48px; padding: 72px 0 90px; }
+html[data-sl-design] body .sl-phase8-h1 { font-size: clamp(2.8rem, 5vw, 4.6rem); font-weight: 700; letter-spacing: -.055em; line-height: 1.06; }
+html[data-sl-design] body .sl-phase8-subhead { color: var(--sl-ui-muted); font-size: 17px; line-height: 1.65; max-width: 580px; }
+html[data-sl-design] body :is(.sl-phase8-kicker, .sl-phase8-section-eyebrow) { font-weight: 600; letter-spacing: .16em; }
+html[data-sl-design] body .sl-phase8-proof { gap: 16px; margin-top: 32px; }
+html[data-sl-design] body .sl-phase8-proof-item { padding: 16px 0; background: none; border: 0; border-top: 1px solid var(--sl-ui-border); border-radius: 0; backdrop-filter: none; }
+html[data-sl-design] body .sl-phase8-proof-num { color: var(--sl-ui-text); font-size: 20px; font-weight: 600; }
+html[data-sl-design] body .sl-phase8-proof-label { font-size: 10px; font-weight: 500; letter-spacing: .08em; }
+html[data-sl-design] body .sl-phase8-concierge-card { background: rgb(25 30 35 / 94%); border: 1px solid var(--sl-ui-border); border-radius: 20px; padding: 28px; box-shadow: 0 16px 40px rgb(0 0 0 / 18%); }
+html[data-sl-design] body .sl-phase8-concierge-card h2 { font-weight: 600; font-size: 25px; letter-spacing: -.03em; }
+html[data-sl-design] body .sl-phase8-concierge-card p { color: var(--sl-ui-muted); line-height: 1.6; }
+html[data-sl-design] body .sl-phase8-prompt { padding: 14px; border-radius: 12px; background: var(--sl-ui-bg); font-weight: 500; }
+html[data-sl-design] body .sl-phase8-prompt > i { color: var(--sl-ui-gold); flex: 0 0 auto; }
+html[data-sl-design] body :is(.sl-phase8-venue-card, .sl-phase8-feature-card, .sl-phase8-category-card) { border: 1px solid var(--sl-ui-divider); box-shadow: none; border-radius: 16px; }
+html[data-sl-design] body :is(.sl-phase8-venue-card, .sl-phase8-feature-card, .sl-phase8-category-card):hover { transform: none; border-color: var(--sl-ui-border); }
+html[data-sl-design] body .sl-phase8-venue-card::before { animation: none !important; }
+html[data-sl-design] body .sl-icon-svg > svg.sl-line-icon { width: 1.15em; height: 1.15em; fill: none; pointer-events: none; }
+html[data-sl-design] body #sl-user-dropdown { margin-left: 0; flex: 0 0 auto; }
+html[data-sl-design] body #sl-user-dropdown .sl-ud-trigger { min-height: 44px; padding: 6px 10px 6px 6px; border-radius: 12px; background: var(--sl-ui-surface); }
+html[data-sl-design] body #sl-user-dropdown .sl-ud-name { max-width: 105px; }
+html[data-sl-design] body #sl-user-dropdown .sl-ud-caret { font-size: 0; width: 7px; height: 7px; margin: -4px 2px 0 4px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
+html[data-sl-design] body #sl-user-dropdown .sl-ud-menu { border-color: var(--sl-ui-border); background: var(--sl-ui-surface); box-shadow: var(--sl-ui-shadow); }
+html[data-sl-design] body .sl-explore-header > #sl-user-dropdown { order: 8; }
+html[data-sl-design] body .sl-explore-header > .sl-mobile-menu-toggle { order: 9; }
+/* Redundant shortcuts remain available in the canonical account menu. */
+html[data-sl-design] body .sl-phase8-nav:has(#sl-user-dropdown) #slHdrSocial :is(a[href*="messages"], a[href*="profile"]) { display: none !important; }
+@keyframes sl-quiet-enter { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-sl-design] body .sl-phase8-hero-grid > * { animation: sl-quiet-enter 220ms ease-out both; }
+  html[data-sl-design] body .sl-phase8-hero-grid > :last-child { animation-delay: 50ms; }
+  html[data-sl-design] body .sl-phase8-prompt .sl-line-icon { transition: transform 180ms ease; }
+  html[data-sl-design] body .sl-phase8-prompt:hover .sl-line-icon { transform: translateX(2px); }
+}
+@media (min-width: 761px) and (max-width: 1350px) {
+  html[data-sl-design] body .sl-phase8-nav :is(.sl-universal-search, .sl-search-ai-host, .sl-header-search, .sl-us-search-wrap) { display: none !important; }
+  html[data-sl-design] body .sl-phase8-links a { padding-inline: 8px; }
+}
+@media (max-width: 1024px) {
+  html[data-sl-design] body .sl-phase8-hero-grid { grid-template-columns: minmax(0, 1fr); gap: 32px; padding: 52px 0 80px; }
+  html[data-sl-design] body .sl-phase8-prompt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 860px) {
+  html[data-sl-design] body #sl-user-dropdown .sl-ud-name { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  html[data-sl-design] body #sl-user-dropdown .sl-ud-caret { display: none; }
+  html[data-sl-design] body #sl-user-dropdown .sl-ud-trigger { width: 44px; padding: 6px; justify-content: center; }
+}
+@media (max-width: 600px) {
+  html[data-sl-design] body .sl-phase8-hero { min-height: 0; background-image: linear-gradient(rgb(10 14 17 / 74%), rgb(10 14 17 / 90%)), url('../images/scenelinkbghero-mobile.webp'); }
+  html[data-sl-design] body .sl-phase8-hero-grid { padding-top: 40px; gap: 28px; }
+  html[data-sl-design] body .sl-phase8-h1 { font-size: clamp(2.6rem, 11vw, 3.4rem); }
+  html[data-sl-design] body .sl-phase8-concierge-card { padding: 22px 18px; }
+  html[data-sl-design] body .sl-phase8-prompt-grid { grid-template-columns: minmax(0, 1fr); }
+  html[data-sl-design] body .sl-phase8-proof { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+}

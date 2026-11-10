@@ -30,7 +30,7 @@ async function withRoute(name,database,run) {
 async function call(router,method,path,{body={},params={},status=200}={}) {
   const handler=router.stack.find(layer=>layer.route?.path===path&&layer.route.methods[method]).route.stack.at(-1).handle;
   let output,actual=200;const res={headersSent:false,setHeader(){},vary(){},status(code){actual=code;return this;},json(value){output=value;return value;}};
-  await handler({user:{id:userId},body,params},res,error=>{throw error;});assert.equal(actual,status,JSON.stringify(output));return output;
+  await handler({user:{id:userId},body,params,query:{}},res,error=>{throw error;});assert.equal(actual,status,JSON.stringify(output));return output;
 }
 
 test('favorites read retains withdrawn entries and new saves reject closed sources before writing',async()=>{
@@ -58,12 +58,12 @@ test('favorite removal remains possible after venue withdrawal and never revalid
 
 test('private saved lists normalize venues and detail queries enforce owner profile visibility',async()=>{
   const calls=[],database={async query(sql,values){calls.push({sql,values});
-    if(sql.includes('FROM lists l'))return{rows:[{id:listId,user_id:userId,name:'Fixture list',is_public:false}]};
-    if(sql.includes('FROM list_venues'))return{rows:[fixture(false)]};return{rows:[]};}};
+    if(sql.includes('FROM lists l'))return{rows:[{id:listId,user_id:userId,name:'Fixture list',is_public:false,is_owner:true,can_edit:true,revision:1}]};
+    if(sql.includes('FROM list_venues'))return{rows:[fixture(false)]};return{rows:[]};},async connect(){return{query:database.query,release(){}};}};
   await withRoute('lists',database,async router=>{
     assert.equal((await call(router,'get','/')).lists[0].venues[0].venue_status,'unavailable');
     const output=await call(router,'get','/:listId',{params:{listId}});assert.equal(output.list.venues[0].rating,null);
-    const detail=calls.find(x=>x.sql.includes('FROM lists l JOIN users'));assert.deepEqual(detail.values,[listId,userId]);
+    const detail=calls.find(x=>x.sql.includes('FROM lists l JOIN users')&&x.sql.includes('l.id=$2'));assert.deepEqual(detail.values,[userId,listId]);
     assert(detail.sql.includes('u.is_private'));assert(detail.sql.includes('user_blocks'));assert(detail.sql.includes('is_suspended'));
     await call(router,'post','/:listId/venues',{params:{listId},body:{venue_id:venueId},status:404});
     const availability=calls.find(x=>x.sql.startsWith('SELECT id FROM venues'));assert(availability.sql.includes('permanently_closed'));

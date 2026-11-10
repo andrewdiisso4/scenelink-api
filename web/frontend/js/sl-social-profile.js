@@ -131,6 +131,34 @@
     }catch(e){if(valid(epoch,session))status('slspAvatarStatus',errorText(e)+' Check the saved profile before retrying an upload.','error');}
     finally{state.busy.delete('avatar');state.busy.delete('profile-mutation');if(button.isConnected)button.disabled=false;}
   }
+  function hasUnsavedDraft(form) {
+    return form && [...form.elements].some(el => {
+      if (!el.name && el.type !== 'file') return false;
+      if (el.type === 'file') return el.files && el.files.length > 0;
+      if (el.type === 'checkbox' || el.type === 'radio') return el.checked !== el.defaultChecked;
+      if (el.tagName === 'SELECT') return el.value !== ([...el.options].find(o => o.defaultSelected) || el.options[0]).value;
+      return typeof el.defaultValue === 'string' && el.value !== el.defaultValue;
+    });
+  }
+  function keepOtherDraft(settings, savedUser) {
+    const form = $(settings ? 'slspEditForm' : 'slspSettingsForm');
+    if (!hasUnsavedDraft(form)) return null;
+    const fields = settings ? ['display_name','username','bio','neighborhood','city','avatar_url','social_links'] : ['is_private','discoverable','allow_messages','show_achievements','share_read_receipts'];
+    const sameBase = fields.every(key => JSON.stringify(state.user[key] ?? null) === JSON.stringify(savedUser[key] ?? null));
+    const safeRevision = sameBase && Number(form.dataset.revision) === state.user.profile_revision;
+    // Keep the actual node, including a selected but not yet uploaded photo.
+    // Never rebase a stale/conflicted draft over changed saved values.
+    if (safeRevision) form.dataset.revision = savedUser.profile_revision;
+    return {node:settings ? $('slspEdit') : form, settings:!settings, safeRevision};
+  }
+  function restoreOtherDraft(draft) {
+    if (!draft) return;
+    const replacement = $(draft.node.id);
+    if (!replacement) return;
+    replacement.replaceWith(draft.node);
+    const sid = draft.settings ? 'slspSettingsStatus' : 'slspEditStatus';
+    status(sid, draft.safeRevision ? 'Your draft is still unsaved.' : 'Your draft is still unsaved. Reload the saved profile before applying it because its revision is out of date.', draft.safeRevision ? '' : 'error');
+  }
   async function saveProfile(form, settings) {
     const key = settings ? 'settings-save' : 'profile-save', sid = settings ? 'slspSettingsStatus' : 'slspEditStatus'; if (state.busy.has(key)||state.busy.has('profile-mutation')) return;
     const epoch = state.epoch, session = C().token(), payload = {revision:Number(form.dataset.revision)}, data = new FormData(form);
@@ -143,7 +171,8 @@
       if (!result.user || result.user.id !== state.user.id) throw new Error('The server did not return the saved profile. Reload to verify.');
       const read = await C().request('/users/me'); if (!valid(epoch,session)) return;
       if (!read.user || read.user.id !== state.user.id) throw new Error('The saved profile could not be read back. Reload to verify.');
-      state.user = read.user; state.friendsLoaded = false; render(); if (settings) selectTab('settings',false);
+      const draft = keepOtherDraft(settings,read.user);
+      state.user = read.user; state.friendsLoaded = false; render(); restoreOtherDraft(draft); if (settings) selectTab('settings',false);
       status('slspActionStatus',settings ? 'Privacy settings saved and read back from your account.' : 'Profile saved and read back from your account.','success');
     } catch (e) { if (valid(epoch,session)) status(sid,saved ? 'The save was accepted, but readback failed. Reload the saved profile to verify before making another change.' : errorText(e),'error'); }
     finally {state.busy.delete(key); state.busy.delete('profile-mutation'); if(form.isConnected)form.querySelectorAll('button').forEach(b => b.disabled=false);}

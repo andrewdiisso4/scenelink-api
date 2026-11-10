@@ -8,6 +8,13 @@
 
   if (window.SLAuthUI && window.SLAuthUI.__ui === true) return;
 
+  var recoveryEpoch = 0;
+  function resetRecovery(){
+    recoveryEpoch++;
+    if (!overlay) return;
+    var btn = overlay.querySelector('[data-form="forgot"] .sl-auth-submit');
+    if (btn) { btn.disabled = false; btn.textContent = "Send reset link"; }
+  }
   var MOUNTED = false;
   var overlay = null;
   var previousFocus = null, previousOverflow = null;
@@ -61,13 +68,13 @@
 
   function build(){
     if (MOUNTED) return;
-    overlay = el('div', { class: 'sl-auth-overlay', role: 'dialog', 'aria-modal': 'true' });
+    overlay = el('div', { class: 'sl-auth-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'slAuthTitle' });
     overlay.innerHTML = [
       '<div class="sl-auth-modal">',
       '  <button type="button" class="sl-auth-close" aria-label="Close">&times;</button>',
       '  <div class="sl-auth-brand">',
-      '    <div class="sl-auth-brand-logo">🌃</div>',
-      '    <h2 class="sl-auth-title" data-sl-title>Welcome back</h2>',
+      '    <div class="sl-auth-brand-logo"><img class="sl-auth-official-logo" src="/images/brand/scenelink-full.png" alt="SceneLink" width="88" height="88"></div>',
+      '    <h2 class="sl-auth-title" id="slAuthTitle" data-sl-title>Welcome back</h2>',
       '    <p class="sl-auth-sub" data-sl-sub>Sign in to continue to SceneLink</p>',
       '  </div>',
 
@@ -76,19 +83,19 @@
       '    <button type="button" class="sl-auth-tab" data-tab="signup">Create account</button>',
       '  </div>',
 
-      '  <div class="sl-auth-error" data-sl-error></div>',
-      '  <div class="sl-auth-success" data-sl-success></div>',
+      '  <div class="sl-auth-error" data-sl-error role="alert"></div>',
+      '  <div class="sl-auth-success" data-sl-success role="status" aria-live="polite"></div>',
 
       '  <div data-sl-oauth-slot>' + oauthButtonsHTML() + '</div>',
 
       '  <form class="sl-auth-form active" data-form="login" autocomplete="on" novalidate>',
       '    <div class="sl-auth-field">',
-      '      <label class="sl-auth-label">Email</label>',
-      '      <input class="sl-auth-input" type="email" name="email" autocomplete="email" placeholder="you@example.com" required>',
+      '      <label class="sl-auth-label" for="slLoginEmail">Email</label>',
+      '      <input class="sl-auth-input" type="email" id="slLoginEmail" autocapitalize="none" spellcheck="false" name="email" autocomplete="email" placeholder="you@example.com" required>',
       '    </div>',
       '    <div class="sl-auth-field">',
-      '      <label class="sl-auth-label">Password</label>',
-      '      <input class="sl-auth-input" type="password" name="password" autocomplete="current-password" placeholder="••••••••" required>',
+      '      <label class="sl-auth-label" for="slLoginPassword">Password</label>',
+      '      <input class="sl-auth-input" type="password" id="slLoginPassword" name="password" autocomplete="current-password" placeholder="••••••••" required>',
       '    </div>',
       '    <button type="submit" class="sl-auth-submit">Sign in</button>',
       '    <div class="sl-auth-foot">',
@@ -98,22 +105,22 @@
 
       '  <form class="sl-auth-form" data-form="signup" autocomplete="on" novalidate>',
       '    <div class="sl-auth-field">',
-      '      <label class="sl-auth-label">Display name</label>',
-      '      <input class="sl-auth-input" type="text" name="display_name" autocomplete="name" placeholder="How your friends know you" required maxlength="60">',
+      '      <label class="sl-auth-label" for="slSignupDisplayName">Display name</label>',
+      '      <input class="sl-auth-input" type="text" id="slSignupDisplayName" name="display_name" autocomplete="name" placeholder="How your friends know you" required maxlength="60">',
       '    </div>',
       '    <div class="sl-auth-row">',
       '      <div class="sl-auth-field">',
-      '        <label class="sl-auth-label">Username</label>',
-      '        <input class="sl-auth-input" type="text" name="username" autocomplete="username" placeholder="yourhandle" required maxlength="24" pattern="[a-zA-Z0-9_]+">',
+      '        <label class="sl-auth-label" for="slSignupUsername">Username</label>',
+      '        <input class="sl-auth-input" type="text" id="slSignupUsername" autocapitalize="none" spellcheck="false" name="username" autocomplete="username" placeholder="yourhandle" required maxlength="24" pattern="[a-zA-Z0-9_]+">',
       '      </div>',
       '    </div>',
       '    <div class="sl-auth-field">',
-      '      <label class="sl-auth-label">Email</label>',
-      '      <input class="sl-auth-input" type="email" name="email" autocomplete="email" placeholder="you@example.com" required>',
+      '      <label class="sl-auth-label" for="slSignupEmail">Email</label>',
+      '      <input class="sl-auth-input" type="email" id="slSignupEmail" autocapitalize="none" spellcheck="false" name="email" autocomplete="email" placeholder="you@example.com" required>',
       '    </div>',
       '    <div class="sl-auth-field">',
-      '      <label class="sl-auth-label">Password</label>',
-      '      <input class="sl-auth-input" type="password" name="password" autocomplete="new-password" placeholder="At least 8 characters" required minlength="8">',
+      '      <label class="sl-auth-label" for="slSignupPassword">Password</label>',
+      '      <input class="sl-auth-input" type="password" id="slSignupPassword" name="password" autocomplete="new-password" placeholder="At least 8 characters" required minlength="8">',
       '      <div class="sl-auth-hint">Use at least 8 characters with a mix of letters and numbers.</div>',
       '    </div>',
       '    <button type="submit" class="sl-auth-submit">Create account</button>',
@@ -126,8 +133,8 @@
 
       '  <form class="sl-auth-form" data-form="forgot" autocomplete="on" novalidate>',
       '    <div class="sl-auth-field">',
-      '      <label class="sl-auth-label">Email</label>',
-      '      <input class="sl-auth-input" type="email" name="email" autocomplete="email" placeholder="you@example.com" required>',
+      '      <label class="sl-auth-label" for="slRecoveryEmail">Email</label>',
+      '      <input class="sl-auth-input" type="email" id="slRecoveryEmail" name="email" autocomplete="email" placeholder="you@example.com" required>',
       '      <div class="sl-auth-hint">We\'ll send a password reset link if an account exists.</div>',
       '    </div>',
       '    <button type="submit" class="sl-auth-submit">Send reset link</button>',
@@ -193,6 +200,7 @@
 
   function switchTab(tab){
     if (!overlay) return;
+    resetRecovery();
     setMessage();
     var titles = {
       login:  { t: 'Welcome back',       s: 'Sign in to continue to SceneLink' },
@@ -517,19 +525,25 @@
 
   function onForgot(e){
     e.preventDefault();
-    setMessage();
     var f = e.currentTarget;
-    var email = f.email.value.trim();
-    if (!email){ setMessage('error', 'Enter your email.'); return; }
     var btn = f.querySelector('.sl-auth-submit');
+    if (btn.disabled) return;
+    setMessage();
+    var input = f.elements.namedItem('email');
+    var email = input.value.trim();
+    if (!email || !input.validity.valid){ setMessage('error', 'Enter a valid email address.'); input.focus(); return; }
+    var epoch = recoveryEpoch;
+    function current(){ return epoch === recoveryEpoch && overlay.classList.contains('open'); }
     btn.disabled = true; btn.textContent = 'Sending...';
-    window.SLAuth.forgotPassword(email).then(function(){
-      setMessage('success', 'If that email exists, a reset link is on the way.');
+    Promise.resolve().then(function(){ return window.SLAuth.forgotPassword(email); }).then(function(){
+      if (current()) setMessage('success', 'If an account exists for that email, a password reset link has been requested. Check your inbox and spam folder.');
     }).catch(function(err){
-      // be generic
-      setMessage('success', 'If that email exists, a reset link is on the way.');
+      if (!current()) return;
+      setMessage('error', err && err.status === 429
+        ? 'Too many reset requests. Please wait a few minutes, then try again.'
+        : 'We could not confirm your reset request. Check your connection and try again.');
     }).finally(function(){
-      btn.disabled = false; btn.textContent = 'Send reset link';
+      if (current()) { btn.disabled = false; btn.textContent = 'Send reset link'; }
     });
   }
 
@@ -548,6 +562,7 @@
 
   function close(){
     if (!overlay || !overlay.classList.contains('open')) return;
+    resetRecovery();
     overlay.classList.remove('open');
     document.body.style.overflow = previousOverflow || '';
     if (previousFocus && previousFocus.isConnected && !previousFocus.disabled) previousFocus.focus();

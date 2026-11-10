@@ -71,14 +71,15 @@
       '<div class="sl-row">' +
       (website ? '<a class="sl-link-button sl-secondary" href="' + E(website) + '" target="_blank" rel="noopener noreferrer">Venue website ↗</a>' : '') +
       (directions ? '<a class="sl-link-button sl-secondary" href="' + E(directions) + '" target="_blank" rel="noopener noreferrer">Directions ↗</a>' : '') + '</div>' +
-      '<div class="sl-row" style="margin-top:18px"><button type="button" data-save-venue>Save venue</button><a class="sl-link-button sl-secondary" href="/plan-with-friends?venue_id=' + encodeURIComponent(v.id) + '">Plan with friends</a><button type="button" class="sl-secondary" data-review-venue>Write a review</button></div>' +
+      '<div class="sl-row" style="margin-top:18px"><button type="button" data-save-venue>Save venue</button><button type="button" class="sl-secondary" data-add-list>Add to list</button><a class="sl-link-button sl-secondary" href="/plan-with-friends?venue_id=' + encodeURIComponent(v.id) + '">Plan with friends</a><button type="button" class="sl-secondary" data-review-venue>Write a review</button></div>' +
       '<p data-venue-status role="status"></p><h2>Community reviews</h2><div data-venue-reviews>Loading submitted reviews…</div>';
     content.querySelector('[data-save-venue]').onclick = async function () {
       this.disabled = true; const button = this, current = generation, status = content.querySelector('[data-venue-status]');
-      try { await C().once('save:' + v.id, () => C().request('/favorites/' + encodeURIComponent(v.id), {method:'POST'}));
+      try { if(window.SLVenueActions&&window.SLVenueActions.setFavorite)await window.SLVenueActions.setFavorite(v.id,true);else{const result=await C().once('save:' + v.id, () => C().request('/favorites/' + encodeURIComponent(v.id), {method:'POST'}));if(result.favorited!==true)throw new Error('The save was not confirmed. Please retry.');}
         if (current !== generation) return; button.textContent = 'Saved to your account'; status.textContent = 'Venue saved. This is not a reservation.';
       } catch (e) { if (current === generation) { status.textContent = e.message; button.disabled = false; if(e.status===401 && window.SLAuthUI)window.SLAuthUI.open('login', button); } }
     };
+    content.querySelector('[data-add-list]').onclick = function(){if(window.SLVenueActions&&window.SLVenueActions.addToList)window.SLVenueActions.addToList(v.id,this);else content.querySelector('[data-venue-status]').textContent='List controls are unavailable. Please reload.';};
     content.querySelector('[data-review-venue]').onclick = () => {
       if (window.SLReviewModal) window.SLReviewModal.open(v.id, v.name);
       else content.querySelector('[data-venue-status]').textContent = 'Reviews are unavailable. Please retry later.';

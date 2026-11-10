@@ -82,19 +82,26 @@
   function wireNewsletter(){
     $all('form[data-sl-newsletter="1"], form[data-sl-newsletter]').forEach(function(form){
       if (form.__slPhase8Newsletter) return; form.__slPhase8Newsletter = true;
+      var pending = false;
       form.addEventListener('submit', async function(e){
         e.preventDefault();
+        if (pending) return;
         var input = form.querySelector('input[type="email"], input[name="email"]');
-        var email = input && input.value;
+        if (!input || !form.reportValidity()) return;
+        var email = input.value.trim();
         var btn = form.querySelector('button[type="submit"], button:not([type])');
-        var old = btn && btn.textContent;
+        var old = btn && btn.innerHTML;
+        pending = true;
+        form.setAttribute('aria-busy', 'true');
+        setStatus(form, 'Joining the list…', true);
         try {
-          if (btn) { btn.disabled = true; btn.textContent = 'Subscribing…'; }
-          await api('/newsletter/subscribe', { method:'POST', body:{ email: email, source: form.getAttribute('data-sl-newsletter-source') || form.getAttribute('data-source') || document.body.getAttribute('data-page') || location.pathname } });
-          setStatus(form, "You're subscribed. Check your inbox for confirmation.", true);
-          form.reset();
-        } catch (err) { setStatus(form, err.message || 'Subscription failed. Try again.', false); }
-        finally { if (btn) { btn.disabled = false; btn.textContent = old || 'Subscribe'; } }
+          if (btn) { btn.disabled = true; btn.textContent = 'Joining…'; }
+          var result = await api('/newsletter/subscribe', { method:'POST', body:{ email: email, source: form.getAttribute('data-sl-newsletter-source') || form.getAttribute('data-source') || document.body.getAttribute('data-page') || location.pathname } });
+          if (!result || result.ok !== true) throw new Error('Your subscription was not confirmed. Please try again.');
+          setStatus(form, "You're on the SceneLink email list.", true);
+          if (input.value.trim() === email) input.value = '';
+        } catch (err) { setStatus(form, err.message || 'We could not confirm your subscription. Your email is still here so you can try again.', false); }
+        finally { pending = false; form.removeAttribute('aria-busy'); if (btn) { btn.disabled = false; btn.innerHTML = old || 'Join the list'; } }
       });
     });
   }
@@ -173,15 +180,22 @@
     // outside tap — without re-binding the open toggle.
     var links = $('#phase8NavLinks');
     if (!links) return;
+    function closeNav(restoreFocus) {
+      links.classList.remove('open');
+      $all('[data-phase8-menu]').forEach(function(btn){ btn.setAttribute('aria-expanded', 'false'); });
+      var opener = links.__slMenuOpener || $('[data-phase8-menu]');
+      if (restoreFocus && opener) opener.focus();
+    }
     // Close when any nav link/button inside the drawer is activated.
     links.addEventListener('click', function(e){
       var t = e.target && e.target.closest && e.target.closest('a, button');
-      if (t) links.classList.remove('open');
+      if (t) closeNav(false);
     });
     // Close on Escape.
     document.addEventListener('keydown', function(e){
       if ((e.key === 'Escape' || e.keyCode === 27) && links.classList.contains('open')) {
-        links.classList.remove('open');
+        e.preventDefault();
+        closeNav(true);
       }
     });
     // Close on outside tap (anything that is not the drawer or the menu button).
@@ -189,7 +203,7 @@
       if (!links.classList.contains('open')) return;
       var insideDrawer = e.target.closest && e.target.closest('#phase8NavLinks');
       var onMenuBtn = e.target.closest && e.target.closest('[data-phase8-menu]');
-      if (!insideDrawer && !onMenuBtn) links.classList.remove('open');
+      if (!insideDrawer && !onMenuBtn) closeNav(false);
     }, true);
   }
   function patchInitialPanels(){

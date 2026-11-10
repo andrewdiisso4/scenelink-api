@@ -16,6 +16,9 @@ async function start({app,pool,initialize,port,env=process.env}) {
   if(!social.rows.length)throw new Error('Required social profile/messaging migration 013 is missing');
   const welcome=await pool.query("SELECT version FROM launch_schema_versions WHERE version='signup-welcome-2026-11-08'");
   if(!welcome.rows.length)throw new Error('Required signup welcome migration 014 is missing');
+  const lists=await pool.query("SELECT version FROM launch_schema_versions WHERE version='private-list-invitations-2026-11-09'");
+  if(!lists.rows.length)throw new Error('Required private-list migration 016 is missing');
+  await pool.query('SELECT revision FROM lists LIMIT 0');
   await pool.query('SELECT auth_version FROM users LIMIT 0');
   await pool.query('SELECT audience FROM posts LIMIT 0');
   await pool.query('SELECT last_read_message_id FROM conversation_participants LIMIT 0');

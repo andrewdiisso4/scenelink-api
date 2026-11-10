@@ -575,10 +575,10 @@
             <div class="sl-ob-step ${state.step===0?'active':''}">
                 <div class="sl-ob-hero-emoji">🌆</div>
                 <div class="sl-ob-title">Welcome to SceneLink</div>
-                <div class="sl-ob-sub">Boston's smartest way to discover restaurants, bars, and nightlife — powered by real-time data and AI.</div>
+                <div class="sl-ob-sub">Discover Boston restaurants, bars, and nightlife. Confirm current details with each venue.</div>
                 <ul class="sl-ob-feature-list">
                     <li><i class="fas fa-map-marker-alt"></i> Search the Boston venue directory; confirm details with each venue</li>
-                    <li><i class="fas fa-magic"></i> AI Concierge — ask anything, get real answers</li>
+                    <li><i class="fas fa-magic"></i> Ask AI Concierge for venue ideas.</li>
                     <li><i class="fas fa-users"></i> Plan nights with friends, vote on venues</li>
                     <li><i class="fas fa-heart"></i> Save, list, and track your favorites</li>
                 </ul>
@@ -1228,6 +1228,7 @@
         // Wrap input in a relative container if not already
         var parent = inputEl.parentElement;
         if (!parent) return;
+        parent.classList.add('sl-search-ai-host');
         if (getComputedStyle(parent).position === 'static') {
             parent.style.position = 'relative';
         }
@@ -1240,12 +1241,11 @@
         btn.setAttribute('aria-label', 'Ask SceneLink Concierge');
         btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>';
         btn.style.cssText = [
-            'position:absolute',
-            'right:6px',
-            'top:50%',
-            'transform:translateY(-50%)',
-            'width:34px',
-            'height:34px',
+            'position:static',
+            'flex:0 0 44px',
+            'transform:none',
+            'width:44px',
+            'height:44px',
             'border-radius:10px',
             'border:none',
             'cursor:pointer',
@@ -1259,11 +1259,11 @@
             'transition:transform .15s ease,box-shadow .15s ease'
         ].join(';');
         btn.onmouseenter = function () {
-            this.style.transform = 'translateY(-50%) scale(1.08)';
+            this.style.transform = 'none';
             this.style.boxShadow = '0 6px 18px rgba(212,175,55,0.55)';
         };
         btn.onmouseleave = function () {
-            this.style.transform = 'translateY(-50%) scale(1)';
+            this.style.transform = 'none';
             this.style.boxShadow = '0 4px 12px rgba(212,175,55,0.35)';
         };
         btn.addEventListener('click', function (e) {
@@ -1287,11 +1287,8 @@
             }
         });
 
-        // Pad input so text doesn't run under the button
-        try {
-            var currentPadRight = parseInt(getComputedStyle(inputEl).paddingRight || '0', 10);
-            if (currentPadRight < 50) inputEl.style.paddingRight = '50px';
-        } catch (_) {}
+        // The action is in normal flow; no overlay padding is needed.
+
     }
 
     function showAISuggestion(query, inputEl) {
@@ -1386,6 +1383,9 @@
 
   function initNewsletterForms() {
     document.querySelectorAll('.footer-newsletter-form').forEach(function (form) {
+      // Current forms are owned by sl-phase8-completion.js. Do not attach a
+      // second request handler, regardless of deferred bundle load order.
+      if (form.hasAttribute('data-sl-newsletter')) return;
       if (form.getAttribute('data-sl-newsletter-wired')) return;
       form.setAttribute('data-sl-newsletter-wired', '1');
 
@@ -1451,16 +1451,20 @@
 
 class SmartRouter {
     constructor() {
-        this.routes = {
-            // Enhanced page mappings
-            'social-feed': 'social-feed.html',
-            'lists': 'my-lists.html',
-            'profile': 'profile.html',
-            'explore': 'explore.html',
-            'group-planning': 'plan-with-friends.html',
-            'events': 'events.html',
-            'nightlife': 'nightlife.html'
+        // Explicit public route aliases from _redirects, plus the legacy profile page.
+        this.routes = new Map();
+        const aliases = {
+            'social-feed.html': ['social-feed', 'social', 'social.html', 'feed', 'feed.html'],
+            'my-lists.html': ['my-lists', 'lists', 'lists.html', 'saved', 'saved.html', 'favorites'],
+            'profile.html': ['profile', 'profile-v2.html', 'friends', 'friends.html'],
+            'explore.html': ['explore'],
+            'plan-with-friends.html': ['plan-with-friends', 'group-planning', 'group', 'plan-night', 'plan', 'plan.html', 'plans', 'plans.html'],
+            'events.html': ['events'],
+            'nightlife.html': ['nightlife']
         };
+        Object.entries(aliases).forEach(([target, paths]) => {
+            [target, ...paths].forEach(path => this.routes.set('/' + path, '/' + target));
+        });
         
         this.init();
     }
@@ -1476,7 +1480,9 @@ class SmartRouter {
         // Intercept all navigation clicks
         document.addEventListener('click', (e) => {
             const link = e.target.closest('a[href]');
-            if (!link) return;
+            if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey ||
+                e.shiftKey || e.altKey || link.hasAttribute('download') ||
+                (link.target && link.target !== '_self')) return;
 
             const href = link.getAttribute('href');
             
@@ -1488,16 +1494,22 @@ class SmartRouter {
         });
     }
 
-    shouldIntercept(href) {
-        // Don't intercept external links, anchors, or special protocols
-        if (!href || 
-            href.startsWith('http') || 
-            href.startsWith('mailto:') || 
-            href.startsWith('tel:') ||
-            href === '#') {
-            return false;
+    routeURL(href) {
+        // Fragment-only links are in-page controls, not page aliases.
+        if (!href || !href.trim() || href.trim().startsWith('#')) return null;
+        try {
+            const url = new URL(href, document.baseURI);
+            if (!['http:', 'https:'].includes(url.protocol) || url.origin !== window.location.origin ||
+                url.username || url.password || !this.routes.has(url.pathname)) return null;
+            url.pathname = this.routes.get(url.pathname);
+            return url;
+        } catch (_) {
+            return null;
         }
-        return true;
+    }
+
+    shouldIntercept(href) {
+        return !!this.routeURL(href);
     }
 
     navigateTo(href, element) {
@@ -1696,104 +1708,11 @@ class SmartRouter {
     }
 
     updateAllNavigationLinks() {
-        // Update social feed links
-        this.updateSocialFeedLinks();
-        
-        // Update lists links
-        this.updateListsLinks();
-        
-        // Update profile links
-        this.updateProfileLinks();
-        
-        // Update explore links
-        this.updateExploreLinks();
-        
-        // Update group planning links
-        this.updateGroupPlanningLinks();
-        
-        // Mark active page
+        document.querySelectorAll('a[href]').forEach(link => {
+            const url = this.routeURL(link.getAttribute('href'));
+            if (url) link.setAttribute('href', url.pathname + url.search + url.hash);
+        });
         this.markActivePage();
-    }
-
-    updateSocialFeedLinks() {
-        // Find all links that should go to social feed
-        const socialLinks = document.querySelectorAll('a[href*="social"], a[href*="feed"]');
-        
-        socialLinks.forEach(link => {
-            const href = link.getAttribute('href');
-            
-            // Update to enhanced social feed
-            if (href && !href.includes('social-feed.html')) {
-                if (href.includes('#social-feed') || href.includes('social')) {
-                    link.setAttribute('href', 'social-feed.html');
-                }
-            }
-        });
-        
-        // Specifically update the social feed icon in navigation
-        const socialFeedIcon = document.querySelector('a[title="Social Feed"]');
-        if (socialFeedIcon) {
-            socialFeedIcon.setAttribute('href', 'social-feed.html');
-        }
-    }
-
-    updateListsLinks() {
-        // Update all "My Lists" links to enhanced version
-        const listsLinks = document.querySelectorAll('a[href*="lists"]');
-        
-        listsLinks.forEach(link => {
-            const href = link.getAttribute('href');
-            
-            if (href && !href.includes('my-lists.html')) {
-                // Check if it's a lists link
-                if (href.includes('lists') && !href.includes('lists-v2')) {
-                    link.setAttribute('href', 'my-lists.html');
-                }
-            }
-        });
-    }
-
-    updateProfileLinks() {
-        // Update profile links to enhanced version
-        const profileLinks = document.querySelectorAll('a[href*="profile"]');
-        
-        profileLinks.forEach(link => {
-            const href = link.getAttribute('href');
-            
-            if (href && href.includes('profile-v2.html')) {
-                // Update to new enhanced profile
-                link.setAttribute('href', 'profile.html');
-            }
-        });
-    }
-
-    updateExploreLinks() {
-        // Update explore links
-        const exploreLinks = document.querySelectorAll('a[href*="explore"]');
-        
-        exploreLinks.forEach(link => {
-            const href = link.getAttribute('href');
-            
-            if (href && !href.includes('explore.html')) {
-                if (href.includes('explore') && !href.includes('explore.html')) {
-                    link.setAttribute('href', 'explore.html');
-                }
-            }
-        });
-    }
-
-    updateGroupPlanningLinks() {
-        // Update group planning links
-        const planningLinks = document.querySelectorAll('a[href*="planning"], a[href*="group"]');
-        
-        planningLinks.forEach(link => {
-            const href = link.getAttribute('href');
-            const text = link.textContent.toLowerCase();
-            
-            if ((href && href.includes('planning')) || text.includes('group planning')) {
-                link.setAttribute('href', 'plan-with-friends.html');
-            }
-        });
     }
 
     markActivePage() {

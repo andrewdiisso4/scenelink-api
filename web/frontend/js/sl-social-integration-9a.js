@@ -209,6 +209,7 @@
       case 'post_like': return actor+' liked your post';
       case 'post_comment': return actor+' commented on your post';
       case 'message': case 'new_message': return actor+' sent you a message';
+      case 'list_invitation': return actor+' invited you to a list';
       case 'room_invitation': case 'plan_invite': return actor+' invited you to a private plan';
       case 'room_accepted': case 'plan_accept': return actor+' joined your plan';
       case 'room_declined': return actor+' declined your plan invitation';
@@ -223,12 +224,14 @@
       case 'post_like': return 'fas fa-heart';
       case 'post_comment': return 'fas fa-comment';
       case 'message': case 'new_message': return 'fas fa-paper-plane';
+      case 'list_invitation': return 'fas fa-list';
       case 'room_invitation': case 'room_accepted': case 'room_declined': case 'room_confirmed': case 'plan_invite': case 'plan_accept': return 'fas fa-calendar';
       default: return 'fas fa-bell';
     }
   }
   function notifHref(n){
     var d=n.data||{}, validId=function(v){ return typeof v==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v); };
+    if(n.type==='list_invitation') return '/my-lists'+(n.ref_type==='list' && validId(n.ref_id)?'?list='+encodeURIComponent(n.ref_id):'');
     if(n.type==='message' || n.type==='new_message') return '/messages'+(n.ref_type==='conversation' && validId(n.ref_id)?'?conversation='+encodeURIComponent(n.ref_id):'');
     if(n.type==='friend_request' || n.type==='friend_accept' || n.type==='friend_accepted'){
       var actor=n.actor_username || (validId(n.actor_id)?n.actor_id:null) || d.username;

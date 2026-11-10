@@ -80,3 +80,39 @@ test('provider moderation response never claims avatar attached or updates profi
 test('username uniqueness conflict keeps actual service error rather than pretending stale revision',async t=>{
  const m=await make(t,{handle:r=>r.method==='PUT'?{status:409,body:{error:'Username is already taken'}}:null});m.click('[data-action=edit]');await tick();m.submit('slspEditForm');await tick();assert.match(m.$('slspEditStatus').textContent,/Username is already taken/);assert(!m.$('slspEditStatus').textContent.includes('changed in another session'));
 });
+
+test('saving privacy preserves a profile draft, its open state and a safe current revision',async t=>{
+ const m=await make(t,{handle:(r,ctx)=>{if(r.method==='PATCH'){ctx.setUser({...ctx.user,...r.body,profile_revision:2});return{body:{user:ctx.user}};}}});
+ m.click('[data-action=edit]');await tick();const original=m.$('slspEditForm');original.elements.bio.value='Unsaved profile draft';original.elements.social_instagram.value='https://instagram.com/draft_member';
+ m.click('[data-tab=settings]');m.$('slspSettingsForm').elements.allow_messages.value='none';m.submit('slspSettingsForm');await tick();
+ assert.equal(m.$('slspEditForm'),original,'retain actual form so selected upload files are not lost');assert.equal(original.elements.bio.value,'Unsaved profile draft');assert.equal(original.elements.social_instagram.value,'https://instagram.com/draft_member');assert.equal(original.dataset.revision,'2');assert.equal(m.$('slspEdit').hidden,false);assert.match(m.$('slspEditStatus').textContent,/draft.*unsaved/i);assert.match(m.$('slspActionStatus').textContent,/Privacy settings saved/);
+});
+test('saving profile preserves unsaved privacy choices without pretending they were saved',async t=>{
+ const m=await make(t,{handle:(r,ctx)=>{if(r.method==='PUT'){ctx.setUser({...ctx.user,...r.body,profile_revision:2});return{body:{user:ctx.user}};}}});
+ m.click('[data-tab=settings]');const original=m.$('slspSettingsForm');original.elements.allow_messages.value='none';original.elements.discoverable.checked=false;
+ m.click('[data-action=edit]');await tick();m.$('slspEditForm').elements.bio.value='Saved profile';m.submit('slspEditForm');await tick();
+ assert.equal(m.$('slspSettingsForm'),original);assert.equal(original.elements.allow_messages.value,'none');assert.equal(original.elements.discoverable.checked,false);assert.equal(original.dataset.revision,'2');assert.match(m.$('slspSettingsStatus').textContent,/draft.*unsaved/i);assert.equal(m.calls.filter(c=>c.method==='PATCH').length,0);
+});
+test('preserved profile draft keeps stale revision when remote profile fields changed',async t=>{
+ const m=await make(t,{handle:(r,ctx)=>{if(r.method==='PATCH'){const written={...ctx.user,...r.body,profile_revision:2};ctx.setUser({...written,bio:'Remote change',profile_revision:3});return{body:{user:written}};}}});
+ m.click('[data-action=edit]');await tick();m.$('slspEditForm').elements.bio.value='My local draft';m.click('[data-tab=settings]');m.$('slspSettingsForm').elements.allow_messages.value='none';m.submit('slspSettingsForm');await tick();
+ assert.equal(m.$('slspEditForm').elements.bio.value,'My local draft');assert.equal(m.$('slspEditForm').dataset.revision,'1');assert.match(m.$('slspEditStatus').textContent,/reload.*before/i);assert.match(m.w.document.querySelector('.slsp-hero').textContent,/Remote change/);
+});
+test('failed save readback retains both drafts and account change never restores old draft',async t=>{
+ let failRead=false,resolveWrite;const m=await make(t,{handle:async(r,ctx)=>{if(r.method==='PATCH'){await new Promise(resolve=>resolveWrite=resolve);ctx.setUser({...ctx.user,...r.body,profile_revision:2});failRead=true;return{body:{user:ctx.user}};}if(r.url==='/api/users/me'&&failRead)return{status:503,body:{error:'Read unavailable'}};}});
+ m.click('[data-action=edit]');await tick();m.$('slspEditForm').elements.bio.value='Private old account draft';m.click('[data-tab=settings]');m.$('slspSettingsForm').elements.allow_messages.value='none';m.submit('slspSettingsForm');await tick();resolveWrite();await tick();
+ assert.equal(m.$('slspEditForm').elements.bio.value,'Private old account draft');assert.equal(m.$('slspSettingsForm').elements.allow_messages.value,'none');assert.match(m.$('slspSettingsStatus').textContent,/readback failed/);
+ m.w.localStorage.removeItem('sl_jwt_token');m.w.dispatchEvent(new m.w.Event('sl-auth-change'));await tick();assert(!m.$('slspEditForm'));assert(!m.$('slSocialProfile').textContent.includes('Private old account draft'));
+});
+test('selected but unuploaded photo remains selected when privacy settings save',async t=>{
+ const m=await make(t,{handle:(r,ctx)=>{if(r.url==='/api/media/capability')return{body:{enabled:true,contract:'server-upload-v1'}};if(r.method==='PATCH'){ctx.setUser({...ctx.user,...r.body,profile_revision:2});return{body:{user:ctx.user}};}}});
+ m.click('[data-action=edit]');await tick();const input=m.$('slspAvatarFile'),file=new m.w.File(['fake test bytes'],'local-photo.png',{type:'image/png'});Object.defineProperty(input,'files',{value:[file]});
+ m.click('[data-tab=settings]');m.$('slspSettingsForm').elements.allow_messages.value='none';m.submit('slspSettingsForm');await tick();assert.equal(m.$('slspAvatarFile'),input);assert.equal(input.files[0],file);assert.equal(m.calls.filter(c=>c.url==='/api/media/upload').length,0);
+});
+test('pending save cannot restore prior profile draft after account switches',async t=>{
+ let release;const m=await make(t,{handle:r=>r.method==='PATCH'?new Promise(resolve=>release=()=>resolve({body:{user:{...baseUser,profile_revision:2}}})):null});m.click('[data-action=edit]');await tick();m.$('slspEditForm').elements.bio.value='OLD PRIVATE DRAFT';m.submit('slspSettingsForm');await tick();
+ m.w.localStorage.setItem('sl_jwt_token','different-session');m.w.dispatchEvent(new m.w.Event('sl-auth-changed'));await tick();release();await tick();assert(!m.$('slspEditForm').elements.bio.value.includes('OLD PRIVATE DRAFT'));assert(!m.$('slspActionStatus').textContent.includes('saved'));
+});
+test('failed privacy save keeps both forms without altering profile draft revision',async t=>{
+ const m=await make(t,{handle:r=>r.method==='PATCH'?{status:409,body:{error:'Changed elsewhere',code:'STALE_PROFILE'}}:null});m.click('[data-action=edit]');await tick();m.$('slspEditForm').elements.bio.value='PROFILE DRAFT';m.$('slspSettingsForm').elements.allow_messages.value='none';m.submit('slspSettingsForm');await tick();assert.equal(m.$('slspEditForm').elements.bio.value,'PROFILE DRAFT');assert.equal(m.$('slspEditForm').dataset.revision,'1');assert.equal(m.$('slspSettingsForm').elements.allow_messages.value,'none');assert.match(m.$('slspSettingsStatus').textContent,/changed in another session/);
+});

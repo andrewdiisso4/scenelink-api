@@ -198,7 +198,7 @@ async function applySqlMigrations() {
   }
   files.sort((a, b) => path.basename(a).localeCompare(path.basename(b)) || a.localeCompare(b));
   const runAll = process.env.RUN_ALL_SQL_MIGRATIONS === 'true';
-  const selected = runAll ? files : files.filter((file) => /^(002_|003_|004_|005_|006_|007_|008_|009_|010_|011_|012_|013_|014_).*\.sql$/i.test(path.basename(file)));
+  const selected = runAll ? files : files.filter((file) => /^(002_|003_|004_|005_|006_|007_|008_|009_|010_|011_|012_|013_|014_|016_).*\.sql$/i.test(path.basename(file)));
   for (const file of selected) {
     try {
       const sql = fs.readFileSync(file, 'utf8');
@@ -282,4 +282,6 @@ if (require.main === module) {
     .catch(async () => { console.error('[launch] Startup failed; no application traffic accepted'); process.exitCode=1; await pool.end(); });
 }
 
+// Exercise the exact production initialization path in the guarded local integration gate.
+app.locals.initializeDatabase = initDatabase;
 module.exports = app;

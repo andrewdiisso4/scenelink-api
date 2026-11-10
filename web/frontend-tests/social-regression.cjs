@@ -51,7 +51,7 @@ function client(file){const calls=[],storage=new Map([['sl_jwt_token','fictional
  check('Account deletion offers password recovery without automatic email',()=>assert(account.includes("window.SLAuthUI.open('forgot')")));
  check('Account deletion requires explicit confirmed response',()=>assert(account.includes('result.deleted !== true')));
  check('Account deletion blocks duplicate requests',()=>assert(account.includes('if(deleting || confirmBtn.disabled) return;')));
- check('Account deletion supports Escape cancellation',()=>assert(account.includes("if(e.key==='Escape') close()")));
+ check('Account deletion supports Escape cancellation',()=>assert.match(account, /if\(e.key === 'Escape'\) \{ e.preventDefault\(\); close\(\); return; \}/));
  if(results.some(r=>r.status==='FAIL'))process.exitCode=1;
  console.log(JSON.stringify({date:new Date().toISOString(),scope:'VM mocked fetch only; no HTTP/server/database/account writes',results},null,2));
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -47,11 +47,44 @@
     hasMore: false,
     loadingFeed: false,
     mediaEnabled: false,
-    booted: false
+    booted: false,
+    session: null,
+    epoch: 0,
+    postBusy: false,
+    postAttempt: null
   };
 
+  function sessionToken(){
+    try {
+      if(window.SLAuth && window.SLAuth.getToken) return window.SLAuth.getToken() || '';
+      if(window.SLApi && window.SLApi.getToken) return window.SLApi.getToken() || '';
+      return localStorage.getItem('sl_jwt_token') || '';
+    } catch(_){ return ''; }
+  }
+  function forSession(callback){
+    var epoch=STATE.epoch, token=STATE.session;
+    return function(){
+      if(epoch!==STATE.epoch || token!==sessionToken()) return;
+      return callback.apply(this,arguments);
+    };
+  }
+  var sessionCleanups=[];
+  function clearPrivateState(){
+    sessionCleanups.splice(0).forEach(function(close){close();});
+    STATE.me=null;STATE.feed=[];STATE.nextCursor=null;STATE.hasMore=false;STATE.loadingFeed=false;
+    STATE.pendingImage=null;STATE.mediaEnabled=false;pendingVenue=null;STATE.postBusy=false;STATE.postAttempt=null;
+    ['sfFeedContent','sfSuggestions','sfTrending','sfStories','sfComposerExtra','sfPostStatus'].forEach(function(id){var el=$(id);if(el)el.innerHTML='';});
+    ['sfRequestsCard','sfMessagesCard'].forEach(function(id){var el=$(id);if(el)el.remove();});
+    ['sfStatCheckins','sfStatReviews','sfStatSaved','sfStatScene'].forEach(function(id){setText(id,'—');});
+    var avatar=$('sfUserAvatar');if(avatar)avatar.textContent='?';
+    var input=$('sfCreateInput');if(input){input.value='';input.placeholder="Share what you're up to tonight...";}
+    var post=$('sfPostBtn');if(post){post.disabled=false;post.textContent='Post';}
+    var audience=$('sfAudience');if(audience)audience.value='friends';
+    document.querySelectorAll('[data-sf-session-toast]').forEach(function(el){el.remove();});
+  }
+
   // ── Boot / auth toggle ──────────────────────────────────────────────
-  function boot(){
+  function boot(force){
     var s = social();
     var landing = $('socialLanding');
     var feed = $('socialFeed');
@@ -63,20 +96,29 @@
       return;
     }
 
+    var next=sessionToken();
+    if(STATE.session===next && force!==true) return;
+    var changed=STATE.session!==next;STATE.session=next;STATE.epoch++;
+    if(changed)clearPrivateState();
     if(s.isLoggedIn()){
       showFeed();
-      loadMe().then(function(){
+      loadMe().then(forSession(function(){
+        if(!STATE.me){
+          var content=$('sfFeedContent');if(content){content.innerHTML=errorState('Could not load your account.', 'sfRetryAccount');var retry=$('sfRetryAccount');if(retry)retry.onclick=function(){boot(true);};}
+          return;
+        }
         renderComposerIdentity();
         loadFeed(true);
         loadSidebar();
         detectMedia();
-      });
+      }));
     } else {
       showLanding();
     }
   }
 
   function showLanding(){
+    STATE.epoch++;clearPrivateState();
     var landing=$('socialLanding'), feed=$('socialFeed');
     if(landing){ landing.classList.remove('hidden'); landing.style.display=''; }
     if(feed){ feed.classList.remove('active'); feed.style.display='none'; }
@@ -89,11 +131,11 @@
 
   function loadMe(){
     var s=social();
-    return s.getMe().then(function(r){
+    return s.getMe().then(forSession(function(r){
       STATE.me = (r.ok && r.data && (r.data.user||r.data)) || null;
       if(!STATE.me && r.loggedOut){ showLanding(); }
       return STATE.me;
-    });
+    }));
   }
 
   // ── Composer identity + actions ─────────────────────────────────────
@@ -112,15 +154,12 @@
 
   function detectMedia(){
     var s=social();
-    s.getMediaCapability().then(function(r){
-      STATE.mediaEnabled = !!(r.ok && r.data && r.data.enabled);
-      // Photo button: if media disabled, show a soft "soon" tooltip instead of hiding (transparent)
+    s.getMediaCapability().then(forSession(function(r){
+      STATE.mediaEnabled = !!(r.ok && r.data && r.data.enabled===true && r.data.contract==='server-upload-v1');
+      // Photo availability is explicit; this does not enable the provider.
       var photoBtn = document.querySelector('.sf-create-action[data-act="photo"]');
-      if(photoBtn && !STATE.mediaEnabled){
-        photoBtn.setAttribute('title','Photo uploads coming soon');
-        photoBtn.style.opacity='0.55';
-      }
-    });
+      if(photoBtn){photoBtn.setAttribute('title',STATE.mediaEnabled?'Choose a PNG, JPEG or WebP image up to 4 MB':'Photo uploads are not connected');photoBtn.style.opacity=STATE.mediaEnabled?'':'0.55';}
+    }));
   }
 
   function wireComposer(){
@@ -132,6 +171,7 @@
       label.innerHTML='Post audience <select id="sfAudience" style="margin-left:8px;padding:7px;background:#181818;color:#fff;border:1px solid #D4AF37;border-radius:6px"><option value="friends">Friends</option><option value="public">Public</option><option value="private">Only me</option></select>';
       composer.appendChild(label);
     }
+    if(composer&&!$('sfPostStatus')){var postStatus=document.createElement('p');postStatus.id='sfPostStatus';postStatus.setAttribute('role','status');postStatus.style.cssText='font-size:13px;color:#ccc';composer.appendChild(postStatus);}
     var actions=document.querySelectorAll('.sf-create-action');
 
     if(postBtn && input){
@@ -165,31 +205,46 @@
   function onComposerAction(act){
     if(act==='checkin'){ openVenuePicker('checkin'); }
     else if(act==='photo'){
-      if(!STATE.mediaEnabled){ toast('Photo uploads are coming soon.'); return; }
+      if(!STATE.mediaEnabled){ toast('Photo uploads are not connected.'); return; }
       openPhotoPicker();
     }
     else if(act==='plan'){ window.location.href='plan-with-friends.html'; }
   }
 
+  function postSubmissionId(){
+    if(window.crypto && window.crypto.randomUUID)return window.crypto.randomUUID();
+    if(!window.crypto || !window.crypto.getRandomValues)throw Error('Use a secure browser to post safely.');
+    var bytes=window.crypto.getRandomValues(new Uint8Array(16));bytes[6]=bytes[6]&15|64;bytes[8]=bytes[8]&63|128;
+    var h=Array.from(bytes,function(b){return b.toString(16).padStart(2,'0');}).join('');
+    return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20);
+  }
   function submitPost(){
     var input=$('sfCreateInput'); var postBtn=$('sfPostBtn');
-    if(!input) return;
+    if(!input || !postBtn || STATE.postBusy || !STATE.me || STATE.session!==sessionToken()) return;
     var body=(input.value||'').trim();
     if(!body && !pendingVenue && !STATE.pendingImage){ input.focus(); return; }
-    postBtn.disabled=true; var orig=postBtn.textContent; postBtn.textContent='Posting…';
     var payload={ body: body, audience: $('sfAudience') ? $('sfAudience').value : 'friends' };
     if(pendingVenue) payload.venue_id = pendingVenue.id;
     if(STATE.pendingImage) payload.image_url = STATE.pendingImage;
-    social().createPost(payload).then(function(r){
-      postBtn.disabled=false; postBtn.textContent=orig;
+    var fingerprint=JSON.stringify(payload),attempt=STATE.postAttempt;
+    try {if(!attempt||attempt.fingerprint!==fingerprint)attempt={id:postSubmissionId(),fingerprint:fingerprint};}
+    catch(e){setText('sfPostStatus',e.message);return;}
+    STATE.postAttempt=attempt;payload.client_id=attempt.id;STATE.postBusy=true;
+    postBtn.disabled=true;postBtn.textContent='Posting…';setText('sfPostStatus','Saving your post…');
+    social().createPost(payload).then(forSession(function(r){
+      STATE.postBusy=false;postBtn.disabled=false;postBtn.textContent='Post';
+      if(r.ok && (!r.data || !r.data.post || r.data.post.id!==attempt.id))r={ok:false,error:'The service did not confirm the saved post.'};
       if(r.ok){
-        input.value=''; pendingVenue=null; STATE.pendingImage=null;
-        clearComposerExtras();
-        loadFeed(true);
-        loadSidebar();
+        STATE.postAttempt=null;
+        // Do not erase text or attachments added while the earlier post was saving.
+        if(input.value.trim()===body)input.value='';
+        if(pendingVenue && pendingVenue.id===payload.venue_id)pendingVenue=null;
+        if(STATE.pendingImage===payload.image_url)STATE.pendingImage=null;
+        if(!pendingVenue&&!STATE.pendingImage)clearComposerExtras();
+        setText('sfPostStatus','Post saved.');loadFeed(true);loadSidebar();
       } else if(r.loggedOut){ showLanding(); }
-      else { postBtn.textContent='Try again'; setTimeout(function(){postBtn.textContent=orig;},1500); }
-    });
+      else {setText('sfPostStatus',(r.error||'Posting was not confirmed.')+' Try again without changing the post to avoid duplicates.');}
+    }));
   }
 
   function clearComposerExtras(){
@@ -220,7 +275,7 @@
         clearTimeout(t);
         var q=inp.value.trim();
         if(q.length<2){ $('sfVenueResults').innerHTML=''; return; }
-        t=setTimeout(function(){ searchVenues(q); }, 250);
+        t=setTimeout(forSession(function(){ searchVenues(q); }), 250);
       });
     }
   }
@@ -229,8 +284,8 @@
     var box=$('sfVenueResults'); if(box) box.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:12px;padding:6px;">Searching…</div>';
     // venue search endpoint (public)
     fetch((window.SL_CONFIG&&window.SL_CONFIG.API_BASE_URL||'/api')+'/venues/search?q='+encodeURIComponent(q)+'&limit=6')
-      .then(function(r){ return r.ok?r.json():{venues:[]}; })
-      .then(function(d){
+      .then(forSession(function(r){ return r.ok?r.json():{venues:[]}; }))
+      .then(forSession(function(d){
         var list = d.venues || d.items || d.results || [];
         if(!box) return;
         if(!list.length){ box.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:12px;padding:6px;">No venues found.</div>'; return; }
@@ -244,18 +299,18 @@
         box.querySelectorAll('.sf-venue-result').forEach(function(b){
           b.addEventListener('click', function(){ pickVenue(b.getAttribute('data-id'), b.getAttribute('data-name')); });
         });
-      })
-      .catch(function(){ if(box) box.innerHTML='<div style="color:#f66;font-size:12px;padding:6px;">Search unavailable.</div>'; });
+      }))
+      .catch(forSession(function(){ if(box) box.innerHTML='<div style="color:#f66;font-size:12px;padding:6px;">Search unavailable.</div>'; }));
   }
 
   function pickVenue(id, name){
     if(STATE.venueMode==='checkin'){
       // immediate check-in
-      social().checkIn(id, ($('sfCreateInput')&&$('sfCreateInput').value.trim())||null).then(function(r){
+      social().checkIn(id, ($('sfCreateInput')&&$('sfCreateInput').value.trim())||null).then(forSession(function(r){
         if(r.ok){ if($('sfCreateInput')) $('sfCreateInput').value=''; clearComposerExtras(); loadFeed(true); loadSidebar(); toast('Checked in at '+name); }
         else if(r.loggedOut){ showLanding(); }
         else toast('Check-in failed.');
-      });
+      }));
     } else {
       pendingVenue={id:id,name:name};
       setComposerExtra('<div style="display:inline-flex;gap:6px;align-items:center;background:rgba(212,175,55,.12);border:1px solid rgba(212,175,55,.3);border-radius:20px;padding:5px 12px;font-size:12px;color:#D4AF37;">'+
@@ -266,17 +321,18 @@
 
   function openPhotoPicker(){
     var inp=document.createElement('input');
-    inp.type='file'; inp.accept='image/*';
-    inp.addEventListener('change', function(){
+    inp.type='file'; inp.accept='image/png,image/jpeg,image/webp';
+    inp.addEventListener('change', forSession(function(){
       var f=inp.files&&inp.files[0]; if(!f) return;
       setComposerExtra('<div style="color:rgba(255,255,255,.5);font-size:12px;">Uploading photo…</div>');
-      social().uploadMedia(f,'post').then(function(r){
+      social().uploadMedia(f,'post').then(forSession(function(r){
         if(r.ok&&r.url){ STATE.pendingImage=r.url;
           setComposerExtra('<div style="position:relative;display:inline-block;"><img src="'+esc(r.url)+'" style="max-height:120px;border-radius:8px;"><button onclick="window.__sfClearImg&&window.__sfClearImg()" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);border:none;color:#fff;border-radius:50%;width:24px;height:24px;cursor:pointer;">&times;</button></div>');
           window.__sfClearImg=function(){ STATE.pendingImage=null; clearComposerExtras(); };
-        } else { setComposerExtra('<div style="color:#f66;font-size:12px;">'+esc(r.error||'Upload failed')+'</div>'); }
-      });
-    });
+        } else if(r.pending_review){setComposerExtra('<p role="status">'+esc(r.error)+'</p>');}
+        else { setComposerExtra('<div style="color:#f66;font-size:12px;">'+esc(r.error||'Upload failed')+'</div>'); }
+      }));
+    }));
     inp.click();
   }
 
@@ -288,9 +344,9 @@
     if(reset){ STATE.feed=[]; STATE.nextCursor=null; STATE.hasMore=false; content.innerHTML = skeletonFeed(); }
     var cursor = reset ? null : STATE.nextCursor;
     var timedOut=false;
-    var guard=setTimeout(function(){ timedOut=true; if(!STATE.feed.length){ content.innerHTML=errorState('Feed is taking too long.', 'sfRetryFeed'); wireRetry(); } }, 13000);
+    var guard=setTimeout(forSession(function(){ timedOut=true; if(!STATE.feed.length){ content.innerHTML=errorState('Feed is taking too long.', 'sfRetryFeed'); wireRetry(); } }), 13000);
 
-    social().getFeed(cursor, 15).then(function(r){
+    social().getFeed(cursor, 15).then(forSession(function(r){
       clearTimeout(guard);
       STATE.loadingFeed=false;
       if(timedOut && !r.ok) return;
@@ -306,7 +362,7 @@
       STATE.nextCursor = d.next_cursor || null;
       STATE.hasMore = !!d.has_more;
       renderFeed();
-    });
+    }));
   }
 
   function wireRetry(){
@@ -381,7 +437,7 @@
     if(like) like.addEventListener('click', function(){
       if(!STATE.me) return showLanding();
       var icon=like.querySelector('i'); var cnt=like.querySelector('.sf-like-count');
-      social().likePost(x.id).then(function(r){
+      social().likePost(x.id).then(forSession(function(r){
         if(r.ok && r.data){
           var liked = r.data.liked!=null?r.data.liked:!x.liked_by_me;
           x.liked_by_me=liked; x.like_count=r.data.like_count!=null?r.data.like_count:x.like_count;
@@ -389,7 +445,7 @@
           like.style.color=liked?'#D4AF37':'rgba(255,255,255,.6)';
           if(cnt) cnt.textContent=x.like_count;
         } else if(r.loggedOut){ showLanding(); }
-      });
+      }));
     });
 
     var ct=article.querySelector('.sf-comment-toggle');
@@ -398,11 +454,11 @@
       if(box.style.display!=='none'){ box.style.display='none'; return; }
       box.style.display='block';
       box.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:12px;">Loading…</div>';
-      social().getComments(x.id).then(function(r){
+      social().getComments(x.id).then(forSession(function(r){
         var comments=(r.ok&&r.data&&(r.data.comments||r.data.items))||[];
         box.innerHTML=commentsHtml(comments);
         wireCommentSubmit(box,x,article);
-      });
+      }));
     });
 
     var rep=article.querySelector('.sf-report');
@@ -430,17 +486,17 @@
     function submit(){
       var body=(inp.value||'').trim(); if(!body) return;
       btn.disabled=true;
-      social().commentPost(x.id, body).then(function(r){
+      social().commentPost(x.id, body).then(forSession(function(r){
         btn.disabled=false;
         if(r.ok){
           inp.value='';
-          social().getComments(x.id).then(function(rr){
+          social().getComments(x.id).then(forSession(function(rr){
             var comments=(rr.ok&&rr.data&&(rr.data.comments||rr.data.items))||[];
             box.innerHTML=commentsHtml(comments); wireCommentSubmit(box,x,article);
             var cc=article.querySelector('.sf-comment-count'); if(cc) cc.textContent=comments.length;
-          });
+          }));
         } else if(r.loggedOut){ showLanding(); }
-      });
+      }));
     }
     btn.addEventListener('click', submit);
     inp.addEventListener('keydown', function(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); submit(); } });
@@ -456,7 +512,7 @@
   }
 
   function loadStats(){
-    social().getSummary().then(function(r){
+    social().getSummary().then(forSession(function(r){
       if(!r.ok || !r.data) return;
       var d=r.data;
       setText('sfStatCheckins', d.checkins!=null?d.checkins:(d.posts!=null?'—':'—'));
@@ -465,12 +521,12 @@
       setText('sfStatScene', d.lists!=null?d.lists:'—');
       // also try to populate checkins from summary if present
       if(d.checkins==null){ setText('sfStatCheckins', d.posts!=null?d.posts:'—'); }
-    });
+    }));
   }
   function setText(id,v){ var el=$(id); if(el) el.textContent=String(v); }
 
   function loadFriendRequests(){
-    social().getFriendRequests().then(function(r){
+    social().getFriendRequests().then(forSession(function(r){
       var incoming=(r.ok&&r.data&&r.data.incoming)||[];
       // find or create a requests card above suggestions
       var host=$('sfSuggestions'); if(!host) return;
@@ -495,19 +551,19 @@
       reqCard.querySelectorAll('.sf-req').forEach(function(row){
         var fid=row.getAttribute('data-fid');
         row.querySelector('.sf-accept').addEventListener('click', function(){
-          social().acceptFriendRequest(fid).then(function(rr){ if(rr.ok){ row.remove(); loadStats(); loadSuggestions(); refreshBadges(); if(!reqCard.querySelectorAll('.sf-req').length) reqCard.remove(); } });
+          social().acceptFriendRequest(fid).then(forSession(function(rr){ if(rr.ok){ row.remove(); loadStats(); loadSuggestions(); refreshBadges(); if(!reqCard.querySelectorAll('.sf-req').length) reqCard.remove(); } }));
         });
         row.querySelector('.sf-decline').addEventListener('click', function(){
-          social().declineFriendRequest(fid).then(function(rr){ if(rr.ok){ row.remove(); if(!reqCard.querySelectorAll('.sf-req').length) reqCard.remove(); } });
+          social().declineFriendRequest(fid).then(forSession(function(rr){ if(rr.ok){ row.remove(); if(!reqCard.querySelectorAll('.sf-req').length) reqCard.remove(); } }));
         });
       });
-    });
+    }));
   }
 
   function loadSuggestions(){
     var host=$('sfSuggestions'); if(!host) return;
     host.innerHTML='<div style="color:rgba(255,255,255,.3);font-size:12px;padding:8px 0;">Loading…</div>';
-    social().getSuggestions(6).then(function(r){
+    social().getSuggestions(6).then(forSession(function(r){
       var list=(r.ok&&r.data&&r.data.suggestions)||[];
       var card=host.closest('.sf-sidebar-card');
       var title=card&&card.querySelector('.sf-sidebar-title');
@@ -526,14 +582,14 @@
         var btn=row.querySelector('.sf-add');
         btn.addEventListener('click', function(){
           btn.disabled=true; btn.textContent='…';
-          social().sendFriendRequest(id).then(function(rr){
+          social().sendFriendRequest(id).then(forSession(function(rr){
             if(rr.ok){ btn.textContent='Requested'; btn.style.opacity='0.6'; }
             else if(rr.loggedOut){ showLanding(); }
             else { btn.disabled=false; btn.textContent='Add'; }
-          });
+          }));
         });
       });
-    });
+    }));
   }
 
   function loadTrending(){
@@ -541,8 +597,8 @@
     host.innerHTML='<div style="color:rgba(255,255,255,.3);font-size:12px;padding:8px 0;">Loading…</div>';
     // real venues — trending = top venues endpoint (public)
     fetch((window.SL_CONFIG&&window.SL_CONFIG.API_BASE_URL||'/api')+'/venues?limit=5&sort=trending')
-      .then(function(r){ return r.ok?r.json():{venues:[]}; })
-      .then(function(d){
+      .then(forSession(function(r){ return r.ok?r.json():{venues:[]}; }))
+      .then(forSession(function(d){
         var list=(d.venues||d.items||d.results||[]).slice(0,5);
         if(!list.length){ host.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:12px;padding:8px 0;">Explore venues in Boston.</div>'; return; }
         host.innerHTML=list.map(function(v){
@@ -551,8 +607,8 @@
             '<div style="flex:1;min-width:0;"><div style="font-size:13px;color:#fff;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(v.name)+'</div>'+
               (v.neighborhood?'<div style="font-size:11px;color:rgba(255,255,255,.4);">'+esc(v.neighborhood)+'</div>':'')+'</div></a>';
         }).join('');
-      })
-      .catch(function(){ host.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:12px;padding:8px 0;">Explore venues in Boston.</div>'; });
+      }))
+      .catch(forSession(function(){ host.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:12px;padding:8px 0;">Explore venues in Boston.</div>'; }));
   }
 
   function loadMessagesPreview(){
@@ -564,21 +620,24 @@
       sidebar.insertBefore(card, sidebar.firstChild);
     }
     card.innerHTML='<div class="sf-sidebar-title">Messages <a href="messages.html" class="sf-see-all">Open</a></div><div id="sfMsgList" style="color:rgba(255,255,255,.3);font-size:12px;padding:8px 0;">Loading…</div>';
-    social().getConversations().then(function(r){
+    social().getConversations().then(forSession(function(r){
       var list=(r.ok&&r.data&&r.data.conversations)||[];
       var host=$('sfMsgList'); if(!host) return;
       if(!list.length){ host.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:12px;">No conversations yet. <a href="messages.html" style="color:#D4AF37;">Start one</a>.</div>'; return; }
       host.innerHTML=list.slice(0,4).map(function(c){
-        var name=c.other_display_name||c.display_name||c.title||'Conversation';
+        var peers=(c.participants||[]).filter(function(p){return !STATE.me||p.id!==STATE.me.id;});
+        var peer=peers.length===1?peers[0]:null;
+        var name=c.title||peers.map(function(p){return p.display_name||p.username||'SceneLink member';}).join(', ')||'Conversation';
+        var preview=c.last_message_deleted?'Message deleted':typeof c.last_message==='string'?c.last_message:c.last_message&&c.last_message.body||'';
         var unread=c.unread_count||0;
-        return '<a href="messages.html?c='+encodeURIComponent(c.id||c.conversation_id)+'" style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);text-decoration:none;">'+
-          avatarHtml(c.other_avatar_url||c.avatar_url,name,34)+
+        return '<a href="/messages?conversation='+encodeURIComponent(c.id||c.conversation_id)+'" style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);text-decoration:none;">'+
+          avatarHtml(peer&&peer.avatar_url,name,34)+
           '<div style="flex:1;min-width:0;"><div style="font-size:13px;color:#fff;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(name)+'</div>'+
-            '<div style="font-size:11px;color:rgba(255,255,255,.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(c.last_message_body||c.last_message||'')+'</div></div>'+
+            '<div style="font-size:11px;color:rgba(255,255,255,.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(preview)+'</div></div>'+
           (unread?'<span style="background:#D4AF37;color:#000;border-radius:10px;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;padding:0 5px;">'+unread+'</span>':'')+
         '</a>';
       }).join('');
-    });
+    }));
   }
 
   // ── Report modal ────────────────────────────────────────────────────
@@ -592,7 +651,8 @@
       '<button id="sfReportCancel" style="width:100%;background:none;border:none;color:rgba(255,255,255,.5);padding:8px;cursor:pointer;margin-top:4px;">Cancel</button>'+
     '</div>';
     document.body.appendChild(ov);
-    function close(){ ov.remove(); document.removeEventListener('keydown',onKey); }
+    function close(){ ov.remove(); document.removeEventListener('keydown',onKey);sessionCleanups=sessionCleanups.filter(function(fn){return fn!==close;}); }
+    sessionCleanups.push(close);
     function onKey(e){ if(e.key==='Escape') close(); }
     document.addEventListener('keydown',onKey);
     ov.addEventListener('click', function(e){ if(e.target===ov) close(); });
@@ -600,7 +660,7 @@
     ov.querySelectorAll('#sfReasons button').forEach(function(b){
       b.addEventListener('click', function(){
         var reason=b.getAttribute('data-r');
-        social().reportContent(type,id,reason).then(function(r){ if(r.ok){ close(); toast('Report received.'); } else toast(r.error || 'Report could not be submitted. Please try again.'); });
+        social().reportContent(type,id,reason).then(forSession(function(r){ if(r.ok){ close(); toast('Report received.'); } else toast(r.error || 'Report could not be submitted. Please try again.'); }));
       });
     });
   }
@@ -632,17 +692,17 @@
   function stars(r){ var n=Math.max(0,Math.min(5,Math.round(r))); return '★'.repeat(n)+'<span style="color:rgba(255,255,255,.2);">'+'★'.repeat(5-n)+'</span>'; }
   function toast(msg){
     var t=document.createElement('div');
-    t.textContent=msg;
+    t.textContent=msg;t.setAttribute('data-sf-session-toast','');
     t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid rgba(212,175,55,.3);color:#fff;padding:12px 20px;border-radius:10px;z-index:99999;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.5);';
     document.body.appendChild(t);
-    setTimeout(function(){ t.style.transition='opacity .4s'; t.style.opacity='0'; setTimeout(function(){t.remove();},400); }, 2600);
+    setTimeout(forSession(function(){ t.style.transition='opacity .4s'; t.style.opacity='0'; setTimeout(forSession(function(){t.remove();}),400); }), 2600);
   }
   function cssEsc(s){ return String(s).replace(/["\\]/g,'\\$&'); }
 
   // realtime badges — bump message preview / requests on unread change
   function refreshBadges(){
     var s=social(); if(!s) return;
-    s.getSummary().then(function(r){ if(r.ok&&r.data){ /* header badges handled by integration script */ } });
+    s.getSummary().then(forSession(function(r){ if(r.ok&&r.data){ /* header badges handled by integration script */ } }));
   }
 
   // ── Init ────────────────────────────────────────────────────────────
@@ -661,12 +721,15 @@
     })();
 
     // react to auth changes
-    document.addEventListener('sl-auth-change', function(){ boot(); });
+    ['sl-auth-change','sl-auth-changed','sl-auth-ready'].forEach(function(type){window.addEventListener(type,boot);document.addEventListener(type,boot);});
+    window.addEventListener('storage',function(e){if(e.key===null||e.key==='sl_jwt_token'||e.key==='sl_user')boot();});
+    window.addEventListener('pageshow',boot);
+    document.addEventListener('visibilitychange',function(){if(!document.hidden)boot();});
     // realtime: refresh message preview when unread changes
     var s=social();
     if(s && s.realtime && s.realtime.on){
       s.realtime.on(function(u){
-        if(STATE.me){ loadMessagesPreview(); loadFriendRequests(); }
+        if(STATE.me && STATE.session===sessionToken()){ loadMessagesPreview(); loadFriendRequests(); }
       });
     }
   });

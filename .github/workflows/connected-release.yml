@@ -52,6 +52,9 @@ jobs:
         with:
           node-version-file: .node-version
       - run: npm ci --ignore-scripts
+      - name: Install local DOM acceptance dependencies
+        if: matrix.suite == 'api'
+        run: npm ci --ignore-scripts --prefix web
       - name: Native API acceptance
         if: matrix.suite == 'api'
         env:
