@@ -1009,7 +1009,7 @@
             addMessage(
                 '<div class="slc-ctx-badge"><i class="fas fa-location-dot"></i> ' + ctx.page + '</div>' +
                 '<strong>Ask SceneLink Concierge</strong><br>' +
-                getGreeting() + '! I know every bar, restaurant and venue in Boston. Tell me what you\'re in the mood for — I\'ll build your night.',
+                getGreeting() + '! I can help you explore venues listed on SceneLink. Tell me what you\'re in the mood for, and I\'ll help you plan your night.',
                 'bot'
             );
             var fallback = getQuickActions(ctx);

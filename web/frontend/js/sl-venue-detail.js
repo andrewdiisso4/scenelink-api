@@ -73,6 +73,15 @@
       (directions ? '<a class="sl-link-button sl-secondary" href="' + E(directions) + '" target="_blank" rel="noopener noreferrer">Directions ↗</a>' : '') + '</div>' +
       '<div class="sl-row" style="margin-top:18px"><button type="button" data-save-venue>Save venue</button><button type="button" class="sl-secondary" data-add-list>Add to list</button><a class="sl-link-button sl-secondary" href="/plan-with-friends?venue_id=' + encodeURIComponent(v.id) + '">Plan with friends</a><button type="button" class="sl-secondary" data-review-venue>Write a review</button></div>' +
       '<p data-venue-status role="status"></p><h2>Community reviews</h2><div data-venue-reviews>Loading submitted reviews…</div>';
+    const image = content.querySelector('.sl-vd-image'), placeholder = '/assets/img/placeholder-venue.svg';
+    function photoUnavailable() {
+      image.removeEventListener('error', photoUnavailable);
+      image.alt = 'Venue photo unavailable';
+      if (image.getAttribute('src') !== placeholder) image.src = placeholder;
+    }
+    image.addEventListener('error', photoUnavailable, {once:true});
+    // A cached failure may have completed before the handler was attached.
+    if (image.complete && image.naturalWidth === 0) photoUnavailable();
     content.querySelector('[data-save-venue]').onclick = async function () {
       this.disabled = true; const button = this, current = generation, status = content.querySelector('[data-venue-status]');
       try { if(window.SLVenueActions&&window.SLVenueActions.setFavorite)await window.SLVenueActions.setFavorite(v.id,true);else{const result=await C().once('save:' + v.id, () => C().request('/favorites/' + encodeURIComponent(v.id), {method:'POST'}));if(result.favorited!==true)throw new Error('The save was not confirmed. Please retry.');}

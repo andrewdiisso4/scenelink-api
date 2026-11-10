@@ -18,9 +18,9 @@
   'use strict';
   var V = {
     phase: 'integrated-design-lists',
-    sw_version: 'sl-connected-20261110-2',
-    deploy: 'connected-20261110-2',
-    built: '2026-11-10T00:30:17.973668+00:00',
+    sw_version: 'sl-connected-20261110-3',
+    deploy: 'connected-20261110-3',
+    built: '2026-11-10T10:35:37.020242+00:00',
     backend_change: 'private-list-invitations-016'
   };
   // Always-available global
