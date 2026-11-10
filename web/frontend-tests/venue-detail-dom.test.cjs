@@ -22,3 +22,33 @@ test('Back and Forward reopen canonical details and malformed external hashes do
  w.history.replaceState(null,'','/explore#venue=%E0%A4%A');w.dispatchEvent(new w.HashChangeEvent('hashchange'));assert(!w.document.querySelector('.sl-vd-overlay').classList.contains('sl-open'));
  }finally{d.window.close();}
 });
+for(const scenario of ['error-event','already-failed','healthy'])test('canonical venue hero handles '+scenario+' without an image retry loop',async t=>{
+ const photo='/api/photo?name=places/fictional-test-only-photo/media',placeholder='/assets/img/placeholder-venue.svg';
+ const d=dom(async url=>reply(url.includes('/reviews')?{reviews:[]}:{...fixture('photo-fixture'),thumbnail_url:photo})),w=d.window;
+ t.after(()=>w.close());
+ const proto=w.HTMLImageElement.prototype,src=Object.getOwnPropertyDescriptor(proto,'src');let assignments=0;
+ Object.defineProperty(proto,'src',{...src,set(value){assignments++;src.set.call(this,value);}});
+ Object.defineProperty(proto,'complete',{configurable:true,get:()=>scenario!=='error-event'});
+ Object.defineProperty(proto,'naturalWidth',{configurable:true,get:()=>scenario==='healthy'?640:0});
+ await w.SLVenueDetail.open('photo-fixture');
+ const image=w.document.querySelector('.sl-vd-image');
+ if(scenario==='healthy'){
+   assert.equal(image.getAttribute('src'),photo);assert.equal(image.alt,'Venue photo-fixture');assert.equal(assignments,0);return;
+ }
+ if(scenario==='error-event'){
+   assert.equal(image.getAttribute('src'),photo);assert.equal(assignments,0);
+   image.dispatchEvent(new w.Event('error'));
+ }
+ assert.equal(image.getAttribute('src'),placeholder);assert.equal(image.alt,'Venue photo unavailable');assert.equal(assignments,1);
+ image.dispatchEvent(new w.Event('error'));image.dispatchEvent(new w.Event('error'));
+ assert.equal(assignments,1,'a failing placeholder cannot trigger another request');
+ assert.equal(image.getAttribute('src'),placeholder);assert(!image.hasAttribute('onerror'));
+ assert(fs.existsSync(path.join(root,placeholder)),'fallback uses the existing honest non-photo asset');
+});
+test('an already unavailable placeholder is not assigned to itself on failure',async t=>{
+ const d=dom(async url=>reply(url.includes('/reviews')?{reviews:[]}:fixture('no-photo'))),w=d.window;t.after(()=>w.close());
+ await w.SLVenueDetail.open('no-photo');const image=w.document.querySelector('.sl-vd-image');
+ let assignments=0;Object.defineProperty(image,'src',{set(){assignments++;}});
+ image.dispatchEvent(new w.Event('error'));image.dispatchEvent(new w.Event('error'));
+ assert.equal(assignments,0);assert.equal(image.alt,'Venue photo unavailable');
+});
