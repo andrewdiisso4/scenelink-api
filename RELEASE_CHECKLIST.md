@@ -1,6 +1,6 @@
 # Coordinated release checklist
 
-Current local candidate: connected-20261110-1. The published cbc78a31 predecessor passed CI; this newly rebuilt increment requires its own publication and exact-head CI. Historical provider, deployment, runtime, database and backup observations below must be rechecked and are not current release evidence.
+Current local candidate: connected-20261110-2. The published cbc78a31 predecessor passed CI; this newly rebuilt increment requires its own publication and exact-head CI. Historical provider, deployment, runtime, database and backup observations below must be rechecked and are not current release evidence.
 
 This review branch is not permission to skip verification. No production migrations or deployments were performed to prepare it.
 

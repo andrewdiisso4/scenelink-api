@@ -1,6 +1,6 @@
 # SceneLink integrated release candidate
 
-Release identity: `connected-20261110-1`. This is a newly rebuilt local candidate from published draft PR #5 head `cbc78a31d425d113d4499e9f831a6662c52cd388`, exact tree `2eab23c5b5c130c542f7e267368364f0e48b1053`. The cbc predecessor passed GitHub Actions run42552093352. This new visual increment is not the earlier November9 visual artifact and has not been pushed or deployed. It requires its own publication, exact-head CI and production release gates. No production migration, provider change or service cutover was performed to prepare it.
+Release identity: `connected-20261110-2`. This is a newly rebuilt local candidate from published draft PR #5 head `cbc78a31d425d113d4499e9f831a6662c52cd388`, exact tree `2eab23c5b5c130c542f7e267368364f0e48b1053`. The cbc predecessor passed GitHub Actions run42552093352. This new visual increment is not the earlier November9 visual artifact and has not been pushed or deployed. It requires its own publication, exact-head CI and production release gates. No production migration, provider change or service cutover was performed to prepare it.
 
 ## Included work and provenance
 
@@ -49,3 +49,7 @@ Use Node 24.22.1 and native PostgreSQL 18.3. Install dependencies with `npm ci -
 ## New visual increment
 
 See VISUAL_REFRESH_RELEASE.md for the newly rebuilt visual scope, validation and limits. All backend code and migrations remain byte-identical to cbc78a31. Cache references, bundles, service worker and asset manifest are regenerated together. This candidate does not claim completion of real venue verification, booking/provider capabilities, separate media/storage migration015, physical-device/Safari or live account/email/provider acceptance.
+
+## Narrow welcome-copy increment
+
+The previous connected-20261110-1 candidate was published as c5c5c14a3b03c496e07ba732ba65de539e27720d, tree1439ebb0bc362b7e92e489ee57edb4b1cd2039fc. This connected-20261110-2 increment changes only the two approved welcome-modal claims, adds source/bundle regression assertions and regenerates release assets. It makes no illustration, layout or venue-data changes. Existing duplicate venues remain unresolved; no deduplication or data-quality fix is claimed. The new increment is local and requires publication and its own CI.

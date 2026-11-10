@@ -1,7 +1,7 @@
 {
   "phase": "integrated-design-lists",
-  "sw_version": "sl-connected-20261110-1",
-  "timestamp": "2026-11-10T00:14:59.388433+00:00",
+  "sw_version": "sl-connected-20261110-2",
+  "timestamp": "2026-11-10T00:30:17.973668+00:00",
   "status": "local_candidate_not_deployed",
   "requires_paired_backend": true,
   "required_migration": "016_private_list_invitations.sql",

@@ -4,6 +4,6 @@ window.__SL_ENV = {
   "env": "production",
   "gaId": "",
   "tracesSampleRate": 0.1,
-  "release": "connected-20261110-1",
-  "buildTime": "2026-11-10T00:14:59.360Z"
+  "release": "connected-20261110-2",
+  "buildTime": "2026-11-10T00:30:17.947Z"
 };

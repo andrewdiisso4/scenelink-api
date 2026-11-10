@@ -1,6 +1,6 @@
 # New combined visual release
 
-Identity: connected-20261110-1. Newly rebuilt from exact published cbc78a31 source, not the historical November9 visual candidate. This increment has not been published or deployed. Its source overlay was frozen and persisted before integration.
+Identity: connected-20261110-2. Newly rebuilt from exact published cbc78a31 source, not the historical November9 visual candidate. This increment has not been published or deployed. Its source overlay was frozen and persisted before integration.
 
 ## Scope
 
@@ -20,4 +20,8 @@ Pre-refresh legacy tabs can show optimistic local list-deletion success until a 
 
 ## Final combined validation
 
-The regenerated connected-20261110-1 source passed307 frontend tests,91 backend unit tests,40 social VM assertions, backend/frontend JavaScript syntax checks, controlled static build and patch whitespace checks on Node24.22.1. Disposable literal-loopback PostgreSQL18.3 suites passed96 native API/DOM checks,14 ingestion tests,26 synthetic legacy-upgrade checks and18 welcome queue tests. These synthetic tests use host libc and do not establish production-matching populated restore readiness. All91 backend/migration files and existing backend QA, lockfiles and deployment configuration remain unchanged.
+The regenerated connected-20261110-2 source passed307 frontend tests,91 backend unit tests,40 social VM assertions, backend/frontend JavaScript syntax checks, controlled static build and patch whitespace checks on Node24.22.1. Disposable literal-loopback PostgreSQL18.3 suites passed96 native API/DOM checks,14 ingestion tests,26 synthetic legacy-upgrade checks and18 welcome queue tests. These synthetic tests use host libc and do not establish production-matching populated restore readiness. All91 backend/migration files and existing backend QA, lockfiles and deployment configuration remain unchanged.
+
+## Welcome copy correction in connected-20261110-2
+
+This narrow increment replaces the unsupported real-time-data and absolute-answer welcome claims with the approved bounded discovery copy. It changes no illustration, layout or venue records. Existing duplicate venues remain unresolved. Fresh combined checks passed309 frontend tests (including two new source/bundle copy assertions),91 backend unit tests,40 social checks,96 native API/DOM checks,14 ingestion tests,26 legacy-upgrade checks and18 welcome tests, plus syntax/static-build/whitespace checks. The previous browser evidence applies to unchanged visual/interaction code and is not presented as new browser testing of this copy increment.
