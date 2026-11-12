@@ -14,22 +14,22 @@
  *     stale HTML even momentarily
  */
 
-const VERSION = 'sl-connected-20261112-auth1';
+const VERSION = 'sl-connected-20261112-auth2';
 const SHELL_CACHE = `sl-shell-${VERSION}`;
 const RUNTIME_CACHE = `sl-runtime-${VERSION}`;
 const IMG_CACHE = `sl-img-${VERSION}`;
 
 const SHELL_URLS = [
-  '/css/sl-design-system.css?v=connected-20261112-auth1',
+  '/css/sl-design-system.css?v=connected-20261112-auth2',
   '/images/brand/scenelink-wordmark.png',
   '/images/brand/scenelink-full.png',
-  '/js/sl-connected-lists.js?v=connected-20261112-auth1',
-  '/js/sl-social-messages.js?v=connected-20261112-auth1',
-  '/js/sl-social-profile.js?v=connected-20261112-auth1',
-  '/js/sl-events.js?v=connected-20261112-auth1',
-  '/js/sl-connected-plans.js?v=connected-20261112-auth1',
-  '/js/sl-connected-actions.js?v=connected-20261112-auth1',
-  '/js/sl-connected-api.js?v=connected-20261112-auth1',
+  '/js/sl-connected-lists.js?v=connected-20261112-auth2',
+  '/js/sl-social-messages.js?v=connected-20261112-auth2',
+  '/js/sl-social-profile.js?v=connected-20261112-auth2',
+  '/js/sl-events.js?v=connected-20261112-auth2',
+  '/js/sl-connected-plans.js?v=connected-20261112-auth2',
+  '/js/sl-connected-actions.js?v=connected-20261112-auth2',
+  '/js/sl-connected-api.js?v=connected-20261112-auth2',
   '/offline.html',
   '/manifest.json',
   '/icons/icon-192.png',
@@ -37,21 +37,21 @@ const SHELL_URLS = [
   '/icons/apple-touch-icon.png',
   '/icons/favicon.ico',
   // Phase 7D: precache the bundles so first-paint after install is instant
-  '/css/sl-bundle-7d.css?v=connected-20261112-auth1',
-  '/js/sl-bundle-7d.js?v=connected-20261112-auth1',
-  '/js/sl-nav-gate.js?v=connected-20261112-auth1',
-  '/js/sl-fetch-guard.js?v=connected-20261112-auth1',
-  '/js/sl-version-marker.js?v=connected-20261112-auth1',
-  '/js/sl-bundle-7d-ui.js?v=connected-20261112-auth1',
-  '/css/sl-phase8-launch.css?v=connected-20261112-auth1',
-  '/js/sl-phase8-completion.js?v=connected-20261112-auth1',
-  '/js/sl-phase8d-recovery.js?v=connected-20261112-auth1',
-  '/css/sl-universal-search.css?v=connected-20261112-auth1',
-  '/js/sl-universal-search.js?v=connected-20261112-auth1',
-  '/js/sl-social-network.js?v=connected-20261112-auth1',
-  '/js/sl-social-core.js?v=connected-20261112-auth1',
-  '/js/sl-social-integration-9a.js?v=connected-20261112-auth1',
-  '/js/sl-venue-activity-9a.js?v=connected-20261112-auth1'
+  '/css/sl-bundle-7d.css?v=connected-20261112-auth2',
+  '/js/sl-bundle-7d.js?v=connected-20261112-auth2',
+  '/js/sl-nav-gate.js?v=connected-20261112-auth2',
+  '/js/sl-fetch-guard.js?v=connected-20261112-auth2',
+  '/js/sl-version-marker.js?v=connected-20261112-auth2',
+  '/js/sl-bundle-7d-ui.js?v=connected-20261112-auth2',
+  '/css/sl-phase8-launch.css?v=connected-20261112-auth2',
+  '/js/sl-phase8-completion.js?v=connected-20261112-auth2',
+  '/js/sl-phase8d-recovery.js?v=connected-20261112-auth2',
+  '/css/sl-universal-search.css?v=connected-20261112-auth2',
+  '/js/sl-universal-search.js?v=connected-20261112-auth2',
+  '/js/sl-social-network.js?v=connected-20261112-auth2',
+  '/js/sl-social-core.js?v=connected-20261112-auth2',
+  '/js/sl-social-integration-9a.js?v=connected-20261112-auth2',
+  '/js/sl-venue-activity-9a.js?v=connected-20261112-auth2'
 ];
 
 // ── install: nuke ALL old sl-* caches, then precache shell ──────────────

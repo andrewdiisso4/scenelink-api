@@ -18,9 +18,9 @@
   'use strict';
   var V = {
     phase: 'oauth-signin-reliability',
-    sw_version: 'sl-connected-20261112-auth1',
-    deploy: 'connected-20261112-auth1',
-    built: '2026-11-12T02:25:02.309673+00:00',
+    sw_version: 'sl-connected-20261112-auth2',
+    deploy: 'connected-20261112-auth2',
+    built: '2026-11-12T17:13:19.987070+00:00',
     backend_change: 'oauth-errors-no-schema'
   };
   // Always-available global

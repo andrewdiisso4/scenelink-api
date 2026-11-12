@@ -1,7 +1,7 @@
 {
   "phase": "oauth-signin-reliability",
-  "sw_version": "sl-connected-20261112-auth1",
-  "timestamp": "2026-11-12T02:25:02.309673+00:00",
+  "sw_version": "sl-connected-20261112-auth2",
+  "timestamp": "2026-11-12T17:13:19.987070+00:00",
   "status": "local_candidate_not_deployed",
   "requires_paired_backend": true,
   "required_migration": "016_private_list_invitations.sql",

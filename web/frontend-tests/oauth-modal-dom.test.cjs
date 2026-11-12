@@ -6,8 +6,9 @@ const {JSDOM}=require('jsdom');
 const source=n=>fs.readFileSync(path.join(__dirname,'../frontend/js/',n),'utf8');
 const tick=async()=>{for(let i=0;i<15;i++)await Promise.resolve();};
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
-function setup({sdk=true,core=false}={}){
+function setup({sdk=true,core=false,publishedCSS=false}={}){
  const dom=new JSDOM('<body></body>',{url:'https://scenelink.app/',runScripts:'outside-only'}),w=dom.window;
+ if(publishedCSS){const bundle=fs.readFileSync(path.join(__dirname,'../frontend/css/sl-bundle-7d.css'),'utf8');const match=bundle.match(/\/\* === css\/sl-auth-ui\.css === \*\/([\s\S]*?)(?=\/\* === css\/|$)/);assert(match);const style=w.document.createElement('style');style.textContent=match[1];w.document.head.append(style);}
  w.console.log=()=>{};w.SL_CONFIG={GOOGLE_CLIENT_ID:'test-client',APPLE_ENABLED:true,APPLE_CLIENT_ID:'test-apple'};
  const callbacks=[],apple=[],calls=[],init=[],timers=[];
  const native=w.setTimeout.bind(w);w.setTimeout=(fn,ms)=>{if(ms===60000||ms===10000){timers.push({fn,ms});return 100000+timers.length;}return native(fn,ms);};
@@ -43,3 +44,20 @@ for(const name of ['login','signup'])for(const outcome of ['resolve','reject'])t
 for(const name of ['login','signup'])test(name+' delayed close cannot close newer modal',async()=>{const x=setup();try{const scheduled=[];const native=x.w.setTimeout.bind(x.w);x.w.setTimeout=(fn,ms)=>{if(ms===400||ms===500){scheduled.push(fn);return 777;}return native(fn,ms);};x.w.SLAuth[name]=()=>Promise.resolve({username:'test'});x.w.SLAuthUI.open(name);await tick();fillEmailForm(x,name).dispatchEvent(new x.w.Event('submit',{cancelable:true}));await tick();assert.equal(scheduled.length,1);x.w.SLAuthUI.close();x.w.SLAuthUI.open();await tick();scheduled[0]();assert.equal(x.q('.sl-auth-overlay').classList.contains('open'),true);}finally{x.close();}});
 for(const name of ['login','signup'])test(name+' core cannot commit after modal closes',async()=>{const x=setup({core:true});try{x.w.SLAuthUI.open(name);await tick();fillEmailForm(x,name).dispatchEvent(new x.w.Event('submit',{cancelable:true}));await tick();assert.equal(x.calls.length,1);x.w.SLAuthUI.close();respond(x.calls[0]);await tick();assert.equal(x.w.SLAuth.token(),'');}finally{x.close();}});
 test('successful email delayed close cannot interrupt Google in the same modal',async()=>{const x=setup();try{const scheduled=[];const native=x.w.setTimeout.bind(x.w);x.w.setTimeout=(fn,ms)=>{if(ms===400){scheduled.push(fn);return 778;}return native(fn,ms);};x.w.SLAuth.login=()=>Promise.resolve({username:'test'});x.w.SLAuthUI.open();await tick();fillEmailForm(x,'login').dispatchEvent(new x.w.Event('submit',{cancelable:true}));await tick();x.q('[data-google-host] button').click();scheduled[0]();assert.equal(x.q('.sl-auth-overlay').classList.contains('open'),true);assert.equal(x.q('[data-sl-oauth-slot]').inert,true);}finally{x.close();}});
+
+for(const mode of ['login','signup'])test('published auth CSS hides retry, shows it on failure, then hides it on recovery: '+mode,async()=>{
+ const x=setup({publishedCSS:true});
+ try{
+  const retry=()=>x.q('[data-oauth="google-retry"]');
+  const state=(hidden,disabled)=>{assert.equal(retry().hidden,hidden);assert.equal(retry().disabled,disabled);assert.equal(x.w.getComputedStyle(retry()).display,hidden?'none':'flex');};
+  x.w.SLAuthUI.open(mode);await tick();state(true,false);
+  assert.equal(x.w.getComputedStyle(x.q('[data-oauth-cancel]')).display,'none');
+  const initialize=x.w.google.accounts.id.initialize;
+  x.w.SLAuthUI.close();x.w.google.accounts.id.initialize=()=>{throw new Error('Local SDK fixture failure');};
+  x.w.SLAuthUI.open(mode);await tick();state(false,false);
+  x.w.google.accounts.id.initialize=initialize;retry().click();state(false,true);await tick();state(true,false);
+  x.q('[data-action="forgot"]').click();await tick();assert.equal(x.w.getComputedStyle(x.q('[data-sl-oauth-slot]')).display,'none');
+  x.w.SLAuthUI.open(mode);await tick();state(true,false);
+  assert.equal(x.w.document.querySelectorAll('.sl-auth-overlay').length,1);assert.equal(x.calls.length,0);
+ }finally{x.close();}
+});
