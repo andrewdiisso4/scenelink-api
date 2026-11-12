@@ -33,6 +33,30 @@
     loading: false,
     lastRefresh: 0
   };
+  // A response belongs to the sign-in/session that started it, even if storage
+  // later returns to the same token after an account switch.
+  var sessionEpoch = 0;
+
+  function beginSignIn(){
+    return { epoch: ++sessionEpoch, token: readToken() };
+  }
+  function ownsSession(request){
+    return request.epoch === sessionEpoch && request.token === readToken();
+  }
+  function completeSignIn(request, data, failure, options){
+    if (!ownsSession(request) || options && options.isCurrent && !options.isCurrent()) {
+      var err = new Error('This sign-in attempt was superseded. Please use your current sign-in.');
+      err.code = 'AUTH_SUPERSEDED';
+      throw err;
+    }
+    if (!data || !data.token) throw new Error(failure);
+    writeToken(data.token);
+    writeCache(data.user);
+    state.user = data.user;
+    if (window.SLApi && window.SLApi.setToken) window.SLApi.setToken(data.token);
+    emit();
+    return data.user;
+  }
 
   // ---------- storage helpers ----------
   function readToken(){
@@ -64,6 +88,7 @@
     return !!readToken();
   }
   function currentUser(){
+    if (!isAuthed()) return null;
     if (state.user) return state.user;
     var c = readCache();
     if (c) state.user = c;
@@ -117,9 +142,9 @@
       return Promise.resolve(null);
     }
     state.loading = true;
-    var refreshingToken = readToken();
+    var refreshingSession = { epoch: sessionEpoch, token: readToken() };
     return apiCall('/auth/me').then(function(j){
-      if(readToken() !== refreshingToken){ state.loading=false; return null; }
+      if(!ownsSession(refreshingSession)){ state.loading=false; return null; }
       state.loading = false;
       state.lastRefresh = Date.now();
       var u = (j && j.user) ? j.user : j;
@@ -131,7 +156,7 @@
       emit();
       return u;
     }).catch(function(err){
-      if(readToken() !== refreshingToken){ state.loading=false; return null; }
+      if(!ownsSession(refreshingSession)){ state.loading=false; return null; }
       state.loading = false;
       if (err.status === 401 || err.status === 403) {
         // token dead → clean logout
@@ -144,33 +169,23 @@
     });
   }
 
-  function login(email, password){
+  function login(email, password, options){
+    var request = beginSignIn();
     return apiCall('/auth/login', {
       method: 'POST',
       body: { email: email, password: password }
     }).then(function(d){
-      if (!d || !d.token) throw new Error('Login failed');
-      writeToken(d.token);
-      writeCache(d.user);
-      state.user = d.user;
-      if (window.SLApi && window.SLApi.setToken) window.SLApi.setToken(d.token);
-      emit();
-      return d.user;
+      return completeSignIn(request, d, 'Login failed', options);
     });
   }
 
-  function signup(payload){
+  function signup(payload, options){
+    var request = beginSignIn();
     return apiCall('/auth/signup', {
       method: 'POST',
       body: payload
     }).then(function(d){
-      if (!d || !d.token) throw new Error('Signup failed');
-      writeToken(d.token);
-      writeCache(d.user);
-      state.user = d.user;
-      if (window.SLApi && window.SLApi.setToken) window.SLApi.setToken(d.token);
-      emit();
-      return d.user;
+      return completeSignIn(request, d, 'Signup failed', options);
     });
   }
 
@@ -179,42 +194,33 @@
   }
 
   // Google OAuth — backend verifies the Google ID token
-  function loginWithGoogle(idToken){
+  function loginWithGoogle(idToken, options){
     if (!idToken) return Promise.reject(new Error('Missing Google id_token'));
+    var request = beginSignIn();
     return apiCall('/auth/google', {
       method: 'POST',
       body: { id_token: idToken }
     }).then(function(d){
-      if (!d || !d.token) throw new Error('Google sign-in failed');
-      writeToken(d.token);
-      writeCache(d.user);
-      state.user = d.user;
-      if (window.SLApi && window.SLApi.setToken) window.SLApi.setToken(d.token);
-      emit();
-      return d.user;
+      return completeSignIn(request, d, 'Google sign-in failed', options);
     });
   }
 
   // Apple Sign In — backend verifies the Apple identity token
-  function loginWithApple(payload){
+  function loginWithApple(payload, options){
     // payload: { id_token, user?: { name: {firstName, lastName}, email } }
     if (!payload || !payload.id_token) return Promise.reject(new Error('Missing Apple id_token'));
+    var request = beginSignIn();
     return apiCall('/auth/apple', {
       method: 'POST',
       body: payload
     }).then(function(d){
-      if (!d || !d.token) throw new Error('Apple sign-in failed');
-      writeToken(d.token);
-      writeCache(d.user);
-      state.user = d.user;
-      if (window.SLApi && window.SLApi.setToken) window.SLApi.setToken(d.token);
-      emit();
-      return d.user;
+      return completeSignIn(request, d, 'Apple sign-in failed', options);
     });
   }
 
   function logout(opts){
     opts = opts || {};
+    var logoutEpoch = ++sessionEpoch;
     var hadToken = !!readToken(), timer, controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     // Start with the existing bearer token, then immediately end local authentication.
     var request;
@@ -229,7 +235,7 @@
     var outcome = Promise.resolve(request).then(function(d){ return {ok:true,revoked:hadToken && !!(d && d.revoked)}; },function(err){ return {ok:true,revoked:false,error:err.message}; });
     return Promise.race([outcome,timeout]).then(function(result){
       if(typeof clearTimeout==='function') clearTimeout(timer);
-      if(opts.reload !== false) window.location.href = '/';
+      if(opts.reload !== false && logoutEpoch === sessionEpoch && !readToken()) window.location.href = '/';
       return result;
     });
   }
@@ -307,8 +313,9 @@
 
   // Cross-tab sync
   window.addEventListener('storage', function(e){
-    if (e.key === TOKEN_KEY || e.key === USER_KEY) {
-      state.user = readCache();
+    if (e.key === TOKEN_KEY || e.key === USER_KEY || e.key === null) {
+      if (e.key === TOKEN_KEY || e.key === null) sessionEpoch++;
+      state.user = isAuthed() ? readCache() : null;
       emit();
     }
   });

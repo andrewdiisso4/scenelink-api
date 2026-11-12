@@ -17,11 +17,11 @@
 (function(){
   'use strict';
   var V = {
-    phase: 'integrated-design-lists',
-    sw_version: 'sl-connected-20261110-3',
-    deploy: 'connected-20261110-3',
-    built: '2026-11-10T10:35:37.020242+00:00',
-    backend_change: 'private-list-invitations-016'
+    phase: 'oauth-signin-reliability',
+    sw_version: 'sl-connected-20261112-auth1',
+    deploy: 'connected-20261112-auth1',
+    built: '2026-11-12T02:25:02.309673+00:00',
+    backend_change: 'oauth-errors-no-schema'
   };
   // Always-available global
   try { window.SCENELINK_VERSION = V; } catch(_){}

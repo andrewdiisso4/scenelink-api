@@ -408,3 +408,7 @@
     padding-bottom: max(20px, env(safe-area-inset-bottom));
   }
 }
+/* Keep SDK and retry visibility consistent with the native hidden attribute. */
+.sl-auth-overlay [hidden] { display: none !important; }
+.sl-auth-overlay [data-google-host] { display: flex; justify-content: center; min-width: 0; }
+.sl-auth-overlay [data-oauth-cancel] { margin: 8px auto 16px; }

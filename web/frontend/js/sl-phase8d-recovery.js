@@ -3,8 +3,8 @@
   'use strict';
   if (window.__SL_PHASE8D_RECOVERY__) return;
   window.__SL_PHASE8D_RECOVERY__ = true;
-  var AI_SCRIPT = 'js/ai-concierge-v5.js?v=connected-20261110-3';
-  var AI_CSS = ['css/ai-concierge.css?v=connected-20261110-3','css/ai-concierge-v5.css?v=connected-20261110-3'];
+  var AI_SCRIPT = 'js/ai-concierge-v5.js?v=connected-20261112-auth1';
+  var AI_CSS = ['css/ai-concierge.css?v=connected-20261112-auth1','css/ai-concierge-v5.css?v=connected-20261112-auth1'];
   function qs(s,r){ return (r||document).querySelector(s); }
   function qsa(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); }
   function loadCss(href){

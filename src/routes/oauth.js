@@ -11,6 +11,7 @@ const { authLimiter } = require('../middleware/rateLimits');
 const { verified } = require('../launch/verification');
 const { noStore, transaction } = require('../launch/shared');
 const welcome = require('../services/welcome');
+const { validIdToken, oauthError, verifyProvider } = require('../services/oauth-errors');
 router.use(noStore, authLimiter);
 
 // ── Google OAuth ──────────────────────────────────────────────────────────────
@@ -20,7 +21,7 @@ router.post('/google', async (req, res) => {
     try {
         const { id_token, credential } = req.body;
         const token = id_token || credential;
-        if (!token) return res.status(400).json({ error: 'id_token is required' });
+        if (!validIdToken(token)) return res.status(400).json({ error: 'A valid id_token is required' });
 
         const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
         if (!GOOGLE_CLIENT_ID) {
@@ -30,14 +31,15 @@ router.post('/google', async (req, res) => {
         // Verify the Google ID token
         const { OAuth2Client } = require('google-auth-library');
         const client = new OAuth2Client(GOOGLE_CLIENT_ID);
-        const ticket = await client.verifyIdToken({
+        const ticket = await verifyProvider(() => client.verifyIdToken({
             idToken: token,
             audience: GOOGLE_CLIENT_ID,
-        });
+        }));
         const payload = ticket.getPayload();
 
-        const { sub: googleId, email, name, picture } = payload;
-        if (!email || payload.email_verified !== true) return res.status(401).json({ error: 'A verified Google email is required' });
+        const { sub: googleId, email, name, picture } = payload || {};
+        if (typeof googleId !== 'string' || !googleId) return res.status(401).json({error:'Invalid Google token'});
+        if (typeof email !== 'string' || !email || payload.email_verified !== true) return res.status(401).json({ error: 'A verified Google email is required' });
 
         // Upsert user
         const user = await upsertOAuthUser({
@@ -53,11 +55,7 @@ router.post('/google', async (req, res) => {
         res.json({ token: slToken, user, is_new: user._is_new });
     } catch (err) {
         if(err.status===409)return res.status(409).json({error:err.message,code:'ACCOUNT_LINK_VERIFICATION_REQUIRED'});
-        console.error('[oauth/google]', err.message);
-        if (err.message && err.message.includes('Invalid token signature')) {
-            return res.status(401).json({ error: 'Invalid Google token' });
-        }
-        res.status(500).json({ error: 'Google sign-in failed. Please try again.' });
+        return sendOAuthError(res, 'google', err);
     }
 });
 
@@ -67,7 +65,7 @@ router.post('/google', async (req, res) => {
 router.post('/apple', async (req, res) => {
     try {
         const { id_token, user: appleUser } = req.body;
-        if (!id_token) return res.status(400).json({ error: 'id_token is required' });
+        if (!validIdToken(id_token)) return res.status(400).json({ error: 'A valid id_token is required' });
 
         const APPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID || process.env.APPLE_SERVICE_ID;
         if (!APPLE_CLIENT_ID) {
@@ -91,23 +89,24 @@ router.post('/apple', async (req, res) => {
             cacheMaxAge: 600000, // 10 min
         });
 
-        const key = await new Promise((resolve, reject) => {
+        const key = await verifyProvider(() => new Promise((resolve, reject) => {
             client.getSigningKey(decoded.header.kid, (err, k) => {
                 if (err) reject(err);
-                else resolve(k.getPublicKey());
+                else { try { resolve(k.getPublicKey()); } catch (error) { reject(error); } }
             });
-        });
+        }));
 
-        const verified = jwt.verify(id_token, key, {
+        const verified = await verifyProvider(() => jwt.verify(id_token, key, {
             algorithms: ['RS256'],
             issuer: 'https://appleid.apple.com',
             audience: APPLE_CLIENT_ID,
-        });
+        }));
 
         const appleId = verified.sub;
+        if (typeof appleId !== 'string' || !appleId) return res.status(401).json({error:'Invalid Apple token'});
         // Apple only provides email on first sign-in
         const email = verified.email;
-        if (!email || ![true, 'true'].includes(verified.email_verified)) return res.status(401).json({error:'A verified Apple email is required'});
+        if (typeof email !== 'string' || !email || ![true, 'true'].includes(verified.email_verified)) return res.status(401).json({error:'A verified Apple email is required'});
         const firstName = (appleUser && appleUser.name && appleUser.name.firstName) || '';
         const lastName = (appleUser && appleUser.name && appleUser.name.lastName) || '';
         const displayName = [firstName, lastName].filter(Boolean).join(' ') || email.split('@')[0];
@@ -125,13 +124,22 @@ router.post('/apple', async (req, res) => {
         res.json({ token: slToken, user, is_new: user._is_new });
     } catch (err) {
         if(err.status===409)return res.status(409).json({error:err.message,code:'ACCOUNT_LINK_VERIFICATION_REQUIRED'});
-        console.error('[oauth/apple]', err.message);
-        if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-            return res.status(401).json({ error: 'Invalid or expired Apple token' });
-        }
-        res.status(500).json({ error: 'Apple sign-in failed. Please try again.' });
+        return sendOAuthError(res, 'apple', err);
     }
 });
+
+
+function sendOAuthError(res, provider, err) {
+    const label = provider === 'google' ? 'Google' : 'Apple';
+    if (err.code === 'OAUTH_TOKEN_INVALID') return res.status(401).json({error: `Invalid or expired ${label} token`});
+    if (err.code === 'OAUTH_ACCOUNT_UNAVAILABLE') return res.status(403).json({error: 'Account unavailable'});
+    if (err.code === 'OAUTH_PROVIDER_UNAVAILABLE') {
+        console.error(`[oauth/${provider}]`, 'OAUTH_PROVIDER_UNAVAILABLE');
+        return res.status(503).json({error: `${label} sign-in is temporarily unavailable. Please try again.`});
+    }
+    console.error(`[oauth/${provider}]`, 'OAUTH_ACCOUNT_FAILED');
+    return res.status(500).json({error: `${label} sign-in failed. Please try again.`});
+}
 
 // ── Shared upsert helper ──────────────────────────────────────────────────────
 async function upsertOAuthUser({ email, display_name, avatar_url, oauth_provider, oauth_id }) {
@@ -143,8 +151,8 @@ async function upsertOAuthUser({ email, display_name, avatar_url, oauth_provider
 
     if (result.rows.length > 0) {
         const user = result.rows[0];
-        if (!user.is_active || user.is_suspended) throw new Error('Account unavailable');
-        if (user.email.toLowerCase() !== email.toLowerCase()) throw new Error('Provider email does not match account');
+        if (!user.is_active || user.is_suspended) throw oauthError(403, 'OAUTH_ACCOUNT_UNAVAILABLE');
+        if (user.email.toLowerCase() !== email.toLowerCase()) throw oauthError(401, 'OAUTH_TOKEN_INVALID');
         await pool.query('UPDATE users SET email_verified_at=NOW(),verified_email=lower(email) WHERE id=$1',[user.id]);
         user.email_verified=true;
         user._is_new = false;
@@ -164,7 +172,7 @@ async function upsertOAuthUser({ email, display_name, avatar_url, oauth_provider
 
     if (result.rows.length > 0) {
         const user = result.rows[0];
-        if (!user.is_active || user.is_suspended) throw new Error('Account unavailable');
+        if (!user.is_active || user.is_suspended) throw oauthError(403, 'OAUTH_ACCOUNT_UNAVAILABLE');
         // Never promote a pre-created unverified password account by email match.
         if (!verified(user)) { const e=new Error('Verify your existing account email before linking this sign-in provider.');e.status=409;throw e; }
         user.email_verified=true;
