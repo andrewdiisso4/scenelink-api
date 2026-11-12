@@ -1,5 +1,6 @@
 const express = require('express');
 const pool = require('../config/database');
+const {visibleDiscoveryVenueSQL} = require('../services/venue-duplicate-discovery');
 const { optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -151,7 +152,7 @@ function buildVenueFilters(query) {
     }
   }
 
-  conditions.push('v.is_active = true');
+  conditions.push('v.is_active = true', visibleDiscoveryVenueSQL('v'));
   return {
     where: conditions.length ? 'WHERE ' + conditions.join(' AND ') : 'WHERE v.is_active = true',
     values
@@ -274,7 +275,7 @@ router.get('/featured', optionalAuth, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 12, 30);
     const result = await pool.query(
-      `SELECT ${CARD_COLUMNS} FROM venues v WHERE v.is_active = true AND (v.featured = true OR v.trending = true OR v.spotlight = true) ORDER BY v.rating DESC NULLS LAST LIMIT $1`,
+      `SELECT ${CARD_COLUMNS} FROM venues v WHERE v.is_active = true AND ${visibleDiscoveryVenueSQL('v')} AND (v.featured = true OR v.trending = true OR v.spotlight = true) ORDER BY v.rating DESC NULLS LAST LIMIT $1`,
       [limit]
     );
     sendCached(res, 120);

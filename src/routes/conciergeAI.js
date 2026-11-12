@@ -20,6 +20,8 @@
 
 const pool = require('../config/database');
 const {publicVenue,availableVenueSQL} = require('../services/venue-helpers');
+const {visibleDiscoveryVenueSQL} = require('../services/venue-duplicate-discovery');
+const {reviewedPriceSQL} = require('../services/venue-facts');
 
 const OPENAI_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
@@ -238,7 +240,7 @@ function parseFilters(message = '', context = {}) {
 const VENUE_SELECT = `
     id, slug, name, type, category, cuisine, neighborhood, address, city,
     lat::text AS lat, lng::text AS lng,
-    source, price_level, price_label, NULL::numeric AS rating,
+    source, price_level, price_label, to_jsonb(venues)->'field_provenance' AS field_provenance, NULL::numeric AS rating,
     NULL::numeric AS buzz_score, NULL::integer AS going_count,
     cover_image_url, image_url,
     vibe, highlight, NULL::text AS why_hot, pair_with, short_desc, description,
@@ -247,17 +249,18 @@ const VENUE_SELECT = `
 `;
 
 async function fetchCandidateVenues(filters, limit = MAX_CANDIDATE_VENUES) {
-    const where = [availableVenueSQL('')];
+    const where = [availableVenueSQL(''), visibleDiscoveryVenueSQL('venues')];
     const params = [];
     let i = 1;
 
     if (filters.neighborhoods && filters.neighborhoods.length) {
-        where.push(`neighborhood = ANY($${i}::text[])`);
+        where.push(`(neighborhood = ANY($${i}::text[]) OR city = ANY($${i}::text[]))`);
         params.push(filters.neighborhoods);
         i++;
     }
     if (filters.priceMax) {
-        where.push(`(price_level IS NULL OR price_level <= $${i})`);
+        const price = reviewedPriceSQL('venues');
+        where.push(`${price} <= $${i}`);
         params.push(filters.priceMax);
         i++;
     }

@@ -2,6 +2,7 @@
  * Venue import/enrichment helpers.
  * Pure functions where possible; DB-touching functions take a pool client.
  */
+const {fieldEvidence, generatedDescription} = require('./venue-facts');
 
 /** A stored URL is a navigation link, never evidence of inventory or a booking.
  * These helpers do not fetch URLs or claim that a provider currently accepts bookings.
@@ -47,6 +48,19 @@ function availableVenueSQL(alias = 'v') {
 }
 function publicVenue(row) {
   const venue = {...row};
+  // Operator review notes are not public venue content.
+  delete venue.duplicate_review; delete venue.duplicate_of;
+  const evidence = fieldEvidence(row, safePublicHttps);
+  venue.field_provenance = evidence;
+  venue.reviewed_fields = Object.keys(evidence).sort();
+  // Legacy imports and schema defaults assigned $$ when price was unknown.
+  // A source name, claimed listing, or a photo enrichment is not price evidence.
+  if (!evidence.price_level || !Number.isInteger(row.price_level) || row.price_level < 1 || row.price_level > 4) {
+    venue.price_level = null; venue.price_label = null; venue.price_status = 'unknown';
+  } else {
+    venue.price_level = row.price_level; venue.price_label = '$'.repeat(row.price_level); venue.price_status = 'source_checked';
+  }
+  if (generatedDescription(row)) venue.description = null;
   for (const key of ['website','reservation_url','opentable_url','resy_url','yelp_url','google_maps_url']) {
     if (Object.hasOwn(venue,key)) venue[key] = safePublicHttps(venue[key]);
   }

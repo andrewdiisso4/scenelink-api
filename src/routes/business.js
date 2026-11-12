@@ -4,6 +4,7 @@ const pool = require('../config/database');
 const { generateBusinessToken: generateToken, requireBusinessAuth: requireAuth } = require('../middleware/auth');
 const H = require('../launch/shared');
 const identity = require('../launch/identity');
+const {businessVenue} = require('../services/business-venue-dto');
 
 const router = express.Router();
 
@@ -168,7 +169,7 @@ router.post('/claim', authLimiter, async (req, res) => {
                 tier: user.tier,
                 status: user.status,
                 role: 'business',
-                matched_venue: matchedVenue
+                matched_venue: businessVenue(matchedVenue)
             }
         });
     } catch (err) {
@@ -230,7 +231,7 @@ router.post('/login', authLimiter, async (req, res) => {
                 tier: user.tier,
                 status: user.status,
                 role: 'business',
-                venue
+                venue: businessVenue(venue)
             }
         });
     } catch (err) {
@@ -267,7 +268,7 @@ router.get('/me', requireAuth, requireBusiness, async (req, res) => {
                 if (v.rows.length) venue = v.rows[0];
             } catch (_) {}
         }
-        res.json({ user: { ...user, role: 'business', venue } });
+        res.json({ user: { ...user, role: 'business', venue: businessVenue(venue) } });
     } catch (err) {
         if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/me]', err);
@@ -286,7 +287,7 @@ router.get('/venue', requireAuth, requireBusiness, async (req, res) => {
         }
         const v = await pool.query('SELECT * FROM venues WHERE id=$1', [bu.rows[0].venue_id]);
         if (!v.rows.length) return res.status(404).json({ error: 'Venue not found' });
-        res.json({ ok: true, venue: v.rows[0] });
+        res.json({ ok: true, venue: businessVenue(v.rows[0]) });
     } catch (err) {
         if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venue GET]', err);
@@ -353,7 +354,7 @@ router.post('/venue', requireAuth, requireBusiness, async (req, res) => {
             [venue.id, venue.name, 'active', req.user.id]
         );
 
-        res.json({ ok: true, venue, message: 'Listing created and linked to your account' });
+        res.json({ ok: true, venue: businessVenue(venue), message: 'Listing created and linked to your account' });
     } catch (err) {
         if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venue POST]', err);
@@ -417,7 +418,7 @@ async function handleVenueUpdate(req, res) {
             pool.query('UPDATE business_users SET venue_name=$1 WHERE id=$2', [req.body.name, req.user.id]).catch(()=>{});
         }
 
-        res.json({ ok: true, venue: result.rows[0] });
+        res.json({ ok: true, venue: businessVenue(result.rows[0]) });
     } catch (err) {
         if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venue UPDATE]', err);
@@ -569,7 +570,7 @@ router.get('/venues', requireAuth, requireBusiness, async (req, res) => {
              ORDER BY is_primary DESC, v.name`,
             [req.user.id]
         );
-        res.json({ venues: r.rows, count: r.rows.length });
+        res.json({ venues: r.rows.map(businessVenue), count: r.rows.length });
     } catch (err) {
         if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venues list]', err);
@@ -642,7 +643,7 @@ router.post('/venues/add', requireAuth, requireBusiness, async (req, res) => {
             [req.user.id, venue.id]
         );
 
-        res.json({ ok: true, venue, message: 'Venue added to your account' });
+        res.json({ ok: true, venue: businessVenue(venue), message: 'Venue added to your account' });
     } catch (err) {
         if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venues add]', err);
@@ -931,7 +932,7 @@ router.get('/venues/search', async (req, res) => {
               LIMIT 20`,
             [`%${q}%`, `${q}%`]
         );
-        res.json({ venues: result.rows });
+        res.json({ venues: result.rows.map(businessVenue) });
     } catch (err) {
         if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venues/search]', err);
