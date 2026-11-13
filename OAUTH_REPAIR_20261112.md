@@ -1,6 +1,6 @@
 # SceneLink OAuth reliability repair
 
-This is an auth-only local candidate based on main `c73585b07f593b5eb3753ce8a4e0a191136f1cbd`. It is not a claim that production sign-up now works. The implementation includes both provider-modal handling and session ownership guards with regression coverage.
+This auth repair was originally based on main `c73585b07f593b5eb3753ce8a4e0a191136f1cbd`. PR8 now includes a normal merge of released main `c2eac302813322c3211538ba2710ec51521044d7`, preserving its venue-code changes without executing data corrections or migration activation. It is not a claim that production sign-up now works. The implementation includes both provider-modal handling and session ownership guards with regression coverage.
 
 ## Changes
 
@@ -44,3 +44,7 @@ Useful provider references:
 - https://developers.google.com/identity/gsi/web/reference/js-reference
 - https://developer.apple.com/help/account/capabilities/configure-sign-in-with-apple-for-the-web/
 - https://developer.apple.com/documentation/technotes/tn3107-resolving-sign-in-with-apple-response-errors
+
+## Integration with released main
+
+The November 13 merge preserves every PR7 venue file byte-for-byte except the shared API acceptance test, where both sets of assertions combine cleanly. Served frontend bytes remain identical to auth2, so the cache marker stays `connected-20261112-auth2`. Fresh combined checks passed: 137 backend tests, 387 frontend tests, 40 social VM tests, syntax, 97 native API checks and 26 synthetic upgrade checks. Native tests used new loopback PostgreSQL 18.3 databases with fictional fixtures; the server was stopped and its stopped state verified. Exact-head remote CI is recorded separately for the merge revision. This draft update does not merge PR8 or deploy production.

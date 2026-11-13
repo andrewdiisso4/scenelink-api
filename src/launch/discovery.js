@@ -1,9 +1,11 @@
 'use strict';
 const H = require('./shared');
 const {publicVenue,availableVenueSQL} = require('../services/venue-helpers');
+const {visibleDiscoveryVenueSQL} = require('../services/venue-duplicate-discovery');
+const {reviewedPriceSQL} = require('../services/venue-facts');
 const NIGHTLIFE = ['bar','nightclub','lounge','cocktail_bar','brewery','beer_hall','dive_bar','rooftop_bar','pub','wine_bar','club','music'];
 const ALIASES = {southie:'south boston',rooftops:'rooftop',cocktails:'cocktail',restaurants:'restaurant',bars:'bar'};
-const CARD = `v.id,v.slug,v.name,v.type,v.category,v.cuisine,v.neighborhood,v.city,v.state,v.address,v.price_level,v.price_label,
+const CARD = `v.id,v.slug,v.name,v.type,v.category,v.cuisine,v.neighborhood,v.city,v.state,v.address,v.price_level,v.price_label,to_jsonb(v)->'field_provenance' AS field_provenance,
   NULL::numeric AS rating,NULL::integer AS review_count,'unverified'::text AS metrics_status,v.source,v.enriched_at,v.last_enriched_at,v.needs_manual_review,v.lat,v.lng,v.website,v.has_real_photo,v.reservation_url,v.opentable_url,v.resy_url,v.reservation_live,v.reservation_provider,
   v.trending,v.featured,v.spotlight,NULL::boolean AS is_open_now,
   CASE WHEN CASE WHEN jsonb_typeof(v.google_photo_names)='array' THEN jsonb_array_length(v.google_photo_names)>0 ELSE false END
@@ -15,7 +17,7 @@ const DETAIL = CARD + `,v.zip_code,v.phone,v.description,v.short_desc,v.hours_js
   v.google_maps_url,v.updated_at,v.is_claimed`;
 const HAYSTACK = `concat_ws(' ',v.name,v.type,v.category,v.cuisine,v.neighborhood,v.city,v.state,v.address,v.description,v.vibe,v.vibe_tags::text,v.tags::text)`;
 function build(query = {}, mode = 'all') {
-  const values = [], conditions = [availableVenueSQL('v')];
+  const values = [], conditions = [availableVenueSQL('v'), visibleDiscoveryVenueSQL('v')];
   const add = value => { values.push(value); return '$'+values.length; };
   const q = H.text(query.q ?? query.search, 'search', 160).toLowerCase();
   const rawTokens = q.split(/\s+/).filter(t => t && !['in','near','the','and','a','an','of'].includes(t));
@@ -26,7 +28,8 @@ function build(query = {}, mode = 'all') {
   }
   if (query.neighborhood && query.neighborhood !== 'all') {
     let n = H.text(query.neighborhood,'neighborhood',80); if (n.toLowerCase()==='southie') n='South Boston';
-    conditions.push(`v.neighborhood ILIKE ${add('%'+H.like(n)+'%')}`);
+    const place = add('%'+H.like(n)+'%');
+    conditions.push(`(v.neighborhood ILIKE ${place} OR v.city ILIKE ${place})`);
   }
   if (query.type && query.type !== 'all') {
     const t = H.text(query.type,'category',60).toLowerCase();
@@ -36,7 +39,7 @@ function build(query = {}, mode = 'all') {
   if (mode === 'nightlife') conditions.push(`v.type = ANY(${add(NIGHTLIFE)}::text[])`);
   // Tonight/featured are catalog suggestions, not proof of open hours or popularity.
   // Legacy seed flags must never determine public ranking or eligibility.
-  if (query.price_level && query.price_level !== 'all') conditions.push(`v.price_level = ${add(H.integer(query.price_level,undefined,1,4,'price'))}`);
+  if (query.price_level && query.price_level !== 'all') conditions.push(`${reviewedPriceSQL('v')} = ${add(H.integer(query.price_level,undefined,1,4,'price'))}`);
   if (query.bbox) {
     if (typeof query.bbox !== 'string') throw new H.HttpError(400,'Invalid map bounds');
     const b = query.bbox.split(',').map(s => s.trim() === '' ? NaN : Number(s));
@@ -72,7 +75,7 @@ function install({router,pool,auth}) {
   router.get('/venues/facets',H.wrap(async(req,res)=>{
     const r=await pool.query(`SELECT array_agg(DISTINCT neighborhood ORDER BY neighborhood) FILTER (WHERE COALESCE(neighborhood,'')<>'') AS neighborhoods,
       array_agg(DISTINCT type ORDER BY type) FILTER (WHERE COALESCE(type,'')<>'') AS types,
-      array_agg(DISTINCT cuisine ORDER BY cuisine) FILTER (WHERE COALESCE(cuisine,'')<>'') AS cuisines FROM venues WHERE ${availableVenueSQL('')}`);
+      array_agg(DISTINCT cuisine ORDER BY cuisine) FILTER (WHERE COALESCE(cuisine,'')<>'') AS cuisines FROM venues WHERE ${availableVenueSQL('')} AND ${visibleDiscoveryVenueSQL('venues')}`);
     cached(res);res.json(r.rows[0]);
   }));
   async function detail(req,res) {
@@ -90,8 +93,8 @@ function install({router,pool,auth}) {
     const [v,u,n,c]=await Promise.all([
       pool.query(`SELECT ${CARD} FROM venues v WHERE ${f.where} ORDER BY ${f.order} LIMIT $${f.values.length+1}`,[...f.values,limit]),
       require('./people').searchPeople(pool,me,q,limit).then(rows=>({rows})),
-      pool.query(`SELECT DISTINCT neighborhood AS name FROM venues WHERE ${availableVenueSQL('')} AND neighborhood ILIKE $1 ORDER BY neighborhood LIMIT $2`,[pattern,limit]),
-      pool.query(`SELECT DISTINCT type AS name FROM venues WHERE ${availableVenueSQL('')} AND type ILIKE $1 ORDER BY type LIMIT $2`,[pattern,limit])
+      pool.query(`SELECT DISTINCT neighborhood AS name FROM venues WHERE ${availableVenueSQL('')} AND ${visibleDiscoveryVenueSQL('venues')} AND neighborhood ILIKE $1 ORDER BY neighborhood LIMIT $2`,[pattern,limit]),
+      pool.query(`SELECT DISTINCT type AS name FROM venues WHERE ${availableVenueSQL('')} AND ${visibleDiscoveryVenueSQL('venues')} AND type ILIKE $1 ORDER BY type LIMIT $2`,[pattern,limit])
     ]);
     res.json({query:q,venues:v.rows.map(publicVenue),users:u.rows,neighborhoods:n.rows,categories:c.rows});
   }));

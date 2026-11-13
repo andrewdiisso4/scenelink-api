@@ -5,6 +5,7 @@
  */
 const express = require('express');
 const pool = require('../config/database');
+const {visibleDiscoveryVenueSQL} = require('../services/venue-duplicate-discovery');
 const { optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -45,7 +46,7 @@ router.get('/universal', optionalAuth, async (req, res) => {
         pool.query(
           `SELECT ${CARD_COLUMNS}
              FROM venues v
-            WHERE v.is_active = true
+            WHERE v.is_active = true AND ${visibleDiscoveryVenueSQL('v')}
             ORDER BY v.featured DESC NULLS LAST, v.trending DESC NULLS LAST, v.buzz_score DESC NULLS LAST, v.rating DESC NULLS LAST
             LIMIT $1`,
           [limit]
@@ -53,7 +54,7 @@ router.get('/universal', optionalAuth, async (req, res) => {
         pool.query(
           `SELECT neighborhood, COUNT(*)::int AS count
              FROM venues
-            WHERE is_active = true AND neighborhood IS NOT NULL AND neighborhood <> ''
+            WHERE is_active = true AND ${visibleDiscoveryVenueSQL('venues')} AND neighborhood IS NOT NULL AND neighborhood <> ''
             GROUP BY neighborhood
             ORDER BY count DESC, neighborhood ASC
             LIMIT 8`
@@ -61,7 +62,7 @@ router.get('/universal', optionalAuth, async (req, res) => {
         pool.query(
           `SELECT COALESCE(NULLIF(category,''), NULLIF(type,''), 'Venue') AS label, COUNT(*)::int AS count
              FROM venues
-            WHERE is_active = true
+            WHERE is_active = true AND ${visibleDiscoveryVenueSQL('venues')}
             GROUP BY label
             ORDER BY count DESC, label ASC
             LIMIT 8`
@@ -123,7 +124,7 @@ router.get('/universal', optionalAuth, async (req, res) => {
                   ELSE 4
                 END AS match_rank
            FROM venues v
-          WHERE v.is_active = true
+          WHERE v.is_active = true AND ${visibleDiscoveryVenueSQL('v')}
             AND (
               LOWER(v.name) LIKE $1 OR LOWER(COALESCE(v.cuisine,'')) LIKE $1 OR
               LOWER(COALESCE(v.neighborhood,'')) LIKE $1 OR LOWER(COALESCE(v.type,'')) LIKE $1 OR
@@ -138,7 +139,7 @@ router.get('/universal', optionalAuth, async (req, res) => {
       pool.query(
         `SELECT neighborhood, COUNT(*)::int AS count
            FROM venues
-          WHERE is_active = true AND neighborhood IS NOT NULL AND neighborhood <> '' AND LOWER(neighborhood) LIKE $1
+          WHERE is_active = true AND ${visibleDiscoveryVenueSQL('venues')} AND neighborhood IS NOT NULL AND neighborhood <> '' AND LOWER(neighborhood) LIKE $1
           GROUP BY neighborhood
           ORDER BY CASE WHEN LOWER(neighborhood) LIKE $2 THEN 0 ELSE 1 END, count DESC, neighborhood ASC
           LIMIT 6`,
@@ -149,7 +150,7 @@ router.get('/universal', optionalAuth, async (req, res) => {
            FROM (
              SELECT COALESCE(NULLIF(cuisine,''), NULLIF(category,''), NULLIF(type,''), 'Venue') AS label
                FROM venues
-              WHERE is_active = true
+              WHERE is_active = true AND ${visibleDiscoveryVenueSQL('venues')}
                 AND LOWER(COALESCE(cuisine, category, type, '')) LIKE $1
            ) c
           GROUP BY label
