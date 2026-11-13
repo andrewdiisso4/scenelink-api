@@ -464,8 +464,14 @@ async function main(){
   const ai=req('./src/routes/conciergeAI');assert.deepEqual(ai.parseFilters('Southie').neighborhoods,['South Boston']);
   assert.deepEqual(ai.parseFilters('East Boston').neighborhoods,['East Boston']);
   await pool.query("INSERT INTO venues(name,slug,type,cuisine,neighborhood,is_active,price_level) VALUES('Expensive QA','expensive-qa','restaurant','Italian','South Boston',true,4)");
+  // Code-only rollout supports the old schema, but an imported default price
+  // must not satisfy an explicit budget filter. Review is independently opt-in.
+  assert.equal((await ai.fetchCandidateVenues(ai.parseFilters('cheap Italian dinner in Southie'))).length,0);
+  await pool.query(fs.readFileSync(path.join(root,'migrations/017_venue_fact_reviews.sql'),'utf8'));
+  await pool.query("UPDATE venues SET field_provenance=jsonb_build_object('price_level',jsonb_build_object('status','reviewed','value',price_level,'source_url','https://fixture.example.com/menu','observed_at','2026-01-01')) WHERE neighborhood='South Boston' AND cuisine='Italian' AND is_active");
   const rows=await ai.fetchCandidateVenues(ai.parseFilters('cheap Italian dinner in Southie'));
-  assert.equal(rows.length,2);assert(rows.every(v=>v.price_level<=2&&v.cuisine==='Italian'));
+  assert.equal(rows.length,2);assert(rows.every(v=>v.price_level<=2&&v.price_status==='source_checked'&&v.cuisine==='Italian'));
+  const filtered=await api('GET','/venues?price_level=2');assert(filtered.venues.length>=2);assert(filtered.venues.every(v=>v.price_level===2&&v.price_status==='source_checked'));
   assert.equal((await ai.fetchCandidateVenues(ai.parseFilters('Japanese dinner in Southie'))).length,0);
  });
  await check('AI route invokes provider adapter and grounds cards in database facts',async()=>{

@@ -13,6 +13,8 @@
 const express = require('express');
 const pool = require('../config/database');
 const {publicVenue,availableVenueSQL} = require('../services/venue-helpers');
+const {visibleDiscoveryVenueSQL} = require('../services/venue-duplicate-discovery');
+const {reviewedPriceSQL} = require('../services/venue-facts');
 const {PUBLIC_EVENT,EVENT_COLUMNS,publicEvent} = require('../launch/events');
 const { optionalAuth } = require('../middleware/auth');
 const { runAIConcierge, isEnabled: aiEnabled } = require('./conciergeAI');
@@ -147,7 +149,7 @@ function classifyIntent(message) {
 // ═════════════════════════════════════════════════════════════
 async function queryVenues(intent, limit) {
     limit = limit || 5;
-    const conditions = [availableVenueSQL('')];
+    const conditions = [availableVenueSQL(''), visibleDiscoveryVenueSQL('venues')];
     const values = [];
     let i = 1;
 
@@ -177,14 +179,15 @@ async function queryVenues(intent, limit) {
     // Neighborhood filter
     if (intent.neighborhoods.length) {
         const nbs = intent.neighborhoods.map(function(n){ return '%' + n + '%'; });
-        conditions.push(`LOWER(neighborhood) ILIKE ANY($${i})`);
+        conditions.push(`(neighborhood ILIKE ANY($${i}) OR city ILIKE ANY($${i}))`);
         values.push(nbs);
         i++;
     }
 
     // Budget filter
     if (intent.budget) {
-        conditions.push(`(price_level <= $${i} OR price_level IS NULL)`);
+        const price = reviewedPriceSQL('venues');
+        conditions.push(`${price} <= $${i}`);
         values.push(intent.budget);
         i++;
     }
@@ -192,7 +195,7 @@ async function queryVenues(intent, limit) {
     const whereClause = conditions.length ? ('WHERE ' + conditions.join(' AND ')) : '';
     const sql = `
         SELECT id, slug, name, type, cuisine, category, neighborhood, city, address,
-               source, NULL::numeric AS rating, price_level, NULL::numeric AS buzz_score, NULL::text AS why_hot, pair_with, short_desc, description,
+               source, to_jsonb(venues)->'field_provenance' AS field_provenance, NULL::numeric AS rating, price_level, NULL::numeric AS buzz_score, NULL::text AS why_hot, pair_with, short_desc, description,
                cover_image_url, image_url, reservation_url, opentable_url, resy_url, yelp_url,
                google_maps_url, lat, lng, NULL::boolean AS is_open_now, hours_display,
                NULL::boolean AS trending, NULL::boolean AS featured, NULL::integer AS going_count
