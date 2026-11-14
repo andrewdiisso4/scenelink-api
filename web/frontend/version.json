@@ -1,10 +1,10 @@
 {
-  "phase": "integrated-design-lists",
-  "sw_version": "sl-connected-20261110-3",
-  "timestamp": "2026-11-10T10:35:37.020242+00:00",
+  "phase": "oauth-signin-reliability",
+  "sw_version": "sl-connected-20261112-auth2",
+  "timestamp": "2026-11-12T17:13:19.987070+00:00",
   "status": "local_candidate_not_deployed",
   "requires_paired_backend": true,
   "required_migration": "016_private_list_invitations.sql",
   "rollout_order": "backend_migrations_and_API_before_frontend",
-  "summary": "Local integration of audited account/navigation/discovery work, official design and private collaborative lists. Requires paired backend migration 016 and matching API before frontend publication. No upload, migration or deployment is authorized or performed by this artifact. Browser acceptance, populated-data upgrade/restore rehearsal and production verification remain separate gates. Storage migration 015, provider setup, venue-source accuracy and in-site booking are not included."
+  "summary": "OAuth button readiness, cancellation, session ownership and safe provider-error reporting. Existing migration 016 remains required; no new migration or provider configuration is included. This is a local candidate, not a deployment. Hosted preview, exact-head CI and real-provider account acceptance remain separate gates."
 }

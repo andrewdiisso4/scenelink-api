@@ -31,19 +31,8 @@
     var googleEnabled = !!(window.SL_CONFIG && window.SL_CONFIG.GOOGLE_CLIENT_ID);
     var html = '<div class="sl-oauth-stack">';
     if (googleEnabled) {
-      html += [
-        '<button type="button" class="sl-oauth-btn sl-oauth-google" data-oauth="google">',
-        '  <span class="sl-oauth-icon" aria-hidden="true">',
-        '    <svg viewBox="0 0 24 24" width="18" height="18">',
-        '      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>',
-        '      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A10.99 10.99 0 0 0 12 23z"/>',
-        '      <path fill="#FBBC05" d="M5.84 14.09A6.6 6.6 0 0 1 5.49 12c0-.73.13-1.44.35-2.09V7.07H2.18A10.99 10.99 0 0 0 1 12c0 1.77.43 3.45 1.18 4.93l3.66-2.84z"/>',
-        '      <path fill="#EA4335" d="M12 5.38c1.62 0 3.07.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/>',
-        '    </svg>',
-        '  </span>',
-        '  <span>Continue with Google</span>',
-        '</button>'
-      ].join('');
+      html += '<div data-google-host aria-label="Sign in with Google"></div>' +
+        '<button type="button" class="sl-oauth-btn" data-oauth="google-retry">Loading Google…</button>';
     }
     if (appleEnabled || (window.SL_CONFIG && window.SL_CONFIG.APPLE_CLIENT_ID)) {
       var disabled = !appleEnabled;
@@ -87,6 +76,7 @@
       '  <div class="sl-auth-success" data-sl-success role="status" aria-live="polite"></div>',
 
       '  <div data-sl-oauth-slot>' + oauthButtonsHTML() + '</div>',
+      '  <button type="button" class="sl-auth-link" data-oauth-cancel hidden>Cancel sign-in and retry</button>',
 
       '  <form class="sl-auth-form active" data-form="login" autocomplete="on" novalidate>',
       '    <div class="sl-auth-field">',
@@ -167,6 +157,8 @@
     overlay.querySelector('[data-form="signup"]').addEventListener('submit', onSignup);
     overlay.querySelector('[data-form="forgot"]').addEventListener('submit', onForgot);
 
+    overlay.querySelector('[data-oauth-cancel]').addEventListener('click', function(){ failOAuth(oauthEpoch, ''); });
+
     // OAuth buttons (delegated so re-renders still work)
     overlay.addEventListener('click', function(e){
       var btn = e.target.closest('[data-oauth]');
@@ -177,7 +169,7 @@
         return;
       }
       var provider = btn.getAttribute('data-oauth');
-      if (provider === 'google') startGoogle();
+      if (provider === 'google-retry') prepareGoogle(oauthEpoch);
       else if (provider === 'apple') startApple();
     });
 
@@ -201,6 +193,7 @@
   function switchTab(tab){
     if (!overlay) return;
     resetRecovery();
+    resetOAuth();
     setMessage();
     var titles = {
       login:  { t: 'Welcome back',       s: 'Sign in to continue to SceneLink' },
@@ -222,6 +215,9 @@
       f.classList.toggle('active', f.getAttribute('data-form') === tab);
     });
 
+    overlay.querySelector('[data-sl-oauth-slot]').hidden = tab === 'forgot';
+    if (tab !== 'forgot' && overlay.classList.contains('open')) prepareOAuth();
+
     // focus first input
     setTimeout(function(){
       var first = overlay.querySelector('.sl-auth-form.active input');
@@ -229,246 +225,169 @@
     }, 50);
   }
 
-  // ---------- Google OAuth ----------
-  var _googleLoaded = false;
-  function loadGoogleSDK(){
-    return new Promise(function(resolve, reject){
-      if (window.google && window.google.accounts && window.google.accounts.id) {
-        resolve(); return;
-      }
-      if (_googleLoaded) {
-        // poll until ready (max ~8s)
-        var tries = 0;
-        var iv = setInterval(function(){
-          if (window.google && window.google.accounts && window.google.accounts.id) {
-            clearInterval(iv); resolve();
-          } else if (++tries > 80) { clearInterval(iv); reject(new Error('Google Sign-In is taking too long. Please check your connection and try again.')); }
-        }, 100);
-        return;
-      }
-      _googleLoaded = true;
-      var s = document.createElement('script');
-      s.src = 'https://accounts.google.com/gsi/client';
-      s.async = true;
-      s.defer = true;
-      var settled = false;
-      var hardTimeout = setTimeout(function(){
-        if (settled) return;
-        settled = true;
-        _googleLoaded = false; // allow retry on next click
-        reject(new Error('Google Sign-In is taking too long. Please check your connection and try again.'));
-      }, 10000);
-      s.onload = function(){
-        if (settled) return;
-        settled = true;
-        clearTimeout(hardTimeout);
-        // Wait briefly for google.accounts.id to actually be defined
-        var waits = 0;
-        var iv2 = setInterval(function(){
-          if (window.google && window.google.accounts && window.google.accounts.id) {
-            clearInterval(iv2); resolve();
-          } else if (++waits > 40) {
-            clearInterval(iv2);
-            _googleLoaded = false;
-            reject(new Error('Google Sign-In failed to initialize. Please try again.'));
-          }
-        }, 50);
-      };
-      s.onerror = function(){
-        if (settled) return;
-        settled = true;
-        clearTimeout(hardTimeout);
-        _googleLoaded = false;
-        reject(new Error('Could not reach Google. Check your connection and try again.'));
-      };
-      document.head.appendChild(s);
-    });
+  // SDK loads are shared; modal lifetimes and sign-in attempts are not.
+  var emailSequence = 0, oauthEpoch = 0, oauthAttempt = null, appleReady = false, sdkLoads = {};
+  function sessionToken(){ return window.SLAuth && window.SLAuth.token ? window.SLAuth.token() : ''; }
+  function isCurrent(epoch){ return epoch === oauthEpoch && overlay && overlay.classList.contains('open'); }
+  function restoreOAuth(){
+    var slot = overlay.querySelector('[data-sl-oauth-slot]');
+    slot.inert = false; slot.removeAttribute('inert'); slot.removeAttribute('aria-busy');
+    slot.style.pointerEvents = '';
+    slot.querySelectorAll('button').forEach(function(btn){ btn.disabled = false; });
   }
-
-  function startGoogle(){
-    setMessage();
-    var clientId = window.SL_CONFIG && window.SL_CONFIG.GOOGLE_CLIENT_ID;
-    if (!clientId) { setMessage('error', 'Google Sign-In is not configured.'); return; }
-    var btn = overlay.querySelector('[data-oauth="google"]');
-    if (btn) { btn.disabled = true; btn.querySelector('span:last-child').textContent = 'Connecting to Google…'; }
-
-    loadGoogleSDK().then(function(){
-      try {
-        google.accounts.id.initialize({
-          client_id: clientId,
-          callback: function(resp){
-            if (!resp || !resp.credential) {
-              setMessage('error', 'Google did not return a credential.');
-              resetGoogleBtn(); return;
-            }
-            window.SLAuth.loginWithGoogle(resp.credential).then(function(user){
-              setMessage('success', 'Welcome, ' + (user.display_name || user.username) + '!');
-              setTimeout(close, 500);
-            }).catch(function(err){
-              setMessage('error', err.message || 'Google sign-in failed.');
-              resetGoogleBtn();
-            });
-          },
-          ux_mode: 'popup',
-          auto_select: false
-        });
-
-        // Hard safety: if no result in 25s, reset the button and message the user.
-        var promptSettled = false;
-        var promptTimeout = setTimeout(function(){
-          if (promptSettled) return;
-          promptSettled = true;
-          setMessage('error', 'Google Sign-In did not respond. Please try again or use email.');
-          resetGoogleBtn();
-        }, 25000);
-        var _origCb = window.SLAuth && window.SLAuth.loginWithGoogle;
-        // Wrap resetGoogleBtn so timeout is cleared on resolve paths
-        var _origReset = resetGoogleBtn;
-
-        // Use prompt() for One Tap style OR render a temporary button and click it.
-        google.accounts.id.prompt(function(notification){
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            // fallback: render button and trigger click
-            renderGoogleButtonFallback(clientId, function(){
-              promptSettled = true; clearTimeout(promptTimeout);
-            });
-          } else if (notification.isDismissedMoment && notification.isDismissedMoment()) {
-            promptSettled = true; clearTimeout(promptTimeout);
-            resetGoogleBtn();
-          }
-        });
-      } catch(err){
-        setMessage('error', 'Could not start Google sign-in.');
-        resetGoogleBtn();
-      }
-    }).catch(function(err){
-      setMessage('error', err.message || 'Google SDK failed to load.');
-      resetGoogleBtn();
-    });
-  }
-
-  function renderGoogleButtonFallback(clientId, onShown){
-    // Render the official Google button in a hidden slot and auto-click.
-    var host = document.getElementById('sl-google-host');
-    if (!host) {
-      host = document.createElement('div');
-      host.id = 'sl-google-host';
-      host.style.cssText = 'position:fixed;left:-9999px;top:-9999px;';
-      document.body.appendChild(host);
-    }
-    host.innerHTML = '';
-    try {
-      google.accounts.id.renderButton(host, { theme: 'filled_black', size: 'large', type: 'standard' });
-      setTimeout(function(){
-        var real = host.querySelector('div[role="button"]');
-        if (real) { real.click(); if (typeof onShown === 'function') onShown(); }
-        else setMessage('error', 'Please allow popups to sign in with Google.');
-      }, 300);
-    } catch(e){
-      setMessage('error', 'Please allow popups to sign in with Google.');
-    }
-  }
-
-  function resetGoogleBtn(){
-    var btn = overlay.querySelector('[data-oauth="google"]');
-    if (btn) { btn.disabled = false; btn.querySelector('span:last-child').textContent = 'Continue with Google'; }
-  }
-
-  // ---------- Apple OAuth ----------
-  function startApple(){
-    // If APPLE_ENABLED=false, the button is inert. Kept for future enablement:
-    setMessage();
-    var clientId = window.SL_CONFIG && window.SL_CONFIG.APPLE_CLIENT_ID;
-    if (!clientId || !(window.SL_CONFIG && window.SL_CONFIG.APPLE_ENABLED)) {
-      setMessage('error', 'Apple Sign In is coming soon. Please use Google or email.');
-      return;
-    }
-    // Prevent an infinite "loading" state: hard cap at 25s from button click
-    // to final Apple response (matches Google prompt timeout).
-    var settled = false;
-    var hardTimer = setTimeout(function(){
-      if (settled) return;
-      settled = true;
-      setMessage('error', 'Apple sign-in took too long. Please try again or use email.');
-      resetAppleBtn();
-    }, 25000);
-
-    var btn = overlay.querySelector('[data-oauth="apple"]');
-    if (btn) { btn.disabled = true; var lbl = btn.querySelector('span:last-child'); if (lbl) lbl.textContent = 'Connecting to Apple…'; }
-
-    loadAppleSDK().then(function(){
-      try {
-        AppleID.auth.init({
-          clientId: clientId,
-          scope: 'name email',
-          redirectURI: window.location.origin + '/',
-          usePopup: true
-        });
-        return AppleID.auth.signIn();
-      } catch(e){ throw e; }
-    }).then(function(data){
-      if (!data || !data.authorization || !data.authorization.id_token) {
-        throw new Error('Apple did not return an ID token.');
-      }
-      return window.SLAuth.loginWithApple({
-        id_token: data.authorization.id_token,
-        user: data.user || undefined
-      }).then(function(user){
-        if (settled) return;
-        settled = true;
-        clearTimeout(hardTimer);
-        setMessage('success', 'Welcome, ' + (user.display_name || user.username) + '!');
-        setTimeout(close, 500);
+  function resetOAuth(){
+    oauthEpoch++; emailSequence++;
+    if (oauthAttempt) clearTimeout(oauthAttempt.timer);
+    oauthAttempt = null; appleReady = false;
+    if (overlay) {
+      restoreOAuth(); overlay.querySelector('[data-oauth-cancel]').hidden = true;
+      ['login', 'signup'].forEach(function(name){
+        var button = overlay.querySelector('[data-form="' + name + '"] .sl-auth-submit');
+        button.disabled = false; button.textContent = name === 'login' ? 'Sign in' : 'Create account';
       });
-    }).catch(function(err){
-      if (settled) return;
-      settled = true;
-      clearTimeout(hardTimer);
-      // Apple's popup cancel throws { error: 'popup_closed_by_user' } — show friendly text
-      var msg = (err && err.message) || (err && err.error) || 'Apple sign-in failed.';
-      if (/popup_closed|user_cancel|user_trigger|cancel/i.test(msg)) {
-        setMessage(); // silent cancel
-      } else {
-        setMessage('error', msg);
+    }
+  }
+  function loadSDK(name, url, ready){
+    if (ready()) return Promise.resolve();
+    if (sdkLoads[name]) return sdkLoads[name];
+    var pending = new Promise(function(resolve, reject){
+      var script = document.createElement('script'), done = false, poll, timer;
+      function finish(error){
+        if (done) return;
+        done = true; clearTimeout(timer); clearInterval(poll);
+        script.onload = script.onerror = null;
+        if (error) { script.remove(); reject(error); } else resolve();
       }
-      resetAppleBtn();
+      timer = setTimeout(function(){ finish(new Error(name + ' sign-in could not load. Check your connection and retry.')); }, 10000);
+      script.src = url; script.async = true;
+      script.onload = function(){ if (ready()) finish(); else poll = setInterval(function(){ if (ready()) finish(); }, 50); };
+      script.onerror = function(){ finish(new Error('Could not reach ' + name + '. Check your connection and retry.')); };
+      document.head.appendChild(script);
+    });
+    sdkLoads[name] = pending;
+    pending.catch(function(){ if (sdkLoads[name] === pending) delete sdkLoads[name]; });
+    return pending;
+  }
+  function googleSDK(){ return window.google && window.google.accounts && window.google.accounts.id; }
+  function appleSDK(){ return window.AppleID && window.AppleID.auth && typeof window.AppleID.auth.signIn === 'function'; }
+  function prepareOAuth(){ prepareGoogle(oauthEpoch); prepareApple(oauthEpoch); }
+  function prepareGoogle(epoch){
+    var config = window.SL_CONFIG || {}, retry = overlay.querySelector('[data-oauth="google-retry"]'), host = overlay.querySelector('[data-google-host]');
+    if (!config.GOOGLE_CLIENT_ID || !retry || retry.disabled && retry.textContent === 'Loading Google…') return;
+    retry.hidden = false; retry.disabled = true; retry.textContent = 'Loading Google…'; host.innerHTML = '';
+    loadSDK('Google', 'https://accounts.google.com/gsi/client', googleSDK).then(function(){
+      if (!isCurrent(epoch)) return;
+      // Reject old popups even when GIS delivers them to its latest callback.
+      var bytes = new Uint32Array(4); window.crypto.getRandomValues(bytes);
+      var nonce = Array.from(bytes).map(function(n){ return n.toString(16); }).join('-'), startingToken = sessionToken();
+      googleSDK().initialize({client_id: config.GOOGLE_CLIENT_ID, ux_mode: 'popup', auto_select: false, nonce: nonce,
+        callback: function(response){
+          if (!isCurrent(epoch) || sessionToken() !== startingToken || oauthAttempt && oauthAttempt.provider !== 'google') return;
+          if (oauthAttempt && oauthAttempt.exchanging) return;
+          if (!response || !response.credential) { failOAuth(epoch, 'Google did not return a credential. Please retry.'); return; }
+          try {
+            var payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            if (payload.nonce !== nonce) return;
+          } catch (error) { failOAuth(epoch, 'Google returned an invalid credential. Please retry.'); return; }
+          var attempt = oauthAttempt || beginOAuth('google', epoch);
+          if (!attempt) return;
+          attempt.exchanging = true;
+          exchange(attempt, function(options){ return window.SLAuth.loginWithGoogle(response.credential, options); });
+        }
+      });
+      googleSDK().renderButton(host, {theme: 'filled_black', size: 'large', type: 'standard',
+        click_listener: function(){ if (isCurrent(epoch) && !oauthAttempt) beginOAuth('google', epoch); }
+      });
+      retry.hidden = true; retry.disabled = false; retry.textContent = 'Retry Google sign-in';
+    }).catch(function(error){
+      if (!isCurrent(epoch)) return;
+      retry.hidden = false; retry.disabled = false; retry.textContent = 'Retry Google sign-in';
+      setMessage('error', error.message || 'Google sign-in could not load. Please retry.');
     });
   }
-
-  function resetAppleBtn(){
-    var btn = overlay.querySelector('[data-oauth="apple"]');
-    if (btn) { btn.disabled = false; var lbl = btn.querySelector('span:last-child'); if (lbl) lbl.textContent = 'Continue with Apple'; }
+  function prepareApple(epoch){
+    var config = window.SL_CONFIG || {}, btn = overlay.querySelector('[data-oauth="apple"]');
+    if (!btn || !config.APPLE_ENABLED || !config.APPLE_CLIENT_ID) return;
+    btn.disabled = true; btn.querySelector('span:last-child').textContent = 'Loading Apple…';
+    loadSDK('Apple', 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js', appleSDK).then(function(){
+      if (!isCurrent(epoch)) return;
+      window.AppleID.auth.init({clientId: config.APPLE_CLIENT_ID, scope: 'name email', redirectURI: config.APPLE_REDIRECT_URI || window.location.origin + '/', usePopup: true});
+      appleReady = true; btn.disabled = false; btn.querySelector('span:last-child').textContent = 'Continue with Apple';
+    }).catch(function(error){
+      if (!isCurrent(epoch)) return;
+      appleReady = false; btn.disabled = false; btn.querySelector('span:last-child').textContent = 'Retry loading Apple';
+      setMessage('error', error.message || 'Apple sign-in could not load. Please retry.');
+    });
   }
-
-  function loadAppleSDK(){
-    return new Promise(function(resolve, reject){
-      if (window.AppleID) return resolve();
-      // Hard timeout on SDK load: 10s (matches Google SDK load cap)
-      var sdkTimer = setTimeout(function(){
-        reject(new Error('Apple SDK took too long to load. Please try again.'));
-      }, 10000);
-      var s = document.createElement('script');
-      s.src = 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
-      s.async = true;
-      s.defer = true;
-      s.onload = function(){ clearTimeout(sdkTimer); resolve(); };
-      s.onerror = function(){ clearTimeout(sdkTimer); reject(new Error('Failed to load Apple SDK')); };
-      document.head.appendChild(s);
+  function beginOAuth(provider, epoch){
+    if (!isCurrent(epoch) || oauthAttempt) return null;
+    setMessage();
+    emailSequence++;
+    var attempt = {provider: provider, epoch: epoch, exchanging: false, startingToken: sessionToken()};
+    oauthAttempt = attempt; overlay.querySelector('[data-oauth-cancel]').hidden = false;
+    var slot = overlay.querySelector('[data-sl-oauth-slot]');
+    slot.inert = true; slot.setAttribute('inert', ''); slot.setAttribute('aria-busy', 'true'); slot.style.pointerEvents = 'none';
+    slot.querySelectorAll('button').forEach(function(btn){ btn.disabled = true; });
+    attempt.timer = setTimeout(function(){ if (currentAttempt(attempt)) failOAuth(epoch, provider + ' sign-in took too long. Please retry or use email.'); }, 60000);
+    return attempt;
+  }
+  function currentAttempt(attempt){ return oauthAttempt === attempt && isCurrent(attempt.epoch); }
+  function failOAuth(epoch, message){
+    if (!isCurrent(epoch)) return;
+    resetOAuth(); prepareOAuth(); setMessage(message ? 'error' : null, message);
+  }
+  function exchange(attempt, request){
+    Promise.resolve().then(function(){
+      if (!currentAttempt(attempt) || sessionToken() !== attempt.startingToken) return null;
+      return request({isCurrent: function(){ return currentAttempt(attempt) && sessionToken() === attempt.startingToken; }});
+    }).then(function(user){
+      if (!currentAttempt(attempt) || !user) return;
+      clearTimeout(attempt.timer);
+      setMessage('success', 'Welcome, ' + (user.display_name || user.username) + '!');
+      attempt.timer = setTimeout(function(){ if (currentAttempt(attempt)) close(); }, 500);
+    }).catch(function(error){ if (currentAttempt(attempt)) failOAuth(attempt.epoch, error.message || 'Sign-in failed. Please retry.'); });
+  }
+  function startApple(){
+    var config = window.SL_CONFIG || {};
+    if (!config.APPLE_ENABLED || !config.APPLE_CLIENT_ID || oauthAttempt) return;
+    if (!appleReady) { prepareApple(oauthEpoch); return; }
+    var attempt = beginOAuth('apple', oauthEpoch);
+    if (!attempt) return;
+    var result;
+    // Preserve user activation: signIn is synchronous within this ready-button click.
+    try { result = window.AppleID.auth.signIn(); } catch (error) { result = Promise.reject(error); }
+    Promise.resolve(result).then(function(data){
+      if (!currentAttempt(attempt) || sessionToken() !== attempt.startingToken) return;
+      if (!data || !data.authorization || !data.authorization.id_token) throw new Error('Apple did not return an ID token.');
+      attempt.exchanging = true;
+      exchange(attempt, function(options){ return window.SLAuth.loginWithApple({id_token: data.authorization.id_token, user: data.user || undefined}, options); });
+    }).catch(function(error){
+      if (!currentAttempt(attempt)) return;
+      var message = error && (error.message || error.error) || 'Apple sign-in failed.';
+      if (/popup_closed|user_cancel|user_trigger|cancel/i.test(message)) message = '';
+      else if (/invalid_client/i.test(message)) message = 'Apple sign-in is unavailable because its provider configuration needs updating. Please use Google or email.';
+      failOAuth(attempt.epoch, message);
     });
   }
 
   function onLogin(e){
     e.preventDefault();
-    setMessage();
     var f = e.currentTarget;
+    if (f.querySelector('.sl-auth-submit').disabled) return;
+    setMessage();
     var email = f.email.value.trim();
     var pw    = f.password.value;
     if (!email || !pw){ setMessage('error', 'Please enter email and password.'); return; }
+    resetOAuth();
+    var emailEpoch = oauthEpoch, sequence = emailSequence;
+    function emailCurrent(){ return isCurrent(emailEpoch) && sequence === emailSequence; }
     var btn = f.querySelector('.sl-auth-submit');
     btn.disabled = true; btn.textContent = 'Signing in...';
-    window.SLAuth.login(email, pw).then(function(user){
+    window.SLAuth.login(email, pw, {isCurrent: emailCurrent}).then(function(user){
+      if (!emailCurrent()) return;
       setMessage('success', 'Welcome back, ' + (user.display_name || user.username) + '!');
       setTimeout(function(){
+        if (!emailCurrent()) return;
         close();
         // if we're on a page that should refresh after login, do so
         try {
@@ -482,16 +401,20 @@
         } catch(e){}
       }, 400);
     }).catch(function(err){
+      if (!emailCurrent() || err.code === 'AUTH_SUPERSEDED') return;
       setMessage('error', err.message || 'Sign in failed. Check your email and password.');
     }).finally(function(){
+      if (!emailCurrent()) return;
+      prepareOAuth();
       btn.disabled = false; btn.textContent = 'Sign in';
     });
   }
 
   function onSignup(e){
     e.preventDefault();
-    setMessage();
     var f = e.currentTarget;
+    if (f.querySelector('.sl-auth-submit').disabled) return;
+    setMessage();
     var payload = {
       display_name: f.display_name.value.trim(),
       username:     f.username.value.trim().toLowerCase(),
@@ -507,18 +430,25 @@
     if (payload.password.length < 8){
       setMessage('error', 'Password must be at least 8 characters.'); return;
     }
+    resetOAuth();
+    var emailEpoch = oauthEpoch, sequence = emailSequence;
+    function emailCurrent(){ return isCurrent(emailEpoch) && sequence === emailSequence; }
     var btn = f.querySelector('.sl-auth-submit');
     btn.disabled = true; btn.textContent = 'Creating account...';
-    window.SLAuth.signup(payload).then(function(user){
+    window.SLAuth.signup(payload, {isCurrent: emailCurrent}).then(function(user){
+      if (!emailCurrent()) return;
       setMessage('success', 'Welcome to SceneLink, ' + (user.display_name || user.username) + '!');
-      setTimeout(close, 500);
+      setTimeout(function(){ if (emailCurrent()) close(); }, 500);
     }).catch(function(err){
+      if (!emailCurrent() || err.code === 'AUTH_SUPERSEDED') return;
       var msg = err.message || 'Sign up failed.';
       if (/already|exists|unique/i.test(msg)) {
         msg = 'That email or username is already taken.';
       }
       setMessage('error', msg);
     }).finally(function(){
+      if (!emailCurrent()) return;
+      prepareOAuth();
       btn.disabled = false; btn.textContent = 'Create account';
     });
   }
@@ -557,12 +487,15 @@
     setMessage();
     switchTab(tab || 'login');
     overlay.classList.add('open');
+    restoreOAuth();
+    if ((tab || 'login') !== 'forgot') prepareOAuth();
     document.body.style.overflow = 'hidden';
   }
 
   function close(){
     if (!overlay || !overlay.classList.contains('open')) return;
     resetRecovery();
+    resetOAuth();
     overlay.classList.remove('open');
     document.body.style.overflow = previousOverflow || '';
     if (previousFocus && previousFocus.isConnected && !previousFocus.disabled) previousFocus.focus();

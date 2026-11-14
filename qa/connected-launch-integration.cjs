@@ -143,6 +143,39 @@ async function main(){
    assert.equal((await pool.query('SELECT status FROM signup_welcome_emails WHERE user_id=$1',[first.user.id])).rows[0].status,'pending');
   } finally {limiter.resetKey('127.0.0.1');require.cache[jwksPath].exports=savedJwks;if(oldClient===undefined)delete process.env.APPLE_CLIENT_ID;else process.env.APPLE_CLIENT_ID=oldClient;}
  });
+ await check('OAuth rejects malformed credentials and reports outages without logging provider data',async()=>{
+  const limiter=req('./src/middleware/rateLimits').authLimiter;
+  const {OAuth2Client}=req('google-auth-library'),oldVerify=OAuth2Client.prototype.verifyIdToken,oldGoogle=process.env.GOOGLE_CLIENT_ID,oldApple=process.env.APPLE_CLIENT_ID;
+  const jwksPath=req.resolve('jwks-rsa');req(jwksPath);const savedJwks=require.cache[jwksPath].exports;
+  const oldError=console.error,logs=[];console.error=(...args)=>logs.push(args.join(' '));
+  const jwt=req('jsonwebtoken'),{privateKey,publicKey}=crypto.generateKeyPairSync('rsa',{modulusLength:2048});
+  const token=jwt.sign({sub:'isolated-error-fixture',email:'error-fixture@example.invalid',email_verified:true},privateKey,{algorithm:'RS256',keyid:'local-key',issuer:'https://appleid.apple.com',audience:'isolated-apple-client.invalid',expiresIn:'5m'});
+  try {
+   limiter.resetKey('127.0.0.1');process.env.GOOGLE_CLIENT_ID='isolated-client.invalid';process.env.APPLE_CLIENT_ID='isolated-apple-client.invalid';
+   for(const provider of ['google','apple'])for(const id_token of [{},42,'x'.repeat(16385)])await api('POST','/auth/'+provider,{id_token},null,400);
+   OAuth2Client.prototype.verifyIdToken=async()=>{throw Error('malformed private-provider-payload');};
+   await api('POST','/auth/google',{id_token:'fictional-bad-token'},null,401);
+   OAuth2Client.prototype.verifyIdToken=async()=>{throw Object.assign(Error('private-provider-payload'),{code:'ECONNRESET'});};
+   await api('POST','/auth/google',{id_token:'fictional-outage-token'},null,503);
+   await api('POST','/auth/apple',{id_token:'fictional-bad-token'},null,401);
+   require.cache[jwksPath].exports=()=>({getSigningKey:(kid,cb)=>cb(Object.assign(Error('private-provider-payload'),{name:'JwksError'}))});
+   await api('POST','/auth/apple',{id_token:token},null,503);
+   limiter.resetKey('127.0.0.1'); // Separate offline error fixtures from the production IP budget.
+   require.cache[jwksPath].exports=()=>({getSigningKey:(kid,cb)=>cb(null,{getPublicKey:()=>publicKey.export({type:'spki',format:'pem'})})});
+   const wrongAudience=jwt.sign({sub:'isolated-error-fixture',email:'error-fixture@example.invalid',email_verified:true},privateKey,{algorithm:'RS256',keyid:'local-key',issuer:'https://appleid.apple.com',audience:'wrong-client.invalid',expiresIn:'5m'});
+   await api('POST','/auth/apple',{id_token:wrongAudience},null,401);
+   OAuth2Client.prototype.verifyIdToken=async()=>({getPayload:()=>({sub:'isolated-google-fixture',email:'oauth-verified@example.invalid',email_verified:true})});
+   await pool.query("UPDATE users SET is_suspended=true WHERE email='oauth-verified@example.invalid'");
+   await api('POST','/auth/google',{id_token:'fictional-suspended-account'},null,403);
+   await pool.query("UPDATE users SET is_suspended=false WHERE email='oauth-verified@example.invalid'");
+   assert.deepEqual(logs,['[oauth/google] OAUTH_PROVIDER_UNAVAILABLE','[oauth/apple] OAUTH_PROVIDER_UNAVAILABLE']);
+   assert(!logs.join('').includes('private-provider-payload'));assert(!logs.join('').includes(token));
+  } finally {
+   console.error=oldError;OAuth2Client.prototype.verifyIdToken=oldVerify;require.cache[jwksPath].exports=savedJwks;limiter.resetKey('127.0.0.1');
+   if(oldGoogle===undefined)delete process.env.GOOGLE_CLIENT_ID;else process.env.GOOGLE_CLIENT_ID=oldGoogle;
+   if(oldApple===undefined)delete process.env.APPLE_CLIENT_ID;else process.env.APPLE_CLIENT_ID=oldApple;
+  }
+ });
  await check('literal search and accurate count from real rows',async()=>{
   for(const [id,name,slug]of[[venue,'Harbor & Pine','test-harbor-pine'],[crypto.randomUUID(),'Harbor & Pine Annex','test-harbor-pine-annex']])await pool.query("INSERT INTO venues(id,name,slug,type,neighborhood,cuisine,description,is_active,lat,lng) VALUES($1,$2,$3,'restaurant','South Boston','Italian','Fictional QA venue only',true,42.34,-71.04)",[id,name,slug]);
   const r=await api('GET','/venues?q=Harbor%20%26%20Pine&limit=1');assert.equal(r.total,2);assert.equal(r.venues[0].name,'Harbor & Pine');assert(r.has_more);
