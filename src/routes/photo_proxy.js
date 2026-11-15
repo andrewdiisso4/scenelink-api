@@ -1,69 +1,77 @@
-/**
- * Google Places photo proxy endpoint.
- *
- * The client passes photo_name (a Google resource name like
- * `places/ChIJ.../photos/Ab43m-...`). The server fetches the photo from
- * Google using the server-side API key and streams it back with aggressive
- * caching headers so the key NEVER reaches the browser.
- *
- * Route:  GET /api/photo?name=<photo_name>&w=<max_width_px>
- *
- * Security:
- *   - API key read from process.env.GOOGLE_PLACES_API_KEY (never logged)
- *   - photo_name must start with 'places/' and contain '/photos/' (whitelist)
- *   - redirects followed server-side; final CDN URL is never exposed because
- *     we stream the bytes, not redirect the client
- *   - 1h CDN cache + 24h browser cache — photos rarely change
- */
-const express = require("express");
-const https   = require("https");
-
+/** Server-side Places photo proxy. Never cache provider errors or expose keys. */
+const express = require('express');
+const https = require('https');
 const router = express.Router();
-const ALLOWED_WIDTHS = [200, 400, 800, 1200, 1600];
-const MAX_WIDTH = 1600;
-const DEFAULT_WIDTH = 800;
-
-router.get("/", async (req, res) => {
+const PHOTO_NAME = /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/;
+const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
+function allowedRedirect(value) {
   try {
-    const name = String(req.query.name || "");
-    const w    = Math.min(MAX_WIDTH, Math.max(100, parseInt(req.query.w || DEFAULT_WIDTH, 10) || DEFAULT_WIDTH));
-
-    // Whitelist validation — photo resource names use letters/digits/underscores/hyphens
-    if (!/^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/.test(name)) {
-      return res.status(400).json({ error: "invalid photo name" });
+    const u = new URL(value);
+    return u.protocol === 'https:' && !u.username && !u.password && (!u.port || u.port === '443') &&
+      (u.hostname === 'lh3.googleusercontent.com' || u.hostname.endsWith('.googleusercontent.com'));
+  } catch { return false; }
+}
+router.get('/', (req, res) => {
+  res.set({'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff'});
+  const name = String(req.query.name || '');
+  const width = Math.min(1600, Math.max(100, parseInt(req.query.w || 800, 10) || 800));
+  const fail = status => {
+    if (res.destroyed || res.writableEnded) return;
+    if (res.headersSent) return res.destroy();
+    res.status(status).type('application/json').json({error:'photo unavailable'});
+  };
+  if (!PHOTO_NAME.test(name)) return fail(400);
+  const key = process.env.GOOGLE_PLACES_API_KEY;
+  if (!key) return fail(503);
+  let active;
+  const requests = new Set();
+  res.on('close', () => {
+    for (const owner of requests) {
+      owner.retired = true;
+      owner.request.destroy();
     }
-
-    const key = process.env.GOOGLE_PLACES_API_KEY;
-    if (!key) {
-      return res.status(500).json({ error: "photo service unavailable" });
-    }
-
-    const url = `https://places.googleapis.com/v1/${name}/media?maxWidthPx=${w}&key=${key}`;
-
-    https.get(url, (upstream) => {
-      if (upstream.statusCode && upstream.statusCode >= 300 && upstream.statusCode < 400 && upstream.headers.location) {
-        // Follow the redirect ourselves — do NOT expose the CDN URL as a redirect to the client
-        https.get(upstream.headers.location, (cdn) => {
-          res.set({
-            "Content-Type":  cdn.headers["content-type"] || "image/jpeg",
-            "Cache-Control": "public, max-age=86400, s-maxage=3600",
-            "X-Content-Type-Options": "nosniff",
-          });
-          cdn.pipe(res);
-        }).on("error", () => res.status(502).json({ error: "upstream cdn error" }));
-        return;
-      }
-      res.set({
-        "Content-Type":  upstream.headers["content-type"] || "image/jpeg",
-        "Cache-Control": "public, max-age=86400, s-maxage=3600",
-        "X-Content-Type-Options": "nosniff",
+    requests.clear();
+  });
+  function load(url, redirected = false) {
+    const owner = {request: null, retired: false};
+    active = owner;
+    const current = () => active === owner && !owner.retired && !res.destroyed && !res.writableEnded;
+    const failed = status => { if (current()) fail(status); };
+    try {
+      owner.request = https.get(url, upstream => {
+        // Every response needs listeners, even when its body is discarded.
+        // A retired redirect must never fail or cancel the newer CDN request.
+        upstream.on('error', () => failed(502));
+        upstream.on('aborted', () => failed(502));
+        const discard = () => {
+          owner.retired = true;
+          owner.request.setTimeout(0);
+          upstream.destroy();
+          owner.request.destroy();
+          requests.delete(owner);
+        };
+        if (!current()) return discard();
+        const status = upstream.statusCode || 502;
+        if (!redirected && status >= 300 && status < 400 && allowedRedirect(upstream.headers.location)) {
+          discard();
+          return load(upstream.headers.location, true);
+        }
+        const type = String(upstream.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+        if (status !== 200 || !IMAGE_TYPES.has(type)) {
+          discard();
+          return fail(status === 400 || status === 404 || status === 410 ? 404 : 502);
+        }
+        res.type(type);
+        upstream.pipe(res);
       });
-      upstream.pipe(res);
-    }).on("error", () => res.status(502).json({ error: "upstream error" }));
-  } catch (e) {
-    // Intentionally no logging of error detail (may contain key in URL)
-    res.status(500).json({ error: "internal photo error" });
+      requests.add(owner);
+      owner.request.setTimeout(10000, () => {
+        failed(504);
+        owner.request.destroy();
+      });
+      owner.request.on('error', () => failed(502));
+    } catch { failed(502); }
   }
+  load(`https://places.googleapis.com/v1/${name}/media?maxWidthPx=${width}&key=${encodeURIComponent(key)}`);
 });
-
 module.exports = router;
