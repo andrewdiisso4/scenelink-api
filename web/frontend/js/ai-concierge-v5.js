@@ -243,18 +243,19 @@
                     if (data.ok) {
                         // Track conversation for context
                         _convoHistory.push({ role: 'user', content: query });
-                        if (data.reply) _convoHistory.push({ role: 'assistant', content: data.reply });
+                        var reply = typeof data.response === 'string' ? data.response : (data.reply || '');
+                        if (reply) _convoHistory.push({ role: 'assistant', content: reply });
                         if (_convoHistory.length > 10) _convoHistory = _convoHistory.slice(-10);
 
                         return {
-                            text: data.reply || '',
-                            plan: data.recommendedPlan || null,
-                            venueCards: data.venueCards || [],
+                            text: reply,
+                            plan: data.itinerary || data.recommendedPlan || null,
+                            venueCards: Array.isArray(data.venues) ? data.venues : (data.venueCards || []),
                             recommendedVenues: data.recommendedVenues || [],
-                            recommendedEvents: data.recommendedEvents || [],
+                            recommendedEvents: Array.isArray(data.events) ? data.events : (data.recommendedEvents || []),
                             quickReplies: data.quickReplies || [],
                             notice: data.notice || null,
-                            isLoggedIn: !!data.isLoggedIn,
+                            isLoggedIn: !!tok,
                             requiresLogin: !!data.requiresLogin,
                             source: data.source,
                             intent: data.intent
@@ -522,7 +523,10 @@
                 w.innerHTML = '<div class="slc-msg-avatar"><svg viewBox="0 0 24 24" width="14" height="14" fill="#D4AF37"><path d="M12 2l2.4 5.4L20 9l-4.5 4 1.5 6L12 16l-5 3 1.5-6L4 9l5.6-1.6L12 2z"/></svg></div>' +
                     '<div class="slc-msg-bubble">' + html + '</div>';
             } else {
-                w.innerHTML = '<div class="slc-msg-bubble">' + html + '</div>';
+                var bubble = document.createElement('div');
+                bubble.className = 'slc-msg-bubble';
+                bubble.textContent = String(html == null ? '' : html);
+                w.appendChild(bubble);
             }
             messages.appendChild(w);
             messages.scrollTop = messages.scrollHeight;
@@ -723,6 +727,9 @@
 
         function normalizeCardForDisplay(c) {
             if (!c) return c;
+            // Canonical public venue DTO already carries reviewed/null facts and booking status.
+            // Preserve it instead of dropping snake_case fields through the legacy card adapter.
+            if (Object.prototype.hasOwnProperty.call(c, 'metrics_status') || Object.prototype.hasOwnProperty.call(c, 'booking')) return c;
             return {
                 id: c.id, slug: c.slug, name: c.name,
                 type: c.type, cuisine: c.cuisine, neighborhood: c.neighborhood,

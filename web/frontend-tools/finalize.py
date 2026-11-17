@@ -7,7 +7,7 @@ from sync_auth_css import sync_auth_css
 built=datetime.now(timezone.utc).isoformat()
 root=Path(__file__).resolve().parent.parent/'frontend'
 sync_auth_css(root)
-tag='connected-20261117-search1'
+tag='connected-20261117-contract1'
 for name in ['sl-bundle-7d.js','sl-bundle-7d-ui.js']:
  p=root/'js'/name;s=p.read_text();matches=list(re.finditer(r'/\* === (js/[^ ]+) === \*/',s));header=s[:matches[0].start()]
  p.write_text(header+'\n\n'.join('/* === '+m[1]+' === */\n'+(root/m[1]).read_text().strip() for m in matches)+'\n')

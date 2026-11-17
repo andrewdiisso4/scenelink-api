@@ -17,11 +17,11 @@
 (function(){
   'use strict';
   var V = {
-    phase: 'catalog-search',
-    sw_version: 'sl-connected-20261117-search1',
-    deploy: 'connected-20261117-search1',
-    built: '2026-11-17T18:03:01.094635+00:00',
-    backend_change: 'concierge-retrieval-no-schema'
+    phase: 'concierge-contract',
+    sw_version: 'sl-connected-20261117-contract1',
+    deploy: 'connected-20261117-contract1',
+    built: '2026-11-17T18:56:47.936653+00:00',
+    backend_change: 'none'
   };
   // Always-available global
   try { window.SCENELINK_VERSION = V; } catch(_){}
