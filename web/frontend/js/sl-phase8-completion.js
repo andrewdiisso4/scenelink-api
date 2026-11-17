@@ -52,8 +52,9 @@
     var type = v.cuisine || v.category || v.type || 'Venue';
     var desc = v.short_desc || v.description || 'Confirm details and hours with the venue.';
     var rating = 'Venue details';
+    var licensed = window.SLVenueData.licensedPhotoMarkup ? window.SLVenueData.licensedPhotoMarkup(v) : ''; 
     return '<article class="sl-phase8-venue-card" data-sl-venue-id="' + esc(v.id || '') + '">' +
-      '<a href="' + esc(venueUrl(v)) + '" class="sl-phase8-venue-image" aria-label="Open ' + esc(v.name) + '"><img src="' + esc(v.thumbnail_url || '/assets/img/placeholder-venue.svg') + '" alt="' + esc(v.thumbnail_url ? v.name : 'Venue photo unavailable') + '" style="width:100%;height:100%;object-fit:cover"></a>' +
+      (licensed || '<a href="' + esc(venueUrl(v)) + '" class="sl-phase8-venue-image" aria-label="Open ' + esc(v.name) + '"><img src="' + esc(v.thumbnail_url || '/assets/img/placeholder-venue.svg') + '" alt="' + esc(v.thumbnail_url ? v.name : 'Venue photo unavailable') + '" style="width:100%;height:100%;object-fit:cover"></a>') +
       '<div class="sl-phase8-venue-body">' +
       '<div class="sl-phase8-venue-meta">' + esc(type) + ' · ' + esc(hood) + '</div>' +
       '<h3 class="sl-phase8-venue-name">' + esc(v.name || 'Boston venue') + '</h3>' +
