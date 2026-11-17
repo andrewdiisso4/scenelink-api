@@ -9,7 +9,10 @@ const root = path.resolve(__dirname, '../frontend');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const tick = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-for (const status of [200, 429]) test(`Social Ask AI preserves styled interaction and ${status === 200 ? 'responses' : 'retry feedback'}`, async t => {
+for (const scenario of ['empty', 'venues', 'itinerary', 'legacy', 'rate-limit']) test(`Social Ask AI preserves styled interaction and ${scenario}`, async t => {
+  const status = scenario === 'rate-limit' ? 429 : 200;
+  const venue = { id: 'test-only-1', slug: 'test-only', name: 'TEST ONLY venue', type: 'restaurant', price_level: null, rating: null, image_url: null, metrics_status: 'unverified', booking: { status: 'not_available' } };
+  const payload = scenario === 'legacy' ? { ok: true, reply: 'TEST ONLY catalog response', venueCards: [] } : { ok: true, response: 'TEST ONLY catalog response', venues: ['venues','itinerary'].includes(scenario) ? [venue] : [], events: [], itinerary: scenario === 'itinerary' ? { title: 'TEST ONLY plan', stops: [{venueId: venue.id, category: 'restaurant', bestTime: null}] } : null };
   const errors = [], calls = [];
   const vc = new VirtualConsole();
   vc.on('jsdomError', error => errors.push(error.message));
@@ -26,7 +29,7 @@ for (const status of [200, 429]) test(`Social Ask AI preserves styled interactio
     if (url === '/api/concierge/suggestions') return new Response('{"suggestions":[]}');
     assert.equal(url, '/api/concierge');
     return new Promise(resolve => { complete = () => resolve(new Response(JSON.stringify(
-      status === 200 ? { ok: true, reply: 'TEST ONLY catalog response', venueCards: [] }
+      status === 200 ? payload
         : { reply: 'TEST ONLY retry in a moment' }
     ), { status, headers: { 'Content-Type': 'application/json' } })); });
   };
@@ -34,6 +37,7 @@ for (const status of [200, 429]) test(`Social Ask AI preserves styled interactio
   await tick(0);
   assert.equal(doc.querySelectorAll('.sl-concierge-panel,.sl-concierge-fab').length, 0);
   const trigger = doc.querySelector('[data-ai-concierge-nav][data-sl-concierge]');
+  trigger.setAttribute('data-sl-concierge', '<img id="unsafe-user-markup" src=x> TEST ONLY request');
   trigger.click();
   const script = doc.querySelector('script[src*="ai-concierge-v5.js"]');
   assert(script);
@@ -55,12 +59,16 @@ for (const status of [200, 429]) test(`Social Ask AI preserves styled interactio
   await tick(320);
   assert.equal(calls.filter(call => call.options.method === 'POST').length, 1);
   assert.equal(JSON.parse(calls.find(call => call.options.method === 'POST').options.body).message, trigger.getAttribute('data-sl-concierge'));
+  assert.equal(panel.querySelector('#unsafe-user-markup'), null, 'user text never creates markup');
+  assert.match(panel.querySelector('.slc-msg-user').textContent, /<img/);
   assert(panel.querySelector('.slc-typing'), 'loading feedback remains visible while waiting');
   complete();
   await tick(650);
   assert.equal(panel.querySelector('.slc-typing'), null);
   assert.match(panel.textContent, status === 200 ? /TEST ONLY catalog response/ : /TEST ONLY retry in a moment/);
-  assert.equal(panel.querySelectorAll('.slc-venue-card').length, 0, 'empty responses never become invented venues');
+  assert.equal(panel.querySelectorAll('.slc-venue-card').length, ['venues','itinerary'].includes(scenario) ? 1 : 0, 'only actual response venues render');
+  if (scenario === 'itinerary') assert.match(panel.textContent, /TEST ONLY plan/);
+  if (['venues','itinerary'].includes(scenario)) assert.match(panel.textContent, /TEST ONLY venue/);
   for (let repeat = 0; repeat < 2; repeat++) {
     panel.querySelector('.slc-close').click();
     assert.equal(w.getComputedStyle(panel).opacity, '0');
