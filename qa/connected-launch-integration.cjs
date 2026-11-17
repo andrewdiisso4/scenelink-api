@@ -509,6 +509,10 @@ async function main(){
  });
  await check('AI route invokes provider adapter and grounds cards in database facts',async()=>{
   const realFetch=globalThis.fetch;let calls=0;
+  const quotaEnv=['CONCIERGE_AI_ENABLED','CONCIERGE_AI_DAILY_REQUEST_LIMIT'];
+  const savedQuotaEnv=Object.fromEntries(quotaEnv.map(key=>[key,process.env[key]]));
+  await pool.query(fs.readFileSync(path.join(root,'qa/proposed-migrations/concierge_ai_quota.sql'),'utf8'));
+  process.env.CONCIERGE_AI_ENABLED='true';process.env.CONCIERGE_AI_DAILY_REQUEST_LIMIT='10';
   process.env.OPENAI_API_KEY='isolated-provider-fixture';
   globalThis.fetch=async(url,opts)=>{
     if(String(url)==='https://api.openai.com/v1/responses'){
@@ -526,7 +530,9 @@ async function main(){
     assert.equal(r.itinerary.stops[0].bestTime,null);assert.deepEqual(r.itinerary.stops[0].vibeTags,[]);
     globalThis.fetch=async(url,opts)=>String(url)==='https://api.openai.com/v1/responses'?Promise.reject(new Error('fixture outage')):realFetch(url,opts);
     const fallback=await api('POST','/concierge',{message:'cheap Italian dinner in Southie'});assert.equal(fallback.source,'rule-based');assert.equal(fallback.venues.length,2);
-  }finally{globalThis.fetch=realFetch;delete process.env.OPENAI_API_KEY;}
+  }finally{globalThis.fetch=realFetch;delete process.env.OPENAI_API_KEY;
+    for(const key of quotaEnv){if(savedQuotaEnv[key]===undefined)delete process.env[key];else process.env[key]=savedQuotaEnv[key];}
+  }
  });
  await check('admin endpoints require current database role and reject revoked sessions',async()=>{
   await api('GET','/analytics/summary',undefined,null,401);
