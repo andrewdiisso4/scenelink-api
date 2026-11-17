@@ -57,3 +57,28 @@ test('identity transition while script loads discards pending prompt',async t=>{
 test('identity change while URL draft loads invalidates original URL before widget reads it',async t=>{
  const {w,d,calls}=setup(t,'index.html','?keep=yes&ask=old%20owner#section');w.eval(read('js/sl-phase8d-recovery.js'));await tick(0);w.localStorage.setItem('sl_jwt_token','test-only');w.localStorage.setItem('sl_user_cache',JSON.stringify({id:'other-user'}));w.dispatchEvent(new w.Event('sl-auth-changed'));assert.equal(w.location.search,'?keep=yes');assert.equal(w.location.hash,'#section');w.eval(read('js/ai-concierge-v5.js'));d.querySelector('script[src*="ai-concierge-v5.js"]').dispatchEvent(new w.Event('load'));await tick(330);assert.equal(d.querySelector('.slc-input').value,'');assert.equal(w.sessionStorage.getItem('sl_concierge_pending_draft'),null);assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);
 });
+
+for (const page of ['explore.html','nightlife.html']) test(page+' wand keeps query as unsent draft before and after lazy load',async t=>{
+ const {w,d,calls}=setup(t,page);w.eval(read('js/sl-phase8d-recovery.js'));await tick(0);w.eval(read('js/sl-search-ai-bridge.js'));await tick(0);
+ const search=d.querySelector('#slSearchInput');search.value='cocktails in Back Bay';d.querySelector('.sl-search-ai-label').click();
+ assert.equal(d.querySelectorAll('script[src*="ai-concierge-v5.js"]').length,1);
+ w.eval(read('js/ai-concierge-v5.js'));d.querySelector('script[src*="ai-concierge-v5.js"]').dispatchEvent(new w.Event('load'));await tick(330);
+ assert.match(d.querySelector('.slc-input').value,/cocktails in Back Bay/);assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);
+ search.value='<img id="draft-injection">';d.querySelector('.sl-search-ai-btn').click();await tick(330);
+ assert.match(d.querySelector('.slc-input').value,/<img id="draft-injection">/);assert.equal(d.querySelector('#draft-injection'),null);assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);
+ d.querySelector('.slc-input').value='Edited draft';d.querySelector('.slc-input').dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));await tick(20);
+ assert.equal(calls.filter(c=>c.opts.method==='POST').length,1);
+});
+test('draft loading is identity-bound and cancels a queued send',async t=>{
+ const {w,d,calls}=setup(t);w.eval(read('js/sl-phase8d-recovery.js'));await tick(0);
+ w.dispatchEvent(new w.CustomEvent('sl-concierge-draft',{detail:{prompt:'Old owner'}}));w.localStorage.setItem('sl_jwt_token','fixture');w.localStorage.setItem('sl_user_cache',JSON.stringify({id:'new-owner'}));w.dispatchEvent(new w.Event('sl-auth-changed'));
+ w.eval(read('js/ai-concierge-v5.js'));d.querySelector('script[src*="ai-concierge-v5.js"]').dispatchEvent(new w.Event('load'));await tick(330);assert.equal(d.querySelector('.slc-input').value,'');
+ w.SLConcierge.ask('queued');w.SLConcierge.draft('x'.repeat(600));await tick(330);assert.equal(d.querySelector('.slc-input').value.length,500);assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);
+});
+test('header AI opens an unsent draft and bundle uses the same draft bridge',async t=>{
+ const {w,d,calls}=setup(t);w.eval(read('js/sl-phase8d-recovery.js'));await tick(0);w.eval(read('js/sl-universal-search.js'));await tick(0);
+ const ai=d.querySelector('.slus-ai');assert(ai);const input=d.querySelector('.sl-universal-search input');input.value='header query';ai.click();
+ w.eval(read('js/ai-concierge-v5.js'));d.querySelector('script[src*="ai-concierge-v5.js"]').dispatchEvent(new w.Event('load'));await tick(330);assert.equal(d.querySelector('.slc-input').value,'header query');assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);
+ const section=s=>s.slice(s.indexOf('    function openConciergeWith(query) {'),s.indexOf('    function injectAIChip'));
+ assert.equal(section(read('js/sl-bundle-7d-ui.js')),section(read('js/sl-search-ai-bridge.js')));
+});

@@ -17,10 +17,10 @@
 (function(){
   'use strict';
   var V = {
-    phase: 'concierge-entry',
-    sw_version: 'sl-connected-20261117-entry2',
-    deploy: 'connected-20261117-entry2',
-    built: '2026-11-17T19:06:02.474009+00:00',
+    phase: 'photo-search',
+    sw_version: 'sl-connected-20261117-photo-search1',
+    deploy: 'connected-20261117-photo-search1',
+    built: '2026-11-17T23:27:27.822450+00:00',
     backend_change: 'none'
   };
   // Always-available global
