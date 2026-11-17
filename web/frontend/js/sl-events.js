@@ -11,7 +11,7 @@
   async function remove(id){return C.once('event-rsvp:'+id,async()=>{const d=await C.request('/events/'+enc(id)+'/rsvp',{method:'DELETE'});if(d.my_rsvp!==null||d.rsvp_is_reservation!==false)throw new Error('Removal was not confirmed. Refresh before retrying.');return d;});}
   window.SLEventRSVP={update,remove};
   const host=document.getElementById('slConnectedEvents');if(!host)return;
-  let events=[],generation=0,hasMore=false,query='',date='',busy=new Set();
+  let events=[],generation=0,hasMore=false,query='',date='',busy=new Set(),mineSerial=0,mineVisible=false;
   function status(text){const el=document.getElementById('slEventStatus');if(el)el.textContent=text;}
   function card(ev){
     const source=C.safeUrl(ev.source_url);
@@ -28,7 +28,18 @@
   }
   function render(){const grid=document.getElementById('eventsGrid');grid.innerHTML=events.length?events.map(card).join(''):'<div class="sl-panel"><h2>No reviewed events match</h2><p>There are no source-reviewed listings for these filters. We do not substitute demo events.</p><a href="/explore">Browse the venue directory</a></div>';const more=document.getElementById('slMoreEvents');more.hidden=!hasMore;more.disabled=false;}
   async function load(append){const seq=++generation;status('Loading reviewed events…');if(!append){events=[];document.getElementById('eventsGrid').innerHTML='';}try{const params=new URLSearchParams({limit:24,offset:append?events.length:0});if(query)params.set('q',query);if(date)params.set('date',date);const d=await C.request('/events?'+params);if(seq!==generation)return;if(!Array.isArray(d.events))throw new Error('Invalid events response.');const rows=d.events.filter(e=>e.source_review_status==='reviewed'&&e.rsvp_is_reservation===false);events=append?events.concat(rows.filter(e=>!events.some(old=>old.id===e.id))):rows;hasMore=!!d.has_more;render();status(rows.length!==d.events.length?'Some listings are awaiting source review and are not displayed.':'');}catch(e){if(seq!==generation)return;status(e.message);document.getElementById('eventsGrid').innerHTML='<div class="sl-panel"><h2>Events unavailable</h2><p>No replacement or demo events are shown.</p><button type="button" data-retry-events>Retry</button></div>';}}
-  async function mine(){if(!C.token()){status('Sign in to view your saved RSVPs.');if(window.SLAuthUI)window.SLAuthUI.open('login');return;}const seq=generation;try{const d=await C.request('/events/rsvps/mine?limit=100');if(seq!==generation)return;document.getElementById('slMyRSVPs').innerHTML='<section class="sl-panel"><h2>Your saved RSVPs</h2>'+(d.rsvps&&d.rsvps.length?d.rsvps.map(r=>'<article class="sl-item"><strong>'+E(r.title||'Event no longer available')+'</strong><p>'+E(statuses[r.status]||r.status)+' · '+E(r.audience)+' · not a booking</p><button type="button" data-remove-own="'+E(r.event_id)+'" class="sl-secondary">Remove RSVP</button></article>').join(''):'<p>No saved RSVPs.</p>')+(d.has_more?'<p>Showing the first 100 RSVPs.</p>':'')+'</section>';}catch(e){status(e.message);}}
+  async function mine(openLogin=true){
+    mineVisible=true;const seq=++mineSerial,session=C.token(),panel=document.getElementById('slMyRSVPs');
+    if(!session){panel.innerHTML='<section class="sl-panel"><h2>Your saved RSVPs</h2><p>Sign in to view your saved RSVPs.</p></section>';if(openLogin&&window.SLAuthUI)window.SLAuthUI.open('login');return;}
+    panel.innerHTML='<section class="sl-panel" role="status">Loading your saved RSVPs…</section>';
+    try{
+      const d=await C.request('/events/rsvps/mine?limit=100');if(seq!==mineSerial||session!==C.token())return;
+      if(!Array.isArray(d.rsvps))throw new Error('Saved RSVPs could not be loaded. Please retry.');
+      panel.innerHTML='<section class="sl-panel"><h2>Your saved RSVPs</h2><p>Saved intent only. These are not tickets, reservations or verified attendance.</p>'+
+        (d.rsvps.length?d.rsvps.map(r=>'<article class="sl-item"><strong>'+E(r.title||'Event no longer available')+'</strong><p>'+E(statuses[r.status]||r.status)+' · '+E(r.audience)+' · not a booking</p><button type="button" data-remove-own="'+E(r.event_id)+'" class="sl-secondary">Remove RSVP</button></article>').join(''):'<p>No saved RSVPs.</p>')+
+        (d.has_more?'<p>Showing the first 100 RSVPs.</p>':'')+'</section>';
+    }catch(e){if(seq!==mineSerial||session!==C.token())return;panel.innerHTML='<section class="sl-panel"><h2>Saved RSVPs unavailable</h2><p>'+E(e.message)+'</p><button type="button" data-show-rsvps>Retry saved RSVPs</button></section>';}
+  }
   host.innerHTML='<h1>Boston events</h1><p class="sl-muted">Source-reviewed listings. Save your intent in SceneLink. In-site ticket purchase and reservations are not connected yet.</p><div class="sl-notice"><strong>RSVP is not a booking.</strong> No attendance, admission, table, price or availability is guaranteed by a SceneLink RSVP.</div><form id="slEventFilters" class="sl-panel"><label for="slEventQuery">Search events</label><input type="search" id="slEventQuery" maxlength="160" placeholder="Event or venue"><label for="slEventDate">Date (optional)</label><input type="date" id="slEventDate"><p class="sl-row"><button type="submit">Find events</button><button type="button" class="sl-secondary" data-show-rsvps>My RSVPs</button></p></form><p id="slEventStatus" role="status"></p><div id="slMyRSVPs"></div><div id="eventsGrid" class="sl-grid"></div><button type="button" id="slMoreEvents" hidden>Load more events</button>';
   host.addEventListener('submit',e=>{if(e.target.id!=='slEventFilters')return;e.preventDefault();query=document.getElementById('slEventQuery').value.trim();date=document.getElementById('slEventDate').value;load();});
   host.addEventListener('click',async e=>{
@@ -38,10 +49,12 @@
     if(!C.token()){status('Sign in to save an RSVP.');if(window.SLAuthUI)window.SLAuthUI.open('login');return;}
     const cardEl=b.closest('[data-event]'),id=b.dataset.removeOwn||(cardEl&&cardEl.dataset.event),ev=events.find(x=>x.id===id);
     if(!id||busy.has(id))return;busy.add(id);const session=C.token(),buttons=Array.from((cardEl||b.parentElement).querySelectorAll('button'));buttons.forEach(x=>x.disabled=true);
-    try{if(b.hasAttribute('data-rsvp'))await update(ev,b.dataset.rsvp,cardEl.querySelector('[data-rsvp-public]').checked?'public':'private');else await remove(id);if(session!==C.token())return;await load();status(b.hasAttribute('data-rsvp')?'Your SceneLink RSVP was saved. No ticket or reservation was booked.':'Your SceneLink RSVP was removed. This does not cancel external tickets or reservations.');if(b.dataset.removeOwn)await mine();}
+    try{if(b.hasAttribute('data-rsvp'))await update(ev,b.dataset.rsvp,cardEl.querySelector('[data-rsvp-public]').checked?'public':'private');else await remove(id);if(session!==C.token())return;await load();if(session!==C.token())return;status(b.hasAttribute('data-rsvp')?'Your SceneLink RSVP was saved. No ticket or reservation was booked.':'Your SceneLink RSVP was removed. This does not cancel external tickets or reservations.');if(mineVisible)await mine(false);}
     catch(err){if(session!==C.token())return;if(err.status===409)await load();status(err.message);}finally{busy.delete(id);buttons.forEach(x=>{if(x.isConnected)x.disabled=false;});}
   });
-  window.addEventListener('sl-auth-changed',()=>{document.getElementById('slMyRSVPs').textContent='';load();});
-  window.addEventListener('sl-auth-ready',()=>load());
+  window.addEventListener('sl-auth-changed',()=>{++mineSerial;document.getElementById('slMyRSVPs').textContent='';load();if(mineVisible)mine(false);});
+  window.addEventListener('sl-auth-ready',()=>{load();if(mineVisible)mine(false);});
+  window.addEventListener('hashchange',()=>{if(window.location.hash==='#my-rsvps')mine(false);});
   load();
+  if(window.location.hash==='#my-rsvps')mine(false);
 })();

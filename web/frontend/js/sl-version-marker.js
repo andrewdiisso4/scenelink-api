@@ -17,10 +17,10 @@
 (function(){
   'use strict';
   var V = {
-    phase: 'discovery-clarity',
-    sw_version: 'sl-connected-20261117-discovery1',
-    deploy: 'connected-20261117-discovery1',
-    built: '2026-11-17T03:05:37.558579+00:00',
+    phase: 'rsvp-history',
+    sw_version: 'sl-connected-20261117-rsvp2',
+    deploy: 'connected-20261117-rsvp2',
+    built: '2026-11-17T17:55:21.325118+00:00',
     backend_change: 'none-frontend-only'
   };
   // Always-available global
