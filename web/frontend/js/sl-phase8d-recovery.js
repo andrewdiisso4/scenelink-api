@@ -3,14 +3,26 @@
   'use strict';
   if (window.__SL_PHASE8D_RECOVERY__) return;
   window.__SL_PHASE8D_RECOVERY__ = true;
-  var AI_SCRIPT = 'js/ai-concierge-v5.js?v=connected-20261117-entry1';
-  var AI_CSS = ['css/ai-concierge.css?v=connected-20261117-entry1','css/ai-concierge-v5.css?v=connected-20261117-entry1'];
+  var AI_SCRIPT = 'js/ai-concierge-v5.js?v=connected-20261117-entry2';
+  var AI_CSS = ['css/ai-concierge.css?v=connected-20261117-entry2','css/ai-concierge-v5.css?v=connected-20261117-entry2'];
   function qs(s,r){ return (r||document).querySelector(s); }
   function qsa(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); }
   function loadCss(href){
     if (qsa('link[href="'+href+'"]').length) return;
     var l=document.createElement('link'); l.rel='stylesheet'; l.href=href; document.head.appendChild(l);
   }
+  // Tab-scoped, five-minute draft recovery across service-worker reloads only.
+  var DRAFT_KEY='sl_concierge_pending_draft';
+  function draftIdentity(){try{if(!localStorage.getItem('sl_jwt_token')&&!localStorage.getItem('sl_auth_token'))return 'guest';var c=JSON.parse(localStorage.getItem('sl_user_cache')||'null');var u=c&&(c.user||c);return u&&u.id ? 'user:'+String(u.id) : null;}catch(_){return null;}}
+  var observedIdentity=draftIdentity();
+  window.SLConciergeDraft={
+    read:function(){try{var d=JSON.parse(sessionStorage.getItem(DRAFT_KEY)||'null');if(d&&d.owner!==null&&d.owner===draftIdentity()&&d.path===location.pathname&&typeof d.text==='string'&&Date.now()-d.at>=0&&Date.now()-d.at<300000)return d.text.slice(0,500);sessionStorage.removeItem(DRAFT_KEY);}catch(_){}return null;},
+    save:function(text){try{var owner=draftIdentity();if(owner===null)return false;sessionStorage.setItem(DRAFT_KEY,JSON.stringify({owner:owner,path:location.pathname,text:String(text).slice(0,500),at:Date.now()}));return true;}catch(_){return false;}},
+    clear:function(){try{sessionStorage.removeItem(DRAFT_KEY);}catch(_) {}}
+  };
+  function draftAuthChanged(){var next=draftIdentity();if(next===observedIdentity)return;observedIdentity=next;try{var params=new URLSearchParams(location.search);params.delete('ask');var query=params.toString();history.replaceState(history.state,'',location.pathname+(query?'?'+query:'')+location.hash);}catch(_){}window.SLConciergeDraft.clear();pendingPrompt=null;if(window.SLConcierge&&window.SLConcierge.resetSession)window.SLConcierge.resetSession();}
+  window.addEventListener('sl-auth-changed',draftAuthChanged);
+  window.addEventListener('storage',function(e){if(e.key===null||['sl_jwt_token','sl_auth_token','sl_user_cache'].indexOf(e.key)>=0)draftAuthChanged();});
   var conciergeLoading = null;
   var pendingPrompt = null;
   function loadConcierge(){
@@ -46,6 +58,7 @@
     openConcierge.waiting=true;
     loadConcierge().then(function(api){
       var latest=pendingPrompt; pendingPrompt=null; openConcierge.waiting=false;
+      if (latest === null) return;
       if (latest) api.ask(latest); else api.open();
     }).catch(function(){
       pendingPrompt=null; openConcierge.waiting=false;
@@ -62,7 +75,7 @@
       openConcierge(q.slice(0,500));
     }, true);
     // URL content is a draft, never an instruction to send data or spend on a model.
-    try { if(new URLSearchParams(location.search).has('ask')) loadConcierge().catch(showConciergeLoadError); } catch(_){}
+    try { if((new URLSearchParams(location.search).has('ask') || window.SLConciergeDraft.read() !== null)) loadConcierge().catch(showConciergeLoadError); } catch(_){}
   }
   function bindMobileNav(){
     qsa('[data-phase8-menu]').forEach(function(btn){

@@ -34,3 +34,26 @@ test('script failure exposes retry and retry loads one new script',async t=>{
  assert.match(d.querySelector('#slConciergeLoadStatus').textContent,/try again/);trigger.click();assert.equal(d.querySelectorAll('script[src*="ai-concierge-v5.js"]').length,1);
  assert.equal(d.querySelector('#slConciergeLoadStatus'),null);
 });
+test('service-worker-style reload restores unsent draft without URL or POST; Close clears recovery',async t=>{
+ const first=setup(t,'index.html','?ask=Draft%20through%20reload');first.w.eval(read('js/sl-phase8d-recovery.js'));await tick(0);first.w.eval(read('js/ai-concierge-v5.js'));first.d.querySelector('script[src*="ai-concierge-v5.js"]').dispatchEvent(new first.w.Event('load'));await tick(0);
+ const stored=first.w.sessionStorage.getItem('sl_concierge_pending_draft');assert(stored);assert.equal(first.w.location.search,'');
+ const second=setup(t);second.w.sessionStorage.setItem('sl_concierge_pending_draft',stored);second.w.eval(read('js/sl-phase8d-recovery.js'));await tick(0);assert(second.d.querySelector('script[src*="ai-concierge-v5.js"]'));
+ second.w.eval(read('js/ai-concierge-v5.js'));second.d.querySelector('script[src*="ai-concierge-v5.js"]').dispatchEvent(new second.w.Event('load'));await tick(0);
+ assert.equal(second.d.querySelector('.slc-input').value,'Draft through reload');assert.equal(second.calls.filter(c=>c.opts.method==='POST').length,0);second.w.SLConcierge.close();assert.equal(second.w.sessionStorage.getItem('sl_concierge_pending_draft'),null);
+});
+for(const change of ['expired','other-page','auth'])test('draft recovery clears '+change,async t=>{
+ const {w}=setup(t);w.sessionStorage.setItem('sl_concierge_pending_draft',JSON.stringify({owner:'guest',path:change==='other-page'?'/profile.html':'/index.html',text:'private draft',at:Date.now()-(change==='expired'?300001:0)}));w.eval(read('js/sl-phase8d-recovery.js'));await tick(0);if(change==='auth'){w.localStorage.setItem('sl_jwt_token','test-only');w.localStorage.setItem('sl_user_cache',JSON.stringify({id:'other-user'}));w.dispatchEvent(new w.Event('sl-auth-changed'));}assert.equal(w.sessionStorage.getItem('sl_concierge_pending_draft'),null);
+});
+test('canonical auth refresh preserves same owner draft; identity transition clears visible draft and queued send',async t=>{
+ const {w,d,calls}=setup(t,'index.html','?ask=private%20draft');w.eval(read('js/sl-phase8d-recovery.js'));await tick(0);w.eval(read('js/ai-concierge-v5.js'));d.querySelector('script[src*="ai-concierge-v5.js"]').dispatchEvent(new w.Event('load'));await tick(0);
+ w.dispatchEvent(new w.Event('sl-auth-changed'));assert.equal(d.querySelector('.slc-input').value,'private draft');assert(w.sessionStorage.getItem('sl_concierge_pending_draft'));
+ w.SLConcierge.ask('must not send');w.localStorage.setItem('sl_jwt_token','test-only');w.localStorage.setItem('sl_user_cache',JSON.stringify({user:{id:'other-user'}}));w.dispatchEvent(new w.Event('sl-auth-changed'));await tick(330);
+ assert.equal(d.querySelector('.slc-input').value,'');assert.equal(d.querySelector('#slcMessages').textContent,'');assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);assert.equal(w.sessionStorage.getItem('sl_concierge_pending_draft'),null);
+});
+test('identity transition while script loads discards pending prompt',async t=>{
+ const {w,d,calls}=setup(t);w.eval(read('js/sl-phase8d-recovery.js'));await tick(0);d.querySelector('[data-sl-concierge]').click();w.localStorage.setItem('sl_jwt_token','test-only');w.localStorage.setItem('sl_user_cache',JSON.stringify({id:'other-user'}));w.dispatchEvent(new w.Event('sl-auth-changed'));w.eval(read('js/ai-concierge-v5.js'));d.querySelector('script[src*="ai-concierge-v5.js"]').dispatchEvent(new w.Event('load'));await tick(330);assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);
+});
+
+test('identity change while URL draft loads invalidates original URL before widget reads it',async t=>{
+ const {w,d,calls}=setup(t,'index.html','?keep=yes&ask=old%20owner#section');w.eval(read('js/sl-phase8d-recovery.js'));await tick(0);w.localStorage.setItem('sl_jwt_token','test-only');w.localStorage.setItem('sl_user_cache',JSON.stringify({id:'other-user'}));w.dispatchEvent(new w.Event('sl-auth-changed'));assert.equal(w.location.search,'?keep=yes');assert.equal(w.location.hash,'#section');w.eval(read('js/ai-concierge-v5.js'));d.querySelector('script[src*="ai-concierge-v5.js"]').dispatchEvent(new w.Event('load'));await tick(330);assert.equal(d.querySelector('.slc-input').value,'');assert.equal(w.sessionStorage.getItem('sl_concierge_pending_draft'),null);assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);
+});

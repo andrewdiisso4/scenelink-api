@@ -194,6 +194,7 @@
     // ═══════════════════════════════════════════════════════════════
     var _conciergeSession = 'sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
     var _backendAvailable = null;
+    var sessionGeneration = 0;
     var _convoHistory = []; // last few turns for multi-turn context
 
     function getAuthToken() {
@@ -206,6 +207,7 @@
     }
 
     async function generateResponse(query) {
+        var generation = sessionGeneration;
         try {
             window.dispatchEvent(new CustomEvent('sl:concierge-ask', { detail: { query: query } }));
         } catch(_){}
@@ -241,6 +243,7 @@
                     _backendAvailable = true;
                     var data = await res.json();
                     if (data.ok) {
+                        if (generation !== sessionGeneration) return null;
                         // Track conversation for context
                         _convoHistory.push({ role: 'user', content: query });
                         var reply = typeof data.response === 'string' ? data.response : (data.reply || '');
@@ -516,6 +519,8 @@
 
         var state = { open: false, greeted: false };
         var focusTimer = null, askTimer = null, opener = null;
+        var draftStore = window.SLConciergeDraft;
+        input.addEventListener('input',function(){if(draftStore)draftStore.save(input.value);});
         panel.setAttribute('role','dialog');
         panel.setAttribute('aria-label','SceneLink Concierge');
 
@@ -639,8 +644,10 @@
         }
 
         async function handleMessage(text) {
+            var generation = sessionGeneration;
             text = (text || '').trim();
             if (!text) return;
+            if (draftStore) draftStore.clear();
             addMessage(text, 'user');
             input.value = '';
 
@@ -658,7 +665,7 @@
                 var resp = await generateResponse(text);
                 setTimeout(function () {
                     t.remove();
-                    renderConciergeResponse(resp);
+                    if (generation === sessionGeneration) renderConciergeResponse(resp);
                 }, 350 + Math.random() * 250);
             } catch (e) {
                 t.remove();
@@ -1058,6 +1065,7 @@
             state.open = false;
             clearTimeout(focusTimer);
             clearTimeout(askTimer);
+            if (draftStore) draftStore.clear();
             if (opener && opener.isConnected) { try { opener.focus(); } catch(_){} }
             panel.classList.remove('slc-panel-visible');
             fab.classList.remove('slc-fab-open');
@@ -1104,6 +1112,7 @@
 
         // Expose
         window.SLConcierge = {
+            resetSession: function(){sessionGeneration++;_conciergeSession='sess_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);clearTimeout(askTimer);input.value='';_convoHistory=[];messages.textContent='';state.greeted=false;closePanel();},
             open: openPanel,
             close: closePanel,
             ask: function (q) { openPanel(); clearTimeout(askTimer); askTimer = setTimeout(function () { if (state.open) handleMessage(String(q || '').slice(0,500)); }, 300); }
@@ -1135,10 +1144,12 @@
         try {
             var params = new URLSearchParams(window.location.search);
             var askParam = params.get('ask');
+            if (askParam === null && draftStore) askParam = draftStore.read();
             if (askParam !== null) {
                 openPanel();
                 input.value = String(askParam).slice(0,500);
                 // Remove potentially personal draft text before later navigation.
+                if (!draftStore || !draftStore.save(input.value)) return;
                 params.delete('ask');
                 var remaining = params.toString();
                 history.replaceState(history.state, '', location.pathname + (remaining ? '?' + remaining : '') + location.hash);
