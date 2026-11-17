@@ -35,7 +35,7 @@
     var desc = v.short_desc || v.description || 'Confirm details and hours with the venue.';
     var rating = 'Venue details';
     return '<article class="sl-phase8-venue-card" data-sl-venue-id="' + esc(v.id || '') + '">' +
-      '<a href="' + esc(venueUrl(v)) + '" class="sl-phase8-venue-image" aria-label="Open ' + esc(v.name) + '"><img src="' + esc(v.thumbnail_url) + '" alt="' + esc(v.name) + '" style="width:100%;height:100%;object-fit:cover"></a>' +
+      '<a href="' + esc(venueUrl(v)) + '" class="sl-phase8-venue-image" aria-label="Open ' + esc(v.name) + '"><img src="' + esc(v.thumbnail_url || '/assets/img/placeholder-venue.svg') + '" alt="' + esc(v.name) + '" style="width:100%;height:100%;object-fit:cover"></a>' +
       '<div class="sl-phase8-venue-body">' +
       '<div class="sl-phase8-venue-meta">' + esc(type) + ' · ' + esc(hood) + '</div>' +
       '<h3 class="sl-phase8-venue-name">' + esc(v.name || 'Boston venue') + '</h3>' +
@@ -60,7 +60,7 @@
       if(!venues.length){grid.innerHTML='<p>No venue listings match this selection.</p>';return;}
       grid.innerHTML = venues.slice(0,6).map(renderVenueCard).join('');
     } catch (e) {
-      grid.innerHTML = '<div style="grid-column:1/-1;border:1px solid rgba(212,175,55,.22);border-radius:18px;padding:22px;color:rgba(255,255,255,.72);background:rgba(255,255,255,.04)">Tonight\'s picks could not load in this browser session. <a href="/explore.html" style="color:#D4AF37;font-weight:800">Open Explore</a> to browse Boston venues.</div>';
+      grid.innerHTML = '<div style="grid-column:1/-1;border:1px solid rgba(212,175,55,.22);border-radius:18px;padding:22px;color:rgba(255,255,255,.72);background:rgba(255,255,255,.04)">The venue directory could not load in this browser session. <a href="/explore.html" style="color:#D4AF37;font-weight:800">Open Explore</a> to browse Boston venues.</div>';
     }
   }
   function wireSearch(){

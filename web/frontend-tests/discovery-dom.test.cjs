@@ -350,7 +350,7 @@ for (const page of ['explore', 'nightlife']) {
       await tick(); const initialFits = h.fake.state.bounds.length;
       h.fake.state.move(); await tick();
       assert.equal(calls.length,1, 'movement must not fetch');
-      assert.match(h.w.document.querySelector('[data-area-status]').textContent, /Map moved/);
+      assert.match(h.w.document.querySelector('[data-area-status]').textContent, /Search this area to use the current map bounds/);
       h.w.document.querySelector('[data-area-search]').click(); await tick();
       assert.equal(calls.at(-1).bbox, '42.3,-71.2,42.4,-71');
       assert.equal(calls.at(-1).q,'dinner'); assert.equal(calls.at(-1).type,'bar');

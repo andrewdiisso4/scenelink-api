@@ -27,13 +27,13 @@ test('integrated cache contains both design resources and the paired list runtim
   const sw = read('sw.js');
   const shell = sw.match(/const SHELL_URLS = \[([\s\S]*?)\];/)[1];
   for (const asset of [
-    '/js/sl-connected-lists.js?v=connected-20261112-auth2',
-    '/css/sl-design-system.css?v=connected-20261112-auth2',
+    '/js/sl-connected-lists.js?v=connected-20261117-discovery1',
+    '/css/sl-design-system.css?v=connected-20261117-discovery1',
     '/images/brand/scenelink-wordmark.png',
     '/images/brand/scenelink-full.png',
   ]) assert(shell.includes("'" + asset + "'"), asset);
   const finalizer = fs.readFileSync(path.resolve(root, '../frontend-tools/finalize.py'), 'utf8');
   assert(finalizer.includes("'sl-connected-lists'"));
-  assert(finalizer.includes("'requires_paired_backend':True"));
+  assert(finalizer.includes("'requires_paired_backend':False"));
   assert(finalizer.includes("'status':'local_candidate_not_deployed'"));
 });

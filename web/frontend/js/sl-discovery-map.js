@@ -83,7 +83,7 @@
       var button = bar.querySelector('[data-area-search]'), clear = bar.querySelector('[data-area-clear]'), status = bar.querySelector('[data-area-status]');
       function describe(moved) {
         clear.hidden = !bbox;
-        status.textContent = (moved ? 'Map moved. Search this area to update results. ' : bbox ? 'Results limited to the searched area. ' : 'Directory results, not all visible places. ') + 'Pins use supplied coordinates; accuracy is not verified. Load more in the list for remaining matches.';
+        status.textContent = (moved ? 'Search this area to use the current map bounds. ' : bbox ? 'Results limited to the searched area. ' : 'Directory results, not all visible places. ') + 'Pins use supplied coordinates; accuracy is not verified. Load more in the list for remaining matches.';
       }
       button.onclick = function () {
         if (!map || !map.getBounds) return;
