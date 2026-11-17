@@ -452,3 +452,24 @@ html[data-sl-design] body .sl-phase8-nav:has(#sl-user-dropdown) #slHdrSocial :is
   html[data-sl-design] body .sl-phase8-prompt-grid { grid-template-columns: minmax(0, 1fr); }
   html[data-sl-design] body .sl-phase8-proof { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 }
+
+/* Mobile map search: full query row, then explicit actions in DOM/tab order. */
+.sl-search-ai-label { display: none; }
+@media (max-width: 767px) {
+  html[data-sl-design] body .sl-map-searchbar.sl-search-ai-host {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 100px;
+    grid-template-rows: minmax(44px, auto) minmax(44px, auto);
+    gap: 6px 8px;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 6px !important;
+  }
+  html[data-sl-design] body .sl-map-searchbar.sl-search-ai-host > .sl-search-icon { grid-column: 1; grid-row: 1; justify-self: center; }
+  html[data-sl-design] body .sl-map-searchbar.sl-search-ai-host > input { grid-column: 2 / 4; grid-row: 1; width: 100%; min-width: 0; box-sizing: border-box; }
+  html[data-sl-design] body .sl-map-searchbar.sl-search-ai-host > .sl-map-loc-btn { grid-column: 1; grid-row: 2; width: 44px; }
+  html[data-sl-design] body .sl-map-searchbar.sl-search-ai-host > .sl-map-search-btn { grid-column: 2; grid-row: 2; width: 100%; min-width: 0; }
+  html[data-sl-design] body .sl-map-searchbar.sl-search-ai-host > .sl-search-ai-btn { grid-column: 3; grid-row: 2; width: 100% !important; gap: 6px; }
+  html[data-sl-design] body .sl-map-searchbar .sl-search-ai-label { display: inline; white-space: nowrap; }
+}

@@ -25,8 +25,26 @@
   }
   window.SLPhase8 = { api: api };
 
-  function venueImage(v){
-    return v.cover_image_url || v.image_url || v.thumbnail_url || v.image || (v.image_urls && v.image_urls[0]) || '/assets/img/placeholder-venue.svg';
+  var VENUE_PLACEHOLDER = '/assets/img/placeholder-venue.svg';
+  function protectVenuePhotos(grid){
+    if (grid.__slVenuePhotoGuard) return;
+    grid.__slVenuePhotoGuard = true;
+    // Capture catches non-bubbling image errors, including dynamically rendered cards.
+    grid.addEventListener('error', function(event){
+      var img = event.target;
+      if (!img || img.tagName !== 'IMG' || !img.closest('.sl-phase8-venue-image')) return;
+      img.alt = 'Venue photo unavailable';
+      if (img.getAttribute('src') !== VENUE_PLACEHOLDER) {
+        img.removeAttribute('srcset');
+        img.src = VENUE_PLACEHOLDER;
+      } else if (!img.hidden) {
+        // Even when the local asset fails, keep a readable label rather than a broken icon.
+        img.hidden = true;
+        var label = document.createElement('span');
+        label.textContent = 'Venue photo unavailable';
+        img.parentElement.appendChild(label);
+      }
+    }, true);
   }
   function venueUrl(v){ return '/explore.html?' + (v.slug ? 'venue=' + encodeURIComponent(v.slug) : 'venue_id=' + encodeURIComponent(v.id || '')); }
   function renderVenueCard(v){
@@ -35,7 +53,7 @@
     var desc = v.short_desc || v.description || 'Confirm details and hours with the venue.';
     var rating = 'Venue details';
     return '<article class="sl-phase8-venue-card" data-sl-venue-id="' + esc(v.id || '') + '">' +
-      '<a href="' + esc(venueUrl(v)) + '" class="sl-phase8-venue-image" aria-label="Open ' + esc(v.name) + '"><img src="' + esc(v.thumbnail_url || '/assets/img/placeholder-venue.svg') + '" alt="' + esc(v.name) + '" style="width:100%;height:100%;object-fit:cover"></a>' +
+      '<a href="' + esc(venueUrl(v)) + '" class="sl-phase8-venue-image" aria-label="Open ' + esc(v.name) + '"><img src="' + esc(v.thumbnail_url || '/assets/img/placeholder-venue.svg') + '" alt="' + esc(v.thumbnail_url ? v.name : 'Venue photo unavailable') + '" style="width:100%;height:100%;object-fit:cover"></a>' +
       '<div class="sl-phase8-venue-body">' +
       '<div class="sl-phase8-venue-meta">' + esc(type) + ' · ' + esc(hood) + '</div>' +
       '<h3 class="sl-phase8-venue-name">' + esc(v.name || 'Boston venue') + '</h3>' +
@@ -53,6 +71,7 @@
   async function hydrateHomeVenues(){
     var grid = $('#phase8TonightGrid');
     if (!grid) return;
+    protectVenuePhotos(grid);
     renderSkeleton(grid, 6);
     try {
       var data = await window.SLVenueData.list({limit:6});

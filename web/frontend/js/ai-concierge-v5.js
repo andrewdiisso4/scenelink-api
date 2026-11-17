@@ -1113,6 +1113,7 @@
         // Expose
         window.SLConcierge = {
             resetSession: function(){sessionGeneration++;_conciergeSession='sess_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);clearTimeout(askTimer);input.value='';_convoHistory=[];messages.textContent='';state.greeted=false;closePanel();},
+            draft: function (q) { clearTimeout(askTimer); openPanel(); input.value = String(q || "").slice(0,500); if (draftStore) draftStore.save(input.value); },
             open: openPanel,
             close: closePanel,
             ask: function (q) { openPanel(); clearTimeout(askTimer); askTimer = setTimeout(function () { if (state.open) handleMessage(String(q || '').slice(0,500)); }, 300); }

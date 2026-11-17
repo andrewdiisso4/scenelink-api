@@ -57,21 +57,15 @@
     }
 
     function openConciergeWith(query) {
-        try {
-            if (window.SLConcierge && typeof window.SLConcierge.open === 'function') {
-                window.SLConcierge.open(query);
-                return true;
-            }
-        } catch (e) {}
-        // Fallback: click a visible concierge trigger with the query
-        var trigger = document.querySelector('[data-sl-concierge]');
-        if (trigger) {
-            trigger.setAttribute('data-sl-concierge', query);
-            trigger.click();
-            return true;
+        query = String(query || '').slice(0,500);
+        // Search handoffs are editable drafts. Never call ask() or click an auto-send CTA.
+        if (window.__SL_PHASE8D_RECOVERY__) {
+            window.dispatchEvent(new CustomEvent('sl-concierge-draft', {detail:{prompt:query}}));
+        } else if (window.SLConcierge && typeof window.SLConcierge.draft === 'function') {
+            window.SLConcierge.draft(query);
+        } else {
+            window.location.href = 'tonight.html?ask=' + encodeURIComponent(query);
         }
-        // Last resort: navigate to concierge with query param
-        window.location.href = 'tonight.html?ai=' + encodeURIComponent(query);
         return true;
     }
 
@@ -93,7 +87,7 @@
         btn.className = 'sl-search-ai-btn';
         btn.title = 'Ask SceneLink Concierge';
         btn.setAttribute('aria-label', 'Ask SceneLink Concierge');
-        btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>';
+        btn.innerHTML = '<i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i><span class="sl-search-ai-label">Ask AI</span>';
         btn.style.cssText = [
             'position:static',
             'flex:0 0 44px',

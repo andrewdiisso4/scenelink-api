@@ -37,10 +37,10 @@
   }
   function openConcierge(q){
     q = String(q || '').trim() || 'Plan my night in Boston';
-    var trigger = qs('[data-sl-concierge]');
-    if (trigger) { trigger.setAttribute('data-sl-concierge', q); trigger.click(); return; }
-    window.dispatchEvent(new CustomEvent('sl-open-concierge',{detail:{prompt:q}}));
-    setTimeout(function(){ if(!qs('.sl-ai-concierge,.ai-concierge,.concierge-modal')) window.location.href='/contact.html?ai='+encodeURIComponent(q); }, 160);
+    q = q.slice(0,500);
+    if(window.__SL_PHASE8D_RECOVERY__) window.dispatchEvent(new CustomEvent('sl-concierge-draft',{detail:{prompt:q}}));
+    else if(window.SLConcierge && typeof window.SLConcierge.draft==='function') window.SLConcierge.draft(q);
+    else window.location.href='/tonight.html?ask='+encodeURIComponent(q);
   }
   function ensureHeaderSearch(){
     if (qs('.sl-universal-search')) return qs('.sl-universal-search');

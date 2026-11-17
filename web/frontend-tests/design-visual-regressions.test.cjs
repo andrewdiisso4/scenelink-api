@@ -72,3 +72,16 @@ for(const file of ['messages.html','my-lists.html','social-feed.html']) test(`${
     assert.deepEqual(asked,[trigger.getAttribute('data-sl-concierge')]);
   } finally {cleanup.forEach(fn=>fn());d.window.close();}
 });
+test('mobile map search has two bounded rows and preserves readable named controls',()=>{
+ const css=read('css/sl-design-system.css');const mobile=css.slice(css.indexOf('/* Mobile map search:'));
+ assert.match(mobile,/@media \(max-width: 767px\)/);
+ assert.match(mobile,/grid-template-columns: 44px minmax\(0, 1fr\) 100px/);
+ assert.match(mobile,/grid-template-rows: minmax\(44px, auto\) minmax\(44px, auto\)/);
+ assert.match(mobile,/> input \{ grid-column: 2 \/ 4; grid-row: 1; width: 100%; min-width: 0; box-sizing: border-box;/);
+ assert.match(mobile,/\.sl-map-search-btn \{ grid-column: 2; grid-row: 2/);
+ assert.match(mobile,/\.sl-search-ai-btn \{ grid-column: 3; grid-row: 2/);
+ assert.match(mobile,/\.sl-search-ai-label \{ display: inline; white-space: nowrap/);
+ for(const file of ['explore.html','nightlife.html']) {
+  const dom=new JSDOM(read(file));try {const d=dom.window.document,input=d.querySelector('#slSearchInput');assert.equal(input.placeholder,'Venues or neighborhoods');assert.equal(input.getAttribute('aria-label'),'Search venues');assert.equal(d.querySelector('#slSearchBtn').textContent,'Search');assert.equal(d.querySelector('#slSearchLoc').title,'Use my location');} finally {dom.window.close();}
+ }
+});
