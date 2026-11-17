@@ -50,6 +50,7 @@ for (const scenario of ['empty', 'venues', 'itinerary', 'legacy', 'rate-limit'])
   }
   w.eval(read('js/ai-concierge-v5.js'));
   script.dispatchEvent(new w.Event('load'));
+  await tick(0);
   const panel = doc.querySelector('.sl-concierge-panel');
   assert(panel.classList.contains('slc-panel-visible'));
   assert.equal(w.getComputedStyle(panel).position, 'fixed');

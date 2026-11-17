@@ -89,37 +89,15 @@
     }
   }
 
-  // -- 3. Lazy AI Concierge ----------------------------------------------
-  var aiConciergeLoaded = false;
-  function loadConcierge() {
-    if (aiConciergeLoaded) return;
-    aiConciergeLoaded = true;
-    ['css/ai-concierge.css?v=connected-20261117-contract1', 'css/ai-concierge-v5.css?v=connected-20261117-contract1'].forEach(function (h) {
-      var l = document.createElement('link');
-      l.rel = 'stylesheet'; l.href = h;
-      document.head.appendChild(l);
-    });
-    var s = document.createElement('script');
-    s.src = 'js/ai-concierge-v5.js?v=connected-20261117-contract1';
-    s.defer = true;
-    document.head.appendChild(s);
-  }
-  function bindConciergeTriggers() {
-    document.addEventListener('click', function (e) {
-      var t = e.target.closest && e.target.closest('[data-sl-concierge]');
-      if (t) loadConcierge();
-    }, { passive: true });
-  }
+  // Concierge entry is owned by sl-phase8d-recovery.js (one loader/handler).
 
   // -- Boot ----------------------------------------------------------------
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       maybeBootLeafletObserver();
-      bindConciergeTriggers();
     });
   } else {
     maybeBootLeafletObserver();
-    bindConciergeTriggers();
   }
 
   // After main load, kick FA and yield to user

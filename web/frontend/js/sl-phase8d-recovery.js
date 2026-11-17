@@ -3,42 +3,79 @@
   'use strict';
   if (window.__SL_PHASE8D_RECOVERY__) return;
   window.__SL_PHASE8D_RECOVERY__ = true;
-  var AI_SCRIPT = 'js/ai-concierge-v5.js?v=connected-20261117-contract1';
-  var AI_CSS = ['css/ai-concierge.css?v=connected-20261117-contract1','css/ai-concierge-v5.css?v=connected-20261117-contract1'];
+  var AI_SCRIPT = 'js/ai-concierge-v5.js?v=connected-20261117-entry2';
+  var AI_CSS = ['css/ai-concierge.css?v=connected-20261117-entry2','css/ai-concierge-v5.css?v=connected-20261117-entry2'];
   function qs(s,r){ return (r||document).querySelector(s); }
   function qsa(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); }
   function loadCss(href){
     if (qsa('link[href="'+href+'"]').length) return;
     var l=document.createElement('link'); l.rel='stylesheet'; l.href=href; document.head.appendChild(l);
   }
-  function loadScript(src, cb){
-    if (qsa('script[src="'+src+'"]').length) { cb && setTimeout(cb, 60); return; }
-    var s=document.createElement('script'); s.src=src; s.defer=true; s.onload=function(){ cb&&cb(); }; document.head.appendChild(s);
+  // Tab-scoped, five-minute draft recovery across service-worker reloads only.
+  var DRAFT_KEY='sl_concierge_pending_draft';
+  function draftIdentity(){try{if(!localStorage.getItem('sl_jwt_token')&&!localStorage.getItem('sl_auth_token'))return 'guest';var c=JSON.parse(localStorage.getItem('sl_user_cache')||'null');var u=c&&(c.user||c);return u&&u.id ? 'user:'+String(u.id) : null;}catch(_){return null;}}
+  var observedIdentity=draftIdentity();
+  window.SLConciergeDraft={
+    read:function(){try{var d=JSON.parse(sessionStorage.getItem(DRAFT_KEY)||'null');if(d&&d.owner!==null&&d.owner===draftIdentity()&&d.path===location.pathname&&typeof d.text==='string'&&Date.now()-d.at>=0&&Date.now()-d.at<300000)return d.text.slice(0,500);sessionStorage.removeItem(DRAFT_KEY);}catch(_){}return null;},
+    save:function(text){try{var owner=draftIdentity();if(owner===null)return false;sessionStorage.setItem(DRAFT_KEY,JSON.stringify({owner:owner,path:location.pathname,text:String(text).slice(0,500),at:Date.now()}));return true;}catch(_){return false;}},
+    clear:function(){try{sessionStorage.removeItem(DRAFT_KEY);}catch(_) {}}
+  };
+  function draftAuthChanged(){var next=draftIdentity();if(next===observedIdentity)return;observedIdentity=next;try{var params=new URLSearchParams(location.search);params.delete('ask');var query=params.toString();history.replaceState(history.state,'',location.pathname+(query?'?'+query:'')+location.hash);}catch(_){}window.SLConciergeDraft.clear();pendingPrompt=null;if(window.SLConcierge&&window.SLConcierge.resetSession)window.SLConcierge.resetSession();}
+  window.addEventListener('sl-auth-changed',draftAuthChanged);
+  window.addEventListener('storage',function(e){if(e.key===null||['sl_jwt_token','sl_auth_token','sl_user_cache'].indexOf(e.key)>=0)draftAuthChanged();});
+  var conciergeLoading = null;
+  var pendingPrompt = null;
+  function loadConcierge(){
+    if (window.SLConcierge) return Promise.resolve(window.SLConcierge);
+    if (conciergeLoading) return conciergeLoading;
+    AI_CSS.forEach(loadCss);
+    conciergeLoading = new Promise(function(resolve,reject){
+      var script = qs('script[src="'+AI_SCRIPT+'"]');
+      var created = !script;
+      if (!script) { script=document.createElement('script'); script.src=AI_SCRIPT; script.defer=true; }
+      var timer=setTimeout(function(){finish(new Error('Concierge loading timed out'));},12000);
+      function finish(error){
+        clearTimeout(timer); script.removeEventListener('load',loaded); script.removeEventListener('error',failed);
+        if (error) { script.remove(); conciergeLoading=null; reject(error); }
+        else resolve(window.SLConcierge);
+      }
+      function loaded(){ finish(window.SLConcierge ? null : new Error('Concierge unavailable')); }
+      function failed(){ finish(new Error('Concierge failed to load')); }
+      script.addEventListener('load',loaded); script.addEventListener('error',failed);
+      if (created) document.head.appendChild(script);
+    });
+    return conciergeLoading;
+  }
+  function showConciergeLoadError(){
+      var status=qs('#slConciergeLoadStatus');
+      if(!status){status=document.createElement('div');status.id='slConciergeLoadStatus';status.setAttribute('role','status');document.body.appendChild(status);}
+      status.textContent='Concierge could not load. Select Ask AI to try again.';
   }
   function openConcierge(prompt){
-    AI_CSS.forEach(loadCss);
-    function act(){
-      try {
-        if (window.SLConcierge && prompt) return window.SLConcierge.ask(prompt);
-        if (window.SLConcierge) return window.SLConcierge.open();
-      } catch(_) {}
-      setTimeout(function(){
-        try {
-          if (window.SLConcierge && prompt) window.SLConcierge.ask(prompt);
-          else if (window.SLConcierge) window.SLConcierge.open();
-        } catch(_) {}
-      }, 450);
-    }
-    loadScript(AI_SCRIPT, act);
+    // One pending action: repeated clicks while loading do not duplicate API requests.
+    pendingPrompt = prompt;
+    if (openConcierge.waiting) return;
+    openConcierge.waiting=true;
+    loadConcierge().then(function(api){
+      var latest=pendingPrompt; pendingPrompt=null; openConcierge.waiting=false;
+      if (latest === null) return;
+      if (latest) api.ask(latest); else api.open();
+    }).catch(function(){
+      pendingPrompt=null; openConcierge.waiting=false;
+      showConciergeLoadError();
+    });
   }
   function bindConcierge(){
     document.addEventListener('click', function(e){
       var t = e.target && e.target.closest && e.target.closest('[data-sl-concierge], [data-ask-concierge], .tv2-ask-ai-btn, .sl-concierge-trigger, [data-concierge-ask], .ask-concierge-btn');
       if (!t) return;
       e.preventDefault();
-      var q = t.getAttribute('data-sl-concierge') || t.getAttribute('data-ask-concierge') || t.getAttribute('data-concierge-ask') || t.getAttribute('data-ask') || 'Plan my night in Boston';
-      openConcierge(q);
+      var status=qs('#slConciergeLoadStatus');if(status)status.remove();
+      var q = t.getAttribute('data-sl-concierge') || t.getAttribute('data-ask-concierge') || t.getAttribute('data-concierge-ask') || t.getAttribute('data-ask') || '';
+      openConcierge(q.slice(0,500));
     }, true);
+    // URL content is a draft, never an instruction to send data or spend on a model.
+    try { if((new URLSearchParams(location.search).has('ask') || window.SLConciergeDraft.read() !== null)) loadConcierge().catch(showConciergeLoadError); } catch(_){}
   }
   function bindMobileNav(){
     qsa('[data-phase8-menu]').forEach(function(btn){

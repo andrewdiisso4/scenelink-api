@@ -43,7 +43,7 @@ test('newsletter arrow uses a decorative SVG rather than an unavailable text gly
     }} finally {d.window.close();}
   }
 });
-for(const file of ['messages.html','my-lists.html','social-feed.html']) test(`${file} keeps Concierge lazy and loads its styles only after intentional activation`,()=>{
+for(const file of ['messages.html','my-lists.html','social-feed.html']) test(`${file} keeps Concierge lazy and loads its styles only after intentional activation`,async()=>{
   const html=read(file);
   assert(!/<script[^>]*src=["'][^"']*ai-concierge-v5\.js/.test(html),'no eager widget script');
   assert(html.includes('sl-phase8d-recovery.js'),'intentional Ask AI entry retains the existing lazy script-and-style owner');
@@ -68,6 +68,7 @@ for(const file of ['messages.html','my-lists.html','social-feed.html']) test(`${
     }
     w.SLConcierge={ask:q=>asked.push(q)};
     script.dispatchEvent(new w.Event('load'));
+    await Promise.resolve();
     assert.deepEqual(asked,[trigger.getAttribute('data-sl-concierge')]);
   } finally {cleanup.forEach(fn=>fn());d.window.close();}
 });
