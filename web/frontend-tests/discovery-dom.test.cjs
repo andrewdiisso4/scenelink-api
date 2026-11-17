@@ -464,3 +464,18 @@ for (const page of ['explore','nightlife']) test(page + ': canonical coordinate 
     assert.deepEqual(h.errors,[]);
   } finally {h.dom.window.close();}
 });
+
+for (const explicit of ['', 'name']) test('explore preserves server ordering across search pages with sort '+(explicit||'default'), async()=>{
+ const calls=[];const h=harness('explore',async url=>{
+  const q=new URL(url,'https://scenelink.test').searchParams;calls.push(Object.fromEntries(q));
+  return reply({venues:q.get('offset')==='0'?[venue('exact','Zebra Cafe'),venue('related','A Related Cafe')]:[venue('later','B Later Cafe')],total:3,has_more:q.get('offset')==='0'});
+ },'?q=Zebra'+(explicit?'&sort='+explicit:''));
+ try{
+  await tick();assert.equal(calls[0].sort,explicit||'relevance');
+  assert.deepEqual(Array.from(h.w.__slExploreData.getVenues(),v=>v.id),['exact','related']);
+  h.w.document.querySelector('#slVenuePagination button').click();await tick();
+  assert.equal(calls.at(-1).sort,explicit||'relevance');assert.equal(calls.at(-1).offset,'2');
+  assert.deepEqual(Array.from(h.w.__slExploreData.getFiltered(),v=>v.id),['exact','related','later']);
+  await h.w.__slExploreData.setSearch('');assert.equal(calls.at(-1).sort,explicit||'name');assert.deepEqual(h.errors,[]);
+ }finally{h.dom.window.close();}
+});

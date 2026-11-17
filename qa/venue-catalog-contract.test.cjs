@@ -128,3 +128,39 @@ test('rule-based concierge shares venue booking semantics and reviewed-event sou
     assert.match(query.params[0],/^\d{4}-\d{2}-\d{2}$/);assert(!query.sql.includes('event_date'));
   });
 });
+
+test('known unavailable bare name returns no related catalog rows or hidden status metadata',async()=>{
+  const secretName='Private unavailable fixture';
+  const calls=[];
+  const database={async query(sql,params){calls.push({sql,params});
+    if(sql.startsWith('SELECT name FROM venues'))return{rows:[{name:secretName}]};
+    return{rows:[]};
+  }};
+  await withConciergeFixture(database,async(ai,router)=>{
+    const handler=router.stack.find(layer=>layer.route?.path==='/'&&layer.route.methods.post).route.stack.at(-1).handle;
+    let output;
+    await handler({body:{message:secretName,ai:false}}, {setHeader(){},status(code){assert.equal(code,200);return this;},json(body){output=body;return body;}});
+    assert.deepEqual(output.venues,[]);
+    assert.deepEqual(output.events,[]);
+    assert(!JSON.stringify(output).includes(secretName));
+    assert(!/business_status|duplicate_of|duplicate_review|CLOSED|inactive/.test(JSON.stringify(output)));
+    const candidate=calls.find(x=>x.sql.includes('SELECT id, slug, name'));
+    assert(candidate.sql.includes('lower(name) = lower($1)'));
+    assert.equal(candidate.params[0],secretName);
+    const result=await ai.runAIConcierge({message:secretName});
+    assert.equal(result.source,'empty');
+    assert.deepEqual(result.candidates,[]);
+    const oldKey=process.env.OPENAI_API_KEY,oldFetch=global.fetch;
+    try {
+      process.env.OPENAI_API_KEY='test-only-no-provider-call';
+      global.fetch=async()=>{throw Error('Provider calls forbidden in this test');};
+      await handler({body:{message:secretName}}, {setHeader(){},status(code){assert.equal(code,200);return this;},json(body){output=body;return body;}});
+      assert.equal(output.source,'empty');
+      assert(!JSON.stringify(output).includes(secretName));
+      assert(!/business_status|duplicate_of|duplicate_review|CLOSED|inactive/.test(JSON.stringify(output)));
+    } finally {
+      if(oldKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=oldKey;
+      global.fetch=oldFetch;
+    }
+  });
+});

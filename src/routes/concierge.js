@@ -12,6 +12,7 @@
 
 const express = require('express');
 const pool = require('../config/database');
+const { resolveNamedVenue } = require('../services/concierge-named-venue');
 const {publicVenue,availableVenueSQL} = require('../services/venue-helpers');
 const {visibleDiscoveryVenueSQL} = require('../services/venue-duplicate-discovery');
 const {reviewedPriceSQL} = require('../services/venue-facts');
@@ -152,6 +153,11 @@ async function queryVenues(intent, limit) {
     const conditions = [availableVenueSQL(''), visibleDiscoveryVenueSQL('venues')];
     const values = [];
     let i = 1;
+
+    if (intent.venueName != null) {
+        conditions.push(`lower(name) = lower($${i++})`);
+        values.push(intent.venueName);
+    }
 
     // Cuisine filter
     if (intent.cuisines.length) {
@@ -365,7 +371,9 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
         }
 
         // ─── Fallback: rule-based classifier ───────────────────────
-        const intent = classifyIntent(message);
+        const named = await resolveNamedVenue(pool, message);
+        const intent = classifyIntent(named ? named.filterText : message);
+        if (named) { intent.venueName = named.name; intent.original = message; intent.primary = 'search'; }
         const limit = Math.max(1, Math.min(parseInt(req.body.limit) || 5, 10));
 
         let venues = [];
