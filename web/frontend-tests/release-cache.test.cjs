@@ -10,7 +10,7 @@ const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '../frontend');
-const tag = 'connected-20261117-discovery1';
+const tag = 'connected-20261117-rsvp2';
 const version = 'sl-' + tag;
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 
@@ -28,7 +28,7 @@ test('release marker, service-worker shell and every published asset hash agree'
   assert.equal(metadata.requires_paired_backend, false);
   assert.equal(metadata.required_migration, '016_private_list_invitations.sql');
   assert.equal(metadata.rollout_order, 'frontend_only_current_backend_unchanged');
-  assert.equal(metadata.phase, 'discovery-clarity');
+  assert.equal(metadata.phase, 'rsvp-history');
   assert(read('js/sl-version-marker.js').includes("backend_change: 'none-frontend-only'"));
   for (const file of ['version.json', 'js/sl-version-marker.js', 'sw.js']) {
     assert(!/social-candidate|paired-local-candidate-required|local_not_deployed/.test(read(file)), file);
