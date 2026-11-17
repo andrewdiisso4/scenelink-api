@@ -17,10 +17,10 @@
 (function(){
   'use strict';
   var V = {
-    phase: 'concierge-contract',
-    sw_version: 'sl-connected-20261117-contract1',
-    deploy: 'connected-20261117-contract1',
-    built: '2026-11-17T18:56:47.936653+00:00',
+    phase: 'concierge-entry',
+    sw_version: 'sl-connected-20261117-entry1',
+    deploy: 'connected-20261117-entry1',
+    built: '2026-11-17T19:06:02.474009+00:00',
     backend_change: 'none'
   };
   // Always-available global

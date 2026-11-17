@@ -1,10 +1,10 @@
 {
-  "phase": "concierge-contract",
-  "sw_version": "sl-connected-20261117-contract1",
-  "timestamp": "2026-11-17T18:56:47.936653+00:00",
+  "phase": "concierge-entry",
+  "sw_version": "sl-connected-20261117-entry1",
+  "timestamp": "2026-11-17T19:06:02.474009+00:00",
   "status": "local_candidate_not_deployed",
   "requires_paired_backend": false,
   "required_migration": "016_private_list_invitations.sql",
   "rollout_order": "compatible_frontend_then_backend",
-  "summary": "Frontend canonical concierge response rendering and history. No backend, schema or provider configuration changes. Local candidate pending release."
+  "summary": "Single concierge loader, bounded unsent URL drafts, retry and keyboard focus handling. Frontend only; no provider or backend changes."
 }

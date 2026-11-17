@@ -515,6 +515,9 @@
         var close = panel.querySelector('.slc-close');
 
         var state = { open: false, greeted: false };
+        var focusTimer = null, askTimer = null, opener = null;
+        panel.setAttribute('role','dialog');
+        panel.setAttribute('aria-label','SceneLink Concierge');
 
         function addMessage(html, who) {
             var w = document.createElement('div');
@@ -1035,6 +1038,7 @@
 
         function openPanel() {
             if (state.open) return;               // idempotent
+            opener = document.activeElement;
             state.open = true;
             // Ensure fab visible + clickable (in case any stray style hid it)
             fab.style.display = '';
@@ -1045,13 +1049,16 @@
             fab.classList.add('slc-fab-open');
             document.body.classList.add('slc-open');
             welcome();
-            setTimeout(function () { try { input.focus(); } catch(_){} }, 300);
+            focusTimer = setTimeout(function () { if (state.open) { try { input.focus(); } catch(_){} } }, 300);
             try { window.dispatchEvent(new CustomEvent('sl:concierge-opened')); } catch(_){}
         }
 
         function closePanel() {
             if (!state.open) return;              // idempotent
             state.open = false;
+            clearTimeout(focusTimer);
+            clearTimeout(askTimer);
+            if (opener && opener.isConnected) { try { opener.focus(); } catch(_){} }
             panel.classList.remove('slc-panel-visible');
             fab.classList.remove('slc-fab-open');
             document.body.classList.remove('slc-open');
@@ -1099,11 +1106,12 @@
         window.SLConcierge = {
             open: openPanel,
             close: closePanel,
-            ask: function (q) { openPanel(); setTimeout(function () { handleMessage(q); }, 300); }
+            ask: function (q) { openPanel(); clearTimeout(askTimer); askTimer = setTimeout(function () { if (state.open) handleMessage(String(q || '').slice(0,500)); }, 300); }
         };
 
         // Global delegated click handler — works regardless of inline onclick failures
         document.addEventListener('click', function(e) {
+            if (window.__SL_PHASE8D_RECOVERY__) return;
             var trigger = e.target.closest(
                 '[data-sl-concierge], [data-ask-concierge], .tv2-ask-ai-btn, ' +
                 '.sl-concierge-trigger, [data-concierge-ask], .ask-concierge-btn'
@@ -1127,8 +1135,13 @@
         try {
             var params = new URLSearchParams(window.location.search);
             var askParam = params.get('ask');
-            if (askParam && askParam.length > 1) {
-                setTimeout(function () { window.SLConcierge.ask(askParam); }, 800);
+            if (askParam !== null) {
+                openPanel();
+                input.value = String(askParam).slice(0,500);
+                // Remove potentially personal draft text before later navigation.
+                params.delete('ask');
+                var remaining = params.toString();
+                history.replaceState(history.state, '', location.pathname + (remaining ? '?' + remaining : '') + location.hash);
             }
         } catch (_) {}
     }

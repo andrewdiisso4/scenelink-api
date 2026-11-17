@@ -70,9 +70,9 @@ class UniversalHeaderApplicator {
     generateCSSIncludes() {
         return `
     <!-- Universal Header CSS -->
-    <link rel="stylesheet" href="css/universal-header-canonical.css?v=connected-20261117-contract1">
-    <link rel="stylesheet" href="css/navigation-icons-enhanced.css?v=connected-20261117-contract1">
-    <link rel="stylesheet" href="css/logo-size-enhanced.css?v=connected-20261117-contract1">
+    <link rel="stylesheet" href="css/universal-header-canonical.css?v=connected-20261117-entry1">
+    <link rel="stylesheet" href="css/navigation-icons-enhanced.css?v=connected-20261117-entry1">
+    <link rel="stylesheet" href="css/logo-size-enhanced.css?v=connected-20261117-entry1">
         `;
     }
 
@@ -82,7 +82,7 @@ class UniversalHeaderApplicator {
     generateJSIncludes() {
         return `
     <!-- Universal Header JavaScript -->
-    <script src="js/universal-header-manager.js?v=connected-20261117-contract1"></script>
+    <script src="js/universal-header-manager.js?v=connected-20261117-entry1"></script>
         `;
     }
 
