@@ -5086,11 +5086,14 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   function field(label, value) { return '<div><dt>' + E(label) + '</dt><dd>' + E(value || 'Not provided') + '</dd></div>'; }
   function render(v, content) {
+    const photo = window.SLVenueData.licensedPhoto && window.SLVenueData.licensedPhoto(v);
+    const photoUrl = photo ? photo.url : v.thumbnail_url;
     const booking = v.booking || {}, website = C().safeUrl(v.website), directions = C().safeUrl(v.google_maps_url);
     // A provider URL is not an in-site reservation integration.
     const price = v.price_label || (Number.isInteger(v.price_level) && v.price_level > 0 && v.price_level < 5 ? '$'.repeat(v.price_level) : null);
     content.innerHTML = '<h1>' + E(v.name) + '</h1><p class="sl-muted">' + E([v.type,v.neighborhood || v.city].filter(Boolean).join(' · ')) + '</p>' +
-      '<img class="sl-vd-image" src="' + E(v.thumbnail_url) + '" alt="' + E(v.thumbnail_url.includes('placeholder-') ? 'Venue photo unavailable' : v.name) + '">' +
+      '<img class="sl-vd-image" src="' + E(photoUrl) + '"' + (photo ? ' style="height:auto;max-height:560px;object-fit:contain"' : '') + ' alt="' + E(photo ? v.name + ' exterior, photographed ' + photo.date : (v.thumbnail_url.includes('placeholder-') ? 'Venue photo unavailable' : v.name)) + '">' +
+      (photo ? '<p class="sl-photo-credit">Photo: <a href="' + E(photo.source) + '" target="_blank" rel="noopener noreferrer">' + E(photo.title) + ' by ' + E(photo.author) + '</a> · <a href="' + E(photo.licenseUrl) + '" target="_blank" rel="noopener noreferrer">' + E(photo.license) + '</a><br>Photographed ' + E(photo.date) + '. ' + E(photo.changes) + ' Historical exterior photo, not a current appearance or opening-hours guarantee. This photo is separately licensed; general site rights notices do not restrict its linked license.</p>' : '') +
       '<p>' + E(v.description || 'No venue description has been provided.') + '</p>' +
       '<dl class="sl-vd-fields">' + field('Address',[v.address,v.city,v.state,v.zip_code].filter(Boolean).join(', ')) + field('Hours',v.hours_display) + field('Phone',v.phone) + field('Price',price) + '</dl>' +
       '<p class="sl-muted">' + E(window.SLVenueData.sourceText(v)) + '</p>' +
@@ -5105,6 +5108,7 @@ if (typeof module !== 'undefined' && module.exports) {
     function photoUnavailable() {
       image.removeEventListener('error', photoUnavailable);
       image.alt = 'Venue photo unavailable';
+      const credit = content.querySelector('.sl-photo-credit'); if (credit) credit.remove();
       if (image.getAttribute('src') !== placeholder) image.src = placeholder;
     }
     image.addEventListener('error', photoUnavailable, {once:true});

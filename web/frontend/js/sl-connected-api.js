@@ -49,6 +49,53 @@
     }
     return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= limit ? value : null;
   }
+  // Reviewed licensed detail-only pilot. Not a provider response or a fuzzy name match.
+  const licensedPhotoRegistry = {
+  "db32c169-e07a-4de5-bae0-63ae59a4eaf7": {
+    "name": "The Alley Bar",
+    "address": "14 Pi Alley",
+    "city": "Boston",
+    "lat": 42.358109,
+    "lng": -71.058716,
+    "url": "/images/venues/2a7bd0697c6a2d0eae7d87aee86a9ef4c4f5a06adb5c08aba3d8d1c4a83ea5bd.jpg",
+    "author": "4300streetcar",
+    "title": "The Alley Bar Boston front March 2025.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:The_Alley_Bar_Boston_front_March_2025.jpg",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "date": "2025-03-11",
+    "changes": "Resized; no crop.",
+    "sha256": "2a7bd0697c6a2d0eae7d87aee86a9ef4c4f5a06adb5c08aba3d8d1c4a83ea5bd",
+    "originalSha256": "ea39517dc042329c518115976d15a2ab983db73b8f2061ebcc513cf33ff7de9f"
+  },
+  "7cc80886-1a90-4404-953b-608a51a9d7d2": {
+    "name": "Sullivan's Tap",
+    "address": "168 Canal Street",
+    "city": "Boston",
+    "lat": 42.365106,
+    "lng": -71.060995,
+    "url": "/images/venues/6bdead242454944ba41f00b3e8bd32a9e1727636ae34231b4f874ad9e9b9d47a.jpg",
+    "author": "Ethan Long",
+    "title": "Sullivan's Tap on Friend Street with new State Street tower looming overhead, Boston (53232570616).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Sullivan's_Tap_on_Friend_Street_with_new_State_Street_tower_looming_overhead,_Boston_(53232570616).jpg",
+    "license": "CC-BY-SA-2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/",
+    "date": "2022-11-05",
+    "changes": "Original image; no modifications.",
+    "sha256": "6bdead242454944ba41f00b3e8bd32a9e1727636ae34231b4f874ad9e9b9d47a",
+    "originalSha256": "6bdead242454944ba41f00b3e8bd32a9e1727636ae34231b4f874ad9e9b9d47a"
+  }
+};
+  function licensedPhoto(v) {
+    if (!v || v.is_active === false) return null;
+    if (!Object.prototype.hasOwnProperty.call(licensedPhotoRegistry,v.id)) return null;
+    const p = licensedPhotoRegistry[v.id];
+    const norm = value => typeof value === 'string' ? value.trim().replace(/\s+/g, ' ').toLowerCase() : '';
+    if (!p || ['name','address','city'].some(key => norm(v[key]) !== norm(p[key]))) return null;
+    if (coordinate(v.lat,90) === null || coordinate(v.lng,180) === null ||
+      Math.abs(Number(v.lat)-p.lat)>0.000001 || Math.abs(Number(v.lng)-p.lng)>0.000001) return null;
+    return Object.assign({},p);
+  }
   function normalize(v) {
     if (!v || typeof v !== 'object' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,179}$/.test(String(v.id||'')) || typeof v.name !== 'string' || !v.name) throw error('Incomplete venue record', 502);
     const out = Object.assign({}, v);
@@ -90,5 +137,5 @@
     return source + (date ? ' · data updated ' + date : ' · update date unavailable') + (v.needs_manual_review ? ' · review needed' : '') + '. Confirm hours and details with the venue.';
   }
   root.SLConnected = {request,once,token,esc,safeUrl,error};
-  root.SLVenueData = {list,detail,normalize,sourceText};
+  root.SLVenueData = {list,detail,normalize,sourceText,licensedPhoto};
 })(window);
