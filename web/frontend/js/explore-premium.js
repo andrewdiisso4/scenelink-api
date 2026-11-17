@@ -59,7 +59,9 @@ async function loadVenuesFromAPI(append){
     showLoadingState();
     window.dispatchEvent(new Event('sl-venues-changed'));
     try {
-        var params = new URLSearchParams({ limit: '100', offset: String(offset), view: 'detail', sort: 'name' });
+        var params = new URLSearchParams({ limit: '100', offset: String(offset), view: 'detail' });
+        var explicitSort = new URLSearchParams(location.search).get('sort');
+        if (explicitSort) params.set('sort', explicitSort);
         if (searchQ) params.set('q', searchQ);
         if (activeChip !== 'all') params.set('type', activeChip);
         if (activeCuisine !== 'all') params.set('cuisine', activeCuisine);
@@ -76,7 +78,7 @@ async function loadVenuesFromAPI(append){
         });
         var known = new Set((append ? allVenues : []).map(function(v){ return v.id; }));
         allVenues = (append ? allVenues : []).concat(loaded.filter(function(v){ if(known.has(v.id)) return false; known.add(v.id); return true; }));
-        allVenues.sort(function(a,b){return String(a.name||'').localeCompare(String(b.name||''));});
+        // Keep canonical server order, including relevance and pagination boundaries.
         venueLoadState.offset = offset + data.venues.length;
         venueLoadState.total = Number.isFinite(Number(data.total)) ? Number(data.total) : allVenues.length;
         venueLoadState.more = data.venues.length > 0 && (data.has_more === true || venueLoadState.offset < venueLoadState.total);

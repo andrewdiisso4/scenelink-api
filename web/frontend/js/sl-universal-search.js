@@ -30,10 +30,10 @@
         '<span class="slus-kind">Person</span></a>';
     }
     if(kind==='neighborhood'){
-      return '<a class="slus-item" data-slus-item href="/explore.html?neighborhood='+encodeURIComponent(obj.neighborhood||obj.label||'')+'" data-slus-label="'+esc(obj.neighborhood||obj.label)+'">'+
-        '<span class="slus-thumb"><i class="fas fa-map"></i></span><span><span class="slus-name">'+esc(obj.neighborhood||obj.label)+'</span><span class="slus-meta">'+esc(obj.count||'')+' Boston venues</span></span><span class="slus-kind">Area</span></a>';
+      return '<a class="slus-item" data-slus-item href="/explore.html?neighborhood='+encodeURIComponent(obj.name||obj.neighborhood||obj.label||'')+'" data-slus-label="'+esc(obj.name||obj.neighborhood||obj.label)+'">'+
+        '<span class="slus-thumb"><i class="fas fa-map"></i></span><span><span class="slus-name">'+esc(obj.name||obj.neighborhood||obj.label)+'</span><span class="slus-meta">'+esc(obj.count||'')+' Boston venues</span></span><span class="slus-kind">Area</span></a>';
     }
-    return '<a class="slus-item" data-slus-item href="/explore.html?q='+encodeURIComponent(obj.label||'')+'" data-slus-label="'+esc(obj.label)+'"><span class="slus-thumb"><i class="fas fa-tags"></i></span><span><span class="slus-name">'+esc(obj.label||'Category')+'</span><span class="slus-meta">'+esc(obj.count||'')+' matches</span></span><span class="slus-kind">Type</span></a>';
+    return '<a class="slus-item" data-slus-item href="/explore.html?q='+encodeURIComponent(obj.name||obj.label||'')+'" data-slus-label="'+esc(obj.name||obj.label)+'"><span class="slus-thumb"><i class="fas fa-tags"></i></span><span><span class="slus-name">'+esc(obj.name||obj.label||'Category')+'</span><span class="slus-meta">'+esc(obj.count||'')+' matches</span></span><span class="slus-kind">Type</span></a>';
   }
   function openConcierge(q){
     q = String(q || '').trim() || 'Plan my night in Boston';
@@ -54,7 +54,7 @@
     if (right && right.parentNode===host) host.insertBefore(wrap,right); else host.appendChild(wrap);
     return wrap;
   }
-  var debounceTimer=null, activeIndex=-1, lastQuery='';
+  var debounceTimer=null, activeIndex=-1, lastQuery='', searchGeneration=0;
   function section(title, html){ return html ? '<div class="slus-section"><div class="slus-title">'+esc(title)+'</div>'+html+'</div>' : ''; }
   function chips(title, arr){ if(!arr||!arr.length)return ''; return '<div class="slus-section"><div class="slus-title">'+esc(title)+'</div><div class="slus-chiprow">'+arr.map(function(x){return '<button class="slus-chip" type="button" data-slus-chip="'+esc(x)+'">'+esc(x)+'</button>';}).join('')+'</div></div>'; }
   function renderDefault(root){
@@ -64,7 +64,7 @@
   function setActive(root, idx){ var items=qsa('[data-slus-item]',root); activeIndex=idx; items.forEach(function(it,i){ it.classList.toggle('active',i===idx); }); }
   function renderResults(root, data, q){
     var sc=qs('.slus-scroll',root);
-    var venues=(data&&data.venues)||[], people=(data&&data.people)||[], hoods=(data&&data.neighborhoods)||[], cats=(data&&data.categories)||[];
+    var venues=Array.isArray(data&&data.venues)?data.venues:[], people=Array.isArray(data&&data.users)?data.users:[], hoods=Array.isArray(data&&data.neighborhoods)?data.neighborhoods:[], cats=Array.isArray(data&&data.categories)?data.categories:[];
     var html='';
     html += section('Venues', venues.slice(0,6).map(function(v){return itemHtml('venue',v);}).join(''));
     html += section('People', people.slice(0,4).map(function(u){return itemHtml('person',u);}).join(''));
@@ -76,9 +76,12 @@
   }
   function fetchResults(root,q){
     lastQuery=q;
+    var generation=++searchGeneration, session=token();
+    function current(){return generation===searchGeneration&&lastQuery===q&&session===token();}
     var sc=qs('.slus-scroll',root); sc.innerHTML='<div class="slus-status"><i class="fas fa-spinner fa-spin"></i> Searching SceneLink…</div>';
-    api('/search/universal?q='+encodeURIComponent(q)+'&limit=6').then(function(data){ if(lastQuery===q) renderResults(root,data,q); }).catch(function(){
-      api('/venues?search='+encodeURIComponent(q)+'&limit=6').then(function(data){ if(lastQuery===q) renderResults(root,{venues:(data&&data.venues)||[]},q); }).catch(function(){ if(lastQuery===q) sc.innerHTML='<div class="slus-empty">Search is temporarily unavailable. Press Enter to open Explore.</div>'; });
+    api('/search/universal?q='+encodeURIComponent(q)+'&limit=6').then(function(data){ if(current()) renderResults(root,data,q); }).catch(function(){
+      if(!current())return;
+      api('/venues?search='+encodeURIComponent(q)+'&limit=6').then(function(data){ if(current()) renderResults(root,{venues:(data&&data.venues)||[]},q); }).catch(function(){ if(current()) sc.innerHTML='<div class="slus-empty">Search is temporarily unavailable. Press Enter to open Explore.</div>'; });
     });
   }
   function goSearch(q){ q=String(q||'').trim(); if(!q) return; saveRecent(q); window.location.href='/explore.html?q='+encodeURIComponent(q); }
@@ -86,8 +89,11 @@
     var input=qs('.slus-input',root), panel=qs('.slus-panel',root), ai=qs('.slus-ai',root); if(!input||!panel)return;
     function open(){ root.classList.add('open'); if(!input.value.trim()) renderDefault(root); }
     function close(){ setTimeout(function(){ root.classList.remove('open'); }, 130); }
+    function resetSession(){searchGeneration++;lastQuery='';clearTimeout(debounceTimer);renderDefault(root);root.classList.remove('open');}
+    ['sl-auth-change','sl-auth-changed','sl-auth-ready'].forEach(function(type){window.addEventListener(type,resetSession);document.addEventListener(type,resetSession);});
+    window.addEventListener('storage',function(e){if(e.key===null||e.key==='sl_jwt_token'||e.key==='sl_auth_token')resetSession();});
     input.addEventListener('focus',open); input.addEventListener('blur',close);
-    input.addEventListener('input',function(){ var q=input.value.trim(); open(); clearTimeout(debounceTimer); if(!q){ renderDefault(root); return; } debounceTimer=setTimeout(function(){ fetchResults(root,q); }, 160); });
+    input.addEventListener('input',function(){ var q=input.value.trim(); lastQuery=q; searchGeneration++; open(); clearTimeout(debounceTimer); if(!q){ renderDefault(root); return; } debounceTimer=setTimeout(function(){ fetchResults(root,q); }, 160); });
     input.addEventListener('keydown',function(e){ var items=qsa('[data-slus-item]',root); if(e.key==='ArrowDown'){ e.preventDefault(); if(!root.classList.contains('open')) open(); setActive(root,Math.min(activeIndex+1,items.length-1)); } else if(e.key==='ArrowUp'){ e.preventDefault(); setActive(root,Math.max(activeIndex-1,0)); } else if(e.key==='Enter'){ e.preventDefault(); if(activeIndex>=0&&items[activeIndex]){ var label=items[activeIndex].getAttribute('data-slus-label'); if(label) saveRecent(label); items[activeIndex].click(); } else goSearch(input.value); } else if(e.key==='Escape'){ root.classList.remove('open'); input.blur(); } });
     root.addEventListener('mousedown',function(e){ var chip=e.target.closest('[data-slus-chip]'); if(chip){ e.preventDefault(); input.value=chip.getAttribute('data-slus-chip')||chip.textContent; input.dispatchEvent(new Event('input')); input.focus(); } var ask=e.target.closest('[data-slus-ask-ai]'); if(ask){ e.preventDefault(); var q=ask.getAttribute('data-slus-ask-ai')||input.value; saveRecent(q); openConcierge(q); } });
     if(ai) ai.addEventListener('click',function(){ openConcierge(input.value||'Plan my night in Boston'); });

@@ -73,9 +73,9 @@
     return out;
   }
   async function list(params) {
-    params = Object.assign({limit:100,offset:0,view:'detail',sort:'name'},params || {});
+    params = Object.assign({limit:100,offset:0,view:'detail'},params || {});
     const mode = params.mode; delete params.mode;
-    params.sort = 'name';
+    if (params.sort == null || params.sort === '') params.sort = String(params.q ?? params.search ?? '').trim() ? 'relevance' : 'name';
     const q = new URLSearchParams(); Object.keys(params).forEach(k => { if (params[k] != null && params[k] !== '') q.set(k, String(params[k])); });
     const data = await request((mode === 'nightlife' ? '/venues/nightlife' : '/venues') + '?' + q);
     if (!Array.isArray(data.venues)) throw error('Invalid venue response', 502);

@@ -19,6 +19,7 @@
  */
 
 const pool = require('../config/database');
+const { resolveNamedVenue } = require('../services/concierge-named-venue');
 const {publicVenue,availableVenueSQL} = require('../services/venue-helpers');
 const {visibleDiscoveryVenueSQL} = require('../services/venue-duplicate-discovery');
 const {reviewedPriceSQL} = require('../services/venue-facts');
@@ -253,6 +254,10 @@ async function fetchCandidateVenues(filters, limit = MAX_CANDIDATE_VENUES) {
     const params = [];
     let i = 1;
 
+    if (filters.venueName != null) {
+        where.push(`lower(name) = lower($${i++})`);
+        params.push(filters.venueName);
+    }
     if (filters.neighborhoods && filters.neighborhoods.length) {
         where.push(`(neighborhood = ANY($${i}::text[]) OR city = ANY($${i}::text[]))`);
         params.push(filters.neighborhoods);
@@ -493,7 +498,9 @@ function extractStructured(resp) {
 // ═══════════════════════════════════════════════════════════════════════════
 async function runAIConcierge({ message, history = [], context = {}, userId = null }) {
     const startedAt = Date.now();
-    const filters = parseFilters(message, context);
+    const named = await resolveNamedVenue(pool, message);
+    const filters = parseFilters(named ? named.filterText : message, context);
+    if (named) filters.venueName = named.name;
 
     const [candidates, userContext] = await Promise.all([
         fetchCandidateVenues(filters),

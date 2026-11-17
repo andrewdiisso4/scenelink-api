@@ -1,10 +1,10 @@
 {
-  "phase": "rsvp-history",
-  "sw_version": "sl-connected-20261117-rsvp2",
-  "timestamp": "2026-11-17T17:55:21.325118+00:00",
+  "phase": "catalog-search",
+  "sw_version": "sl-connected-20261117-search1",
+  "timestamp": "2026-11-17T18:03:01.094635+00:00",
   "status": "local_candidate_not_deployed",
   "requires_paired_backend": false,
   "required_migration": "016_private_list_invitations.sql",
-  "rollout_order": "frontend_only_current_backend_unchanged",
-  "summary": "Owner profile RSVP-history link, deep-link loading and session-safe history refresh after RSVP mutations. Includes baseline discovery clarity fixes. No backend, database, provider or paid API configuration changes. Existing migration 016 remains a baseline requirement, not a new migration. This is a local candidate, not a deployment."
+  "rollout_order": "compatible_frontend_then_backend",
+  "summary": "Canonical header search response, catalog relevance and bounded named-venue concierge retrieval. Preserves deployed discovery clarity and RSVP history. No database, provider or paid API configuration changes. Existing migration 016 remains a baseline requirement, not a new migration. This is a local candidate, not a deployment."
 }
