@@ -34,6 +34,7 @@ function slEsc(value){return window.SLConnected.esc(value);}
         function buildCard(v){
             var img = v.thumbnail_url || v.cover_image_url || v.image_url || v.img || (v.image_urls && v.image_urls[0]) ||
                       '/assets/img/placeholder-venue.svg';
+            var licensed = window.SLVenueData.licensedPhotoMarkup ? window.SLVenueData.licensedPhotoMarkup(v) : '';
             var name = v.name || 'Venue';
             var type = v.type || v.cat || 'Venue';
             // No imported ratings or derived attendance without provenance.
@@ -42,8 +43,8 @@ function slEsc(value){return window.SLConnected.esc(value);}
             var heartClass = saved ? 'sl-rp-save saved' : 'sl-rp-save';
             var heartIcon = saved ? 'fas fa-heart' : 'far fa-heart';
 
-            return '<div class="sl-rp-card" data-venue-id="'+slEsc(v.id)+'">' +
-                '<img class="sl-rp-card-img" src="'+slEsc(img)+'" alt="'+slEsc(name)+'" loading="lazy" onerror="SL_IMG_FALLBACK(this,\'venue\')">' +
+            return '<div class="sl-rp-card" '+(licensed ? 'style="display:block" ' : '')+'data-venue-id="'+slEsc(v.id)+'">' +
+                (licensed || '<img class="sl-rp-card-img" src="'+slEsc(img)+'" alt="'+slEsc(name)+'" loading="lazy" onerror="SL_IMG_FALLBACK(this,\'venue\')">') +
                 '<div class="sl-rp-card-body">' +
                     '<div class="sl-rp-card-name">'+slEsc(name)+'</div>' +
                     '<div class="sl-rp-card-meta">' +
@@ -97,6 +98,9 @@ function slEsc(value){return window.SLConnected.esc(value);}
             var card = e.target.closest('.sl-rp-card');
             if(!card) return;
             var venueId = card.dataset.venueId;
+
+            // Attribution links are independent navigation, not map-card selection.
+            if(e.target.closest('.sl-photo-credit a')) return;
 
             // Save/Favorite button
             var saveBtn = e.target.closest('.sl-rp-save');

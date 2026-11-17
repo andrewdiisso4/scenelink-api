@@ -418,6 +418,9 @@
     function safeAttr(s) { return String(s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
     function venueCard(v) {
+        // Licensed images are scoped to attributed markup, never copied into saved-item metadata.
+        var licensedMarkup = window.SLVenueData && window.SLVenueData.licensedPhotoMarkup
+            ? window.SLVenueData.licensedPhotoMarkup(v) : '';
         var img = (window.SLVenueImages && SLVenueImages.pick(v)) ||
             v.cover_image_url || v.image_url ||
             (v.image_urls && v.image_urls[0]) ||
@@ -434,10 +437,10 @@
         // Booking remains on SceneLink; a provider URL is not a supported integration.
         var bookBtn = venueId ? '<button class="slc-btn-book" data-venue-id="' + safeAttr(venueId) + '" title="Check in-site booking capability">Booking status</button>' : '';
 
-        return '<div class="slc-venue-card" data-venue-id="' + safeAttr(venueId) + '" data-venue-slug="' + safeAttr(venueSlug) + '">' +
-            '<div class="slc-venue-img" style="background-image:url(\'' + img + '\')">' +
+        return '<div class="slc-venue-card"' + (licensedMarkup ? ' style="display:block"' : '') + ' data-venue-id="' + safeAttr(venueId) + '" data-venue-slug="' + safeAttr(venueSlug) + '">' +
+            (licensedMarkup || ('<div class="slc-venue-img" style="background-image:url(\'' + img + '\')">' +
                 (rating ? '<span class="slc-venue-rating"><i class="fas fa-star"></i> ' + rating + '</span>' : '') +
-            '</div>' +
+            '</div>')) +
             '<div class="slc-venue-body">' +
                 '<div class="slc-venue-name">' + safeAttr(v.name || 'Venue') + '</div>' +
                 '<div class="slc-venue-meta">' + safeAttr(type) + (nbhd ? ' · ' + safeAttr(nbhd) : '') + (price ? ' · ' + price : '') + '</div>' +
@@ -599,7 +602,7 @@
             // Whole-card click
             w.querySelectorAll('.slc-venue-card').forEach(function (card) {
                 card.addEventListener('click', function (e) {
-                    if (e.target.closest('button')) return;
+                    if (e.target.closest('button, a')) return;
                     var id = card.getAttribute('data-venue-id');
                     var slug = card.getAttribute('data-venue-slug');
                     if (window.SLVenueDetail && typeof SLVenueDetail.open === 'function' && (slug || id)) {

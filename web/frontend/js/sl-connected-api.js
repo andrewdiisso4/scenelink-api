@@ -96,6 +96,25 @@
       Math.abs(Number(v.lat)-p.lat)>0.000001 || Math.abs(Number(v.lng)-p.lng)>0.000001) return null;
     return Object.assign({},p);
   }
+  // Opt-in rendering only: never leak a licensed URL into uncredited saved-card DTOs.
+  function licensedPhotoMarkup(v) {
+    const p = licensedPhoto(v); if (!p) return '';
+    return '<figure class="sl-licensed-photo" style="margin:0;min-width:0;max-width:100%">' +
+      '<img data-sl-licensed-photo src="'+esc(p.url)+'" alt="'+esc(v.name)+' historical exterior, photographed '+esc(p.date)+'" loading="lazy" style="display:block;width:100% !important;height:auto !important;max-height:none !important;object-fit:contain !important;object-position:center">' +
+      '<figcaption class="sl-photo-credit" style="font-size:12px;line-height:1.5;padding:10px;overflow-wrap:anywhere">Photo: <a href="'+esc(p.source)+'" target="_blank" rel="noopener noreferrer">'+esc(p.title)+' by '+esc(p.author)+'</a> · <a href="'+esc(p.licenseUrl)+'" target="_blank" rel="noopener noreferrer">'+esc(p.license)+'</a><br>Photographed '+esc(p.date)+'. '+esc(p.changes)+' Historical exterior; not a current appearance or opening-hours guarantee. This photo is separately licensed; general site rights notices do not restrict its linked license.</figcaption></figure>';
+  }
+  if (root.document && !root.__slLicensedPhotoErrors) {
+    root.__slLicensedPhotoErrors = true;
+    root.document.addEventListener('error', function(e) {
+      const img=e.target;
+      if (!img || !img.matches || !img.matches('img[data-sl-licensed-photo]')) return;
+      const figure=img.closest('.sl-licensed-photo'); if (!figure) return;
+      const credit=figure.querySelector('.sl-photo-credit'); if(credit) credit.remove();
+      img.alt='Venue photo unavailable'; img.removeAttribute('srcset');
+      if(img.getAttribute('src')!=='/assets/img/placeholder-venue.svg') img.src='/assets/img/placeholder-venue.svg';
+      else if(!img.hidden) { img.hidden=true; img.style.display='none'; const label=document.createElement('span');label.textContent='Venue photo unavailable';figure.appendChild(label); }
+    }, true);
+  }
   function normalize(v) {
     if (!v || typeof v !== 'object' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,179}$/.test(String(v.id||'')) || typeof v.name !== 'string' || !v.name) throw error('Incomplete venue record', 502);
     const out = Object.assign({}, v);
@@ -137,5 +156,5 @@
     return source + (date ? ' · data updated ' + date : ' · update date unavailable') + (v.needs_manual_review ? ' · review needed' : '') + '. Confirm hours and details with the venue.';
   }
   root.SLConnected = {request,once,token,esc,safeUrl,error};
-  root.SLVenueData = {list,detail,normalize,sourceText,licensedPhoto};
+  root.SLVenueData = {list,detail,normalize,sourceText,licensedPhoto,licensedPhotoMarkup};
 })(window);
