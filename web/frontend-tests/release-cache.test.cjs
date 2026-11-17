@@ -10,7 +10,7 @@ const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '../frontend');
-const tag = 'connected-20261112-auth2';
+const tag = 'connected-20261117-discovery1';
 const version = 'sl-' + tag;
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 
@@ -25,11 +25,11 @@ test('release marker, service-worker shell and every published asset hash agree'
   const metadata = JSON.parse(read('version.json'));
   assert.equal(metadata.sw_version, version);
   assert.equal(metadata.status, 'local_candidate_not_deployed');
-  assert.equal(metadata.requires_paired_backend, true);
+  assert.equal(metadata.requires_paired_backend, false);
   assert.equal(metadata.required_migration, '016_private_list_invitations.sql');
-  assert.equal(metadata.rollout_order, 'backend_migrations_and_API_before_frontend');
-  assert.equal(metadata.phase, 'oauth-signin-reliability');
-  assert(read('js/sl-version-marker.js').includes("backend_change: 'oauth-errors-no-schema'"));
+  assert.equal(metadata.rollout_order, 'frontend_only_current_backend_unchanged');
+  assert.equal(metadata.phase, 'discovery-clarity');
+  assert(read('js/sl-version-marker.js').includes("backend_change: 'none-frontend-only'"));
   for (const file of ['version.json', 'js/sl-version-marker.js', 'sw.js']) {
     assert(!/social-candidate|paired-local-candidate-required|local_not_deployed/.test(read(file)), file);
   }

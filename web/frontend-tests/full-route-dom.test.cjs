@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const{JSDOM,VirtualConsole}=require('jsdom'),root=path.resolve(__dirname,'../frontend');
-const venue={id:'00000000-0000-4000-8000-000000000001',slug:'fixture-venue',name:'TEST ONLY Venue',type:'bar',neighborhood:'Quincy',city:'Quincy',address:'TEST ONLY address',lat:null,lng:null,source:'local-test-fixture',booking:{status:'not_available'},thumbnail_url:'/assets/img/placeholder-venue.svg'};
+const venue={id:'00000000-0000-4000-8000-000000000001',slug:'fixture-venue',name:'TEST ONLY Venue',type:'bar',neighborhood:'Quincy',city:'Quincy',address:'TEST ONLY address',lat:null,lng:null,source:'local-test-fixture',booking:{status:'not_available'},thumbnail_url:null};
 for(const page of ['index','explore','nightlife','tonight','events','plan-with-friends','profile','messages','my-lists'])test('all locally included scripts initialize '+page+' without uncaught errors',async()=>{
  const errors=[],v=new VirtualConsole();v.on('jsdomError',e=>{if(!/Not implemented: (navigation|window.scrollTo|HTMLCanvasElement)/.test(e.message))errors.push(e.message)});
  const d=new JSDOM(fs.readFileSync(path.join(root,page+'.html'),'utf8'),{url:'https://scenelink.test/'+(page==='index'?'':page),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:v}),w=d.window;
@@ -16,6 +16,11 @@ for(const page of ['index','explore','nightlife','tonight','events','plan-with-f
  assert.deepEqual(errors,[],errors.join('\n'));
  if(page==='index')assert(w.document.getElementById('phase8TonightGrid').textContent.includes('TEST ONLY Venue'));
  if(page==='index') {
+  assert.equal(w.document.querySelector('#phase8TonightGrid img').getAttribute('src'), '/assets/img/placeholder-venue.svg');
+  const section=w.document.getElementById('phase8TonightGrid').closest('section');
+  assert.match(section.textContent, /Explore Boston/);
+  assert.match(section.textContent, /availability are not verified/);
+  assert.equal(section.querySelector('.sl-phase8-section-head > a').getAttribute('href'), '/explore.html');
   const card=w.document.querySelector('.sl-phase8-neighborhood-card');
   assert.equal(card.getAttribute('href'),'/explore.html?neighborhood=Back+Bay');
   const button=w.document.querySelector('[data-phase8-menu]'),links=w.document.getElementById('phase8NavLinks');

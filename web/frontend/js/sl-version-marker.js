@@ -17,11 +17,11 @@
 (function(){
   'use strict';
   var V = {
-    phase: 'oauth-signin-reliability',
-    sw_version: 'sl-connected-20261112-auth2',
-    deploy: 'connected-20261112-auth2',
-    built: '2026-11-12T17:13:19.987070+00:00',
-    backend_change: 'oauth-errors-no-schema'
+    phase: 'discovery-clarity',
+    sw_version: 'sl-connected-20261117-discovery1',
+    deploy: 'connected-20261117-discovery1',
+    built: '2026-11-17T03:05:37.558579+00:00',
+    backend_change: 'none-frontend-only'
   };
   // Always-available global
   try { window.SCENELINK_VERSION = V; } catch(_){}
