@@ -1,0 +1,20 @@
+{
+  "original_file": "alley.jpg",
+  "original_sha256": "ea39517dc042329c518115976d15a2ab983db73b8f2061ebcc513cf33ff7de9f",
+  "original_dimensions": [
+    5568,
+    3712
+  ],
+  "rendition_file": "alley-preview.jpg",
+  "rendition_sha256": "2a7bd0697c6a2d0eae7d87aee86a9ef4c4f5a06adb5c08aba3d8d1c4a83ea5bd",
+  "rendition_dimensions": [
+    960,
+    640
+  ],
+  "retrieved_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3c/The_Alley_Bar_Boston_front_March_2025.jpg/960px-The_Alley_Bar_Boston_front_March_2025.jpg",
+  "origin": "Wikimedia generated full-frame thumbnail, downloaded directly by this agent; no local image processing",
+  "changes": "Downscaled JPEG rendition, no crop observed; EXIF omitted by Wikimedia. Exact Wikimedia encoding pipeline not independently reconstructed.",
+  "license": "CC-BY-4.0",
+  "creator": "4300streetcar",
+  "source_page": "https://commons.wikimedia.org/wiki/File:The_Alley_Bar_Boston_front_March_2025.jpg"
+}

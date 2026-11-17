@@ -1,10 +1,10 @@
 {
-  "phase": "photo-search",
-  "sw_version": "sl-connected-20261117-photo-search1",
-  "timestamp": "2026-11-17T23:27:27.822450+00:00",
+  "phase": "licensed-detail-photos",
+  "sw_version": "sl-connected-20261117-licensed1",
+  "timestamp": "2026-11-17T23:44:07.942357+00:00",
   "status": "local_candidate_not_deployed",
   "requires_paired_backend": false,
   "required_migration": "016_private_list_invitations.sql",
   "rollout_order": "compatible_frontend_then_backend",
-  "summary": "Honest homepage photo error fallback and unsent search-to-concierge drafts. Frontend only: no real photo coverage, provider activation, backend changes or venue imports."
+  "summary": "Two exact-identity licensed historical venue photos in canonical detail, full-image contain with visible linked attribution. No database or provider changes; no claim of broad photo coverage."
 }

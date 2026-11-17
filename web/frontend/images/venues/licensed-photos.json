@@ -1,0 +1,36 @@
+{
+  "db32c169-e07a-4de5-bae0-63ae59a4eaf7": {
+    "name": "The Alley Bar",
+    "address": "14 Pi Alley",
+    "city": "Boston",
+    "lat": 42.358109,
+    "lng": -71.058716,
+    "url": "/images/venues/2a7bd0697c6a2d0eae7d87aee86a9ef4c4f5a06adb5c08aba3d8d1c4a83ea5bd.jpg",
+    "author": "4300streetcar",
+    "title": "The Alley Bar Boston front March 2025.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:The_Alley_Bar_Boston_front_March_2025.jpg",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "date": "2025-03-11",
+    "changes": "Resized; no crop.",
+    "sha256": "2a7bd0697c6a2d0eae7d87aee86a9ef4c4f5a06adb5c08aba3d8d1c4a83ea5bd",
+    "originalSha256": "ea39517dc042329c518115976d15a2ab983db73b8f2061ebcc513cf33ff7de9f"
+  },
+  "7cc80886-1a90-4404-953b-608a51a9d7d2": {
+    "name": "Sullivan's Tap",
+    "address": "168 Canal Street",
+    "city": "Boston",
+    "lat": 42.365106,
+    "lng": -71.060995,
+    "url": "/images/venues/6bdead242454944ba41f00b3e8bd32a9e1727636ae34231b4f874ad9e9b9d47a.jpg",
+    "author": "Ethan Long",
+    "title": "Sullivan's Tap on Friend Street with new State Street tower looming overhead, Boston (53232570616).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Sullivan's_Tap_on_Friend_Street_with_new_State_Street_tower_looming_overhead,_Boston_(53232570616).jpg",
+    "license": "CC-BY-SA-2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/",
+    "date": "2022-11-05",
+    "changes": "Original image; no modifications.",
+    "sha256": "6bdead242454944ba41f00b3e8bd32a9e1727636ae34231b4f874ad9e9b9d47a",
+    "originalSha256": "6bdead242454944ba41f00b3e8bd32a9e1727636ae34231b4f874ad9e9b9d47a"
+  }
+}
