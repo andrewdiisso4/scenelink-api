@@ -254,3 +254,64 @@ test('photo upload disables file replacement while pending then reenables after 
  m.click('[data-action=cancel-edit]');m.click('[data-action=edit]');assert.equal(m.$('slspAvatarFile'),input);release();await tick();await tick();
  assert.equal(input.disabled,false);assert.match(m.$('slspAvatarStatus').textContent,/Photo saved and read back/);
 });
+
+test('profile save locks submitted fields through readback without locking the privacy draft',async t=>{
+ let releaseWrite,releaseRead,written=false;
+ const m=await make(t,{handle:async(r,ctx)=>{
+  if(r.method==='PUT'){await new Promise(resolve=>releaseWrite=resolve);ctx.setUser({...ctx.user,...r.body,profile_revision:2});written=true;return{body:{user:ctx.user}};}
+  if(r.url==='/api/users/me'&&written){await new Promise(resolve=>releaseRead=resolve);return{body:{user:ctx.user}};}
+ }});
+ m.click('[data-action=edit]');await tick();const form=m.$('slspEditForm'),privacy=m.$('slspSettingsForm');form.elements.bio.value='Submitted draft';
+ m.submit('slspEditForm');await tick();assert.equal(form.getAttribute('aria-busy'),'true');
+ for(const name of ['display_name','username','bio','city','social_instagram'])assert.equal(form.elements[name].disabled,true,name);
+ assert.equal(privacy.elements.allow_messages.disabled,false);privacy.elements.allow_messages.value='none';
+ releaseWrite();await tick();assert.equal(form.elements.bio.disabled,true,'remain locked until saved state is read back');
+ releaseRead();await tick();assert.match(m.$('slspActionStatus').textContent,/Profile saved/);assert.equal(m.$('slspEditForm').elements.bio.disabled,false);
+ assert.equal(m.$('slspSettingsForm').elements.allow_messages.value,'none');assert.match(m.$('slspSettingsStatus').textContent,/draft.*unsaved/i);
+});
+for(const phase of ['write','readback'])test('privacy save '+phase+' failure restores original disabled states and draft',async t=>{
+ let release,written=false;const m=await make(t,{handle:async(r,ctx)=>{
+  if(r.method==='PATCH'){if(phase==='write'){await new Promise(resolve=>release=resolve);return{status:503,body:{error:'Unavailable'}};}written=true;ctx.setUser({...ctx.user,...r.body,profile_revision:2});return{body:{user:ctx.user}};}
+  if(r.url==='/api/users/me'&&written){await new Promise(resolve=>release=resolve);return{status:503,body:{error:'Unavailable'}};}
+ }});
+ m.click('[data-tab=settings]');const form=m.$('slspSettingsForm');form.elements.discoverable.checked=false;
+ const reload=form.querySelector('[data-action=reload-settings]');reload.disabled=true;
+ m.submit('slspSettingsForm');await tick();assert.equal(form.elements.discoverable.disabled,true);assert.equal(form.elements.allow_messages.disabled,true);
+ release();await tick();assert.equal(form.elements.discoverable.disabled,false);assert.equal(form.elements.discoverable.checked,false);assert.equal(reload.disabled,true);
+ assert.equal(form.hasAttribute('aria-busy'),false);assert.equal(form.dataset.revision,'1');
+});
+test('old save completion cannot unlock or alter a new account form',async t=>{
+ let release;const m=await make(t,{handle:async(r,ctx)=>{
+  if(r.method==='PUT'){await new Promise(resolve=>release=resolve);return{body:{user:{...ctx.user,...r.body,profile_revision:2}}};}
+ }});
+ m.click('[data-action=edit]');await tick();m.$('slspEditForm').elements.bio.value='Old account draft';m.submit('slspEditForm');await tick();
+ m.w.localStorage.setItem('sl_jwt_token','new-session');m.w.dispatchEvent(new m.w.Event('sl-auth-changed'));await tick();
+ const newForm=m.$('slspEditForm');newForm.elements.bio.value='New account draft';newForm.elements.bio.disabled=true;
+ release();await tick();assert.equal(newForm.elements.bio.value,'New account draft');assert.equal(newForm.elements.bio.disabled,true);assert(!m.$('slspActionStatus').textContent.includes('Profile saved'));
+});
+
+for(const outcome of ['success','readback failure'])test('late photo capability stays locked through profile save '+outcome,async t=>{
+ let releaseCapability,releaseWrite,releaseRead,written=false;
+ const m=await make(t,{handle:async(r,ctx)=>{
+  if(r.url==='/api/media/capability'){await new Promise(resolve=>releaseCapability=resolve);return{body:{enabled:true,contract:'server-upload-v1'}};}
+  if(r.method==='PUT'){await new Promise(resolve=>releaseWrite=resolve);ctx.setUser({...ctx.user,...r.body,profile_revision:2});written=true;return{body:{user:ctx.user}};}
+  if(r.url==='/api/users/me'&&written){await new Promise(resolve=>releaseRead=resolve);return outcome==='success'?{body:{user:ctx.user}}:{status:503,body:{error:'Readback unavailable'}};}
+ }});
+ m.click('[data-action=edit]');await tick();const form=m.$('slspEditForm');form.elements.bio.value='Keep draft on failure';m.submit('slspEditForm');await tick();
+ releaseCapability();await tick();const input=m.$('slspAvatarFile'),upload=form.querySelector('[data-action=upload-avatar]');
+ assert(input);assert.equal(input.disabled,true);assert.equal(upload.disabled,true);assert.equal(form.getAttribute('aria-busy'),'true');
+ m.click('[data-action=upload-avatar]');assert.equal(m.calls.filter(r=>r.url==='/api/media/upload').length,0);
+ releaseWrite();await tick();assert.equal(input.disabled,true);releaseRead();await tick();
+ if(outcome==='success'){assert.match(m.$('slspActionStatus').textContent,/Profile saved/);assert(!input.isConnected);}
+ else{assert.equal(input.isConnected,true);assert.equal(input.disabled,false);assert.equal(upload.disabled,false);assert.equal(form.elements.bio.value,'Keep draft on failure');assert.equal(form.hasAttribute('aria-busy'),false);assert.match(m.$('slspEditStatus').textContent,/readback failed/);}
+});
+test('old-session late photo capability cannot mount controls on replacement profile',async t=>{
+ let releaseCapability,releaseWrite;
+ const m=await make(t,{handle:async(r,ctx)=>{
+  if(r.url==='/api/media/capability'){await new Promise(resolve=>releaseCapability=resolve);return{body:{enabled:true,contract:'server-upload-v1'}};}
+  if(r.method==='PUT'){await new Promise(resolve=>releaseWrite=resolve);return{body:{user:{...ctx.user,profile_revision:2}}};}
+ }});
+ m.click('[data-action=edit]');await tick();m.submit('slspEditForm');await tick();m.w.localStorage.setItem('sl_jwt_token','replacement-session');m.w.dispatchEvent(new m.w.Event('sl-auth-changed'));await tick();
+ const replacement=m.$('slspEditForm');replacement.elements.bio.disabled=true;
+ releaseCapability();releaseWrite();await tick();assert(!m.$('slspAvatarFile'));assert.equal(replacement.elements.bio.disabled,true);assert.equal(replacement.hasAttribute('aria-busy'),false);assert(!m.$('slspActionStatus').textContent.includes('Profile saved'));
+});
