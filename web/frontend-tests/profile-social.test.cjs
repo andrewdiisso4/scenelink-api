@@ -208,3 +208,49 @@ test('member search does not turn malformed results into no matches '+JSON.strin
  m.$('slspSearchInput').value='peer';m.submit('slspSearchForm');await tick();
  assert.match(m.$('slspSearchResults').textContent,/could not be verified/);assert(!m.$('slspSearchResults').textContent.includes('No visible matches'));assert(!m.$('slspSearchResults').querySelector('[data-action=request]'));
 });
+
+function choosePhoto(m){
+ const input=m.$('slspAvatarFile'),file=new m.w.File(['fixture image'],'draft.png',{type:'image/png'});
+ Object.defineProperty(input,'files',{value:[file]});return{input,file};
+}
+test('closing and reopening profile edit preserves chosen photo and text draft',async t=>{
+ const m=await make(t,{handle:r=>r.url==='/api/media/capability'?{body:{enabled:true,contract:'server-upload-v1',max_bytes:4194304}}:null});
+ m.click('[data-action=edit]');await tick();const {input,file}=choosePhoto(m);m.$('slspEditForm').elements.bio.value='Keep this draft';
+ m.click('[data-action=cancel-edit]');m.click('[data-action=edit]');await tick();
+ assert.equal(m.$('slspAvatarFile'),input);assert.equal(input.files[0],file);assert.equal(m.$('slspEditForm').elements.bio.value,'Keep this draft');
+ assert.equal(m.calls.filter(r=>r.url==='/api/media/capability').length,1);
+});
+test('reopening edit during capability lookup does not launch a replacement lookup',async t=>{
+ let release;const m=await make(t,{handle:async r=>{if(r.url==='/api/media/capability'){await new Promise(resolve=>release=resolve);return{body:{enabled:true,contract:'server-upload-v1'}};}}});
+ m.click('[data-action=edit]');await tick();m.click('[data-action=cancel-edit]');m.click('[data-action=edit]');await tick();
+ assert.equal(m.calls.filter(r=>r.url==='/api/media/capability').length,1);release();await tick();assert(m.$('slspAvatarFile'));
+});
+test('failed photo capability lookup can be retried by reopening edit',async t=>{
+ let count=0;const m=await make(t,{handle:r=>r.url==='/api/media/capability'?(++count===1?{status:503,body:{error:'Unavailable'}}:{body:{enabled:true,contract:'server-upload-v1'}}):null});
+ m.click('[data-action=edit]');await tick();assert(!m.$('slspAvatarFile'));m.click('[data-action=cancel-edit]');m.click('[data-action=edit]');await tick();assert(m.$('slspAvatarFile'));
+});
+for(const [label,asset,readUser] of [
+ ['wrong kind',{kind:'post',url:'https://assets.example.test/new.webp'},{avatar_url:'https://assets.example.test/new.webp',profile_revision:2}],
+ ['unsafe URL',{kind:'avatar',url:'javascript:alert(1)'},{avatar_url:'javascript:alert(1)',profile_revision:2}],
+ ['different saved photo',{kind:'avatar',url:'https://assets.example.test/new.webp'},{avatar_url:'https://assets.example.test/old.webp',profile_revision:2}],
+ ['unchanged revision',{kind:'avatar',url:'https://assets.example.test/new.webp'},{avatar_url:'https://assets.example.test/new.webp',profile_revision:1}]
+])test('avatar confirmation rejects '+label+' without rebasing or discarding draft',async t=>{
+ const m=await make(t,{handle:(r,ctx)=>{
+  if(r.url==='/api/media/capability')return{body:{enabled:true,contract:'server-upload-v1'}};
+  if(r.url==='/api/media/upload'){ctx.setUser({...ctx.user,...readUser});return{body:{asset}};}
+ }});
+ m.click('[data-action=edit]');await tick();const {input,file}=choosePhoto(m);m.$('slspEditForm').elements.bio.value='Unsaved text';
+ m.click('[data-action=upload-avatar]');await tick();await tick();
+ assert.equal(m.$('slspAvatarStatus').dataset.kind,'error');assert(!m.$('slspAvatarStatus').textContent.includes('Photo saved'));
+ assert.equal(m.$('slspEditForm').dataset.revision,'1');assert.equal(m.$('slspEditForm').elements.bio.value,'Unsaved text');assert.equal(input.files[0],file);assert.equal(input.disabled,false);
+ assert(!m.w.document.querySelector('.slsp-hero img'));
+});
+test('photo upload disables file replacement while pending then reenables after confirmation',async t=>{
+ let release;const m=await make(t,{handle:async(r,ctx)=>{
+  if(r.url==='/api/media/capability')return{body:{enabled:true,contract:'server-upload-v1'}};
+  if(r.url==='/api/media/upload'){await new Promise(resolve=>release=resolve);ctx.setUser({...ctx.user,avatar_url:'https://assets.example.test/new.webp',profile_revision:2});return{body:{asset:{kind:'avatar',url:'https://assets.example.test/new.webp'}}};}
+ }});
+ m.click('[data-action=edit]');await tick();const {input}=choosePhoto(m);m.click('[data-action=upload-avatar]');await tick();assert.equal(input.disabled,true);
+ m.click('[data-action=cancel-edit]');m.click('[data-action=edit]');assert.equal(m.$('slspAvatarFile'),input);release();await tick();await tick();
+ assert.equal(input.disabled,false);assert.match(m.$('slspAvatarStatus').textContent,/Photo saved and read back/);
+});

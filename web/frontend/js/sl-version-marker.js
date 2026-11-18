@@ -17,10 +17,10 @@
 (function(){
   'use strict';
   var V = {
-    phase: 'profile-read-reliability',
-    sw_version: 'sl-connected-20261118-profile-reads1',
-    deploy: 'connected-20261118-profile-reads1',
-    built: '2026-11-18T02:01:03.879538+00:00',
+    phase: 'avatar-draft-reliability',
+    sw_version: 'sl-connected-20261118-avatar-draft1',
+    deploy: 'connected-20261118-avatar-draft1',
+    built: '2026-11-18T02:08:14.803979+00:00',
     backend_change: 'none'
   };
   // Always-available global

@@ -1,10 +1,10 @@
 {
-  "phase": "profile-read-reliability",
-  "sw_version": "sl-connected-20261118-profile-reads1",
-  "timestamp": "2026-11-18T02:01:03.879538+00:00",
+  "phase": "avatar-draft-reliability",
+  "sw_version": "sl-connected-20261118-avatar-draft1",
+  "timestamp": "2026-11-18T02:08:14.803979+00:00",
   "status": "local_candidate_not_deployed",
   "requires_paired_backend": false,
   "required_migration": "016_private_list_invitations.sql",
   "rollout_order": "compatible_frontend_then_backend",
-  "summary": "Validate social roster responses and add blocked-list loading, retry and limit disclosure. No schema, provider activation or venue imports."
+  "summary": "Preserve avatar selection across edit reopen and validate saved-avatar confirmation. No schema, real user uploads, provider activation or venue imports."
 }

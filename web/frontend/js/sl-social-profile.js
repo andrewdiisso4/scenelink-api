@@ -119,24 +119,26 @@
     finally {state.busy.delete('blocked');}
   }
   async function loadAvatarCapability() {
-    const target=$('slspAvatarCapability'),epoch=state.epoch,session=C().token(); if(!target)return;
+    const target=$('slspAvatarCapability'),epoch=state.epoch,session=C().token(); if(!target||target.querySelector('input[type=file]')||target.dataset.loading==='true')return;
+    target.dataset.loading='true';
     try { const d=await C().request('/media/capability'); if(!valid(epoch,session)||!target.isConnected)return;
       if(d.enabled===true && d.contract==='server-upload-v1'){state.media=d;target.innerHTML='<label>Choose a photo<input id="slspAvatarFile" type="file" accept="image/png,image/jpeg,image/webp"><small>PNG, JPEG or WebP, up to 4 MB. Upload saves the photo immediately, separately from your profile draft.</small></label>'+action('upload-avatar','Upload photo')+'<p id="slspAvatarStatus" class="slsp-status" role="status"></p>';}
       else target.innerHTML='<p class="slsp-muted slsp-small">Photo uploads are not connected. No photo will be uploaded. Existing photos can be removed when saving.</p>';
     }catch(e){if(valid(epoch,session)&&target.isConnected)target.innerHTML='<p class="slsp-muted slsp-small">Photo upload availability could not be checked. You can still edit the rest of your profile.</p>';}
+    finally { delete target.dataset.loading; }
   }
   async function uploadAvatar(button) {
     if(state.busy.has('avatar')||state.busy.has('profile-mutation'))return;const input=$('slspAvatarFile'),file=input&&input.files[0];
     if(!file){status('slspAvatarStatus','Choose an image first.','error');return;}
     if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>Math.min(state.media.max_bytes||4194304,4194304)){status('slspAvatarStatus','Use a PNG, JPEG or WebP image up to 4 MB.','error');return;}
-    const epoch=state.epoch,session=C().token(),beforeRevision=state.user.profile_revision;state.busy.add('avatar');state.busy.add('profile-mutation');button.disabled=true;status('slspAvatarStatus','Uploading photo…');
+    const epoch=state.epoch,session=C().token(),beforeRevision=state.user.profile_revision;state.busy.add('avatar');state.busy.add('profile-mutation');button.disabled=true;input.disabled=true;status('slspAvatarStatus','Uploading photo…');
     try {const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('The image could not be read.'));reader.readAsDataURL(file);});
       if(!valid(epoch,session))return;const result=await C().request('/media/upload',{method:'POST',body:{kind:'avatar',data}});if(!valid(epoch,session))return;
       if(result.pending_review){status('slspAvatarStatus','The provider is reviewing this photo. It has not been attached to your profile.');return;}
-      if(!result.asset)throw new Error('Upload did not return a saved photo. Reload your profile before retrying.');
-      const read=await C().request('/users/me');if(!valid(epoch,session))return;if(!read.user||read.user.id!==state.user.id)throw new Error('The photo could not be read back from your account.');state.user=read.user;const onlyUpload=read.user.profile_revision===beforeRevision+1;if(onlyUpload)host.querySelectorAll('#slspEditForm,#slspSettingsForm').forEach(f=>{if(Number(f.dataset.revision)===beforeRevision)f.dataset.revision=read.user.profile_revision;});status('slspAvatarStatus',onlyUpload?'Photo saved and read back. Other profile edits are still unsaved.':'Photo saved and read back. Your account also changed elsewhere. Reload saved profile before applying other edits; your draft is unchanged.','success');const hero=host.querySelector('.slsp-hero');if(hero)hero.outerHTML=renderHero();
+      if(!result.asset||result.asset.kind!=='avatar'||!C().safeUrl(result.asset.url,true))throw new Error('Upload did not return a verified profile photo. Reload your profile before retrying.');
+      const read=await C().request('/users/me');if(!valid(epoch,session))return;if(!read.user||read.user.id!==state.user.id||read.user.avatar_url!==result.asset.url||!Number.isInteger(read.user.profile_revision)||read.user.profile_revision<=beforeRevision)throw new Error('The uploaded photo could not be confirmed on your account.');input.value='';state.user=read.user;const onlyUpload=read.user.profile_revision===beforeRevision+1;if(onlyUpload)host.querySelectorAll('#slspEditForm,#slspSettingsForm').forEach(f=>{if(Number(f.dataset.revision)===beforeRevision)f.dataset.revision=read.user.profile_revision;});status('slspAvatarStatus',onlyUpload?'Photo saved and read back. Other profile edits are still unsaved.':'Photo saved and read back. Your account also changed elsewhere. Reload saved profile before applying other edits; your draft is unchanged.','success');const hero=host.querySelector('.slsp-hero');if(hero)hero.outerHTML=renderHero();
     }catch(e){if(valid(epoch,session))status('slspAvatarStatus',errorText(e)+' Check the saved profile before retrying an upload.','error');}
-    finally{state.busy.delete('avatar');state.busy.delete('profile-mutation');if(button.isConnected)button.disabled=false;}
+    finally{state.busy.delete('avatar');state.busy.delete('profile-mutation');if(button.isConnected)button.disabled=false;if(input.isConnected)input.disabled=false;}
   }
   function hasUnsavedDraft(form) {
     return form && [...form.elements].some(el => {
