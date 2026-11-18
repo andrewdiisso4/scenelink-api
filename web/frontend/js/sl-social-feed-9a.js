@@ -51,7 +51,8 @@
     session: null,
     epoch: 0,
     postBusy: false,
-    postAttempt: null
+    postAttempt: null,
+    commentAttempts: Object.create(null)
   };
 
   function sessionToken(){
@@ -72,7 +73,7 @@
   function clearPrivateState(){
     sessionCleanups.splice(0).forEach(function(close){close();});
     STATE.me=null;STATE.feed=[];STATE.nextCursor=null;STATE.hasMore=false;STATE.loadingFeed=false;
-    STATE.pendingImage=null;STATE.mediaEnabled=false;pendingVenue=null;STATE.postBusy=false;STATE.postAttempt=null;
+    STATE.pendingImage=null;STATE.mediaEnabled=false;pendingVenue=null;STATE.postBusy=false;STATE.postAttempt=null;STATE.commentAttempts=Object.create(null);
     ['sfFeedContent','sfSuggestions','sfTrending','sfStories','sfComposerExtra','sfPostStatus'].forEach(function(id){var el=$(id);if(el)el.innerHTML='';});
     ['sfRequestsCard','sfMessagesCard'].forEach(function(id){var el=$(id);if(el)el.remove();});
     ['sfStatCheckins','sfStatReviews','sfStatSaved','sfStatScene'].forEach(function(id){setText(id,'—');});
@@ -453,12 +454,16 @@
     if(ct && box) ct.addEventListener('click', function(){
       if(box.style.display!=='none'){ box.style.display='none'; return; }
       box.style.display='block';
+      if(box.querySelector('.sf-comment-input')||box.dataset.loading==='true')return;
+      box.dataset.loading='true';
       box.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:12px;">Loading…</div>';
       social().getComments(x.id).then(forSession(function(r){
-        var comments=(r.ok&&r.data&&(r.data.comments||r.data.items))||[];
+        if(!box.isConnected)return;delete box.dataset.loading;
+        var comments=r.ok&&r.data&&(r.data.comments||r.data.items);
+        if(!Array.isArray(comments)){box.innerHTML='<p role="status">Comments could not be loaded. Close and reopen comments to retry.</p>';return;}
         box.innerHTML=commentsHtml(comments);
         wireCommentSubmit(box,x,article);
-      }));
+      })).catch(forSession(function(){if(!box.isConnected)return;delete box.dataset.loading;box.innerHTML='<p role="status">Comments could not be loaded. Close and reopen comments to retry.</p>';}));
     });
 
     var rep=article.querySelector('.sf-report');
@@ -477,26 +482,38 @@
     var composer = STATE.me
       ? '<div style="display:flex;gap:8px;margin-top:6px;"><input class="sf-comment-input" placeholder="Write a comment…" maxlength="1000" style="flex:1;background:#0c0c0c;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px;color:#fff;font-size:13px;"><button class="sf-comment-submit" style="background:#D4AF37;color:#000;border:none;padding:6px 14px;border-radius:8px;font-weight:600;cursor:pointer;">Send</button></div>'
       : '<div style="color:rgba(255,255,255,.4);font-size:12px;">Log in to comment.</div>';
-    return list+composer;
+    return '<div class="sf-comment-list">'+list+'</div>'+composer+'<p class="sf-comment-status" role="status"></p>';
   }
 
   function wireCommentSubmit(box, x, article){
     var btn=box.querySelector('.sf-comment-submit'); var inp=box.querySelector('.sf-comment-input');
     if(!btn||!inp) return;
+    btn.disabled=!!STATE.commentAttempts[x.id];
+    var attempt=null;
+    function commentStatus(text,target){var el=(target||box).querySelector('.sf-comment-status');if(el)el.textContent=text;}
+    function unlock(){if(STATE.commentAttempts[x.id]!==attempt)return;delete STATE.commentAttempts[x.id];document.querySelectorAll('.sf-comments[data-id="'+cssEsc(x.id)+'"] .sf-comment-submit').forEach(function(button){button.disabled=false;});}
     function submit(){
-      var body=(inp.value||'').trim(); if(!body) return;
-      btn.disabled=true;
+      if(STATE.commentAttempts[x.id]||!STATE.me||STATE.session!==sessionToken())return;
+      var submitted=inp.value||'',body=submitted.trim(); if(!body) return;
+      attempt={};STATE.commentAttempts[x.id]=attempt;btn.disabled=true;commentStatus('Saving comment…');
       social().commentPost(x.id, body).then(forSession(function(r){
-        btn.disabled=false;
+        var target=box.isConnected?box:document.querySelector('.sf-comments[data-id="'+cssEsc(x.id)+'"]');
+        if(!target||!target.querySelector('.sf-comment-input')){unlock();return;}
         if(r.ok){
-          inp.value='';
+          if(inp.isConnected&&inp.value===submitted)inp.value='';
+          commentStatus('Comment saved. Refreshing comments…',target);
           social().getComments(x.id).then(forSession(function(rr){
-            var comments=(rr.ok&&rr.data&&(rr.data.comments||rr.data.items))||[];
-            box.innerHTML=commentsHtml(comments); wireCommentSubmit(box,x,article);
-            var cc=article.querySelector('.sf-comment-count'); if(cc) cc.textContent=comments.length;
-          }));
-        } else if(r.loggedOut){ showLanding(); }
-      }));
+            unlock();if(!target.isConnected)return;
+            var comments=rr.ok&&rr.data&&(rr.data.comments||rr.data.items);
+            if(!Array.isArray(comments)){commentStatus('Comment saved, but comments could not be refreshed. Your new draft is unchanged.',target);return;}
+            var replacement=document.createElement('div');replacement.innerHTML=commentsHtml(comments);
+            var list=target.querySelector('.sf-comment-list');if(list)list.innerHTML=replacement.querySelector('.sf-comment-list').innerHTML;
+            var targetArticle=target.closest('.sf-card'),cc=targetArticle&&targetArticle.querySelector('.sf-comment-count'); if(cc) cc.textContent=comments.length;
+            commentStatus('Comment saved.',target);
+          })).catch(forSession(function(){unlock();if(target.isConnected)commentStatus('Comment saved, but comments could not be refreshed. Your new draft is unchanged.',target);}));
+        } else if(r.loggedOut){showLanding();}
+        else {unlock();commentStatus((r.error||'The comment could not be confirmed.')+' Your draft is unchanged. Check the comments before retrying.',target);}
+      })).catch(forSession(function(){unlock();commentStatus('The comment could not be confirmed. Your draft is unchanged. Check the comments before retrying.');}));
     }
     btn.addEventListener('click', submit);
     inp.addEventListener('keydown', function(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); submit(); } });
