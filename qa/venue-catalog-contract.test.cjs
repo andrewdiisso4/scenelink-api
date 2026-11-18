@@ -124,8 +124,8 @@ test('rule-based concierge shares venue booking semantics and reviewed-event sou
     assert.equal(events.events[0].title,event.title);assert.equal(events.events[0].rsvp_is_reservation,false);
     assert.equal(events.events[0].booking_status,'not_booked');
     const query=calls.find(call=>call.sql.includes('FROM events e'));
-    assert(query.sql.includes("source_review_status='reviewed'"));assert(query.sql.includes('e.date BETWEEN $1::date AND $2::date'));
-    assert.match(query.params[0],/^\d{4}-\d{2}-\d{2}$/);assert(!query.sql.includes('event_date'));
+    assert(query.sql.includes("source_review_status='reviewed'"));assert(query.sql.includes("e.date BETWEEN (CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')::date"));
+    assert.deepEqual(query.params,[1,5]);assert(!query.sql.includes('event_date'));
   });
 });
 

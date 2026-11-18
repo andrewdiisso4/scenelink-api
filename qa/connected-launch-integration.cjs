@@ -20,6 +20,7 @@ if(!fs.existsSync(path.join(root,'src/launch/router.js'))||fs.existsSync(path.jo
 process.chdir(root);process.env.NODE_ENV='test';process.env.DATABASE_URL=connection;process.env.JWT_SECRET=crypto.randomBytes(48).toString('hex');process.env.ALLOW_DEMO_SEED='false';process.env.FORCE_RESEED='false';
 for(const name of ['SMTP_HOST','SMTP_USER','SMTP_PASS','CLOUDINARY_URL','CLOUDINARY_UPLOAD_PRESET','SENTRY_DSN','OPENAI_API_KEY','ADMIN_SECRET'])delete process.env[name];process.env.EMAIL_PROVIDER='disabled';
 const req=createRequire(path.join(root,'package.json'));
+const {EVENT_TODAY_SQL}=req('./src/services/event-calendar');
 let pool,server;const checks=[];
 async function main(){
  pool=req('./src/config/database');const existing=await pool.query("SELECT count(*)::int n FROM information_schema.tables WHERE table_schema='public'");assert.equal(existing.rows[0].n,0,'REFUSED: public schema must be empty; no tables are dropped by this harness');
@@ -185,7 +186,7 @@ async function main(){
  await check('events publish only reviewed sources, not legacy synthetic attendance or orphan venue names',async()=>{
   eventId=crypto.randomUUID();eventPast=crypto.randomUUID();eventUnreviewed=crypto.randomUUID();
   for(const [id,title,days]of[[eventId,'Fictional QA Event',14],[eventPast,'Past QA Event',-1],[eventUnreviewed,'Unreviewed QA Event',14]])await pool.query(`INSERT INTO events(id,title,description,venue_id,venue_name,date,event_url,attending_count,rating)
-    VALUES($1,$2,'Fictional event only in isolated local database',$3,'Stale venue label',CURRENT_DATE+$4::integer,'https://example.com/isolated-qa-ticket',987,4.9)`,[id,title,venue,days]);
+    VALUES($1,$2,'Fictional event only in isolated local database',$3,'Stale venue label',${EVENT_TODAY_SQL}+$4::integer,'https://example.com/isolated-qa-ticket',987,4.9)`,[id,title,venue,days]);
   assert.equal((await api('GET','/events')).total,0);
   await api('GET','/events/'+eventId,undefined,null,404);
   await api('PUT','/admin/events/'+eventId+'/source-review',{source:'official_venue',source_url:'https://example.com/isolated-qa-event',status:'reviewed'},a.token,403);

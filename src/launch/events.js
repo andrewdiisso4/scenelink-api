@@ -2,6 +2,7 @@
 // SceneLink attendance intent only. No payment, ticket inventory, capacity promise,
 // provider request, or provider confirmation is created by these endpoints.
 const H=require('./shared');
+const {EVENT_TODAY_SQL}=require('../services/event-calendar');
 const {safePublicHttps,availableVenueSQL}=require('../services/venue-helpers');
 const SOURCES=new Set(['official_venue','organizer','ticketmaster','eventbrite']);
 const STATUSES=new Set(['going','interested','not_going']);
@@ -46,7 +47,7 @@ async function serialize(db,eventId,userId) {
 }
 async function event(db,eventId,{lock=false,upcoming=false}={}) {
   const r=await db.query(`SELECT e.id,e.date FROM events e LEFT JOIN venues v ON v.id=e.venue_id
-    WHERE e.id=$1 AND ${PUBLIC_EVENT()} ${upcoming?'AND e.date>=CURRENT_DATE':''} ${lock?'FOR UPDATE OF e':''}`,[eventId]);
+    WHERE e.id=$1 AND ${PUBLIC_EVENT()} ${upcoming?`AND e.date>=${EVENT_TODAY_SQL}`:''} ${lock?'FOR UPDATE OF e':''}`,[eventId]);
   if(!r.rows.length)throw new H.HttpError(404,'Event unavailable');
   return r.rows[0];
 }
@@ -56,7 +57,7 @@ function install({router,pool,auth,write}) {
   router.get('/events',auth.optionalAuth,H.noStore,H.wrap(async(req,res)=>{
     const values=[req.user?.id||null],conditions=[PUBLIC_EVENT()];
     const add=x=>{values.push(x);return '$'+values.length;};
-    if(req.query.include_past!=='true')conditions.push('e.date>=CURRENT_DATE');
+    if(req.query.include_past!=='true')conditions.push(`e.date>=${EVENT_TODAY_SQL}`);
     if(req.query.date)conditions.push('e.date='+add(calendarDate(req.query.date))+'::date');
     if(req.query.venue_id)conditions.push('e.venue_id='+add(H.id(req.query.venue_id,'venue'))+'::uuid');
     if(req.query.category&&req.query.category!=='all')conditions.push('e.category ILIKE '+add('%'+H.like(H.text(req.query.category,'category',100))+'%'));

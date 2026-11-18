@@ -1,3 +1,4 @@
+const {EVENT_TODAY_SQL}=require('../src/services/event-calendar');
 // Reconciled November 1 ingestion tests against the authoritative social candidate.
 // Default is supplemental single-backend PGlite, NOT native concurrency proof.
 // Native mode requires explicit disposable loopback DB and refuses existing tables.
@@ -60,7 +61,7 @@ async function saveCandidateFixtures() {
   await db.query(`INSERT INTO users(id,email,username,display_name,is_private,social_links)
     VALUES($1,'ingestion-preservation@example.invalid','ingestion_fixture','Fictional private member',true,'[]')`, [user]);
   await db.query(`INSERT INTO events(id,title,date,is_active,source,source_url,source_review_status,source_reviewed_at)
-    VALUES($1,'Fictional manually reviewed existing event',CURRENT_DATE+7,true,'official_venue','https://example.com/fictional-event','reviewed',now())`, [event]);
+    VALUES($1,'Fictional manually reviewed existing event',${EVENT_TODAY_SQL}+7,true,'official_venue','https://example.com/fictional-event','reviewed',now())`, [event]);
   await db.query(`INSERT INTO event_source_reviews(event_id,reviewer_id,source,source_url,status)
     VALUES($1,$2,'official_venue','https://example.com/fictional-event','reviewed')`, [event,user]);
   await db.query("INSERT INTO event_rsvps(event_id,user_id,status,audience) VALUES($1,$2,'going','private')", [event,user]);
