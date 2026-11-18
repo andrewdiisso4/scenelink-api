@@ -43,3 +43,10 @@ test('listing, new RSVPs, concierge and admin use shared calendar; historical ac
   const history=events.split("router.get('/events/rsvps/mine'")[1].split("router.get('/events/:eventId'")[0];
   assert.doesNotMatch(history,/EVENT_TODAY_SQL|DELETE FROM|UPDATE events/);
 });
+
+test('event integration fixtures use the same Boston day as public filtering',()=>{
+  for(const file of ['connected-launch-integration.cjs','event-ingestion-integration.cjs']) {
+    const text=fs.readFileSync(path.join(__dirname,file),'utf8');
+    assert.match(text,/EVENT_TODAY_SQL/);assert.doesNotMatch(text,/CURRENT_DATE/);
+  }
+});
