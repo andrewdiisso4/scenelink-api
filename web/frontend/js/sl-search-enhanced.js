@@ -129,7 +129,9 @@
   }
 
   function attach(input) {
-    if (input.__slSearchAttached) return;
+    // The shared header owns its keyboard, results and navigation contract.
+    // Skip it on initial attach and every delayed scan. Dedicated page search stays intact.
+    if (input.closest('.sl-universal-search') || input.__slSearchAttached) return;
     input.__slSearchAttached = true;
     ensureStyles();
 

@@ -18,9 +18,9 @@
   'use strict';
   var V = {
     phase: 'comment-search-reliability',
-    sw_version: 'sl-connected-20261118-comment-search1',
-    deploy: 'connected-20261118-comment-search1',
-    built: '2026-11-18T23:15:49.410594+00:00',
+    sw_version: 'sl-connected-20261118-comment-search2',
+    deploy: 'connected-20261118-comment-search2',
+    built: '2026-11-18T23:20:25.472946+00:00',
     backend_change: 'none'
   };
   // Always-available global

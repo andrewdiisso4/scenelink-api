@@ -1,7 +1,7 @@
 {
   "phase": "comment-search-reliability",
-  "sw_version": "sl-connected-20261118-comment-search1",
-  "timestamp": "2026-11-18T23:15:49.410594+00:00",
+  "sw_version": "sl-connected-20261118-comment-search2",
+  "timestamp": "2026-11-18T23:20:25.472946+00:00",
   "status": "local_candidate_not_deployed",
   "requires_paired_backend": false,
   "required_migration": "016_private_list_invitations.sql",
