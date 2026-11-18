@@ -75,6 +75,12 @@
     if (tab === 'settings') loadBlocked();
   }
   function person(u, actions) { return '<li class="slsp-person">' + avatar(u,true) + '<div class="slsp-grow"><a href="' + E(profileLink(u)) + '"><strong>' + E(name(u)) + '</strong></a><p class="slsp-muted slsp-small">' + E(u.username ? '@' + u.username : '') + '</p></div><div class="slsp-row">' + actions + '</div></li>'; }
+  function memberRows(data, key, identifiers) {
+    const rows=data&&data[key], fields=identifiers||['id'];
+    if(!Array.isArray(rows)||rows.some(row=>!row||fields.some(field=>typeof row[field]!=='string'||!row[field].trim())))
+      throw new Error('Member data could not be verified. Please retry.');
+    return rows;
+  }
   function renderFriendList(error, more) {
     const target=$('slspFriends');if(!target)return;
     target.innerHTML=(state.friendItems.length?'<ul class="slsp-list">'+state.friendItems.map(u=>person(u,relationshipActions(u,{status:'accepted'},true))).join('')+'</ul>':'<p class="slsp-empty">'+(error?'Friends could not be loaded.':'No accepted friends yet. Search above to send a request.')+'</p>')+(error?'<p class="slsp-status" data-kind="error">'+E(errorText(error))+'</p>'+action(more?'friends-more':'friends','Retry friends'):state.friendMore?action('friends-more','Load more friends'):'');
@@ -82,7 +88,7 @@
   async function loadFriends(more) {
     if(!state.own)return;const epoch=state.epoch,session=C().token(),serial=++state.friendSerial,offset=more?state.friendItems.length:0;
     if(!more){state.friendItems=[];state.friendMore=false;}
-    const results=await Promise.allSettled([C().request('/friends?limit=50&offset='+offset),C().request('/friends/pending')]);
+    const results=await Promise.allSettled([C().request('/friends?limit=50&offset='+offset).then(d=>{memberRows(d,'friends');return d;}),C().request('/friends/pending').then(d=>{memberRows(d,'incoming',['other_user_id','friendship_id']);memberRows(d,'outgoing',['other_user_id','friendship_id']);return d;})]);
     if(!valid(epoch,session)||serial!==state.friendSerial||!$('slspFriends'))return;
     state.friendsLoaded=results.every(r=>r.status==='fulfilled');const f=results[0],p=results[1];
     if(f.status==='fulfilled'){state.friendItems=[...new Map([...state.friendItems,...(f.value.friends||[])].map(u=>[u.id,u])).values()];state.friendMore=f.value.has_more===true;renderFriendList();}else renderFriendList(f.reason,more);
@@ -101,14 +107,15 @@
     if(!more)target.innerHTML='<p class="slsp-status">Searching members…</p>';
     else {const button=target.querySelector('[data-action=search-more]');if(button)button.disabled=true;}
     try{const d=await C().request('/users/search?q='+encodeURIComponent(q)+'&limit=20&offset='+offset);if(!valid(epoch,session)||serial!==state.search||input.value.trim()!==q)return;
-      state.searchItems=[...new Map([...state.searchItems,...(Array.isArray(d.results)?d.results:[])].map(u=>[u.id,u])).values()];state.searchMore=d.has_more===true;renderSearch();
+      state.searchItems=[...new Map([...state.searchItems,...memberRows(d,'results')].map(u=>[u.id,u])).values()];state.searchMore=d.has_more===true;renderSearch();
     }catch(e){if(valid(epoch,session)&&serial===state.search)renderSearch(e,more);}
   }
   async function loadBlocked() {
     const target = $('slspBlocked'); if (!target || state.busy.has('blocked')) return; state.busy.add('blocked');
     const epoch = state.epoch, session = C().token();
-    try { const d = await C().request('/users/blocked'); if (!valid(epoch,session) || !target.isConnected) return; target.innerHTML = (d.blocked || []).length ? '<ul class="slsp-list">' + d.blocked.map(u => person(u,action('unblock','Unblock',u.id))).join('') + '</ul>' : '<p class="slsp-empty">No blocked people.</p>'; }
-    catch(e) { if (valid(epoch,session) && target.isConnected) target.innerHTML = '<p class="slsp-status" data-kind="error">' + E(errorText(e)) + '</p>'; }
+    target.innerHTML='<p class="slsp-status" role="status">Loading blocked people…</p>';
+    try { const d = await C().request('/users/blocked'); if (!valid(epoch,session) || !target.isConnected) return; const rows=memberRows(d,'blocked'); target.innerHTML = rows.length ? '<ul class="slsp-list">' + rows.map(u => person(u,action('unblock','Unblock',u.id))).join('') + '</ul>'+(rows.length>=200?'<p class="slsp-muted slsp-small">Showing up to 200 blocked people.</p>':'') : '<p class="slsp-empty">No blocked people.</p>'; }
+    catch(e) { if (valid(epoch,session) && target.isConnected) target.innerHTML = '<p class="slsp-status" data-kind="error">' + E(errorText(e)) + '</p>'+action('blocked','Retry blocked people'); }
     finally {state.busy.delete('blocked');}
   }
   async function loadAvatarCapability() {

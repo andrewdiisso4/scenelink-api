@@ -171,3 +171,40 @@ for(const reply of [{success:true,unblocked_id:PEER},{success:true,unblocked_id:
  assert.match(m.$('slspActionStatus').textContent,reply.unblocked_id===PEER?/No friendship was restored/:/did not confirm/);
  assert.equal(m.calls.filter(c=>c.url==='/api/friends/request').length,0);
 });
+
+for(const body of [{ok:true},{blocked:{}},{blocked:[null]},{blocked:[{display_name:'Unverified identity'}]}])
+test('blocked roster rejects malformed success '+JSON.stringify(body),async t=>{
+ const m=await make(t,{url:'https://scenelink.test/profile#settings',handle:r=>r.url==='/api/users/blocked'?{body}:null});
+ assert.match(m.$('slspBlocked').textContent,/could not be verified/);
+ assert(!m.$('slspBlocked').textContent.includes('No blocked people'));assert(!m.$('slspBlocked').querySelector('[data-action=unblock]'));
+ assert(m.$('slspBlocked').querySelector('[data-action=blocked]'));
+});
+test('blocked roster retries in place and displays empty only after valid response',async t=>{
+ let attempt=0;const m=await make(t,{url:'https://scenelink.test/profile#settings',handle:r=>r.url==='/api/users/blocked'?(++attempt===1?{status:503,body:{error:'Unavailable'}}:{body:{blocked:[]}}):null});
+ m.$('slspSettingsForm').elements.discoverable.checked=false;
+ m.click('[data-action=blocked]');await tick();
+ assert.match(m.$('slspBlocked').textContent,/No blocked people/);assert.equal(attempt,2);assert.equal(m.$('slspSettingsForm').elements.discoverable.checked,false);
+});
+test('blocked roster clears failed retry UI and ignores late old-session identity',async t=>{
+ let release,attempt=0;const m=await make(t,{url:'https://scenelink.test/profile#settings',handle:async r=>{
+  if(r.url==='/api/users/blocked'){if(++attempt===1)return{status:503,body:{error:'Unavailable'}};await new Promise(resolve=>release=resolve);return{body:{blocked:[{id:PEER,display_name:'OLD BLOCKED IDENTITY'}]}};}
+ }});
+ m.click('[data-action=blocked]');await tick();assert.match(m.$('slspBlocked').textContent,/Loading blocked people/);
+ m.w.localStorage.removeItem('sl_jwt_token');m.w.dispatchEvent(new m.w.Event('sl-auth-changed'));release();await tick();
+ assert(!m.$('slSocialProfile').textContent.includes('OLD BLOCKED IDENTITY'));
+});
+for(const [route,body,container,forbidden] of [
+ ['/api/friends?',{ok:true},'slspFriends','No accepted friends'],
+ ['/api/friends?',{friends:[{display_name:'No identity'}]},'slspFriends','No identity'],
+ ['/api/friends/pending',{incoming:[]},'slspRequests','No incoming requests'],
+ ['/api/friends/pending',{incoming:[{other_user_id:PEER}],outgoing:[]},'slspRequests','Accept request']
+])test('friend roster rejects incomplete response '+route+JSON.stringify(body),async t=>{
+ const m=await make(t,{url:'https://scenelink.test/profile#friends',handle:r=>r.url.startsWith(route)?{body}:null});
+ assert.match(m.$(container).textContent,/could not be verified/);assert(!m.$(container).textContent.includes(forbidden));
+});
+for(const body of [{ok:true},{results:[null]},{results:[{display_name:'No identity'}]}])
+test('member search does not turn malformed results into no matches '+JSON.stringify(body),async t=>{
+ const m=await make(t,{url:'https://scenelink.test/profile#friends',handle:r=>r.url.startsWith('/api/users/search')?{body}:null});
+ m.$('slspSearchInput').value='peer';m.submit('slspSearchForm');await tick();
+ assert.match(m.$('slspSearchResults').textContent,/could not be verified/);assert(!m.$('slspSearchResults').textContent.includes('No visible matches'));assert(!m.$('slspSearchResults').querySelector('[data-action=request]'));
+});
