@@ -11,6 +11,7 @@
  */
 
 const express = require('express');
+const { EVENT_TODAY_SQL } = require('../services/event-calendar');
 const pool = require('../config/database');
 const { resolveNamedVenue } = require('../services/concierge-named-venue');
 const {publicVenue,availableVenueSQL} = require('../services/venue-helpers');
@@ -220,14 +221,13 @@ async function queryVenues(intent, limit) {
 // EVENT QUERY
 // ═════════════════════════════════════════════════════════════
 async function queryEvents(intent, limit) {
-    const start = new Date(), end = new Date();
-    end.setUTCDate(end.getUTCDate() + (intent.times.includes('weekend') ? 7 : 1));
+    const days = intent.times.includes('weekend') ? 7 : 1;
     const result = await pool.query(
         `SELECT ${EVENT_COLUMNS}
          FROM events e LEFT JOIN venues v ON v.id=e.venue_id
-         WHERE ${PUBLIC_EVENT()} AND e.date BETWEEN $1::date AND $2::date
-         ORDER BY e.date,e.start_time,e.id LIMIT $3`,
-        [start.toISOString().slice(0,10),end.toISOString().slice(0,10),limit || 5]
+         WHERE ${PUBLIC_EVENT()} AND e.date BETWEEN ${EVENT_TODAY_SQL} AND (${EVENT_TODAY_SQL} + $1::integer)
+         ORDER BY e.date,e.start_time,e.id LIMIT $2`,
+        [days,limit || 5]
     );
     return result.rows.map(publicEvent);
 }

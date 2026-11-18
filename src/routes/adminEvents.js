@@ -4,6 +4,7 @@
  */
 
 const express = require('express');
+const { EVENT_TODAY_SQL } = require('../services/event-calendar');
 const router = express.Router();
 const pool = require('../config/database');
 const { requireAdmin } = require('../middleware/auth');
@@ -20,8 +21,8 @@ router.get('/summary', async (req, res) => {
       SELECT
         COUNT(*) AS total,
         COUNT(*) FILTER (WHERE is_active = true) AS active,
-        COUNT(*) FILTER (WHERE date >= CURRENT_DATE) AS upcoming,
-        COUNT(*) FILTER (WHERE date < CURRENT_DATE) AS past,
+        COUNT(*) FILTER (WHERE date >= ${EVENT_TODAY_SQL}) AS upcoming,
+        COUNT(*) FILTER (WHERE date < ${EVENT_TODAY_SQL}) AS past,
         COUNT(*) FILTER (WHERE source = 'ticketmaster') AS ticketmaster,
         COUNT(*) FILTER (WHERE source = 'eventbrite') AS eventbrite,
         COUNT(*) FILTER (WHERE source = 'manual' OR source IS NULL) AS manual,
@@ -49,8 +50,8 @@ router.get('/list', async (req, res) => {
     let i = 1;
     if (q) { conds.push(`(title ILIKE $${i} OR venue_name ILIKE $${i})`); vals.push(`%${q}%`); i++; }
     if (source) { conds.push(`source = $${i++}`); vals.push(source); }
-    if (scope === 'upcoming') conds.push(`date >= CURRENT_DATE`);
-    else if (scope === 'past') conds.push(`date < CURRENT_DATE`);
+    if (scope === 'upcoming') conds.push(`date >= ${EVENT_TODAY_SQL}`);
+    else if (scope === 'past') conds.push(`date < ${EVENT_TODAY_SQL}`);
     const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
     const totalQ = await pool.query(`SELECT COUNT(*)::int AS total FROM events ${where}`, vals);
     vals.push(limit, offset);
