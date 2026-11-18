@@ -8,6 +8,14 @@
   const $ = id => document.getElementById(id);
   const providers = {instagram:'Instagram',facebook:'Facebook',tiktok:'TikTok',x:'X',youtube:'YouTube',linkedin:'LinkedIn',snapchat:'Snapchat'};
   const state = {epoch:0,session:null,user:null,own:false,public:null,busy:new Set(),search:0,query:'',searchItems:[],searchMore:false,friendSerial:0,friendItems:[],friendMore:false,friendsLoaded:false};
+  const formLocks=new WeakMap();
+  function lockPendingControls(form) {
+    const controls=form&&formLocks.get(form);if(!controls)return;
+    [...form.elements].filter(el=>'disabled' in el).forEach(el=>{
+      if(!controls.has(el))controls.set(el,el.disabled);
+      el.disabled=true;
+    });
+  }
   const who = () => { const p = new URLSearchParams(location.search); return p.get('u') || p.get('user') || p.get('username'); };
   const valid = (epoch, session) => epoch === state.epoch && session === C().token();
   const name = u => u.display_name || u.username || 'SceneLink member';
@@ -124,6 +132,7 @@
     try { const d=await C().request('/media/capability'); if(!valid(epoch,session)||!target.isConnected)return;
       if(d.enabled===true && d.contract==='server-upload-v1'){state.media=d;target.innerHTML='<label>Choose a photo<input id="slspAvatarFile" type="file" accept="image/png,image/jpeg,image/webp"><small>PNG, JPEG or WebP, up to 4 MB. Upload saves the photo immediately, separately from your profile draft.</small></label>'+action('upload-avatar','Upload photo')+'<p id="slspAvatarStatus" class="slsp-status" role="status"></p>';}
       else target.innerHTML='<p class="slsp-muted slsp-small">Photo uploads are not connected. No photo will be uploaded. Existing photos can be removed when saving.</p>';
+      lockPendingControls(target.closest('form'));
     }catch(e){if(valid(epoch,session)&&target.isConnected)target.innerHTML='<p class="slsp-muted slsp-small">Photo upload availability could not be checked. You can still edit the rest of your profile.</p>';}
     finally { delete target.dataset.loading; }
   }
@@ -173,7 +182,8 @@
     const epoch = state.epoch, session = C().token(), payload = {revision:Number(form.dataset.revision)}, data = new FormData(form);
     if (settings) { ['is_private','discoverable','show_achievements','share_read_receipts'].forEach(k => payload[k] = data.has(k)); payload.allow_messages = data.get('allow_messages'); }
     else { ['display_name','username','bio','neighborhood','city'].forEach(k => payload[k] = String(data.get(k)||'').trim()); if(data.has('remove_avatar'))payload.avatar_url=null; payload.social_links = Object.keys(providers).map(provider => ({provider,url:String(data.get('social_' + provider)||'').trim()})).filter(l => l.url); }
-    state.busy.add(key); state.busy.add('profile-mutation'); form.querySelectorAll('button').forEach(b => b.disabled=true); status(sid,'Saving…'); let saved = false;
+    const controls=new Map();formLocks.set(form,controls);
+    state.busy.add(key); state.busy.add('profile-mutation'); lockPendingControls(form); form.setAttribute('aria-busy','true'); status(sid,'Saving…'); let saved = false;
     try {
       const result = await C().request(settings ? '/users/me/settings' : '/auth/profile',{method:settings ? 'PATCH' : 'PUT',body:payload}); saved = true;
       if (!valid(epoch,session)) return;
@@ -184,7 +194,7 @@
       state.user = read.user; state.friendsLoaded = false; render(); restoreOtherDraft(draft); if (settings) selectTab('settings',false);
       status('slspActionStatus',settings ? 'Privacy settings saved and read back from your account.' : 'Profile saved and read back from your account.','success');
     } catch (e) { if (valid(epoch,session)) status(sid,saved ? 'The save was accepted, but readback failed. Reload the saved profile to verify before making another change.' : errorText(e),'error'); }
-    finally {state.busy.delete(key); state.busy.delete('profile-mutation'); if(form.isConnected)form.querySelectorAll('button').forEach(b => b.disabled=false);}
+    finally {state.busy.delete(key); state.busy.delete('profile-mutation'); if(form.isConnected){controls.forEach((disabled,el)=>{if(form.contains(el))el.disabled=disabled;});form.removeAttribute('aria-busy');}formLocks.delete(form);}
   }
   function confirmedRelationshipMessage(kind, result, id, fid) {
     const r=result||{};
