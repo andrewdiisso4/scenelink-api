@@ -177,6 +177,28 @@
     } catch (e) { if (valid(epoch,session)) status(sid,saved ? 'The save was accepted, but readback failed. Reload the saved profile to verify before making another change.' : errorText(e),'error'); }
     finally {state.busy.delete(key); state.busy.delete('profile-mutation'); if(form.isConnected)form.querySelectorAll('button').forEach(b => b.disabled=false);}
   }
+  function confirmedRelationshipMessage(kind, result, id, fid) {
+    const r=result||{};
+    const unconfirmed=()=>{throw new Error('The service did not confirm this change. Refresh the profile to verify before trying again.');};
+    if(kind==='request'){
+      if(typeof r.friendship_id!=='string'||!r.friendship_id||!['pending','accepted'].includes(r.status)||!['incoming','outgoing'].includes(r.direction))return unconfirmed();
+      if(r.status==='accepted')return 'You are already friends.';
+      return r.direction==='incoming'?'This member has already sent you a request. Accept it to become friends.':'Friend request saved. It is pending until the other person accepts.';
+    }
+    if(kind==='accept'||kind==='decline'){
+      if(r.friendship_id!==fid||r.status!==(kind==='accept'?'accepted':'declined'))return unconfirmed();
+      return kind==='accept'?'Friend request accepted.':'Request declined.';
+    }
+    if(kind==='remove'){
+      if(r.removed!==true||r.user_id!==id)return unconfirmed();
+      return 'Friendship or request removed.';
+    }
+    if(kind==='block'||kind==='unblock'){
+      if(r.success!==true||r[kind==='block'?'blocked_id':'unblocked_id']!==id)return unconfirmed();
+      return kind==='block'?'Member blocked. They can no longer contact you.':'Member unblocked. No friendship was restored.';
+    }
+    return unconfirmed();
+  }
   async function friendAction(btn) {
     const kind = btn.dataset.action, id = btn.dataset.id, fid = btn.dataset.fid, key = 'person:' + id;
     if (!C().token()) { if(window.SLAuthUI)window.SLAuthUI.open('login'); return; }
@@ -185,11 +207,11 @@
     const routes = {request:['POST','/friends/request',{user_id:id}],accept:['POST','/friends/accept',{friendship_id:fid}],decline:['POST','/friends/decline',{friendship_id:fid}],remove:['DELETE','/friends/'+encodeURIComponent(id)],block:['POST','/users/'+encodeURIComponent(id)+'/block'],unblock:['DELETE','/users/'+encodeURIComponent(id)+'/block']};
     const route = routes[kind]; if (!route) return;
     const epoch = state.epoch, session = C().token(); state.busy.add(key); btn.disabled=true; status('slspActionStatus','Saving your choice…');
-    try { await C().request(route[1],{method:route[0],body:route[2]}); if (!valid(epoch,session))return;
+    try { const result=await C().request(route[1],{method:route[0],body:route[2]}); if (!valid(epoch,session))return; const confirmation=confirmedRelationshipMessage(kind,result,id,fid);
       if (kind === 'block' && !state.own) { host.innerHTML = '<section class="slsp-card"><h1>Member blocked</h1><p>They can no longer contact you. You can manage blocked people in privacy settings.</p><a class="slsp-button" href="/profile#settings">Back to your profile</a></section>'; return; }
       if (state.own) { await loadFriends(); if(state.query)await search(); if(kind==='unblock')await loadBlocked(); loadAchievements(); }
       else { const d = await C().request('/users/'+encodeURIComponent(who())); if (!valid(epoch,session))return; state.public=d;state.user=d.user;render(); }
-      if(valid(epoch,session))status('slspActionStatus',kind === 'request' ? 'Friend request saved. It is pending until the other person accepts.' : kind === 'accept' ? 'Friend request accepted.' : kind === 'decline' ? 'Request declined.' : kind === 'unblock' ? 'Member unblocked. No friendship was restored.' : 'Friendship or request removed.','success');
+      if(valid(epoch,session))status('slspActionStatus',confirmation,'success');
     } catch (e) { if(valid(epoch,session))status('slspActionStatus',errorText(e),'error'); }
     finally {state.busy.delete(key); if(btn.isConnected)btn.disabled=false;}
   }

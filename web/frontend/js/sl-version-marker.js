@@ -17,10 +17,10 @@
 (function(){
   'use strict';
   var V = {
-    phase: 'licensed-shared-photos',
-    sw_version: 'sl-connected-20261118-licensed2',
-    deploy: 'connected-20261118-licensed2',
-    built: '2026-11-17T23:55:18.019322+00:00',
+    phase: 'account-search-flow',
+    sw_version: 'sl-connected-20261118-account-search1',
+    deploy: 'connected-20261118-account-search1',
+    built: '2026-11-18T01:48:32.617920+00:00',
     backend_change: 'none'
   };
   // Always-available global
