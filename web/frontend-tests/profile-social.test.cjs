@@ -48,7 +48,7 @@ test('people search suppresses older and input-changed responses; requests use s
  let releaseOld,requested=false;const m=await make(t,{handle:async r=>{
   if(r.url.includes('/users/search?q=old')){await new Promise(resolve=>releaseOld=resolve);return{body:{results:[{id:PEER,username:'old',display_name:'OLD RESPONSE'}]}};}
   if(r.url.includes('/users/search?q=new'))return{body:{results:[{id:PEER,username:'new',display_name:'NEW RESPONSE',friendship_status:requested?{id:'request-id',status:'pending',direction:'outgoing'}:null}]}};
-  if(r.url==='/api/friends/request'){requested=true;return{body:{friendship_id:'request-id',status:'pending'}};}
+  if(r.url==='/api/friends/request'){requested=true;return{body:{friendship_id:'request-id',status:'pending',direction:'outgoing'}};}
  }});m.click('[data-tab=friends]');await tick();m.$('slspSearchInput').value='old';m.submit('slspSearchForm');await tick();m.$('slspSearchInput').value='new';m.$('slspSearchInput').dispatchEvent(new m.w.Event('input',{bubbles:true}));m.submit('slspSearchForm');await tick();releaseOld();await tick();assert.match(m.$('slspSearchResults').textContent,/NEW RESPONSE/);assert(!m.$('slspSearchResults').textContent.includes('OLD RESPONSE'));
  m.click('#slspSearchResults [data-action=request]');await tick();assert.match(m.$('slspSearchResults').textContent,/Request pending/);assert.match(m.$('slspActionStatus').textContent,/pending until/);assert.equal(m.calls.find(c=>c.url==='/api/friends/request').body.user_id,PEER);
 });
@@ -115,4 +115,59 @@ test('pending save cannot restore prior profile draft after account switches',as
 });
 test('failed privacy save keeps both forms without altering profile draft revision',async t=>{
  const m=await make(t,{handle:r=>r.method==='PATCH'?{status:409,body:{error:'Changed elsewhere',code:'STALE_PROFILE'}}:null});m.click('[data-action=edit]');await tick();m.$('slspEditForm').elements.bio.value='PROFILE DRAFT';m.$('slspSettingsForm').elements.allow_messages.value='none';m.submit('slspSettingsForm');await tick();assert.equal(m.$('slspEditForm').elements.bio.value,'PROFILE DRAFT');assert.equal(m.$('slspEditForm').dataset.revision,'1');assert.equal(m.$('slspSettingsForm').elements.allow_messages.value,'none');assert.match(m.$('slspSettingsStatus').textContent,/changed in another session/);
+});
+
+const FRIENDSHIP='00000000-0000-4000-8000-000000000003';
+async function relationshipFixture(t,{kind='request',reply,delay}={}){
+ const initial=kind==='remove'?{id:FRIENDSHIP,status:'accepted'}:['accept','decline'].includes(kind)?{id:FRIENDSHIP,status:'pending',direction:'incoming'}:null;
+ return make(t,{url:'https://scenelink.test/profile?u='+PEER,handle:async r=>{
+  if(r.method!=='GET'){if(delay)await delay();return{body:reply};}
+  if(r.url==='/api/users/'+PEER)return{body:{user:{id:PEER,username:'private_peer',display_name:'Private peer',bio:'HIDDEN BIO'},is_me:false,can_view:false,can_message:false,friendship_status:initial}};
+ }});
+}
+for(const [label,reply,expected] of [
+ ['outgoing',{friendship_id:FRIENDSHIP,status:'pending',direction:'outgoing'},/Friend request saved/],
+ ['incoming',{friendship_id:FRIENDSHIP,status:'pending',direction:'incoming'},/already sent you a request.*Accept it/s],
+ ['already accepted',{friendship_id:FRIENDSHIP,status:'accepted',direction:'outgoing'},/already friends/]
+])test('request confirmation respects persisted '+label+' state',async t=>{
+ const m=await relationshipFixture(t,{reply});m.click('[data-action=request]');await tick();await tick();
+ assert.match(m.$('slspActionStatus').textContent,expected);
+ assert(!m.$('slSocialProfile').textContent.includes('HIDDEN BIO'));assert(!m.w.document.querySelector('a[href^="/messages?to="]'));
+ assert.equal(m.calls.filter(c=>c.method==='POST').length,1);
+});
+for(const [kind,reply,expected] of [
+ ['accept',{friendship_id:FRIENDSHIP,status:'accepted'},/request accepted/],
+ ['decline',{friendship_id:FRIENDSHIP,status:'declined'},/Request declined/],
+ ['remove',{removed:true,user_id:PEER},/request removed/],
+ ['block',{success:true,blocked_id:PEER},/Member blocked/]
+])test(kind+' confirms exact operation and target',async t=>{
+ const m=await relationshipFixture(t,{kind,reply});m.click('[data-action='+kind+']');await tick();await tick();
+ assert.match(m.$('slSocialProfile').textContent,expected);assert(!m.$('slSocialProfile').textContent.includes('HIDDEN BIO'));
+});
+for(const [kind,reply] of [
+ ['request',{success:true}],
+ ['request',{friendship_id:FRIENDSHIP,status:'pending',direction:'unknown'}],
+ ['accept',{friendship_id:PEER,status:'accepted'}],
+ ['decline',{friendship_id:FRIENDSHIP,status:'accepted'}],
+ ['remove',{removed:true,user_id:ID}],
+ ['block',{success:true,blocked_id:ID}]
+])test(kind+' rejects incomplete or mismatched confirmation '+JSON.stringify(reply),async t=>{
+ const m=await relationshipFixture(t,{kind,reply});m.click('[data-action='+kind+']');await tick();
+ assert.match(m.$('slspActionStatus').textContent,/did not confirm/);assert.equal(m.$('slspActionStatus').dataset.kind,'error');
+ assert(!m.$('slSocialProfile').textContent.includes('HIDDEN BIO'));
+});
+test('pending friend action suppresses duplicate clicks and old-session confirmation',async t=>{
+ let release;const m=await relationshipFixture(t,{reply:{friendship_id:FRIENDSHIP,status:'pending',direction:'outgoing'},delay:()=>new Promise(r=>release=r)});
+ m.click('[data-action=request]');m.click('[data-action=request]');await tick();assert.equal(m.calls.filter(c=>c.method==='POST').length,1);
+ m.w.localStorage.removeItem('sl_jwt_token');m.w.dispatchEvent(new m.w.Event('sl-auth-changed'));await tick();release();await tick();
+ assert(!m.$('slSocialProfile').textContent.includes('Friend request saved'));assert(!m.$('slSocialProfile').textContent.includes('HIDDEN BIO'));
+});
+for(const reply of [{success:true,unblocked_id:PEER},{success:true,unblocked_id:ID}])test('unblock checks identity and never restores friendship '+reply.unblocked_id,async t=>{
+ const m=await make(t,{url:'https://scenelink.test/profile#settings',handle:r=>{
+  if(r.url==='/api/users/blocked')return{body:{blocked:[{id:PEER,display_name:'Blocked peer'}]}};
+  if(r.method==='DELETE')return{body:reply};
+ }});
+ m.click('[data-action=unblock]');await tick();await tick();
+ assert.match(m.$('slspActionStatus').textContent,reply.unblocked_id===PEER?/No friendship was restored/:/did not confirm/);
+ assert.equal(m.calls.filter(c=>c.url==='/api/friends/request').length,0);
 });
