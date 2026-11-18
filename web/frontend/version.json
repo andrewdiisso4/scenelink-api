@@ -1,10 +1,10 @@
 {
-  "phase": "profile-save-draft-safety",
-  "sw_version": "sl-connected-20261118-save-lock1",
-  "timestamp": "2026-11-18T02:53:07.819854+00:00",
+  "phase": "comment-search-reliability",
+  "sw_version": "sl-connected-20261118-comment-search1",
+  "timestamp": "2026-11-18T23:15:49.410594+00:00",
   "status": "local_candidate_not_deployed",
   "requires_paired_backend": false,
   "required_migration": "016_private_list_invitations.sql",
   "rollout_order": "compatible_frontend_then_backend",
-  "summary": "Prevent profile/privacy edit loss during pending saves; preserve other-form drafts and prior disabled controls. No schema, real user uploads, provider activation or venue imports."
+  "summary": "Protect comment drafts and duplicate submissions; improve shared search thumbnail fallback and text separation. No backend, provider activation or venue imports."
 }

@@ -53,3 +53,26 @@ test('combobox announces selected result, scrolls it into view, and clears selec
  }finally{h.w.close();}
 });
 test('changing query and auth session clears stale active-descendant state',async()=>{const h=await harness(async()=>reply({}));try{await h.search('a');h.input.dispatchEvent(new h.w.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));assert(h.input.hasAttribute('aria-activedescendant'));h.input.value='b';h.input.dispatchEvent(new h.w.Event('input'));assert(!h.input.hasAttribute('aria-activedescendant'));h.w.dispatchEvent(new h.w.Event('sl-auth-changed'));assert.equal(h.input.getAttribute('aria-expanded'),'false');assert(!h.input.hasAttribute('aria-activedescendant'));}finally{h.w.close();}});
+
+
+test('failed venue and avatar thumbnails become escaped text without retrying image loads',async()=>{
+ const calls=[],h=await harness(async url=>{calls.push(url);return reply({venues:[{id:'v',name:'Pizza',thumbnail_url:'/missing.jpg'}],users:[{id:'u',username:'friend',display_name:'<img Friend',avatar_url:'/missing-avatar.jpg'}]});});
+ try{await h.search('fixture');const thumbs=[...h.w.document.querySelectorAll('[data-slus-fallback]')],images=thumbs.map(t=>t.querySelector('img'));assert.equal(images.length,2);
+ images.forEach(img=>img.dispatchEvent(new h.w.Event('error')));
+ assert.equal(thumbs[0].textContent,'⌖');assert.equal(thumbs[1].textContent,'<F');assert.equal(thumbs[1].children.length,0);assert.equal(h.w.document.querySelectorAll('.slus-thumb img').length,0);
+ images.forEach(img=>img.dispatchEvent(new h.w.Event('error')));assert.equal(calls.length,1);assert.equal(thumbs[0].textContent,'⌖');assert(thumbs.every(t=>t.getAttribute('aria-hidden')==='true'));assert(!h.w.document.querySelector('[onerror]'));
+ }finally{h.w.close();}
+});
+test('missing venue photos and avatars use non-image fallbacks immediately',async()=>{
+ const h=await harness(async()=>reply({venues:[{id:'v',name:'Pizza'}],users:[{id:'u',username:'friend',display_name:'Ada Friend'}]}));
+ try{await h.search('fixture');const thumbs=[...h.w.document.querySelectorAll('[data-slus-fallback]')];assert.deepEqual(thumbs.map(t=>t.textContent),['⌖','AF']);assert.equal(h.w.document.querySelectorAll('.slus-thumb img').length,0);}finally{h.w.close();}
+});
+test('placeholder URL failure is terminal, without loading another placeholder',async()=>{
+ const h=await harness(async()=>reply({venues:[{id:'v',name:'Pizza',thumbnail_url:'/images/placeholder.svg'}]}));
+ try{await h.search('fixture');const image=h.w.document.querySelector('.slus-thumb img'),thumb=image.parentElement;image.dispatchEvent(new h.w.Event('error'));assert.equal(thumb.textContent,'⌖');assert.equal(thumb.querySelector('img'),null);}finally{h.w.close();}
+});
+test('suggestion title and subtitle are separate block lines with a shrinking text track',async()=>{
+ const h=await harness(async()=>reply({venues:[{id:'v',name:'Long venue name',cuisine:'pizza',neighborhood:'Cambridge'}],users:[{id:'u',username:'friend',display_name:'Ada Friend'}],neighborhoods:[{name:'North End'}],categories:[{name:'cafe'}]}));
+ try{const style=h.w.document.createElement('style');style.textContent=fs.readFileSync(path.join(__dirname,'../frontend/css/sl-universal-search.css'),'utf8');h.w.document.head.appendChild(style);await h.search('fixture');const copies=[...h.w.document.querySelectorAll('.slus-copy')];assert.equal(copies.length,5);for(const copy of copies){assert.equal(h.w.getComputedStyle(copy).minWidth,'0');for(const el of copy.children)assert.equal(h.w.getComputedStyle(el).display,'block');assert.match(copy.textContent,/\S\s+\S/);}assert.match(copies[0].textContent,/Long venue name pizza/);
+ }finally{h.w.close();}
+});

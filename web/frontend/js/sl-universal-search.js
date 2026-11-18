@@ -15,25 +15,28 @@
   function api(path){ var h={'Accept':'application/json'}; var t=token(); if(t) h.Authorization='Bearer '+t; return fetch(API+path,{headers:h,credentials:'omit'}).then(function(r){return r.text().then(function(txt){var d=null;try{d=txt?JSON.parse(txt):null;}catch(_){d={raw:txt};} if(!r.ok){var e=new Error(d&&d.error||('HTTP '+r.status));e.status=r.status;throw e;} return d;});}); }
   function venueUrl(v){ return '/explore.html?' + (v.slug ? 'venue=' + encodeURIComponent(v.slug) : 'venue_id=' + encodeURIComponent(v.id || '')); }
   function initials(name){ return String(name||'?').trim().split(/\s+/).slice(0,2).map(function(x){return x[0]||'';}).join('').toUpperCase() || '?'; }
+  function thumbnail(url, label){
+    return '<span class="slus-thumb" aria-hidden="true" data-slus-fallback="'+esc(label)+'">'+(url?'<img loading="lazy" decoding="async" src="'+esc(url)+'" alt="">':esc(label))+'</span>';
+  }
   function itemHtml(kind, obj){
     if(kind==='venue'){
       var img=obj.thumbnail_url||obj.cover_image_url||obj.image_url||'';
       return '<a class="slus-item" data-slus-item href="'+esc(venueUrl(obj))+'" data-slus-label="'+esc(obj.name)+'">'+
-        '<span class="slus-thumb">'+(img?'<img loading="lazy" decoding="async" src="'+esc(img)+'" alt="">':'<i class="fas fa-location-dot"></i>')+'</span>'+
-        '<span><span class="slus-name">'+esc(obj.name||'Venue')+'</span><span class="slus-meta">'+esc([obj.cuisine||obj.category||obj.type,obj.neighborhood].filter(Boolean).join(' · ')||'Boston venue')+'</span></span>'+
+        thumbnail(img,'⌖')+
+        '<span class="slus-copy"><span class="slus-name">'+esc(obj.name||'Venue')+'</span> <span class="slus-meta">'+esc([obj.cuisine||obj.category||obj.type,obj.neighborhood].filter(Boolean).join(' · ')||'Boston venue')+'</span></span>'+
         '<span class="slus-kind">Venue</span></a>';
     }
     if(kind==='person'){
       return '<a class="slus-item" data-slus-item href="/profile.html?user='+encodeURIComponent(obj.username||obj.id||'')+'" data-slus-label="'+esc(obj.display_name||obj.username)+'">'+
-        '<span class="slus-thumb">'+(obj.avatar_url?'<img loading="lazy" decoding="async" src="'+esc(obj.avatar_url)+'" alt="">':esc(initials(obj.display_name||obj.username)))+'</span>'+
-        '<span><span class="slus-name">'+esc(obj.display_name||obj.username||'SceneLink user')+'</span><span class="slus-meta">@'+esc(obj.username||'user')+(obj.neighborhood?' · '+esc(obj.neighborhood):'')+'</span></span>'+
+        thumbnail(obj.avatar_url,initials(obj.display_name||obj.username))+
+        '<span class="slus-copy"><span class="slus-name">'+esc(obj.display_name||obj.username||'SceneLink user')+'</span> <span class="slus-meta">@'+esc(obj.username||'user')+(obj.neighborhood?' · '+esc(obj.neighborhood):'')+'</span></span>'+
         '<span class="slus-kind">Person</span></a>';
     }
     if(kind==='neighborhood'){
       return '<a class="slus-item" data-slus-item href="/explore.html?neighborhood='+encodeURIComponent(obj.name||obj.neighborhood||obj.label||'')+'" data-slus-label="'+esc(obj.name||obj.neighborhood||obj.label)+'">'+
-        '<span class="slus-thumb"><i class="fas fa-map"></i></span><span><span class="slus-name">'+esc(obj.name||obj.neighborhood||obj.label)+'</span><span class="slus-meta">'+esc(obj.count||'')+' Boston venues</span></span><span class="slus-kind">Area</span></a>';
+        '<span class="slus-thumb"><i class="fas fa-map"></i></span><span class="slus-copy"><span class="slus-name">'+esc(obj.name||obj.neighborhood||obj.label)+'</span> <span class="slus-meta">'+esc(obj.count||'')+' Boston venues</span></span><span class="slus-kind">Area</span></a>';
     }
-    return '<a class="slus-item" data-slus-item href="/explore.html?q='+encodeURIComponent(obj.name||obj.label||'')+'" data-slus-label="'+esc(obj.name||obj.label)+'"><span class="slus-thumb"><i class="fas fa-tags"></i></span><span><span class="slus-name">'+esc(obj.name||obj.label||'Category')+'</span><span class="slus-meta">'+esc(obj.count||'')+' matches</span></span><span class="slus-kind">Type</span></a>';
+    return '<a class="slus-item" data-slus-item href="/explore.html?q='+encodeURIComponent(obj.name||obj.label||'')+'" data-slus-label="'+esc(obj.name||obj.label)+'"><span class="slus-thumb"><i class="fas fa-tags"></i></span><span class="slus-copy"><span class="slus-name">'+esc(obj.name||obj.label||'Category')+'</span> <span class="slus-meta">'+esc(obj.count||'')+' matches</span></span><span class="slus-kind">Type</span></a>';
   }
   function openConcierge(q){
     q = String(q || '').trim() || 'Plan my night in Boston';
@@ -79,7 +82,7 @@
     html += section('People', people.slice(0,4).map(function(u){return itemHtml('person',u);}).join(''));
     html += section('Neighborhoods', hoods.slice(0,4).map(function(n){return itemHtml('neighborhood',n);}).join(''));
     html += section('Categories', cats.slice(0,4).map(function(c){return itemHtml('category',c);}).join(''));
-    html += '<div class="slus-section"><button class="slus-item" type="button" data-slus-item data-slus-ask-ai="'+esc(q)+'"><span class="slus-thumb"><i class="fas fa-magic"></i></span><span><span class="slus-name">Ask AI Concierge</span><span class="slus-meta">Build a night around “'+esc(q)+'”</span></span><span class="slus-kind">AI</span></button></div>';
+    html += '<div class="slus-section"><button class="slus-item" type="button" data-slus-item data-slus-ask-ai="'+esc(q)+'"><span class="slus-thumb"><i class="fas fa-magic"></i></span><span class="slus-copy"><span class="slus-name">Ask AI Concierge</span> <span class="slus-meta">Build a night around “'+esc(q)+'”</span></span><span class="slus-kind">AI</span></button></div>';
     if(!venues.length&&!people.length&&!hoods.length&&!cats.length) html='<div class="slus-empty">No direct matches yet. Press Enter to search Explore, or ask AI Concierge for “'+esc(q)+'”.</div>' + html;
     sc.innerHTML=html; setActive(root,-1);
   }
@@ -97,6 +100,13 @@
   function goSearch(q){ q=String(q||'').trim(); if(!q) return; saveRecent(q); window.location.href='/explore.html?q='+encodeURIComponent(q); }
   function bind(root){
     var input=qs('.slus-input',root), panel=qs('.slus-panel',root), ai=qs('.slus-ai',root); if(!input||!panel)return;
+    // Capture non-bubbling image errors before asynchronous results are inserted.
+    // A text fallback needs no image fetch and cannot enter a retry loop.
+    root.addEventListener('error',function(e){
+      var img=e.target, thumb=img&&img.parentElement;
+      if(!img||img.tagName!=='IMG'||!thumb||!thumb.hasAttribute('data-slus-fallback'))return;
+      thumb.textContent=thumb.getAttribute('data-slus-fallback')||'⌖';
+    },true);
     function open(){ setOpen(root,true); if(!input.value.trim()) renderDefault(root); }
     function close(){ setTimeout(function(){ if(!root.contains(document.activeElement)) setOpen(root,false); }, 0); }
     function resetSession(){searchGeneration++;lastQuery='';clearTimeout(debounceTimer);renderDefault(root);setOpen(root,false);}
