@@ -1,10 +1,10 @@
 {
-  "phase": "comment-search-reliability",
-  "sw_version": "sl-connected-20261118-comment-search2",
-  "timestamp": "2026-11-18T23:20:25.472946+00:00",
-  "status": "local_candidate_not_deployed",
+  "phase": "discover-together",
+  "sw_version": "sl-connected-20261119-discover-together",
+  "timestamp": "2026-11-19T00:29:01.964135+00:00",
+  "status": "versioned_build",
   "requires_paired_backend": false,
   "required_migration": "016_private_list_invitations.sql",
   "rollout_order": "compatible_frontend_then_backend",
-  "summary": "Protect comment drafts and duplicate submissions; improve shared search thumbnail fallback and text separation. No backend, provider activation or venue imports."
+  "summary": "Share exact venues, sort loaded results nearby on device, require privacy write confirmation, keep concierge handoffs as editable drafts, and show three additional licensed venue photos. No backend, provider activation or venue imports."
 }

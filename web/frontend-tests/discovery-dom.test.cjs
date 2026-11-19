@@ -479,3 +479,83 @@ for (const explicit of ['', 'name']) test('explore preserves server ordering acr
   await h.w.__slExploreData.setSearch('');assert.equal(calls.at(-1).sort,explicit||'name');assert.deepEqual(h.errors,[]);
  }finally{h.dom.window.close();}
 });
+
+for (const page of ['explore', 'nightlife']) {
+  const nearbyButton = h => h.w.document.querySelector('[data-nearby-toggle]');
+  const status = h => h.w.document.querySelector('[data-nearby-status]').textContent;
+  const cardIds = h => [...h.w.document.querySelectorAll('#slListCards .sl-list-card')].map(card => card.dataset.id);
+  const far = {...venue('far'),lat:42.42,lng:-71.16};
+  const near = {...venue('near'),lat:'42.3602',lng:'-71.0588'};
+  const nearer = {...venue('nearer'),lat:42.36001,lng:-71.05889};
+  const invalid = {...venue('invalid-distance'),lat:'  ',lng:null};
+  test(page + ': opt-in Nearby sorts only loaded matching venues and never moves map or sends the location', async () => {
+    const calls = [];
+    const h = harness(page, async url => {
+      calls.push(url);
+      return reply(calls.length === 1 ? {venues:[far,invalid,near],total:4,has_more:true} : {venues:[nearer],total:4,has_more:false});
+    });
+    try {
+      let requests = 0, succeed;
+      h.w.navigator.geolocation = { getCurrentPosition(ok,_err,options){requests++;succeed=ok;assert.equal(options.maximumAge,0);assert.equal(options.enableHighAccuracy,false);} };
+      await tick();
+      assert.equal(requests,0);
+      const camera = [...h.fake.state.cameraEvents];
+      const startingUrl = h.w.location.href;
+      h.w.document.querySelector('#slSearchLoc').click();
+      h.w.document.querySelector('#slLocateBtn').click();
+      assert.equal(requests,1);
+      assert.equal(h.w.document.activeElement,nearbyButton(h));
+      assert.match(status(h), /Finding/);
+      succeed({coords:{latitude:42.36,longitude:-71.0589}});
+      assert(h.w.document.getElementById('slListView').classList.contains('active'));
+      assert.match(status(h), /Loaded results sorted by approximate straight-line distance/);
+      assert.deepEqual(cardIds(h), ['near','far','invalid-distance']);
+      assert.match(h.w.document.querySelector('.sl-list-card[data-id="near"] .sl-list-card-dist').textContent, /Under 0.1 mi/);
+      assert.match(h.w.document.querySelector('.sl-list-card[data-id="invalid-distance"] .sl-list-card-dist').textContent, /Distance unavailable/);
+      assert.deepEqual(h.fake.state.cameraEvents, camera);
+      assert.equal(h.w.location.href,startingUrl);
+      assert.equal(calls.length,1);
+      [...h.w.document.querySelectorAll('#slListCards button')].find(btn => /Load more/i.test(btn.textContent)).click();
+      await tick();
+      assert.deepEqual(cardIds(h), ['nearer','near','far','invalid-distance']);
+      assert(!calls[1].includes('42.36'));
+      assert(!calls[1].includes('71.0589'));
+      assert.equal(h.w.localStorage.length,0);
+      assert.equal(h.w.sessionStorage.length,0);
+      nearbyButton(h).click();
+      assert.deepEqual(cardIds(h), ['far','invalid-distance','near','nearer']);
+      assert.match(status(h), /cleared/);
+      assert.deepEqual(h.errors,[]);
+    } finally { h.dom.window.close(); }
+  });
+  test(page + ': Nearby works independent of map and handles cancellation, failures and page history', async () => {
+    const h = harness(page, async () => reply({venues:[far,near],total:2}), '', false);
+    try {
+      await tick();
+      assert.equal(h.fake.state.maps,0);
+      h.w.document.querySelector('#slSearchLoc').click();
+      assert.match(status(h), /cannot provide your location.*filter by neighborhood/);
+      const inFlight=[];
+      h.w.navigator.geolocation = { getCurrentPosition(ok, err){inFlight.push({ok,err});} };
+      for (const [code, wanted] of [[1,/access was denied/],[2,/Location is unavailable/],[3,/timed out/]]) {
+        nearbyButton(h).click(); inFlight.at(-1).err({code});
+        assert.match(status(h), wanted);
+        assert.deepEqual(cardIds(h),['far','near']);
+      }
+      nearbyButton(h).click(); inFlight.at(-1).ok({coords:{latitude:null,longitude:180}});
+      assert.match(status(h), /Location is unavailable/);
+      nearbyButton(h).click(); const canceled=inFlight.at(-1);
+      nearbyButton(h).click(); assert.match(status(h), /canceled/);
+      nearbyButton(h).click();
+      canceled.ok({coords:{latitude:42.36, longitude:-71.0589}});
+      assert.match(status(h), /Finding/);
+      inFlight.at(-1).ok({coords:{latitude:42.36, longitude:-71.0589}});
+      assert.deepEqual(cardIds(h),['near','far']);
+      h.w.dispatchEvent(new h.w.PageTransitionEvent('pagehide',{persisted:true}));
+      h.w.dispatchEvent(new h.w.PageTransitionEvent('pageshow',{persisted:true}));
+      assert.equal(nearbyButton(h).textContent,'Sort nearby');
+      assert.deepEqual(cardIds(h),['far','near']);
+      assert.deepEqual(h.errors,[]);
+    } finally { h.dom.window.close(); }
+  });
+}

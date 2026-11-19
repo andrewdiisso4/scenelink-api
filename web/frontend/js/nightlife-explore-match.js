@@ -281,26 +281,15 @@ function setupFilterModal(){
 }
 
 // ═══════════════════ MAP CONTROLS ═══════════════════
+var nearby;
 function setupMapControls(){
     var zIn = document.getElementById('slZoomIn');
     var zOut = document.getElementById('slZoomOut');
-    var loc = document.getElementById('slLocateBtn');
-    var sloc = document.getElementById('slSearchLoc');
 
     if(zIn) zIn.addEventListener('click',function(){ if(map) {mapViewInteracted=true;map.zoomIn();} });
     if(zOut) zOut.addEventListener('click',function(){ if(map) {mapViewInteracted=true;map.zoomOut();} });
 
-    function locateUser(){
-        mapViewInteracted = true;
-        if(!map || !navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition(function(pos){
-            var ll = [pos.coords.latitude, pos.coords.longitude];
-            map.setView(ll, 15);
-            L.circleMarker(ll, {radius:8, fillColor:'#D4AF37', fillOpacity:1, color:'#fff', weight:2}).addTo(map);
-        });
-    }
-    if(loc) loc.addEventListener('click', locateUser);
-    if(sloc) sloc.addEventListener('click', locateUser);
+    nearby = window.SLDiscoveryNearby.create(function(){ if (!venueLoading) renderList(); });
 
     // Close venue card
     var closeCard = document.getElementById('slCardClose');
@@ -402,7 +391,8 @@ function renderList(){
         return;
     }
 
-    filtered.forEach(function(v,i){
+    (nearby ? nearby.sort(filtered) : filtered).forEach(function(v){
+        var distance = (nearby ? nearby.distance(v) : '') || v.dist;
         var tagCls = v.cat==='nightclub'?'nightclub':v.cat==='bar'?'bar':v.cat==='lounge'?'lounge':v.cat==='rooftop'?'rooftop':v.cat==='music'?'music':'bar';
         var tagsHtml = v.tags.map(function(t){
             return '<span class="sl-list-tag '+tagCls+'">'+slEsc(t)+'</span>';
@@ -435,7 +425,7 @@ function renderList(){
                 '<div class="sl-list-card-detail">'+slEsc(v.type)+' · '+slEsc(v.price)+' · '+slEsc(v.hours)+'</div>'+
                 '<div class="sl-list-card-tags">'+tagsHtml+'</div>'+
                 '<div class="sl-list-card-bottom">'+
-                    '<div class="sl-list-card-dist"><i class="fas fa-map-marker-alt"></i> '+slEsc(v.dist)+'</div>'+
+                    '<div class="sl-list-card-dist"><i class="fas fa-map-marker-alt"></i> '+slEsc(distance)+'</div>'+
                     '<div class="sl-list-card-actions">'+
                         '<button class="sl-list-plan-btn" data-id="'+slEsc(v.id)+'"><i class="fas fa-calendar-plus"></i> Plan Night</button>'+
                         '<button class="sl-list-view-btn" data-id="'+slEsc(v.id)+'"><i class="fas fa-arrow-right"></i> View</button>'+

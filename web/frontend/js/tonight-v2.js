@@ -634,10 +634,21 @@
         '<div class="tv2-plan-empty-icon"><i class="fa fa-moon"></i></div>' +
         '<h4>Start building your night</h4>' +
         '<p>Add dinner, drinks, or a late-night spot. Share it, or get full-route directions when you\'re ready.</p>' +
-        '<button class="tv2-plan-btn-primary" onclick="window.TV2.closePlanDrawer();if(window.SLConcierge){window.SLConcierge.ask(\'Plan my night\');}">' +
+        '<button type="button" class="tv2-plan-btn-primary" data-tv2-ask-draft>' +
         '<i class="fas fa-wand-magic-sparkles"></i> Ask the Concierge to plan it' +
         '</button>' +
         '</div>';
+      body.querySelector('[data-tv2-ask-draft]').addEventListener('click', function () {
+        closePlanDrawer();
+        const prompt = 'Plan my night';
+        if (window.__SL_PHASE8D_RECOVERY__) {
+          window.dispatchEvent(new CustomEvent('sl-concierge-draft', { detail: { prompt } }));
+        } else if (window.SLConcierge && typeof window.SLConcierge.draft === 'function') {
+          window.SLConcierge.draft(prompt);
+        } else {
+          window.location.assign('/tonight?ask=' + encodeURIComponent(prompt));
+        }
+      });
       return;
     }
     const byStop = { dinner: [], drinks: [], late: [] };

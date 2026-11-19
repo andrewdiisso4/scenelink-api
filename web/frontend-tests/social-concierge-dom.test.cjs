@@ -58,6 +58,11 @@ for (const scenario of ['empty', 'venues', 'itinerary', 'legacy', 'rate-limit'])
   assert.match(panel.textContent, /venues listed on SceneLink/);
   assert.doesNotMatch(panel.textContent, /I know every bar, restaurant and venue in Boston/);
   await tick(320);
+  assert.equal(calls.filter(call => call.options.method === 'POST').length, 0, 'nav opens an editable draft only');
+  const input = panel.querySelector('.slc-input');
+  assert.equal(input.value, trigger.getAttribute('data-sl-concierge'));
+  input.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  await tick(0);
   assert.equal(calls.filter(call => call.options.method === 'POST').length, 1);
   assert.equal(JSON.parse(calls.find(call => call.options.method === 'POST').options.body).message, trigger.getAttribute('data-sl-concierge'));
   assert.equal(panel.querySelector('#unsafe-user-markup'), null, 'user text never creates markup');

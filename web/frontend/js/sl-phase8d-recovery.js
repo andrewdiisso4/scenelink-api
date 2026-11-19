@@ -3,8 +3,8 @@
   'use strict';
   if (window.__SL_PHASE8D_RECOVERY__) return;
   window.__SL_PHASE8D_RECOVERY__ = true;
-  var AI_SCRIPT = 'js/ai-concierge-v5.js?v=connected-20261118-comment-search2';
-  var AI_CSS = ['css/ai-concierge.css?v=connected-20261118-comment-search2','css/ai-concierge-v5.css?v=connected-20261118-comment-search2'];
+  var AI_SCRIPT = 'js/ai-concierge-v5.js?v=connected-20261119-discover-together';
+  var AI_CSS = ['css/ai-concierge.css?v=connected-20261119-discover-together','css/ai-concierge-v5.css?v=connected-20261119-discover-together'];
   function qs(s,r){ return (r||document).querySelector(s); }
   function qsa(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); }
   function loadCss(href){
@@ -51,25 +51,24 @@
       if(!status){status=document.createElement('div');status.id='slConciergeLoadStatus';status.setAttribute('role','status');document.body.appendChild(status);}
       status.textContent='Concierge could not load. Select Ask AI to try again.';
   }
-  function openConcierge(prompt, draftOnly){
-    // One pending action: repeated clicks while loading do not duplicate API requests.
-    pendingPrompt = {text:prompt,draftOnly:!!draftOnly};
-    if (openConcierge.waiting) return;
-    openConcierge.waiting=true;
+  function openConciergeDraft(prompt){
+    // Keep only the latest draft while loading; never submit from an outside control.
+    pendingPrompt = prompt;
+    if (openConciergeDraft.waiting) return;
+    openConciergeDraft.waiting=true;
     loadConcierge().then(function(api){
-      var latest=pendingPrompt; pendingPrompt=null; openConcierge.waiting=false;
+      var latest=pendingPrompt; pendingPrompt=null; openConciergeDraft.waiting=false;
       if (latest === null) return;
-      if (latest.draftOnly) { if (typeof api.draft === "function") api.draft(latest.text); else api.open(); }
-      else if (latest.text) api.ask(latest.text); else api.open();
+      if (latest && typeof api.draft === "function") api.draft(latest); else api.open();
     }).catch(function(){
-      pendingPrompt=null; openConcierge.waiting=false;
+      pendingPrompt=null; openConciergeDraft.waiting=false;
       showConciergeLoadError();
     });
   }
   function bindConcierge(){
     window.addEventListener("sl-concierge-draft", function(e){
       var status=qs("#slConciergeLoadStatus");if(status)status.remove();
-      openConcierge(String(e.detail && e.detail.prompt || "").slice(0,500), true);
+      openConciergeDraft(String(e.detail && e.detail.prompt || "").slice(0,500));
     });
     document.addEventListener('click', function(e){
       var t = e.target && e.target.closest && e.target.closest('[data-sl-concierge], [data-ask-concierge], .tv2-ask-ai-btn, .sl-concierge-trigger, [data-concierge-ask], .ask-concierge-btn');
@@ -77,7 +76,7 @@
       e.preventDefault();
       var status=qs('#slConciergeLoadStatus');if(status)status.remove();
       var q = t.getAttribute('data-sl-concierge') || t.getAttribute('data-ask-concierge') || t.getAttribute('data-concierge-ask') || t.getAttribute('data-ask') || '';
-      openConcierge(q.slice(0,500));
+      openConciergeDraft(q.slice(0,500));
     }, true);
     // URL content is a draft, never an instruction to send data or spend on a model.
     try { if((new URLSearchParams(location.search).has('ask') || window.SLConciergeDraft.read() !== null)) loadConcierge().catch(showConciergeLoadError); } catch(_){}

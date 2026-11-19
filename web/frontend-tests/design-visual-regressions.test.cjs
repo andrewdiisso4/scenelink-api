@@ -49,7 +49,7 @@ for(const file of ['messages.html','my-lists.html','social-feed.html']) test(`${
   assert(html.includes('sl-phase8d-recovery.js'),'intentional Ask AI entry retains the existing lazy script-and-style owner');
   const d=new JSDOM(html,{url:`https://scenelink.test/${file}`,runScripts:'outside-only'}),cleanup=[];
   try {
-    const w=d.window,doc=w.document,asked=[];
+    const w=d.window,doc=w.document,drafts=[],asked=[];
     w.setTimeout=(fn,delay)=>{if(delay===20000)cleanup.push(fn);return 1;};
     w.eval(read('js/sl-phase8d-recovery.js'));
     doc.dispatchEvent(new w.Event('DOMContentLoaded'));
@@ -66,10 +66,11 @@ for(const file of ['messages.html','my-lists.html','social-feed.html']) test(`${
       assert(style,`activation includes ${name}`);
       assert(style.compareDocumentPosition(script)&w.Node.DOCUMENT_POSITION_FOLLOWING,'styles are inserted before the widget script');
     }
-    w.SLConcierge={ask:q=>asked.push(q)};
+    w.SLConcierge={draft:q=>drafts.push(q),ask:q=>asked.push(q)};
     script.dispatchEvent(new w.Event('load'));
     await Promise.resolve();
-    assert.deepEqual(asked,[trigger.getAttribute('data-sl-concierge')]);
+    assert.deepEqual(drafts,[trigger.getAttribute('data-sl-concierge')]);
+    assert.deepEqual(asked,[],'exterior activation must not submit');
   } finally {cleanup.forEach(fn=>fn());d.window.close();}
 });
 test('mobile map search has two bounded rows and preserves readable named controls',()=>{

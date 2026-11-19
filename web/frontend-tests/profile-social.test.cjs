@@ -8,7 +8,7 @@ const tick=()=>new Promise(r=>setTimeout(r,15));
 async function make(t,{url='https://scenelink.test/profile',token='test-session',user=baseUser,handle}={}){
  let current=structuredClone(user);const calls=[],d=new JSDOM('<!doctype html><html><head></head><body data-sl-social-profile><main id="slSocialProfile"></main></body></html>',{url,runScripts:'outside-only'}),w=d.window;t.after(()=>w.close());
  w.AbortController=AbortController;w.confirm=()=>true;if(token)w.localStorage.setItem('sl_jwt_token',token);
- w.fetch=async(input,options={})=>{const request={url:String(input),method:options.method||'GET',body:options.body?JSON.parse(options.body):undefined};calls.push(request);const reply=handle&&await handle(request,{user:current,setUser:u=>current=u});let status=200,body;
+ w.fetch=async(input,options={})=>{const request={url:String(input),method:options.method||'GET',body:options.body?JSON.parse(options.body):undefined};calls.push(request);const reply=handle&&await handle(request,{get user(){return current;},setUser:u=>current=u});let status=200,body;
   if(reply){status=reply.status||200;body=reply.body;}else if(request.url==='/api/users/me')body={user:current};else if(request.url==='/api/users/me/achievements')body=achievement;else if(request.url==='/api/media/capability')body={enabled:false,contract:'server-upload-v1'};else if(request.url.startsWith('/api/friends?'))body={friends:[]};else if(request.url==='/api/friends/pending')body={incoming:[],outgoing:[]};else if(request.url==='/api/users/blocked')body={blocked:[]};else if(request.url.startsWith('/api/users/search'))body={results:[]};else{status=404;body={error:'No test fixture for '+request.url};}
   return new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json'}});
  };
@@ -39,6 +39,51 @@ test('stale profile rejection preserves draft and never claims saved',async t=>{
 test('privacy edits include real booleans, opt-in read receipts and revision',async t=>{
  let body;const m=await make(t,{handle:(r,ctx)=>{if(r.method==='PATCH'){body=r.body;ctx.setUser({...ctx.user,...r.body,profile_revision:2});return{body:{user:{...ctx.user,...r.body,profile_revision:2}}};}}});m.click('[data-tab=settings]');await tick();const form=m.$('slspSettingsForm');form.elements.discoverable.checked=false;form.elements.share_read_receipts.checked=true;form.elements.allow_messages.value='none';m.submit('slspSettingsForm');await tick();
  assert.equal(body.discoverable,false);assert.equal(body.share_read_receipts,true);assert.equal(body.allow_messages,'none');assert.equal(body.revision,1);assert.match(m.$('slspActionStatus').textContent,/Privacy settings saved and read back/);
+});
+for (const scenario of ['unconfirmed write','changed readback','stale readback','missing readback field']) test('privacy '+scenario+' retains draft without a success claim',async t=>{
+ let saved;
+ const m=await make(t,{handle:(r,ctx)=>{
+   if(r.method==='PATCH'){
+     saved={...ctx.user,...r.body,profile_revision:2};
+     return{body:{user:scenario==='unconfirmed write'?{...saved,allow_messages:'everyone'}:saved}};
+   }
+   if(r.url==='/api/users/me'&&saved){
+     const user={...saved,profile_revision:3};
+     if(scenario==='changed readback')user.discoverable=true;
+     if(scenario==='stale readback')user.profile_revision=1;
+     if(scenario==='missing readback field')delete user.share_read_receipts;
+     return{body:{user}};
+   }
+ }});
+ m.click('[data-tab=settings]');const form=m.$('slspSettingsForm');
+ form.elements.allow_messages.value='none';form.elements.discoverable.checked=false;
+ m.submit('slspSettingsForm');await tick();
+ assert.equal(m.$('slspSettingsForm'),form);assert.equal(form.dataset.revision,'1');
+ assert.equal(form.elements.allow_messages.value,'none');assert.equal(form.elements.discoverable.checked,false);
+ assert.equal(form.elements.allow_messages.disabled,false);
+ assert.match(m.$('slspSettingsStatus').textContent,/failed to confirm your choices/);
+ assert.equal(m.$('slspActionStatus').textContent,'');
+});
+test('unchanged privacy settings can confirm an idempotent save at the same revision',async t=>{
+ const m=await make(t,{handle:(r,ctx)=>r.method==='PATCH'?{body:{user:ctx.user,replayed:true}}:null});
+ m.click('[data-tab=settings]');m.submit('slspSettingsForm');await tick();
+ assert.match(m.$('slspActionStatus').textContent,/Privacy settings saved and read back/);
+ assert.equal(m.$('slspSettingsForm').dataset.revision,'1');
+});
+test('a later unconfirmed privacy save clears the prior success message',async t=>{
+ let writes=0;
+ const m=await make(t,{handle:(r,ctx)=>{
+   if(r.method!=='PATCH')return;
+   if(++writes===1)ctx.setUser({...ctx.user,...r.body,profile_revision:2});
+   return{body:{user:ctx.user}};
+ }});
+ m.click('[data-tab=settings]');m.$('slspSettingsForm').elements.discoverable.checked=false;
+ m.submit('slspSettingsForm');await tick();
+ assert.match(m.$('slspActionStatus').textContent,/Privacy settings saved/);
+ m.$('slspSettingsForm').elements.allow_messages.value='none';m.submit('slspSettingsForm');await tick();
+ assert.equal(m.$('slspActionStatus').textContent,'');
+ assert.match(m.$('slspSettingsStatus').textContent,/failed to confirm/);
+ assert.equal(m.$('slspSettingsForm').elements.allow_messages.value,'none');
 });
 test('private public profile fails closed for links, bio and earned data even if response includes them',async t=>{
  const m=await make(t,{url:'https://scenelink.test/profile?u=peer',handle:r=>r.url==='/api/users/peer'?{body:{user:{id:PEER,username:'peer',display_name:'TEST peer',bio:'PRIVATE SECRET',social_links:[{provider:'instagram',url:'https://instagram.com/secret'}]},can_view:false,can_message:false,is_me:false,friendship_status:null,achievements:achievement}}:null});

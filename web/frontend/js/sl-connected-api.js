@@ -84,6 +84,57 @@
     "changes": "Original image; no modifications.",
     "sha256": "6bdead242454944ba41f00b3e8bd32a9e1727636ae34231b4f874ad9e9b9d47a",
     "originalSha256": "6bdead242454944ba41f00b3e8bd32a9e1727636ae34231b4f874ad9e9b9d47a"
+  },
+  "bd74239a-349e-4717-8bb8-77602e291baf": {
+    "name": "Aquitaine",
+    "address": "569 Tremont Street",
+    "city": "Boston",
+    "lat": 42.343783,
+    "lng": -71.072358,
+    "url": "/images/venues/121c8133d9c962ee8e26546b435186acc176bd3716d7647ae1cad6df981c26d6.jpg",
+    "author": "Daderot",
+    "title": "Aquitaine - South End, Boston, MA - DSC04676.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Aquitaine_-_South_End%2C_Boston%2C_MA_-_DSC04676.jpg",
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "date": "2026-10-20",
+    "changes": "Resized and re-encoded as JPEG; metadata removed; no crop.",
+    "sha256": "121c8133d9c962ee8e26546b435186acc176bd3716d7647ae1cad6df981c26d6",
+    "originalSha256": "107a5d2a8055f6936ace779b7e2eefa1d81ada0a64e09499f3992fbed2e88c4c"
+  },
+  "eba163b7-f62f-4c67-9291-f62e28d2ff0c": {
+    "name": "The Bell in Hand",
+    "address": "45-55 Union Street",
+    "city": "Boston",
+    "lat": 42.361457,
+    "lng": -71.057041,
+    "url": "/images/venues/3116adc1e02276b08b64b2534ff291e56fac053f89c7c11377f9f9ad2f8411f2.jpg",
+    "author": "Seasider53",
+    "title": "Bell in Hand Tavern 2023.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Bell_in_Hand_Tavern_2023.jpg",
+    "license": "CC-BY-SA-4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "date": "2023-06-22",
+    "changes": "Resized and re-encoded as JPEG; metadata removed; no crop.",
+    "sha256": "3116adc1e02276b08b64b2534ff291e56fac053f89c7c11377f9f9ad2f8411f2",
+    "originalSha256": "56fb82d7822103bbbb48562c5463603ae9247de5fbabfa6e85c8834ad78f613f"
+  },
+  "e9d0198f-956d-457f-9b3a-f76c30a8b943": {
+    "name": "Cheers Beacon Hill",
+    "address": "84 Beacon Street",
+    "city": "Boston",
+    "lat": 42.355953,
+    "lng": -71.071258,
+    "url": "/images/venues/2497c9406b6e87e4791dbba18bf2ddc9d90430b01029b018f9b6118188612eb8.jpg",
+    "author": "Farragutful",
+    "title": "Cheers Beacon Hill 2024.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Cheers_Beacon_Hill_2024.jpg",
+    "license": "CC-BY-SA-4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "date": "2024-05-11",
+    "changes": "Resized and re-encoded as JPEG; metadata removed; no crop.",
+    "sha256": "2497c9406b6e87e4791dbba18bf2ddc9d90430b01029b018f9b6118188612eb8",
+    "originalSha256": "1dee4e719ab49b4ebc4f8cf044e6d46a75905fe6131839e286fb4f1f5eb92c1b"
   }
 };
   function licensedPhoto(v) {

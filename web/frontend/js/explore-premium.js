@@ -372,28 +372,16 @@ function setupFilterModal(){
 }
 
 // ═══════════════ MAP CONTROLS ═══════════════
+var nearby;
 function setupMapControls(){
     var zoomIn  = document.getElementById('slZoomIn');
     var zoomOut = document.getElementById('slZoomOut');
-    var locateBtn = document.getElementById('slLocateBtn') || document.getElementById('slLocate');
     var fitBtn  = document.getElementById('slFitAll');
 
     if(zoomIn)  zoomIn.addEventListener('click', function(){ if(map) {mapViewInteracted=true;map.zoomIn();} });
     if(zoomOut) zoomOut.addEventListener('click', function(){ if(map) {mapViewInteracted=true;map.zoomOut();} });
     if(fitBtn) fitBtn.addEventListener('click',function(){mapViewInteracted=true;fitCurrentResults();});
-    function locateUser(){
-        mapViewInteracted = true;
-        if(!map) return;
-        if(navigator.geolocation){
-            navigator.geolocation.getCurrentPosition(
-                function(pos){ map.setView([pos.coords.latitude,pos.coords.longitude],15); },
-                function(){ showToast('Location access denied'); }
-            );
-        } else { showToast('Geolocation not supported'); }
-    }
-    if(locateBtn) locateBtn.addEventListener('click', locateUser);
-    var searchLocate = document.getElementById('slSearchLoc');
-    if(searchLocate) searchLocate.addEventListener('click', locateUser);
+    nearby = window.SLDiscoveryNearby.create(function(){ if (!venueLoadState.loading) { renderList(); renderPagination(); } });
 }
 
 // ═══════════════ APPLY ALL FILTERS ═══════════════
@@ -456,7 +444,8 @@ function renderList(){
         return;
     }
 
-    filtered.forEach(function(v){
+    (nearby ? nearby.sort(filtered) : filtered).forEach(function(v){
+        var distance = nearby ? nearby.distance(v) : '';
         var img = (window.SLVenueImages && SLVenueImages.pick(v)) ||
                   v.thumbnail_url || v.cover_image_url || v.image_url || (v.image_urls && v.image_urls[0]) ||
                   (window.SLPhoto && SLPhoto.fallbackFor(v)) || '/assets/img/placeholder-venue.svg';
@@ -502,7 +491,7 @@ function renderList(){
                 '<div class="sl-list-card-detail">'+slEsc(vtype)+(price?' · '+slEsc(price):'')+(hoursText?' · '+slEsc(hoursText):'')+'</div>' +
                 (tagsHtml ? '<div class="sl-list-card-tags">'+tagsHtml+'</div>' : '') +
                 '<div class="sl-list-card-bottom">' +
-                    '<div class="sl-list-card-dist"><i class="fas fa-map-marker-alt"></i> '+slEsc(hood)+'</div>' +
+                    '<div class="sl-list-card-dist"><i class="fas fa-map-marker-alt"></i> '+slEsc(hood)+(distance?' · '+slEsc(distance):'')+'</div>' +
                     '<div class="sl-list-card-actions">' +
                         '<button class="sl-list-plan-btn" data-id="'+slEsc(v.id)+'"><i class="fas fa-calendar-plus"></i> Plan Night</button>' +
                         '<button class="sl-list-view-btn" data-id="'+slEsc(v.id)+'" data-slug="'+slEsc(v.slug||v.id)+'"><i class="fas fa-arrow-right"></i> View</button>' +
