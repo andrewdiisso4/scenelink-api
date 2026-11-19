@@ -4,7 +4,7 @@ const {JSDOM}=require('jsdom');const root=path.resolve(__dirname,'../frontend');
 const tick=()=>new Promise(r=>setTimeout(r,30));
 const ME='10000000-0000-4000-8000-000000000001',PEER='10000000-0000-4000-8000-000000000002',CID='20000000-0000-4000-8000-000000000001';
 async function make(t,{token='session-a',handle}={}){
- const d=new JSDOM('<!doctype html><html><head></head><body><div id="socialLanding">Guest landing</div><div id="socialFeed"><div class="sf-create"><div id="sfUserAvatar"></div><input id="sfCreateInput"><button id="sfPostBtn">Post</button></div><div id="sfFeedContent"></div><aside class="sf-sidebar"><div class="sf-sidebar-card"><div class="sf-sidebar-title">People</div><div id="sfSuggestions"></div></div><div id="sfTrending"></div><span id="sfStatCheckins"></span><span id="sfStatReviews"></span><span id="sfStatSaved"></span><span id="sfStatScene"></span></aside></div></body></html>',{url:'https://scenelink.test/social-feed',runScripts:'outside-only',pretendToBeVisual:true}),w=d.window;t.after(()=>w.close());if(token)w.localStorage.setItem('sl_jwt_token',token);w.AbortController=AbortController;
+ const d=new JSDOM('<!doctype html><html><head></head><body><div id="socialLanding">Guest landing</div><div id="socialFeed"><button class="sf-tab active" data-tab="all" aria-pressed="true">All Activity</button><button class="sf-tab" data-tab="friends" aria-pressed="false">Friends &amp; You</button><div class="sf-create"><button class="sf-create-action" data-act="visit">Log a visit</button><div id="sfUserAvatar"></div><input id="sfCreateInput"><button id="sfPostBtn">Post</button></div><div id="sfFeedContent"></div><aside class="sf-sidebar"><div class="sf-sidebar-card"><div class="sf-sidebar-title">People</div><div id="sfSuggestions"></div></div><div id="sfTrending"></div><span id="sfStatCheckins"></span><span id="sfStatReviews"></span><span id="sfStatSaved"></span><span id="sfStatScene"></span></aside></div></body></html>',{url:'https://scenelink.test/social-feed',runScripts:'outside-only',pretendToBeVisual:true}),w=d.window;t.after(()=>w.close());if(token)w.localStorage.setItem('sl_jwt_token',token);w.AbortController=AbortController;
  const calls=[];w.fetch=async(url,opts={})=>{const call={url:String(url),token:opts.headers?.Authorization,method:opts.method,body:opts.body?JSON.parse(opts.body):null};calls.push(call);const reply=handle&&await handle(call);if(reply&&reply.networkFailure)throw Error('Simulated isolated connection loss');let data=reply;
  if(!data){if(call.url==='/api/posts'&&call.method==='POST')data={post:{id:call.body.client_id}};else if(call.url.includes('/users/me'))data={user:{id:ME,display_name:call.token==='Bearer session-b'?'NEW ACCOUNT':'OLD ACCOUNT'}};else if(call.url.includes('/posts/feed'))data={items:[{id:'post1',kind:'post',user_id:PEER,body:call.token==='Bearer session-b'?'NEW PRIVATE POST':'OLD PRIVATE POST',display_name:'Peer',created_at:'2026-11-08T00:00:00Z'}]};else if(call.url.includes('/conversations'))data={conversations:[{id:CID,participants:[{id:ME,display_name:'Me'},{id:PEER,display_name:'Named Peer'}],last_message:'PRIVATE PREVIEW',unread_count:1}]};else if(call.url.includes('/friends/pending'))data={incoming:[]};else if(call.url.includes('/suggestions'))data={suggestions:[]};else if(call.url.includes('/media/capability'))data={enabled:false};else data={};}
  return new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json'}});
@@ -27,3 +27,60 @@ test('repeated keyboard submit while posting sends a single idempotent post and 
 test('uncertain same-content retry reuses ID; edited draft starts a new submission',async t=>{const m=await make(t,{handle:c=>c.url==='/api/posts'?{networkFailure:true}:null});m.$('sfCreateInput').value='Unconfirmed draft';submit(m);await tick();submit(m);await tick();let posts=m.calls.filter(c=>c.url==='/api/posts');assert.equal(posts.length,2);assert.equal(posts[0].body.client_id,posts[1].body.client_id);m.$('sfCreateInput').value='Changed draft';submit(m);await tick();posts=m.calls.filter(c=>c.url==='/api/posts');assert.notEqual(posts[1].body.client_id,posts[2].body.client_id);assert.equal(m.$('sfCreateInput').value,'Changed draft');assert.match(m.$('sfPostStatus').textContent,/without changing/);});
 test('session switch clears uncertain post ID and delayed send cannot erase next account draft',async t=>{let release;const m=await make(t,{handle:c=>c.url==='/api/posts'&&c.token==='Bearer session-a'?new Promise(r=>release=()=>r({post:{id:c.body.client_id}})):c.url==='/api/posts'?{networkFailure:true}:null});m.$('sfCreateInput').value='Same content';submit(m);await tick();m.change('session-b','storage');await tick();m.$('sfCreateInput').value='Same content';submit(m);await tick();release();await tick();const posts=m.calls.filter(c=>c.url==='/api/posts');assert.equal(posts.length,2);assert.notEqual(posts[0].body.client_id,posts[1].body.client_id);assert.equal(m.$('sfCreateInput').value,'Same content');assert(!m.$('sfPostStatus').textContent.includes('Post saved'));});
 test('unconfirmed success shape retains draft and retry ID',async t=>{const m=await make(t,{handle:c=>c.url==='/api/posts'?{ok:true}:null});m.$('sfCreateInput').value='Keep this draft';submit(m);await tick();submit(m);await tick();const posts=m.calls.filter(c=>c.url==='/api/posts');assert.equal(posts[0].body.client_id,posts[1].body.client_id);assert.equal(m.$('sfCreateInput').value,'Keep this draft');assert.match(m.$('sfPostStatus').textContent,/did not confirm/);});
+
+const visit=(id,user_id=PEER,audience='friends')=>({id,kind:'checkin',display_name:'Test member',user_id,audience,body:'VISIT '+id,venue_id:CID,venue_slug:'stale-venue-slug',venue_name:'Boston test place',created_at:'2026-11-18T23:00:00Z'});
+function scope(m,name){m.w.document.querySelector('.sf-tab[data-tab="'+name+'"]').click();}
+test('Friends & You uses server scope on every page and drops a delayed All response',async t=>{
+ let all,first=true;
+ const m=await make(t,{handle:c=>{
+  if(!c.url.includes('/posts/feed'))return;
+  if(c.url.includes('scope=friends'))return c.url.includes('cursor=friend%2Bpage')?{items:[visit('page2')]}:{items:[visit('page1')],has_more:true,next_cursor:'friend+page'};
+  if(first){first=false;return new Promise(r=>all=r);}
+  return {items:[visit('NEW ALL')]};
+ }});
+ scope(m,'friends');await tick();
+ assert.equal(m.w.document.querySelector('[data-tab=friends]').getAttribute('aria-pressed'),'true');
+ assert.match(m.$('sfFeedContent').textContent,/logged a visit at Boston test place/);
+ const link=m.$('sfFeedContent').querySelector('a[href^="/explore?venue="]');
+ assert.equal(link.getAttribute('href'),'/explore?venue='+CID);
+ m.$('sfLoadMore').click();await tick();assert.match(m.$('sfFeedContent').textContent,/VISIT page2/);
+ assert(m.calls.some(c=>/scope=friends.*cursor=friend%2Bpage/.test(c.url)));
+ all({items:[visit('LATE ALL')]});await tick();
+ assert(!m.$('sfFeedContent').textContent.includes('LATE ALL'));
+ scope(m,'all');await tick();assert.match(m.$('sfFeedContent').textContent,/NEW ALL/);
+});
+test('visit visibility is labeled for owner and POST summary cannot substitute for visits',async t=>{
+ const m=await make(t,{handle:c=>c.url.includes('/posts/feed')?{items:[visit('private',ME,'private'),visit('shared',ME),visit('other')]}:c.url.includes('/social/summary')?{posts:99}:null});
+ const cards=m.$('sfFeedContent').querySelectorAll('[data-kind=checkin]');
+ assert.match(cards[0].textContent,/Only you/);assert.match(cards[1].textContent,/Shared with accepted friends/);
+ assert.doesNotMatch(cards[2].textContent,/Only you|Shared with accepted friends/);
+ assert.equal(m.$('sfStatCheckins').textContent,'—');
+});
+test('malformed Friends load retries without rendering stale or fake empty state',async t=>{
+ let requests=0;
+ const m=await make(t,{handle:c=>c.url.includes('scope=friends')?(++requests===1?{items:[null]}:{items:[]}):null});
+ scope(m,'friends');await tick();assert.match(m.$('sfFeedContent').textContent,/Could not load this activity/);
+ assert.doesNotMatch(m.$('sfFeedContent').textContent,/OLD PRIVATE POST|No friend activity/);
+ m.$('sfRetryFeed').click();await tick();assert.match(m.$('sfFeedContent').textContent,/No friend activity yet/);
+ assert.equal(requests,2);
+});
+test('venue selection opens exact venue detail without writing or touching composer draft',async t=>{
+ const m=await make(t,{handle:c=>c.url.includes('/venues/search')?{venues:[{id:CID,name:'Boston test place'}]}:null});
+ let opened;m.w.SLVenueDetail={open:id=>opened=id};
+ m.$('sfCreateInput').value='Unsent post text';
+ m.w.document.querySelector('[data-act=visit]').click();
+ const input=m.$('sfVenueSearch');input.value='boston';input.dispatchEvent(new m.w.Event('input',{bubbles:true}));
+ for(let i=0;i<20&&!m.$('sfVenueResults').querySelector('a');i++)await tick();
+ m.$('sfVenueResults').querySelector('a').click();
+ assert.equal(opened,CID);assert.equal(m.$('sfCreateInput').value,'Unsent post text');
+ assert(!m.calls.some(c=>c.method==='POST'));
+});
+test('confirmed visit event refreshes the same scoped feed only for the active session',async t=>{
+ const m=await make(t);scope(m,'friends');await tick();
+ const n=m.calls.filter(c=>c.url.includes('/posts/feed')).length;
+ m.w.dispatchEvent(new m.w.Event('sl-checkins-changed'));await tick();
+ assert.equal(m.calls.filter(c=>c.url.includes('/posts/feed')).length,n+1);
+ assert(m.calls.filter(c=>c.url.includes('/posts/feed')).at(-1).url.includes('scope=friends'));
+ m.change(null);m.w.dispatchEvent(new m.w.Event('sl-checkins-changed'));await tick();
+ assert.equal(m.calls.filter(c=>c.url.includes('/posts/feed')).length,n+1);
+});

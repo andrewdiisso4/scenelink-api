@@ -36,7 +36,7 @@ async function main(){
  server=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s));});const base='http://127.0.0.1:'+server.address().port+'/api';
  async function api(method,route,body,token,status=200){const r=await fetch(base+route,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});const data=await r.json();const safe=(k,v)=>/token|password|secret/i.test(k)?'[REDACTED]':v;assert.equal(r.status,status,method+' '+route+' returned '+r.status+': '+JSON.stringify(data,safe));return data;}
  async function check(name,fn){await fn();checks.push({name,result:'pass'});console.log('PASS',name);}
- let a,b,c,secondA,post,conversation,message;
+ let a,b,c,secondA,post,conversation,message,privateVisit,sharedVisit;
  const password='Local integration password 123';const venue=crypto.randomUUID();
  await check('default startup applies private-list migration016 without opt-in',async()=>{assert.equal(process.env.RUN_ALL_SQL_MIGRATIONS,undefined);assert.equal((await pool.query("SELECT count(*)::int n FROM launch_schema_versions WHERE version='private-list-invitations-2026-11-09'")).rows[0].n,1);});
  await check('real schema and route contract',async()=>assert.equal((await api('GET','/launch/capabilities')).contract,'social-search-2026-09-09'));
@@ -54,6 +54,7 @@ async function main(){
   assert.equal(a.user.email_verified,false);assert.equal(a.verification_required,true);
   await api('GET','/auth/me',undefined,a.token);
   await api('POST','/posts',{body:'must not publish',client_id:crypto.randomUUID()},a.token,403);
+  await api('POST','/checkins',{venue_id:venue,client_id:crypto.randomUUID(),audience:'private'},a.token,403);
   await api('POST','/friends/request',{user_id:b.user.id},a.token,403);
   await api('POST','/conversations',{user_id:b.user.id},a.token,403);
   await api('POST','/media/upload',{kind:'avatar',data:'invalid'},a.token,403);
@@ -289,9 +290,47 @@ async function main(){
   await api('POST','/friends/request',{user_id:c.user.id},a.token,404);
   await pool.query('UPDATE users SET is_suspended=false WHERE id=$1',[c.user.id]);
  });
+ await check('manual visits are retry-safe, own-history only, and hidden from guest and pending friends',async()=>{
+  privateVisit={client_id:crypto.randomUUID(),venue_id:venue,note:'Private fictional visit'};
+  sharedVisit={client_id:crypto.randomUUID(),venue_id:venue,audience:'friends',note:'Friends-only fictional visit'};
+  for(const [body,audience] of [[privateVisit,'private'],[sharedVisit,'friends']]){
+   const saved=await api('POST','/checkins',body,a.token,201);
+   assert.equal(saved.replayed,false);
+   assert.equal(saved.checkin.id,body.client_id);assert.equal(saved.checkin.user_id,a.user.id);
+   assert.equal(saved.checkin.venue_id,venue);assert.equal(saved.checkin.note,body.note);assert.equal(saved.checkin.audience,audience);
+   const replay=await api('POST','/checkins',body,a.token,200);assert.equal(replay.replayed,true);assert.deepEqual(replay.checkin,saved.checkin);
+  }
+  await api('POST','/checkins',{...privateVisit,audience:'friends'},a.token,409);
+  await api('POST','/checkins',sharedVisit,b.token,409);
+  const [history,peerHistory]=await Promise.all([api('GET','/checkins',undefined,a.token),api('GET','/checkins',undefined,b.token)]);
+  assert.deepEqual(new Set(history.checkins.map(x=>x.id)),new Set([privateVisit.client_id,sharedVisit.client_id]));
+  assert(history.checkins.every(x=>x.user_id===a.user.id&&x.venue_name==='Harbor & Pine'));
+  assert.deepEqual(peerHistory.checkins,[]);
+  await api('GET','/checkins',undefined,null,401);
+  await api('GET','/posts/feed?scope=friends',undefined,null,401);
+  for(const token of [null,b.token,c.token]){
+   assert(!(await api('GET','/posts/feed?scope=all',undefined,token)).items.some(x=>x.kind==='checkin'));
+   assert.deepEqual((await api('GET','/venues/'+venue+'/activity',undefined,token)).checkins,[]);
+  }
+  assert(!(await api('GET','/posts/feed?scope=friends',undefined,b.token)).items.some(x=>x.kind==='checkin'));
+ });
  await check('private profile and accepted friendship permissions',async()=>{
   await api('PATCH','/users/me/settings',{is_private:true,allow_messages:'everyone'},b.token);const privateProfile=await api('GET','/users/'+b.user.id,undefined,a.token);assert.equal(privateProfile.can_view,false);assert.equal(privateProfile.user.bio,null);
   const f=await api('POST','/friends/request',{user_id:b.user.id},a.token);await api('POST','/friends/accept',{friendship_id:f.friendship_id},b.token);assert.equal((await api('GET','/users/'+b.user.id,undefined,a.token)).can_view,true);
+ });
+ await check('accepted friends see only deliberately shared manual visits',async()=>{
+  await api('PATCH','/users/me/settings',{is_private:true},a.token);
+  try{
+   for(const scope of ['all','friends']){
+    const rows=(await api('GET','/posts/feed?scope='+scope,undefined,b.token)).items.filter(x=>x.kind==='checkin');
+    assert.equal(rows.length,1);
+    assert.equal(rows[0].id,sharedVisit.client_id);assert.equal(rows[0].venue_id,venue);assert.equal(rows[0].body,sharedVisit.note);assert.equal(rows[0].audience,'friends');
+   }
+   const activity=await api('GET','/venues/'+venue+'/activity',undefined,b.token);
+   assert.deepEqual(activity.checkins.map(x=>x.id),[sharedVisit.client_id]);assert.deepEqual(activity.friends.map(x=>x.id),[sharedVisit.client_id]);
+   assert(!(await api('GET','/posts/feed?scope=friends',undefined,c.token)).items.some(x=>x.kind==='checkin'));
+   await api('DELETE','/checkins/'+sharedVisit.client_id,undefined,b.token,404);
+  }finally{await api('PATCH','/users/me/settings',{is_private:false},a.token);}
  });
  await check('retry-safe post, audience filtering, real persistence',async()=>{
   const client_id=crypto.randomUUID(),body={client_id,body:'Integration friends post',venue_id:venue,audience:'friends'};
@@ -376,9 +415,14 @@ async function main(){
  await check('blocking disables existing conversations and content',async()=>{
   await api('POST','/users/'+a.user.id+'/block',{},b.token,201);await api('POST','/conversations/'+conversation.id+'/messages',{body:'Must not send',client_id:crypto.randomUUID()},a.token,404);await api('GET','/posts/'+post.id,undefined,a.token,404);await api('GET','/rooms/'+roomId,undefined,a.token,404);await api('GET','/rooms/'+roomId,undefined,b.token,404);
   const management=await api('GET','/rooms/'+roomId+'/manage-members',undefined,a.token);assert(management.members.some(x=>x.id===b.user.id&&x.display_name==='Unavailable member'));
+  assert(!(await api('GET','/posts/feed?scope=friends',undefined,b.token)).items.some(x=>x.kind==='checkin'));
+  assert.deepEqual((await api('GET','/venues/'+venue+'/activity',undefined,b.token)).checkins,[]);
+  assert((await api('GET','/checkins',undefined,a.token)).checkins.some(x=>x.id===sharedVisit.client_id),'block must not erase private owner history');
   await api('DELETE','/rooms/'+roomId+'/members/'+b.user.id,undefined,a.token);await api('GET','/rooms/'+roomId,undefined,a.token);
   await api('DELETE','/users/'+a.user.id+'/block',undefined,b.token);
   assert.equal((await api('GET','/friends',undefined,a.token)).friends.length,0);
+  assert(!(await api('GET','/posts/feed?scope=all',undefined,b.token)).items.some(x=>x.kind==='checkin'),'unblock must not re-open a friends-only visit');
+  for(const visit of [privateVisit,sharedVisit])assert.equal((await api('DELETE','/checkins/'+visit.client_id,undefined,a.token)).id,visit.client_id);
  });
  await check('favorites/lists are server-persistent and private by default',async()=>{
   await api('POST','/favorites/'+venue,{},a.token);assert.equal((await api('GET','/favorites',undefined,a.token)).favorites.length,1);

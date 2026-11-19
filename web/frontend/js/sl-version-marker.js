@@ -17,10 +17,10 @@
 (function(){
   'use strict';
   var V = {
-    phase: 'discover-together',
-    sw_version: 'sl-connected-20261119-discover-together',
-    deploy: 'connected-20261119-discover-together',
-    built: '2026-11-19T00:29:01.964135+00:00',
+    phase: 'been-with-friends',
+    sw_version: 'sl-connected-20261119-been-with-friends',
+    deploy: 'connected-20261119-been-with-friends',
+    built: '2026-11-19T00:47:46.061546+00:00',
     backend_change: 'none'
   };
   // Always-available global
