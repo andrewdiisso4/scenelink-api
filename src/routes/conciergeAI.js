@@ -19,6 +19,7 @@
  */
 
 const pool = require('../config/database');
+const {quotaConfig, reserveProviderAttempt} = require('../services/concierge-quota');
 const { resolveNamedVenue } = require('../services/concierge-named-venue');
 const {publicVenue,availableVenueSQL} = require('../services/venue-helpers');
 const {visibleDiscoveryVenueSQL} = require('../services/venue-duplicate-discovery');
@@ -26,8 +27,10 @@ const {reviewedPriceSQL} = require('../services/venue-facts');
 
 const OPENAI_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-const MAX_OUTPUT_TOKENS = parseInt(process.env.OPENAI_MAX_OUTPUT_TOKENS || '700', 10);
-const REQUEST_TIMEOUT_MS = parseInt(process.env.OPENAI_TIMEOUT_MS || '15000', 10);
+function boundedInteger(value, fallback, min, max) { const n=Number(value); return Number.isSafeInteger(n) && n>=min && n<=max ? n : fallback; }
+const MAX_OUTPUT_TOKENS = boundedInteger(process.env.OPENAI_MAX_OUTPUT_TOKENS, 700, 100, 1000);
+const REQUEST_TIMEOUT_MS = boundedInteger(process.env.OPENAI_TIMEOUT_MS, 15000, 1000, 20000);
+const MAX_PROVIDER_INPUT_BYTES = 24000;
 const MAX_CANDIDATE_VENUES = 20;
 const MAX_CONTEXT_HISTORY = 6;
 
@@ -430,6 +433,7 @@ async function callOpenAI({ message, history, filters, candidates, userContext }
 
     const body = {
         model: DEFAULT_MODEL,
+        store: false,
         instructions: SYSTEM_PROMPT,
         input,
         max_output_tokens: MAX_OUTPUT_TOKENS,
@@ -443,6 +447,11 @@ async function callOpenAI({ message, history, filters, candidates, userContext }
         }
     };
 
+    const encodedBody = JSON.stringify(body);
+    if (Buffer.byteLength(encodedBody, 'utf8') > MAX_PROVIDER_INPUT_BYTES) throw new Error('Concierge input exceeds safe bound');
+    const quota = await reserveProviderAttempt(pool);
+    if (!quota.allowed) throw new Error('Concierge provider unavailable');
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -454,24 +463,19 @@ async function callOpenAI({ message, history, filters, candidates, userContext }
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(body),
+            body: encodedBody,
             signal: controller.signal
         });
+        if (!resp.ok) {
+            // Do not retain provider error bodies: they may echo private input.
+            const err = new Error('Concierge provider request failed');
+            err.status = resp.status;
+            throw err;
+        }
+        return await resp.json();
     } finally {
         clearTimeout(timer);
     }
-
-    if (!resp.ok) {
-        const errText = await resp.text().catch(() => '');
-        // Never log the key; strip any sk-* token from the snippet before throwing
-        const snippet = errText.slice(0, 300).replace(/sk-[A-Za-z0-9_-]+/g, 'sk-***');
-        const err = new Error(`OpenAI ${resp.status}`);
-        err.status = resp.status;
-        err.snippet = snippet;
-        throw err;
-    }
-
-    return await resp.json();
 }
 
 function extractStructured(resp) {
@@ -566,5 +570,5 @@ module.exports = {
     fetchVenuesByIds,
     parseFilters,
     summarizeVenueForLLM,
-    isEnabled: () => !!process.env.OPENAI_API_KEY
+    isEnabled: () => !!process.env.OPENAI_API_KEY && quotaConfig().enabled
 };

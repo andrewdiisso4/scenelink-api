@@ -151,8 +151,10 @@ test('known unavailable bare name returns no related catalog rows or hidden stat
     assert.equal(result.source,'empty');
     assert.deepEqual(result.candidates,[]);
     const oldKey=process.env.OPENAI_API_KEY,oldFetch=global.fetch;
+    const oldEnabled=process.env.CONCIERGE_AI_ENABLED,oldLimit=process.env.CONCIERGE_AI_DAILY_REQUEST_LIMIT;
     try {
       process.env.OPENAI_API_KEY='test-only-no-provider-call';
+      process.env.CONCIERGE_AI_ENABLED='true';process.env.CONCIERGE_AI_DAILY_REQUEST_LIMIT='1';
       global.fetch=async()=>{throw Error('Provider calls forbidden in this test');};
       await handler({body:{message:secretName}}, {setHeader(){},status(code){assert.equal(code,200);return this;},json(body){output=body;return body;}});
       assert.equal(output.source,'empty');
@@ -161,6 +163,16 @@ test('known unavailable bare name returns no related catalog rows or hidden stat
     } finally {
       if(oldKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=oldKey;
       global.fetch=oldFetch;
+      if(oldEnabled===undefined)delete process.env.CONCIERGE_AI_ENABLED;else process.env.CONCIERGE_AI_ENABLED=oldEnabled;
+      if(oldLimit===undefined)delete process.env.CONCIERGE_AI_DAILY_REQUEST_LIMIT;else process.env.CONCIERGE_AI_DAILY_REQUEST_LIMIT=oldLimit;
     }
   });
+});
+
+for(const enabled of ['false','true'])test('provider '+(enabled==='true'?'quota exhaustion':'disabled')+' returns database fallback without fetch',async()=>{
+ const before={};for(const key of ['OPENAI_API_KEY','CONCIERGE_AI_ENABLED','CONCIERGE_AI_DAILY_REQUEST_LIMIT'])before[key]=process.env[key];const oldFetch=global.fetch;
+ try {process.env.OPENAI_API_KEY='test-only';process.env.CONCIERGE_AI_ENABLED=enabled;process.env.CONCIERGE_AI_DAILY_REQUEST_LIMIT='1';let providerCalls=0;global.fetch=async()=>{providerCalls++;throw Error('forbidden');};
+ const db={query:async sql=>({rows:sql.includes('FROM venues')&&!sql.startsWith('SELECT name')?[fixture()]:[]})};
+ await withConciergeFixture(db,async(_ai,router)=>{const handler=router.stack.find(l=>l.route?.path==='/'&&l.route.methods.post).route.stack.at(-1).handle;let output;await handler({body:{message:'restaurants'}},{setHeader(){},status(){return this;},json(d){output=d;}});assert.equal(output.source,'rule-based');assert.equal(output.venues.length,1);});assert.equal(providerCalls,0);
+ }finally{global.fetch=oldFetch;for(const [key,value]of Object.entries(before))if(value===undefined)delete process.env[key];else process.env[key]=value;}
 });

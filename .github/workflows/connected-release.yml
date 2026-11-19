@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [api, ingestion, upgrade, welcome]
+        suite: [api, ingestion, upgrade, welcome, quota]
     services:
       postgres:
         image: postgres:18.3
@@ -73,3 +73,6 @@ jobs:
         env:
           TEST_WELCOME_DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
         run: node --test qa/welcome-email.test.cjs
+      - name: Native concierge quota concurrency acceptance
+        if: matrix.suite == 'quota'
+        run: node qa/concierge-quota-native.cjs
