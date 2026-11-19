@@ -11,6 +11,8 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
 const { requireAdmin } = require('../middleware/auth');
+const officialEvent = require('../launch/official-event-stage');
+const H = require('../launch/shared');
 
 // GET /api/admin/stats
 router.get('/stats', requireAdmin, async (req, res) => {
@@ -489,7 +491,13 @@ router.get('/events', requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/events  — create an event
-router.post('/events', requireAdmin, async (req, res) => {
+router.post('/events', requireAdmin, (req, res, next) => {
+    if (!officialEvent.wantsStage(req.body)) return next();
+    return H.wrap(async (request, response) => {
+        const result = await officialEvent.stage(pool, request.body, request, require('../launch/events').calendarDate);
+        response.json(result);
+    })(req, res, next);
+}, async (req, res) => {
     try {
         const b = req.body || {};
         if (!b.title) return res.status(400).json({ error: 'title is required' });
@@ -557,10 +565,14 @@ router.patch('/events/:id', requireAdmin, async (req, res) => {
         updates.push('updated_at=NOW()');
         values.push(req.params.id);
         const q = await pool.query(
-            `UPDATE events SET ${updates.join(', ')} WHERE id=$${idx} RETURNING *`,
+            `UPDATE events SET ${updates.join(', ')} WHERE id=$${idx} AND ${officialEvent.reservedSQL} RETURNING *`,
             values
         );
-        if (!q.rows.length) return res.status(404).json({ error: 'Not found' });
+        if (!q.rows.length) {
+            const held = await pool.query('SELECT external_id FROM events WHERE id=$1', [req.params.id]);
+            if (officialEvent.reserved(held.rows[0]?.external_id)) return res.status(409).json({error:'Use official occurrence reconciliation to change this event'});
+            return res.status(404).json({ error: 'Not found' });
+        }
         res.json({ ok: true, event: q.rows[0] });
     } catch (err) {
         console.error('[admin/events PATCH]', err);
@@ -571,8 +583,12 @@ router.patch('/events/:id', requireAdmin, async (req, res) => {
 // DELETE /api/admin/events/:id
 router.delete('/events/:id', requireAdmin, async (req, res) => {
     try {
-        const q = await pool.query('DELETE FROM events WHERE id=$1 RETURNING id', [req.params.id]);
-        if (!q.rows.length) return res.status(404).json({ error: 'Not found' });
+        const q = await pool.query(`DELETE FROM events WHERE id=$1 AND ${officialEvent.reservedSQL} RETURNING id`, [req.params.id]);
+        if (!q.rows.length) {
+            const held = await pool.query('SELECT external_id FROM events WHERE id=$1', [req.params.id]);
+            if (officialEvent.reserved(held.rows[0]?.external_id)) return res.status(409).json({error:'Use explicit source rejection to hide this event without losing its history'});
+            return res.status(404).json({ error: 'Not found' });
+        }
         res.json({ ok: true, deleted: q.rows[0].id });
     } catch (err) {
         res.status(500).json({ error: err.message });

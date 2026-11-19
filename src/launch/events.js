@@ -2,6 +2,7 @@
 // SceneLink attendance intent only. No payment, ticket inventory, capacity promise,
 // provider request, or provider confirmation is created by these endpoints.
 const H=require('./shared');
+const officialEvent=require('./official-event-stage');
 const {EVENT_TODAY_SQL}=require('../services/event-calendar');
 const {safePublicHttps,availableVenueSQL}=require('../services/venue-helpers');
 const SOURCES=new Set(['official_venue','organizer','ticketmaster','eventbrite']);
@@ -10,7 +11,9 @@ function PUBLIC_EVENT(e='e',v='v') {
   return `${e}.is_active IS TRUE AND ${e}.source_review_status='reviewed' AND ${e}.source_reviewed_at IS NOT NULL
     AND ${e}.source IN ('official_venue','organizer','ticketmaster','eventbrite')
     AND ${e}.source_url ~ '^https://[^[:space:]]+$' AND ${e}.date IS NOT NULL
-    AND (${e}.venue_id IS NULL OR (${availableVenueSQL(v)}))`;
+    AND (${e}.venue_id IS NULL OR (${availableVenueSQL(v)}))
+    AND (COALESCE(${e}.external_id,'') NOT LIKE 'city-winery-boston:%'
+      OR (${e}.venue_id IS NOT NULL AND COALESCE(to_jsonb(${v})->>'duplicate_of','')=''))`;
 }
 // Counts deliberately exclude private RSVPs, private accounts, suspended/deleted users,
 // seeded attendance metrics and individual identities. This is not venue attendance.
@@ -125,7 +128,8 @@ function install({router,pool,auth,write}) {
     const url=safeURL(b.source_url);if(!url)throw new H.HttpError(400,'Provide the official source URL');
     const externalId=H.text(b.external_id,'source identifier',300)||null;
     await H.transaction(pool,async db=>{
-      const old=await db.query('SELECT id FROM events WHERE id=$1 FOR UPDATE',[eventId]);if(!old.rows.length)throw new H.HttpError(404,'Event unavailable');
+      const old=await db.query("SELECT e.*,to_char(e.date,'YYYY-MM-DD') AS stage_date FROM events e WHERE e.id=$1 FOR UPDATE",[eventId]);if(!old.rows.length)throw new H.HttpError(404,'Event unavailable');
+      if(await officialEvent.checkReview(db,req,old.rows[0],b,url,externalId))return;
       await db.query(`INSERT INTO event_source_reviews(event_id,reviewer_id,source,source_url,external_id,status) VALUES($1,$2,$3,$4,$5,$6)`,[eventId,req.user?.id||null,b.source,url,externalId,b.status]);
       await db.query(`UPDATE events SET source=$2,source_url=$3,external_id=$4,source_review_status=$5,source_reviewed_at=clock_timestamp(),source_reviewed_by=$6,updated_at=clock_timestamp() WHERE id=$1`,[eventId,b.source,url,externalId,b.status,req.user?.id||null]);
     });
