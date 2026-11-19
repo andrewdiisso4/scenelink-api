@@ -64,3 +64,83 @@ test('initial friends response never replaces pending venue search controls or r
 test('friend pagination preserves selected friend, metadata draft and pending venue search',async()=>{const friendGate=deferred(),searchGate=deferred(),s=server(p=>p==='/friends?limit=100&offset=0'?{friends:[{id:U,username:'first'}],has_more:true}:p==='/friends?limit=100&offset=1'?friendGate.promise:undefined),x=setup(s.handler,undefined,'/my-lists?list='+L);try{await tick();await tick();click(x.w,'[data-list-action="edit"]');input(x.w,'#slEditListName','Retained metadata draft');x.w.document.getElementById('slListFriend').value=U;x.w.SLVenueData.list=()=>searchGate.promise;input(x.w,'#slListVenueQuery','Real dinner');submit(x.w,'#slSearchListVenues');const target=x.w.document.getElementById('slListVenueResults');click(x.w,'[data-list-action="more-friends"]');friendGate.resolve({friends:[{id:M,username:'later'}]});await tick();assert.equal(x.w.document.getElementById('slListVenueResults'),target);assert.equal(x.w.document.getElementById('slListFriend').value,U);assert.equal(x.w.document.getElementById('slEditListName').value,'Retained metadata draft');searchGate.resolve({venues:[{id:V,name:'Found after pagination'}]});await tick();assert.match(target.textContent,/Found after pagination/);}finally{x.close();}});
 test('late friends and search responses respect newer list navigation',async()=>{const friendGate=deferred(),searchGate=deferred(),s=server(p=>p.startsWith('/friends?')?friendGate.promise:p==='/lists/'+M?{list:{...s.state.lists[0],id:M,name:'Newer list',members:[{id:U,status:'accepted'}]}}:undefined);s.state.lists.push({...s.state.lists[0],id:M,name:'Newer list'});const x=setup(s.handler,undefined,'/my-lists?list='+L);try{await tick();x.w.SLVenueData.list=()=>searchGate.promise;input(x.w,'#slListVenueQuery','Old list query');submit(x.w,'#slSearchListVenues');click(x.w,'[data-list-action="open"][data-list="'+M+'"]');await tick();friendGate.resolve({friends:[{id:U,username:'already-member'},{id:I,username:'eligible'}]});searchGate.resolve({venues:[{id:V,name:'Stale prior list result'}]});await tick();assert.match(x.w.document.getElementById('slListDetail').textContent,/Newer list/);assert(!x.w.document.getElementById('slListDetail').textContent.includes('Stale prior list result'));assert(!x.w.document.querySelector('#slListFriend option[value="'+U+'"]'));assert(x.w.document.querySelector('#slListFriend option[value="'+I+'"]'));assert.equal(x.w.document.getElementById('slListVenueQuery').value,'');}finally{x.close();}});
 test('newer venue search wins while first-page friends finish loading',async()=>{const friendGate=deferred(),old=deferred(),latest=deferred(),s=server(p=>p.startsWith('/friends?')?friendGate.promise:undefined),x=setup(s.handler,undefined,'/my-lists?list='+L);try{await tick();x.w.SLVenueData.list=({q})=>q==='Old query'?old.promise:latest.promise;input(x.w,'#slListVenueQuery','Old query');submit(x.w,'#slSearchListVenues');input(x.w,'#slListVenueQuery','New query');submit(x.w,'#slSearchListVenues');friendGate.resolve({friends:s.state.friends});latest.resolve({venues:[{id:V,name:'Newest result'}]});await tick();old.resolve({venues:[{id:M,name:'Obsolete result'}]});await tick();assert.equal(x.w.document.getElementById('slListVenueQuery').value,'New query');assert.match(x.w.document.getElementById('slListVenueResults').textContent,/Newest result/);assert(!x.w.document.getElementById('slListVenueResults').textContent.includes('Obsolete result'));}finally{x.close();}});
+
+test('Want to Try and Been read account data independently without removing saves or sharing a visit',async()=>{
+ const s=server(p=>p==='/checkins'?{checkins:[{id:I,venue_id:V,venue_name:'<img src=x onerror=alert(1)>',created_at:'2026-11-18T00:31:00Z',note:'private note'},{id:L,venue_id:V,venue_name:'Older visit',created_at:'2026-10-03T10:00:00Z'}]}:undefined);
+ s.state.favorites=[{venue_id:V,venue_name:'Same saved venue'}];
+ const x=setup(s.handler,undefined,'/my-lists#been');try{await tick();const d=x.w.document;
+ assert.equal(d.querySelector('[aria-label="Your places"] a[href="#been"]').textContent,'Been');
+ assert.equal(d.querySelector('[aria-label="Your places"] a[href="#want-to-try"]').textContent,'Want to Try');
+ assert.match(d.getElementById('want-to-try').textContent,/private saved venues/);
+ assert.equal(d.querySelector('#slSavedVenues a').getAttribute('href'),'/explore?venue='+V);
+ assert.match(d.getElementById('been').textContent,/up to 100 recent records/);
+ const visits=d.getElementById('slBeenVenues');
+ assert.equal(visits.querySelectorAll('article').length,1);assert.equal(visits.querySelector('h3').textContent,'<img src=x onerror=alert(1)>');
+ assert.equal(visits.querySelector('a').getAttribute('href'),'/explore?venue='+V);
+ assert.match(visits.textContent,/Last recorded Nov 17, 2026/);
+ assert(!visits.querySelector('[onerror]'));assert(!visits.textContent.includes('private note'));assert(x.calls.every(c=>c.method==='GET'));
+ }finally{x.close();}
+});
+
+test('Been reports malformed retrieval separately and retries to a confirmed empty state',async()=>{
+ let attempts=0;
+ const s=server(p=>p==='/checkins'?(++attempts===1?{checkins:[{venue_id:null}]}:{checkins:[]}):undefined);
+ s.state.favorites=[{venue_id:V,venue_name:'Saved independently'}];
+ const x=setup(s.handler);try{await tick();const d=x.w.document;
+ assert.match(d.getElementById('slBeenVenues').textContent,/could not be loaded/);
+ assert.match(d.getElementById('slSavedVenues').textContent,/Saved independently/);
+ click(x.w,'[data-list-action="refresh-visits"]');await tick();
+ assert.match(d.getElementById('slBeenVenues').textContent,/No visits recorded yet/);assert.equal(attempts,2);
+ }finally{x.close();}
+});
+
+test('Been never reads when signed out or restores a stale prior-account visit',async()=>{
+ const gate=deferred();let visits=0;
+ const s=server(p=>p==='/checkins'?(++visits===1?gate.promise:{checkins:[{id:I,venue_id:M,venue_name:'Second account visit'}]}):undefined);
+ const x=setup(s.handler,undefined,'/my-lists#been','');try{await tick();const d=x.w.document;
+ assert(!d.getElementById('slBeenVenues'));assert.equal(visits,0);switchAccount(x.w,'account-a');await tick();
+ switchAccount(x.w,'account-b');await tick();gate.resolve({checkins:[{id:L,venue_id:V,venue_name:'Prior account record'}]});await tick();
+ assert.match(d.getElementById('slBeenVenues').textContent,/Second account visit/);assert(!d.body.textContent.includes('Prior account record'));
+ switchAccount(x.w,'');assert(!d.body.textContent.includes('Second account visit'));assert(!d.getElementById('slBeenVenues'));
+ }finally{x.close();}
+});
+
+test('confirmed check-in event refreshes Been and discards an older response',async()=>{
+ const pending=deferred();let reads=0;
+ const s=server(p=>p==='/checkins'?(++reads===1?pending.promise:{checkins:[{id:I,venue_id:M,venue_name:'Confirmed latest visit'}]}):undefined);
+ const x=setup(s.handler);try{await tick();x.w.dispatchEvent(new x.w.CustomEvent('sl-checkins-changed'));await tick();
+ pending.resolve({checkins:[{id:L,venue_id:V,venue_name:'Older response'}]});await tick();
+ const box=x.w.document.getElementById('slBeenVenues');assert.match(box.textContent,/Confirmed latest visit/);
+ assert(!box.textContent.includes('Older response'));assert(!box.hasAttribute('aria-busy'));
+ assert.equal(x.calls.filter(c=>c.p==='/checkins').length,2);
+ }finally{x.close();}
+});
+
+test('confirmed removal targets one exact visit and never unsaves a venue or deletes a separate record',async()=>{
+ const gate=deferred();let writes=0,events=0,question='';
+ const persisted=[{id:I,venue_id:V,venue_name:'Corner Bistro',audience:'friends',created_at:'2026-11-18T00:31:00Z'},{id:L,venue_id:V,venue_name:'Corner Bistro',audience:'private',created_at:'2026-10-03T10:00:00Z'}];
+ const s=server((p,m)=>{if(p==='/checkins')return {checkins:persisted};if(m==='DELETE'){assert.equal(p,'/checkins/'+I);writes++;return gate.promise;}});
+ s.state.favorites=[{venue_id:V,venue_name:'Same saved venue'}];const x=setup(s.handler,undefined,'/my-lists#been');
+ try{await tick();const d=x.w.document;x.w.addEventListener('sl-checkins-changed',()=>events++);const box=d.getElementById('slBeenVenues');
+ assert.match(box.querySelector('summary').textContent,/View 2 visit records/);box.querySelector('details').open=true;
+ const selector='[data-visit="'+I+'"]';const button=box.querySelector(selector);
+ x.w.confirm=prompt=>{question=prompt;return false;};button.click();await tick();
+ assert.match(question,/Corner Bistro[\s\S]*Nov 17, 2026[\s\S]*Friends[\s\S]*not remove the venue from Want to Try/);assert.equal(writes,0);
+ x.w.confirm=()=>true;button.click();box.querySelector('[data-visit="'+L+'"]').click();await tick();assert.equal(writes,1);assert(button.disabled);
+ gate.resolve({removed:true,id:I});await tick();
+ assert(!box.querySelector(selector));assert.match(box.querySelector('li').textContent,/Oct 3, 2026.*Only you/);
+ assert(box.querySelector('details').open);assert.equal(events,1);assert.match(d.getElementById('slBeenStatus').textContent,/Visit removed/);assert.match(d.getElementById('slSavedVenues').textContent,/Same saved venue/);
+ }finally{x.close();}
+});
+
+for(const outcome of ['mismatched','timeout','logout'])test('visit removal '+outcome+' cannot falsely remove another record or disclose old session',async()=>{
+ const gate=deferred();
+ const s=server((p,m)=>p==='/checkins'?{checkins:[{id:I,venue_id:V,venue_name:'First account dinner',audience:'friends'}]}:m==='DELETE'?gate.promise:undefined);
+ const x=setup(s.handler);try{await tick();const d=x.w.document;
+ d.querySelector('#slBeenVenues details').open=true;click(x.w,'[data-visit="'+I+'"]');await tick();
+ if(outcome==='logout'){switchAccount(x.w,'');gate.resolve({removed:true,id:I});await tick();assert(!d.body.textContent.includes('First account dinner'));assert(!d.getElementById('slBeenStatus'));return;}
+ if(outcome==='timeout')gate.reject(new Error('Network timeout'));else gate.resolve({removed:true,id:L});
+ await tick();assert(d.querySelector('[data-visit="'+I+'"]'));assert.match(d.getElementById('slBeenStatus').textContent,/could not be confirmed. Refresh visits/);
+ assert(!d.querySelector('[data-visit="'+I+'"]').disabled);
+ }finally{x.close();}
+});

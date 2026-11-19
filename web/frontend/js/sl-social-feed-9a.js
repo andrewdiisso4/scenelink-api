@@ -46,6 +46,8 @@
     nextCursor: null,
     hasMore: false,
     loadingFeed: false,
+    feedRequest: 0,
+    activeTab: 'all',
     mediaEnabled: false,
     booted: false,
     session: null,
@@ -73,6 +75,7 @@
   function clearPrivateState(){
     sessionCleanups.splice(0).forEach(function(close){close();});
     STATE.me=null;STATE.feed=[];STATE.nextCursor=null;STATE.hasMore=false;STATE.loadingFeed=false;
+    STATE.feedRequest++;STATE.activeTab='all';renderFeedTabs();
     STATE.pendingImage=null;STATE.mediaEnabled=false;pendingVenue=null;STATE.postBusy=false;STATE.postAttempt=null;STATE.commentAttempts=Object.create(null);
     ['sfFeedContent','sfSuggestions','sfTrending','sfStories','sfComposerExtra','sfPostStatus'].forEach(function(id){var el=$(id);if(el)el.innerHTML='';});
     ['sfRequestsCard','sfMessagesCard'].forEach(function(id){var el=$(id);if(el)el.remove();});
@@ -182,11 +185,10 @@
       });
     }
 
-    // tag the action buttons (Check In / Photo / Plan)
+    // Tag legacy Photo / Plan controls. Visit logging always goes through the venue form.
     actions.forEach(function(btn){
       var label=(btn.textContent||'').toLowerCase();
-      if(label.indexOf('check')>=0) btn.setAttribute('data-act','checkin');
-      else if(label.indexOf('photo')>=0) btn.setAttribute('data-act','photo');
+      if(label.indexOf('photo')>=0) btn.setAttribute('data-act','photo');
       else if(label.indexOf('plan')>=0) btn.setAttribute('data-act','plan');
       btn.addEventListener('click', function(){ onComposerAction(btn.getAttribute('data-act')); });
     });
@@ -194,17 +196,26 @@
     // tabs
     document.querySelectorAll('.sf-tab').forEach(function(tab){
       tab.addEventListener('click', function(){
-        document.querySelectorAll('.sf-tab').forEach(function(t){ t.classList.remove('active'); });
-        tab.classList.add('active');
-        STATE.activeTab = tab.getAttribute('data-tab')||'all';
+        var scope=tab.getAttribute('data-tab');
+        if(!STATE.me || !['all','friends'].includes(scope) || STATE.activeTab===scope) return;
+        STATE.activeTab=scope;
+        renderFeedTabs();
         loadFeed(true);
       });
     });
   }
 
-  var pendingVenue = null; // for check-in / attach
+  function renderFeedTabs(){
+    document.querySelectorAll('.sf-tab').forEach(function(tab){
+      var active=tab.getAttribute('data-tab')===STATE.activeTab;
+      tab.classList.toggle('active',active);
+      tab.setAttribute('aria-pressed',String(active));
+    });
+  }
+
+  var pendingVenue = null; // for attaching a venue to a post
   function onComposerAction(act){
-    if(act==='checkin'){ openVenuePicker('checkin'); }
+    if(act==='visit'){ openVenuePicker(); }
     else if(act==='photo'){
       if(!STATE.mediaEnabled){ toast('Photo uploads are not connected.'); return; }
       openPhotoPicker();
@@ -258,66 +269,57 @@
     if(ex) ex.innerHTML=html;
   }
 
-  // ── Venue picker (for check-in / attach) ────────────────────────────
-  function openVenuePicker(mode){
+  // ── Pick a venue to open its explicit visit form; never log on selection. ──
+  function openVenuePicker(){
     var html='<div style="display:flex;gap:8px;align-items:center;background:#0c0c0c;border:1px solid rgba(212,175,55,.25);border-radius:10px;padding:8px;">'+
       '<i class="fas fa-location-dot" style="color:#D4AF37;"></i>'+
-      '<input id="sfVenueSearch" placeholder="Search a venue to '+(mode==='checkin'?'check in':'attach')+'…" '+
+      '<input id="sfVenueSearch" aria-label="Find a venue to mark Been" placeholder="Find a venue to mark Been…" '+
         'style="flex:1;background:none;border:none;color:#fff;font-size:13px;outline:none;">'+
-      '<button id="sfVenueCancel" style="background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:16px;">&times;</button>'+
+      '<button type="button" id="sfVenueCancel" aria-label="Close venue search" style="background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:16px;">&times;</button>'+
       '</div><div id="sfVenueResults" style="margin-top:6px;"></div>';
     setComposerExtra(html);
-    STATE.venueMode = mode;
     var inp=$('sfVenueSearch'); if(inp) inp.focus();
     var cancel=$('sfVenueCancel'); if(cancel) cancel.addEventListener('click', clearComposerExtras);
     if(inp){
       var t=null;
-      inp.addEventListener('input', function(){
+      inp.addEventListener('input', forSession(function(){
         clearTimeout(t);
         var q=inp.value.trim();
         if(q.length<2){ $('sfVenueResults').innerHTML=''; return; }
-        t=setTimeout(forSession(function(){ searchVenues(q); }), 250);
-      });
+        t=setTimeout(forSession(function(){ if(inp.isConnected && inp.value.trim()===q) searchVenues(q,inp); }), 250);
+      }));
     }
   }
 
-  function searchVenues(q){
-    var box=$('sfVenueResults'); if(box) box.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:12px;padding:6px;">Searching…</div>';
+  function searchVenues(q,input){
+    var box=$('sfVenueResults'); if(!box) return;
+    function current(){return box.isConnected && input.isConnected && input.value.trim()===q;}
+    box.innerHTML='<div role="status">Searching…</div>';
     // venue search endpoint (public)
     fetch((window.SL_CONFIG&&window.SL_CONFIG.API_BASE_URL||'/api')+'/venues/search?q='+encodeURIComponent(q)+'&limit=6')
-      .then(forSession(function(r){ return r.ok?r.json():{venues:[]}; }))
+      .then(forSession(function(r){ if(!r.ok) throw Error('Search unavailable'); return r.json(); }))
       .then(forSession(function(d){
-        var list = d.venues || d.items || d.results || [];
-        if(!box) return;
+        if(!current()) return;
+        var list = d && (d.venues || d.items || d.results);
+        if(!Array.isArray(list)) throw Error('Search unavailable');
+        list=list.filter(function(v){return v && typeof v.id==='string' && v.id && typeof v.name==='string' && v.name;});
         if(!list.length){ box.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:12px;padding:6px;">No venues found.</div>'; return; }
         box.innerHTML = list.map(function(v){
-          return '<button class="sf-venue-result" data-id="'+esc(v.id)+'" data-name="'+esc(v.name)+'" '+
+          return '<a class="sf-venue-result" href="/explore?venue='+encodeURIComponent(v.id)+'" '+
             'style="display:flex;width:100%;text-align:left;gap:8px;align-items:center;background:#141414;border:1px solid rgba(255,255,255,.05);border-radius:8px;padding:8px;margin-bottom:4px;cursor:pointer;color:#fff;">'+
             '<i class="fas fa-martini-glass" style="color:#D4AF37;font-size:12px;"></i>'+
             '<span style="font-size:13px;">'+esc(v.name)+(v.neighborhood?' <span style="color:rgba(255,255,255,.4);">· '+esc(v.neighborhood)+'</span>':'')+'</span>'+
-            '</button>';
+            '</a>';
         }).join('');
         box.querySelectorAll('.sf-venue-result').forEach(function(b){
-          b.addEventListener('click', function(){ pickVenue(b.getAttribute('data-id'), b.getAttribute('data-name')); });
+          b.addEventListener('click', function(event){
+            if(!window.SLVenueDetail || typeof window.SLVenueDetail.open!=='function' || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            window.SLVenueDetail.open(new URL(b.href).searchParams.get('venue'));
+          });
         });
       }))
-      .catch(forSession(function(){ if(box) box.innerHTML='<div style="color:#f66;font-size:12px;padding:6px;">Search unavailable.</div>'; }));
-  }
-
-  function pickVenue(id, name){
-    if(STATE.venueMode==='checkin'){
-      // immediate check-in
-      social().checkIn(id, ($('sfCreateInput')&&$('sfCreateInput').value.trim())||null).then(forSession(function(r){
-        if(r.ok){ if($('sfCreateInput')) $('sfCreateInput').value=''; clearComposerExtras(); loadFeed(true); loadSidebar(); toast('Checked in at '+name); }
-        else if(r.loggedOut){ showLanding(); }
-        else toast('Check-in failed.');
-      }));
-    } else {
-      pendingVenue={id:id,name:name};
-      setComposerExtra('<div style="display:inline-flex;gap:6px;align-items:center;background:rgba(212,175,55,.12);border:1px solid rgba(212,175,55,.3);border-radius:20px;padding:5px 12px;font-size:12px;color:#D4AF37;">'+
-        '<i class="fas fa-location-dot"></i> '+esc(name)+
-        ' <button onclick="this.closest(\'#sfComposerExtra\').innerHTML=\'\'" style="background:none;border:none;color:#D4AF37;cursor:pointer;">&times;</button></div>');
-    }
+      .catch(forSession(function(){ if(current()) box.innerHTML='<div role="status">Venue search is unavailable. Try again or <a href="/explore">open Explore</a>.</div>'; }));
   }
 
   function openPhotoPicker(){
@@ -339,31 +341,42 @@
 
   // ── Feed ────────────────────────────────────────────────────────────
   function loadFeed(reset){
-    var content=$('sfFeedContent'); if(!content) return;
-    if(STATE.loadingFeed) return;
+    var content=$('sfFeedContent'); if(!content || !STATE.me) return;
+    if(!reset && (STATE.loadingFeed || !STATE.nextCursor)) return;
+    var request=++STATE.feedRequest, scope=STATE.activeTab, settled=false;
     STATE.loadingFeed=true;
     if(reset){ STATE.feed=[]; STATE.nextCursor=null; STATE.hasMore=false; content.innerHTML = skeletonFeed(); }
     var cursor = reset ? null : STATE.nextCursor;
-    var timedOut=false;
-    var guard=setTimeout(forSession(function(){ timedOut=true; if(!STATE.feed.length){ content.innerHTML=errorState('Feed is taking too long.', 'sfRetryFeed'); wireRetry(); } }), 13000);
-
-    social().getFeed(cursor, 15).then(forSession(function(r){
-      clearTimeout(guard);
+    function current(){return request===STATE.feedRequest && scope===STATE.activeTab && !settled;}
+    function showError(message){
+      if(!current()) return;
+      settled=true;
       STATE.loadingFeed=false;
-      if(timedOut && !r.ok) return;
-      if(r.loggedOut){ showLanding(); return; }
-      if(!r.ok){
-        if(!STATE.feed.length){ content.innerHTML=errorState('Could not load your feed.', 'sfRetryFeed'); wireRetry(); }
-        return;
+      if(reset){ content.innerHTML=errorState(message,'sfRetryFeed');wireRetry(); }
+      else {
+        var more=$('sfLoadMore');
+        if(more){more.disabled=false;more.textContent='Try loading more again';}
+        var error=$('sfFeedPageError');
+        if(error)error.textContent=message;
       }
+    }
+    var guard=setTimeout(forSession(function(){showError('Feed is taking too long.');}),13000);
+    social().getFeed(cursor,15,scope).then(forSession(function(r){
+      clearTimeout(guard);if(!current())return;
+      if(r.loggedOut){ showLanding(); return; }
       var d=r.data||{};
-      var items=d.items||[];
-      // tab filter (client-side for friends/trending/nearby is best-effort; "all" default)
-      STATE.feed = reset ? items : STATE.feed.concat(items);
+      if(!r.ok || !Array.isArray(d.items) || d.items.some(function(x){return !x || typeof x.id!=='string' || !x.id || !['post','checkin','review','list_share'].includes(x.kind);}) ||
+        (d.has_more && (typeof d.next_cursor!=='string' || !d.next_cursor || d.next_cursor===cursor))){
+        showError('Could not load this activity.');return;
+      }
+      settled=true;
+      STATE.loadingFeed=false;
+      var seen=new Set(STATE.feed.map(function(x){return x.kind+':'+x.id;}));
+      d.items.forEach(function(x){var key=x.kind+':'+x.id;if(!seen.has(key)){seen.add(key);STATE.feed.push(x);}});
       STATE.nextCursor = d.next_cursor || null;
       STATE.hasMore = !!d.has_more;
       renderFeed();
-    }));
+    })).catch(forSession(function(){clearTimeout(guard);showError('Could not load this activity.');}));
   }
 
   function wireRetry(){
@@ -372,18 +385,18 @@
 
   function renderFeed(){
     var content=$('sfFeedContent'); if(!content) return;
-    if(!STATE.feed.length){ content.innerHTML=emptyFeed(); var c=$('sfEmptyCheckin'); if(c) c.addEventListener('click',function(){openVenuePicker('checkin');}); return; }
+    if(!STATE.feed.length && !STATE.hasMore){ content.innerHTML=emptyFeed(); var c=$('sfEmptyCheckin'); if(c) c.addEventListener('click',openVenuePicker); return; }
     var html = STATE.feed.map(renderCard).join('');
     html += STATE.hasMore
-      ? '<button id="sfLoadMore" style="display:block;width:100%;background:#141414;border:1px solid rgba(212,175,55,.2);color:#D4AF37;padding:12px;border-radius:10px;font-weight:600;cursor:pointer;margin-top:8px;">Load more</button>'
+      ? '<p role="status" id="sfFeedPageError"></p><button type="button" id="sfLoadMore" style="display:block;width:100%;background:#141414;border:1px solid rgba(212,175,55,.2);color:#D4AF37;padding:12px;border-radius:10px;font-weight:600;cursor:pointer;margin-top:8px;">Load more</button>'
       : '<div style="text-align:center;color:rgba(255,255,255,.3);font-size:12px;padding:16px;">You\'re all caught up</div>';
     content.innerHTML=html;
-    var lm=$('sfLoadMore'); if(lm) lm.addEventListener('click', function(){ lm.textContent='Loading…'; loadFeed(false); });
+    var lm=$('sfLoadMore'); if(lm) lm.addEventListener('click', function(){ lm.textContent='Loading…';lm.disabled=true;$('sfFeedPageError').textContent='';loadFeed(false); });
     STATE.feed.forEach(function(x){ wireCard(x); });
   }
 
   function kindLabel(x){
-    if(x.kind==='checkin') return 'checked in';
+    if(x.kind==='checkin') return 'logged a visit';
     if(x.kind==='review') return 'reviewed';
     if(x.kind==='list_share' || (x.ref_type==='list_share')) return 'shared a list';
     return '';
@@ -394,13 +407,15 @@
     var handle=x.username?'@'+x.username:'';
     var klabel=kindLabel(x);
     var venueHtml = (x.venue_id && x.venue_name)
-      ? '<a href="explore.html?venue='+encodeURIComponent(x.venue_slug||x.venue_id)+'" style="color:#D4AF37;text-decoration:none;font-weight:600;">'+esc(x.venue_name)+'</a>'+(x.venue_neighborhood?' <span style="color:rgba(255,255,255,.4);">· '+esc(x.venue_neighborhood)+'</span>':'')
+      ? '<a href="/explore?venue='+encodeURIComponent(x.venue_id)+'" style="color:#D4AF37;text-decoration:none;font-weight:600;">'+esc(x.venue_name)+'</a>'+(x.venue_neighborhood?' <span style="color:rgba(255,255,255,.4);">· '+esc(x.venue_neighborhood)+'</span>':'')
       : '';
     var body = x.body ? '<div style="color:rgba(255,255,255,.88);font-size:14px;margin-top:6px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;">'+esc(x.body)+'</div>' : '';
     var img = x.image_url ? '<img src="'+esc(x.image_url)+'" alt="" loading="lazy" style="width:100%;max-height:360px;object-fit:cover;border-radius:10px;margin-top:10px;">' : '';
     var rating = (x.kind==='review' && x.rating) ? '<div style="color:#D4AF37;font-size:13px;margin-top:4px;">'+stars(Number(x.rating))+'</div>' : '';
     var isPost = x.kind==='post';
     var canModerate = STATE.me && STATE.me.id !== x.user_id;
+    var visitAudience = x.kind==='checkin' && STATE.me && STATE.me.id===x.user_id ?
+      ({private:' · Only you',friends:' · Shared with accepted friends',public:' · Public'})[x.audience] || '' : '';
 
     var actions = isPost ? (
       '<div class="sf-card-actions" style="display:flex;gap:18px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05);font-size:13px;">'+
@@ -424,7 +439,7 @@
             (venueHtml?' '+(klabel?'at ':'')+venueHtml:'')+
           '</div>'+
           body+img+rating+
-          '<div style="color:rgba(255,255,255,.35);font-size:11px;margin-top:8px;">'+timeAgo(x.created_at)+'</div>'+
+          '<div style="color:rgba(255,255,255,.55);font-size:12px;margin-top:8px;">'+timeAgo(x.created_at)+visitAudience+'</div>'+
           actions+
         '</div>'+
       '</div>'+
@@ -532,12 +547,10 @@
     social().getSummary().then(forSession(function(r){
       if(!r.ok || !r.data) return;
       var d=r.data;
-      setText('sfStatCheckins', d.checkins!=null?d.checkins:(d.posts!=null?'—':'—'));
+      setText('sfStatCheckins', Number.isInteger(d.checkins)&&d.checkins>=0?d.checkins:'—');
       setText('sfStatReviews', d.reviews!=null?d.reviews:'—');
       setText('sfStatSaved', d.saved_venues!=null?d.saved_venues:'—');
       setText('sfStatScene', d.lists!=null?d.lists:'—');
-      // also try to populate checkins from summary if present
-      if(d.checkins==null){ setText('sfStatCheckins', d.posts!=null?d.posts:'—'); }
     }));
   }
   function setText(id,v){ var el=$(id); if(el) el.textContent=String(v); }
@@ -694,9 +707,9 @@
   function emptyFeed(){
     return '<div style="background:#141414;border:1px dashed rgba(212,175,55,.25);border-radius:14px;padding:48px 24px;text-align:center;">'+
       '<i class="fas fa-compass" style="font-size:36px;color:#D4AF37;margin-bottom:14px;display:block;"></i>'+
-      '<div style="color:#fff;font-weight:700;font-size:18px;margin-bottom:8px;">Your feed is just getting started</div>'+
-      '<div style="color:rgba(255,255,255,.55);font-size:14px;line-height:1.6;max-width:340px;margin:0 auto 18px;">Add friends and check in at venues to see activity here. Share where you\'re headed tonight to kick things off.</div>'+
-      '<button id="sfEmptyCheckin" style="background:linear-gradient(135deg,#D4AF37,#b8860b);color:#000;border:none;padding:11px 22px;border-radius:10px;font-weight:700;cursor:pointer;"><i class="fas fa-location-dot"></i> Check in somewhere</button>'+
+      '<div style="color:#fff;font-weight:700;font-size:18px;margin-bottom:8px;">'+(STATE.activeTab==='friends'?'No friend activity yet':'Your feed is just getting started')+'</div>'+
+      '<div style="color:rgba(255,255,255,.7);font-size:14px;line-height:1.6;max-width:340px;margin:0 auto 18px;">'+(STATE.activeTab==='friends'?'Activity shared by accepted friends appears here, along with your own. <a href="/profile#friends">Find friends</a>.':'Log a place you visited or share where you\'re headed next.')+'</div>'+
+      '<button type="button" id="sfEmptyCheckin" style="background:linear-gradient(135deg,#D4AF37,#b8860b);color:#000;border:none;padding:11px 22px;border-radius:10px;font-weight:700;cursor:pointer;">Log a visit</button>'+
     '</div>';
   }
   function errorState(msg, retryId){
@@ -741,6 +754,7 @@
     ['sl-auth-change','sl-auth-changed','sl-auth-ready'].forEach(function(type){window.addEventListener(type,boot);document.addEventListener(type,boot);});
     window.addEventListener('storage',function(e){if(e.key===null||e.key==='sl_jwt_token'||e.key==='sl_user')boot();});
     window.addEventListener('pageshow',boot);
+    window.addEventListener('sl-checkins-changed',function(){if(STATE.me && STATE.session===sessionToken()){loadFeed(true);loadStats();}});
     document.addEventListener('visibilitychange',function(){if(!document.hidden)boot();});
     // realtime: refresh message preview when unread changes
     var s=social();

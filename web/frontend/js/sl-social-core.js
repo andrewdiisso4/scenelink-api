@@ -107,8 +107,9 @@
     reportContent:        function (type, id, reason) { return POST('/reports', { target_type: type, target_id: id, reason: reason }); },
 
     // Feed / posts
-    getFeed:        function (cursor, limit) {
+    getFeed:        function (cursor, limit, scope) {
       var qp = '?limit=' + (limit || 20);
+      if (scope === 'friends') qp += '&scope=friends';
       if (cursor) qp += '&cursor=' + encodeURIComponent(cursor);
       return GET('/posts/feed' + qp);
     },

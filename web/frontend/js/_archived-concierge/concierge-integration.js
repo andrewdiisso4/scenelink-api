@@ -6,11 +6,11 @@
 // Load the new concierge modules in the correct order
 function loadConciergeModules() {
     const modules = [
-        'js/mockVenues.js?v=connected-20261119-discover-together',
-        'js/conciergeRecommender.js?v=connected-20261119-discover-together',
-        'js/conciergeState.js?v=connected-20261119-discover-together',
-        'js/conciergeWidget.js?v=connected-20261119-discover-together',
-        'js/conciergeLogic.js?v=connected-20261119-discover-together'
+        'js/mockVenues.js?v=connected-20261119-been-with-friends',
+        'js/conciergeRecommender.js?v=connected-20261119-been-with-friends',
+        'js/conciergeState.js?v=connected-20261119-been-with-friends',
+        'js/conciergeWidget.js?v=connected-20261119-been-with-friends',
+        'js/conciergeLogic.js?v=connected-20261119-been-with-friends'
     ];
 
     modules.forEach((src, index) => {
@@ -34,7 +34,7 @@ function loadConciergeModules() {
 function loadConciergeStyles() {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'css/concierge-styles.css?v=connected-20261119-discover-together';
+    link.href = 'css/concierge-styles.css?v=connected-20261119-been-with-friends';
     link.onload = () => {
         console.log('✅ Concierge styles loaded');
     };
