@@ -12,7 +12,7 @@
     overlay.addEventListener('keydown', e => {
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
       if (e.key === 'Tab') {
-        const all = Array.from(overlay.querySelectorAll('button:not([disabled]),a[href],input,select,textarea,[tabindex="0"]')).filter(el => !el.hidden);
+        const all = Array.from(overlay.querySelectorAll('button:not([disabled]),a[href],input,select,textarea,[tabindex="0"]')).filter(el => !el.closest('[hidden]'));
         if (!all.length) return;
         if (e.shiftKey && document.activeElement === all[0]) { e.preventDefault(); all[all.length-1].focus(); }
         else if (!e.shiftKey && document.activeElement === all[all.length-1]) { e.preventDefault(); all[0].focus(); }
@@ -74,8 +74,47 @@
       '<div class="sl-row">' +
       (website ? '<a class="sl-link-button sl-secondary" href="' + E(website) + '" target="_blank" rel="noopener noreferrer">Venue website ↗</a>' : '') +
       (directions ? '<a class="sl-link-button sl-secondary" href="' + E(directions) + '" target="_blank" rel="noopener noreferrer">Directions ↗</a>' : '') + '</div>' +
-      '<div class="sl-row" style="margin-top:18px"><button type="button" data-save-venue>Save venue</button><button type="button" class="sl-secondary" data-add-list>Add to list</button><a class="sl-link-button sl-secondary" href="/plan-with-friends?venue_id=' + encodeURIComponent(v.id) + '">Plan with friends</a><button type="button" class="sl-secondary" data-review-venue>Write a review</button></div>' +
+      '<div class="sl-row" style="margin-top:18px"><button type="button" data-save-venue>Save venue</button><button type="button" class="sl-secondary" data-add-list>Add to list</button><a class="sl-link-button sl-secondary" href="/plan-with-friends?venue_id=' + encodeURIComponent(v.id) + '">Plan with friends</a><button type="button" class="sl-secondary" data-review-venue>Write a review</button>' +
+      '<button type="button" class="sl-secondary" data-share-venue>Copy venue link</button><span data-venue-share-status role="status"></span></div>' +
+      '<div data-manual-share hidden></div>' +
       '<p data-venue-status role="status"></p><h2>Community reviews</h2><div data-venue-reviews>Loading submitted reviews…</div>';
+    const shareButton = content.querySelector('[data-share-venue]');
+    shareButton.onclick = async () => {
+      const seq = generation, status = content.querySelector('[data-venue-share-status]');
+      // Start with a clean public route. Never copy filters, invitation state, or other page context.
+      const link = new URL('/explore', location.origin);
+      link.searchParams.set('venue', v.id);
+      const manual = content.querySelector('[data-manual-share]');
+      const startedFocused = document.activeElement === shareButton;
+      shareButton.disabled = true;
+      // Async completion belongs to this open venue only.
+      try {
+        await navigator.clipboard.writeText(link.href);
+        if (seq !== generation) return;
+        manual.hidden = true;
+        status.textContent = 'Venue link copied. You can paste it into a message.';
+        shareButton.disabled = false;
+        if (startedFocused && document.activeElement === document.body) shareButton.focus();
+      } catch (_) {
+        if (seq !== generation) return;
+        let input = manual.querySelector('input');
+        if (!input) {
+          const label = document.createElement('label');
+          label.append('Venue link ');
+          input = document.createElement('input');
+          input.type = 'url'; input.readOnly = true;
+          label.appendChild(input); manual.appendChild(label);
+        }
+        input.value = link.href;
+        manual.hidden = false;
+        status.textContent = 'Couldn’t copy automatically. Select and copy the link below.';
+        if (document.activeElement === shareButton || (startedFocused && document.activeElement === document.body)) {
+          input.focus(); input.select();
+        }
+      } finally {
+        if (seq === generation) shareButton.disabled = false;
+      }
+    };
     const image = content.querySelector('.sl-vd-image'), placeholder = '/assets/img/placeholder-venue.svg';
     function photoUnavailable() {
       image.removeEventListener('error', photoUnavailable);

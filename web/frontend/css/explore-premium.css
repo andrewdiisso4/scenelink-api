@@ -1159,3 +1159,17 @@
     from { opacity: 0; transform: translateX(-50%) translateY(20px); }
     to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
+
+.sl-nearby-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    padding: 10px 16px;
+    color: rgba(255,255,255,.82);
+    font-size: 13px;
+}
+.sl-nearby-controls button { min-height: 44px; }
+.sl-nearby-controls p { margin: 0; }
+.sl-nearby-controls [data-nearby-status]:not(:empty) { flex-basis: 100%; }
+.sl-nearby-controls [hidden] { display: none; }

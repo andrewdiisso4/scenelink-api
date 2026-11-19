@@ -17,10 +17,10 @@
 (function(){
   'use strict';
   var V = {
-    phase: 'comment-search-reliability',
-    sw_version: 'sl-connected-20261118-comment-search2',
-    deploy: 'connected-20261118-comment-search2',
-    built: '2026-11-18T23:20:25.472946+00:00',
+    phase: 'discover-together',
+    sw_version: 'sl-connected-20261119-discover-together',
+    deploy: 'connected-20261119-discover-together',
+    built: '2026-11-19T00:29:01.964135+00:00',
     backend_change: 'none'
   };
   // Always-available global

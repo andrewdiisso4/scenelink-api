@@ -177,23 +177,31 @@
     const sid = draft.settings ? 'slspSettingsStatus' : 'slspEditStatus';
     status(sid, draft.safeRevision ? 'Your draft is still unsaved.' : 'Your draft is still unsaved. Reload the saved profile before applying it because its revision is out of date.', draft.safeRevision ? '' : 'error');
   }
+  const privacyFlags = ['is_private','discoverable','show_achievements','share_read_receipts'];
+  function matchesPrivacy(user, payload, minimumRevision) {
+    return Number.isSafeInteger(minimumRevision) && minimumRevision > 0 &&
+      Number.isSafeInteger(user.profile_revision) && user.profile_revision >= minimumRevision &&
+      privacyFlags.every(key => user[key] === payload[key]) && user.allow_messages === payload.allow_messages;
+  }
   async function saveProfile(form, settings) {
     const key = settings ? 'settings-save' : 'profile-save', sid = settings ? 'slspSettingsStatus' : 'slspEditStatus'; if (state.busy.has(key)||state.busy.has('profile-mutation')) return;
     const epoch = state.epoch, session = C().token(), payload = {revision:Number(form.dataset.revision)}, data = new FormData(form);
-    if (settings) { ['is_private','discoverable','show_achievements','share_read_receipts'].forEach(k => payload[k] = data.has(k)); payload.allow_messages = data.get('allow_messages'); }
+    if (settings) { privacyFlags.forEach(k => payload[k] = data.has(k)); payload.allow_messages = data.get('allow_messages'); }
     else { ['display_name','username','bio','neighborhood','city'].forEach(k => payload[k] = String(data.get(k)||'').trim()); if(data.has('remove_avatar'))payload.avatar_url=null; payload.social_links = Object.keys(providers).map(provider => ({provider,url:String(data.get('social_' + provider)||'').trim()})).filter(l => l.url); }
     const controls=new Map();formLocks.set(form,controls);
-    state.busy.add(key); state.busy.add('profile-mutation'); lockPendingControls(form); form.setAttribute('aria-busy','true'); status(sid,'Saving…'); let saved = false;
+    state.busy.add(key); state.busy.add('profile-mutation'); lockPendingControls(form); form.setAttribute('aria-busy','true'); status('slspActionStatus',''); status(sid,'Saving…'); let saved = false;
     try {
       const result = await C().request(settings ? '/users/me/settings' : '/auth/profile',{method:settings ? 'PATCH' : 'PUT',body:payload}); saved = true;
       if (!valid(epoch,session)) return;
       if (!result.user || result.user.id !== state.user.id) throw new Error('The server did not return the saved profile. Reload to verify.');
+      if (settings && !matchesPrivacy(result.user,payload,payload.revision)) throw new Error('Privacy save did not confirm the requested settings.');
       const read = await C().request('/users/me'); if (!valid(epoch,session)) return;
       if (!read.user || read.user.id !== state.user.id) throw new Error('The saved profile could not be read back. Reload to verify.');
+      if (settings && !matchesPrivacy(read.user,payload,result.user.profile_revision)) throw new Error('Saved privacy settings do not match the submitted choices.');
       const draft = keepOtherDraft(settings,read.user);
       state.user = read.user; state.friendsLoaded = false; render(); restoreOtherDraft(draft); if (settings) selectTab('settings',false);
       status('slspActionStatus',settings ? 'Privacy settings saved and read back from your account.' : 'Profile saved and read back from your account.','success');
-    } catch (e) { if (valid(epoch,session)) status(sid,saved ? 'The save was accepted, but readback failed. Reload the saved profile to verify before making another change.' : errorText(e),'error'); }
+    } catch (e) { if (valid(epoch,session)) status(sid,saved ? (settings ? 'Privacy readback failed to confirm your choices. Your draft is still here. Reload saved settings to verify before making another change.' : 'The save was accepted, but readback failed. Reload the saved profile to verify before making another change.') : errorText(e),'error'); }
     finally {state.busy.delete(key); state.busy.delete('profile-mutation'); if(form.isConnected){controls.forEach((disabled,el)=>{if(form.contains(el))el.disabled=disabled;});form.removeAttribute('aria-busy');}formLocks.delete(form);}
   }
   function confirmedRelationshipMessage(kind, result, id, fid) {

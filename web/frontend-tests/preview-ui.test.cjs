@@ -16,7 +16,7 @@ test('all brand image references resolve with exact filesystem case',()=>{
 });
 test('first-visit deep link suppresses onboarding and guest save returns focus to selected venue',async()=>{
  const d=setup(),w=d.window;
- try{await tick();const save=w.document.querySelector('[data-save-venue]');assert(save);save.focus();save.click();await tick();assert(w.document.querySelector('.sl-auth-overlay.open'));w.SLOnboarding.start();assert.equal(w.document.getElementById('sl-ob-overlay'),null);
+ try{await tick();const save=w.document.querySelector('[data-save-venue]');assert(save);save.focus();save.click();await tick();const auth=w.document.querySelector('.sl-auth-overlay.open');assert(auth);for(let i=0;i<16&&!auth.contains(w.document.activeElement);i++)await tick();assert(auth.contains(w.document.activeElement),'auth takes focus before Escape');w.SLOnboarding.start();assert.equal(w.document.getElementById('sl-ob-overlay'),null);
  w.document.activeElement.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await tick();assert(!w.document.querySelector('.sl-auth-overlay.open'));assert.equal(w.document.activeElement,save);assert(w.document.querySelector('.sl-vd-overlay.sl-open'));assert.equal(w.location.search,'?venue=fictional-qa-cafe');assert.equal(w.document.body.style.overflow,'hidden');assert.equal(w.localStorage.getItem('sl_onboarded'),null);
  }finally{w.close();}
 });
@@ -40,7 +40,7 @@ test('shared desktop header separates links from search/account and preserves na
  for(const file of ['profile.html','messages.html','social-feed.html','my-lists.html'])assert(fs.readFileSync(path.join(root,file),'utf8').includes('css/sl-phase8f-polish.css'));
 });
 test('UI hotfix uses a new asset/cache version and its build helper cannot restore the stale version',()=>{
- const tag='connected-20261118-comment-search2';
+ const tag='connected-20261119-discover-together';
  const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
  assert(sw.includes("const VERSION = 'sl-"+tag+"'"));
  assert(sw.includes('c.match(req)')); // Query-string version remains part of the cache key.

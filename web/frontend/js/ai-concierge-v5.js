@@ -1137,8 +1137,8 @@
                     trigger.getAttribute('data-concierge-ask') ||
                     trigger.getAttribute('data-ask') ||
                     '';
-            if (q && q.length > 1) {
-                window.SLConcierge.ask(q);
+            if (q) {
+                window.SLConcierge.draft(q);
             } else {
                 window.SLConcierge.open();
             }

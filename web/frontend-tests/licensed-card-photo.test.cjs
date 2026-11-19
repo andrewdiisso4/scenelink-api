@@ -10,7 +10,8 @@ for(const v of records)test(v.name+' shared markup retains full image, rights an
  }finally{dom.window.close();}
 });
 test('home and map right-panel opt in once, duplicates fail closed, attribution links do not select venues',async()=>{
- const list=[...records,{...records[0],id:'duplicate-id'}];
+ // Keep this regression fixture within the home card limit as the catalog grows.
+ const reviewed=records.slice(0,2),list=[...reviewed,{...reviewed[0],id:'duplicate-id'}];
  const dom=setup('<div id="phase8TonightGrid"></div><div id="slRightPanel"><div id="slRightPanelCards"></div><span id="slRightPanelCount"></span></div>');const w=dom.window,d=w.document;try{
  w.SLVenueData.list=async()=>({venues:list});w.eval(read('js/sl-phase8-completion.js'));await new Promise(r=>setTimeout(r,20));assert.equal(d.querySelectorAll('#phase8TonightGrid figure').length,2);assert.equal(d.querySelectorAll('#phase8TonightGrid article').length,3);
  let selected=0;w.__slExploreData={getVenues:()=>list,getFiltered:()=>list,getStatus:()=>({total:3}),showVenue:()=>selected++};const later=[];w.setTimeout=f=>{later.push(f);return 1;};w.setInterval=()=>1;w.eval(read('js/sl-right-panel.js'));later.forEach(f=>f());assert.equal(d.querySelectorAll('#slRightPanelCards figure').length,2);assert.equal(d.querySelectorAll('#slRightPanelCards .sl-rp-card').length,3);d.querySelector('#slRightPanelCards figcaption a').dispatchEvent(new w.MouseEvent('click',{bubbles:true,cancelable:true}));assert.equal(selected,0);

@@ -18,15 +18,35 @@ for(const page of ['index.html','explore.html','nightlife.html','tonight.html','
  assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);assert.equal(w.location.search,'?keep=yes');assert.equal(w.location.hash,'#section');
  assert.equal(d.querySelector('.sl-concierge-panel[role="dialog"]').getAttribute('aria-label'),'SceneLink Concierge');
 });
-test('repeated loading clicks coalesce; loaded click sends once and close cancels delayed focus',async t=>{
+test('repeated exterior CTA clicks coalesce into latest unsent draft; only explicit send posts',async t=>{
  const {w,d,calls}=setup(t);w.eval(read('js/sl-perf-loader.js'));w.eval(read('js/sl-phase8d-recovery.js'));await tick(0);
- const trigger=d.querySelector('[data-sl-concierge]');trigger.focus();trigger.click();trigger.click();
+ const trigger=d.querySelector('[data-sl-concierge]'),preset=d.querySelector('.sl-phase8-prompt');trigger.focus();trigger.click();trigger.click();preset.click();
  assert.equal(d.querySelectorAll('script[src*="ai-concierge-v5.js"]').length,1);
  w.eval(read('js/ai-concierge-v5.js'));d.querySelector('script[src*="ai-concierge-v5.js"]').dispatchEvent(new w.Event('load'));await tick(330);
- assert.equal(calls.filter(c=>c.opts.method==='POST').length,1);
- trigger.click();await tick(330);assert.equal(calls.filter(c=>c.opts.method==='POST').length,2);
+ const input=d.querySelector('.slc-input');
+ assert.equal(input.value,preset.getAttribute('data-sl-concierge'));assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);
+ trigger.click();await tick(330);assert.equal(input.value,trigger.getAttribute('data-sl-concierge'));assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);
+ input.value='Edited exterior CTA draft';input.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));await tick(20);
+ let writes=calls.filter(c=>c.opts.method==='POST');assert.equal(writes.length,1);assert.equal(JSON.parse(writes[0].opts.body).message,'Edited exterior CTA draft');
  w.SLConcierge.close();trigger.focus();w.SLConcierge.open();w.SLConcierge.close();await tick(330);assert.equal(d.activeElement,trigger);
- w.SLConcierge.ask('cancel this pending prompt');w.SLConcierge.close();await tick(330);assert.equal(calls.filter(c=>c.opts.method==='POST').length,2);
+ w.SLConcierge.ask('cancel this pending prompt');w.SLConcierge.close();await tick(330);assert.equal(calls.filter(c=>c.opts.method==='POST').length,1);
+});
+test('Tonight preset stays an unsent draft even without the recovery bridge',async t=>{
+ const {w,d,calls}=setup(t,'tonight.html');w.eval(read('js/ai-concierge-v5.js'));await tick(0);
+ const preset=d.querySelector('.tv2-chip[data-sl-concierge]');preset.click();await tick(330);
+ assert.equal(d.querySelector('.slc-input').value,preset.getAttribute('data-sl-concierge'));
+ assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);
+});
+test('Tonight empty-plan button loads concierge from cold and closes the drawer without posting',async t=>{
+ const {w,d,calls}=setup(t,'tonight.html');w.SLVenueData={list:async()=>({venues:[],total:0,hasMore:false})};
+ w.eval(read('js/sl-phase8d-recovery.js'));w.eval(read('js/tonight-v2.js'));await tick(0);
+ w.TV2.openPlanDrawer();const drawer=d.querySelector('#tv2-plan-drawer');assert.equal(drawer.getAttribute('aria-hidden'),'false');
+ assert.equal(w.SLConcierge,undefined);
+ d.querySelector('[data-tv2-ask-draft]').click();assert.equal(drawer.getAttribute('aria-hidden'),'true');
+ const script=d.querySelector('script[src*="ai-concierge-v5.js"]');assert(script);
+ w.eval(read('js/ai-concierge-v5.js'));script.dispatchEvent(new w.Event('load'));await tick(330);
+ assert.equal(d.querySelector('.slc-input').value,'Plan my night');
+ assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);
 });
 test('script failure exposes retry and retry loads one new script',async t=>{
  const {w,d}=setup(t);w.eval(read('js/sl-phase8d-recovery.js'));await tick(0);const trigger=d.querySelector('[data-sl-concierge]');trigger.click();
