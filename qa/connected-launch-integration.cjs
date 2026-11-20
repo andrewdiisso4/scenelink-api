@@ -636,12 +636,12 @@ async function main(){
  await check('staging venue import preserves provenance, skips identities, and never activates listings',async()=>{
   const importer=req('./qa/tools/stage-venue-import.cjs');
   const rows=[1,2].map(n=>({name:'Fictional Same Brand QA',address:n+' Fictional Street',city:'Quincy',state:'MA',lat:42.25,lng:-71,type:'cafe',category:'cafe',source:'overture',external_id:'isolated-import-'+n}));
-  const provenance=Object.fromEntries(rows.map(r=>[r.external_id,{release:'isolated-fixture-release',sources:[{dataset:'fictional-only'}],verification_status:'provider_record_not_independently_verified',existence_confidence:0.9}]));
+  const provenance=Object.fromEntries(rows.map(r=>[r.external_id,{release:'isolated-fixture-release',sources:[{dataset:'fictional-only',property:''}],verification_status:'provider_record_not_independently_verified',existence_confidence:0.9}]));
   const bundle={rows,ifExists:'skip'},report={release:'isolated-fixture-release',candidate_count:2,production_import_ready:false,input_sha256:'d'.repeat(64)};
   const evidence={input_sha256:'a'.repeat(64),provenance_sha256:'b'.repeat(64),notices_sha256:'c'.repeat(64)};
   const first=await importer.apply(pool,bundle,provenance,report,evidence);assert.equal(first.inserted,2);assert.equal(first.skipped,0);
   const actual=(await pool.query("SELECT id,name,is_active,rating,review_count,price_level FROM venues WHERE source='overture' AND external_id LIKE 'isolated-import-%' ORDER BY external_id")).rows;assert.equal(actual.length,2);assert(actual.every(x=>x.is_active===false&&x.rating===null&&x.review_count===null&&x.price_level===null));
-  const saved=(await pool.query('SELECT provenance,source_release FROM venue_source_records WHERE import_batch_id=$1',[first.batch_id])).rows;assert.equal(saved.length,2);assert.equal(saved[0].provenance.sources[0].dataset,'fictional-only');
+  const saved=(await pool.query('SELECT provenance,source_release FROM venue_source_records WHERE import_batch_id=$1',[first.batch_id])).rows;assert.equal(saved.length,2);assert.equal(saved[0].provenance.sources[0].dataset,'fictional-only');assert.equal(saved[0].provenance.sources[0].property,'');
   const again=await importer.apply(pool,bundle,provenance,report,evidence);assert.equal(again.inserted,0);assert.equal(again.skipped,2);
   const addressMatch={...rows[0],external_id:'isolated-import-other-source-id'};
   const duplicate=await importer.apply(pool,{rows:[addressMatch],ifExists:'skip'},{[addressMatch.external_id]:provenance[rows[0].external_id]},{...report,candidate_count:1},evidence);assert.equal(duplicate.skipped,1);

@@ -1,0 +1,68 @@
+{
+  "release": "2026-11-18.0",
+  "schema_versions": {
+    "overture-schema-system": "2.0.0.post4+main.2dfad8b",
+    "overture-schema-pyspark": "2.0.0.post0+main.6f29f8c"
+  },
+  "bbox_west_south_east_north": [
+    -71.3,
+    42.18,
+    -70.88,
+    42.5
+  ],
+  "started_at_utc": "2026-11-20T09:36:10.905294+00:00",
+  "finished_at_utc": "2026-11-20T09:36:27.632365+00:00",
+  "source": "Overture Maps public places theme",
+  "source_root": "s3://overturemaps-us-west-2/release/2026-11-18.0/theme=places/type=place/",
+  "stac_catalog_url": "https://stac.overturemaps.org/catalog.json",
+  "stac_index_url": "https://stac.overturemaps.org/2026-11-18.0/collections.parquet",
+  "source_files": [
+    "s3://overturemaps-us-west-2/release/2026-11-18.0/theme=places/type=place/part-00006-3cb3a8eb-4879-578b-acd8-c6daeb22f062-c000.zstd.parquet"
+  ],
+  "source_row_groups": [
+    {
+      "path": "overturemaps-us-west-2/release/2026-11-18.0/theme=places/type=place/part-00006-3cb3a8eb-4879-578b-acd8-c6daeb22f062-c000.zstd.parquet",
+      "selected_row_groups": [
+        102,
+        103,
+        105,
+        107,
+        108,
+        109,
+        110,
+        111,
+        114,
+        115,
+        120,
+        121,
+        122,
+        123,
+        124,
+        126,
+        144,
+        145,
+        148,
+        149
+      ],
+      "source_row_group_count": 512
+    }
+  ],
+  "record_count": 127405,
+  "client": "overturemaps 2.1.1",
+  "query": "bbox spatial filter only; all regional place types and source fields retained",
+  "changes": "Geographic subset only. GeoJSONSeq representation created by official client; GeoParquet retains nulls and bounding-box fields.",
+  "outputs": [
+    {
+      "path": "overture_boston_2026-11-18.parquet",
+      "bytes": 26198277,
+      "sha256": "f71ddeffc0083d1dddf2d7b6e3c7d29763724c455a42ba20ca0ce6edc8415fdb"
+    },
+    {
+      "path": "overture_boston_2026-11-18.geojsonseq",
+      "bytes": 186660064,
+      "sha256": "5e14ce2d364c1d0a443f0eb33310ad740eb0e57a73f1e006075c1b33129ced9a"
+    }
+  ],
+  "independently_verified_open": false,
+  "production_import_ready": false
+}

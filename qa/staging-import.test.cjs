@@ -1,10 +1,25 @@
 'use strict';
 const {test}=require('node:test');const assert=require('node:assert/strict');
 const {validate,validateTarget}=require('./tools/stage-venue-import.cjs');
-const fixture=()=>({bundle:{ifExists:'skip',rows:[{name:'Fictional QA Cafe',address:'10 Fictional Street',city:'Quincy',state:'MA',lat:42.25,lng:-71.0,type:'cafe',category:'cafe',source:'overture',external_id:'fixture-1'}]},provenance:{'fixture-1':{release:'fixture-release',sources:[{dataset:'fictional-test-only'}],verification_status:'provider_record_not_independently_verified',existence_confidence:0.9}},report:{release:'fixture-release',candidate_count:1,production_import_ready:false,input_sha256:'d'.repeat(64)}});
+const fixture=()=>({bundle:{ifExists:'skip',rows:[{name:'Fictional QA Cafe',address:'10 Fictional Street',city:'Quincy',state:'MA',lat:42.25,lng:-71.0,type:'cafe',category:'cafe',source:'overture',external_id:'fixture-1'}]},provenance:{'fixture-1':{release:'fixture-release',sources:[{dataset:'fictional-test-only',property:''}],verification_status:'provider_record_not_independently_verified',existence_confidence:0.9}},report:{release:'fixture-release',candidate_count:1,production_import_ready:false,input_sha256:'d'.repeat(64)}});
 test('staging importer accepts mapper-shaped fixtures without claiming production readiness',()=>{const x=fixture();assert.equal(validate(x.bundle,x.provenance,x.report).activation,'inactive_staging_only');});
+test('staging importer preserves whole-feature, empty-name and dedicated RFC 6901 source scope',()=>{
+ const x=fixture(),pointers=['','/','/properties/confidence','/names/has space ','/name~1with~0escapes','/'+ 'x'.repeat(254)];
+ x.provenance['fixture-1'].sources=pointers.map(property=>({dataset:'fictional-test-only',property}));
+ assert.equal(validate(x.bundle,x.provenance,x.report).activation,'inactive_staging_only');
+ assert.deepEqual(x.provenance['fixture-1'].sources.map(source=>source.property),pointers);
+});
+test('staging importer rejects missing, null, malformed or excessive source scope',()=>{
+ const malformed=[{},Object.create({property:''}),...[
+  undefined,null,42,[],false,' ','properties/confidence',' /properties/confidence','#/names','/bad~','/bad~2','/bad~~0','/name\0value','/'+'x'.repeat(255)
+ ].map(property=>({property}))];
+ for(const source of malformed){
+  const x=fixture();source.dataset='fictional-test-only';x.provenance['fixture-1'].sources=[source];
+  assert.throws(()=>validate(x.bundle,x.provenance,x.report),/Invalid source property/);
+ }
+});
 test('staging importer refuses manufactured ratings, missing provenance and known closures',()=>{
- for(const change of [x=>x.bundle.rows[0].rating=4.9,x=>delete x.provenance['fixture-1'],x=>x.provenance['fixture-1'].operating_status='permanently_closed',x=>x.bundle.rows[0].lat=null,x=>x.bundle.ifExists='update',x=>x.provenance['fixture-1'].existence_confidence=1.2,x=>x.provenance['fixture-1'].sources=[{}]]){const x=fixture();change(x);assert.throws(()=>validate(x.bundle,x.provenance,x.report));}
+ for(const change of [x=>x.bundle.rows[0].rating=4.9,x=>delete x.provenance['fixture-1'],x=>x.provenance['fixture-1'].operating_status='permanently_closed',x=>x.bundle.rows[0].lat=null,x=>x.bundle.ifExists='update',x=>x.report.production_import_ready=true,x=>x.provenance['fixture-1'].existence_confidence=1.2,x=>x.provenance['fixture-1'].sources=[{}]]){const x=fixture();change(x);assert.throws(()=>validate(x.bundle,x.provenance,x.report));}
 });
 test('staging importer refuses production, remote hosts, wrong DB names and URL override routes',()=>{
  const env={NODE_ENV:'test',SCENELINK_ALLOW_LOCAL_IMPORT:'yes'};

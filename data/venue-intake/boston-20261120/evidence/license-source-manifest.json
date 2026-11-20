@@ -1,0 +1,88 @@
+[
+  {
+    "file": "CDLA-Permissive-2.0.txt",
+    "source_url": "https://raw.githubusercontent.com/Community-Data-License-Agreements/Releases/main/CDLA-Permissive-2.0.txt",
+    "final_url": "https://raw.githubusercontent.com/Community-Data-License-Agreements/Releases/main/CDLA-Permissive-2.0.txt",
+    "retrieved_at_utc": "2026-11-20T09:40:35.334084+00:00",
+    "content_type": "text/plain; charset=utf-8",
+    "etag": "\"94dc523360e57f63448346c184df02130a49ced11afee09d32e4b75892bce796\"",
+    "last_modified": null,
+    "bytes": 2354,
+    "sha256": "4531a67d443284d93ffed0803df5b10634aff21c3d77e381f2d48af01d875868"
+  },
+  {
+    "file": "Apache-2.0.txt",
+    "source_url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+    "final_url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+    "retrieved_at_utc": "2026-11-20T09:40:34.962088+00:00",
+    "content_type": "text/plain",
+    "etag": "\"2c5e-64706305a0bd1\"",
+    "last_modified": "Sun, 28 Dec 2025 17:09:26 GMT",
+    "bytes": 11358,
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  {
+    "file": "CC0-1.0.txt",
+    "source_url": "https://raw.githubusercontent.com/creativecommons/cc-legal-tools-data/main/docs/publicdomain/zero/1.0/legalcode.txt",
+    "final_url": "https://raw.githubusercontent.com/creativecommons/cc-legal-tools-data/main/docs/publicdomain/zero/1.0/legalcode.txt",
+    "retrieved_at_utc": "2026-11-20T09:40:35.454816+00:00",
+    "content_type": "text/plain; charset=utf-8",
+    "etag": "\"9d3fb2fa8cac7a8827d7cf7e62d6af81f1ffbb3fddb4d270334afebee9e1fc66\"",
+    "last_modified": null,
+    "bytes": 7048,
+    "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+    "canonical_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt",
+    "source_note": "Exact plain-text copy from Creative Commons own official website source repository; canonical URL was also inspected via web retrieval."
+  },
+  {
+    "file": "foursquare-notice.html",
+    "source_url": "https://opensource.foursquare.com/places-notice-txt/",
+    "final_url": "https://opensource.foursquare.com/places-notice-txt/",
+    "retrieved_at_utc": "2026-11-20T09:40:34.981918+00:00",
+    "content_type": "text/html; charset=UTF-8",
+    "etag": null,
+    "last_modified": null,
+    "bytes": 91213,
+    "sha256": "30fea3bc0a3dbd8925d4a2f5c21e82360387e3a0164348a87015178e3da90043"
+  },
+  {
+    "file": "overture-attribution.html",
+    "source_url": "https://docs.overturemaps.org/attribution/",
+    "final_url": "https://docs.overturemaps.org/attribution/",
+    "retrieved_at_utc": "2026-11-20T09:40:39.674030+00:00",
+    "content_type": "text/html; charset=utf-8",
+    "etag": "\"6afdfd63-1f994\"",
+    "last_modified": "Wed, 18 Nov 2026 19:32:51 GMT",
+    "bytes": 129428,
+    "sha256": "e96cc650c5439c9ae4233b365cfe5f58da79f494d96b360197e75e6a69e58ad7"
+  },
+  {
+    "file": "cdla-permissive-2.0.html",
+    "source_url": "https://cdla.dev/permissive-2-0/",
+    "final_url": "https://cdla.dev/permissive-2-0/",
+    "retrieved_at_utc": "2026-11-20T09:40:38.542664+00:00",
+    "content_type": "text/html; charset=UTF-8",
+    "etag": null,
+    "last_modified": null,
+    "bytes": 145333,
+    "sha256": "ecb41e98c81ca18855aa0e996198dd767ba315a270430cde6a637b5b4edd93e6"
+  },
+  {
+    "file": "NOTICE-Foursquare.txt",
+    "source_url": "https://opensource.foursquare.com/places-notice-txt/",
+    "derived_from": "foursquare-notice.html",
+    "transformation": "HTML presentation removed; complete notice text retained verbatim, including original paragraph text.",
+    "sha256": "860cc43a771b9573d993dfbd7d002c647ebe99d888c892004de6c8cdbb006b4e",
+    "bytes": 1786
+  },
+  {
+    "file": "PDDL-1.0.txt",
+    "source_url": "https://raw.githubusercontent.com/spdx/license-list-data/main/text/PDDL-1.0.txt",
+    "canonical_url": "https://opendatacommons.org/licenses/pddl/1-0/",
+    "source_note": "Verbatim PDDL-1.0 license text from SPDX official license-list-data repository; publisher legal-code page separately inspected through web retrieval.",
+    "applies_to": "City of Boston Active Food business-only snapshot",
+    "retrieved_at_utc": "2026-11-20T09:44:58.086478+00:00",
+    "bytes": 15485,
+    "sha256": "561ca6d9bba2a5b8658466833b15035f64d067fc327d226250f5123aa96e82af"
+  }
+]

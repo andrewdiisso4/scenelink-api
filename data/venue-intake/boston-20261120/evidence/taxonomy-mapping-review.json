@@ -1,0 +1,1156 @@
+{
+  "purpose": "Descriptive taxonomy compatibility and data-quality profile; not an import cohort, activation decision, or verification of public access.",
+  "source_release": "2026-11-18.0",
+  "input_sha256": "f71ddeffc0083d1dddf2d7b6e3c7d29763724c455a42ba20ca0ce6edc8415fdb",
+  "production_import_ready": false,
+  "recommended_label_mapping": {
+    "restaurant": "restaurant",
+    "casual_eatery": "restaurant",
+    "fine_dining_restaurant": "restaurant",
+    "fast_food_restaurant": "restaurant",
+    "cafe": "cafe",
+    "coffee_shop": "cafe",
+    "bakery": "cafe",
+    "tea_room": "cafe",
+    "bubble_tea_shop": "cafe",
+    "smoothie_juice_bar": "cafe",
+    "bar": "bar",
+    "pub": "bar",
+    "brewery": "bar",
+    "brewpub": "bar",
+    "lounge": "bar",
+    "beer_garden": "bar",
+    "dance_club": "club",
+    "nightclub": "club",
+    "music_venue": "music",
+    "concert_hall": "music"
+  },
+  "specific_review_rules": {
+    "airport_lounge": "restricted_access_lounge_review",
+    "theatre_venue": "theatre_requires_distinct_category_review",
+    "theater": "theatre_requires_distinct_category_review",
+    "theatre": "theatre_requires_distinct_category_review",
+    "comedy_club": "comedy_requires_distinct_category_review",
+    "candy_store": "retail_child_not_restaurant",
+    "chocolatier": "retail_child_not_restaurant",
+    "popcorn_shop": "retail_child_not_restaurant",
+    "food_truck_stand": "fixed_location_and_food_stand_category_review",
+    "food_court": "shared_site_category_review"
+  },
+  "generic_review_rules": {
+    "nightlife_venue": "nightlife_subtype_review",
+    "performing_arts_venue": "performance_subtype_review",
+    "arts_and_entertainment": "entertainment_subtype_review",
+    "alcoholic_beverage_venue": "drinks_subtype_review",
+    "non_alcoholic_beverage_venue": "beverage_subtype_review",
+    "food_and_drink": "food_and_drink_subtype_review"
+  },
+  "rule_order": "Explicit specific holds first. Then the most-specific supported label: taxonomy.primary, reverse taxonomy.hierarchy, basic_category. Generic parent labels hold only when there is no supported specific subtype. Never map a broad arts/entertainment parent to music. Preserve original primary/basic/hierarchy/alternates in provenance and raw primary in category.",
+  "address_note": "MA and US-MA are recognized only when country is explicitly US. Counts are source descriptive counts; address completeness is not independent corroboration. Do not promote previously held IDs based on this profile.",
+  "category_compatible_counts": {
+    "cafe": 2186,
+    "restaurant": 8759,
+    "bar": 1053,
+    "music": 279,
+    "club": 103
+  },
+  "explicit_review_counts": {
+    "outside_current_launch_types": 112848,
+    "entertainment_subtype_review": 1650,
+    "theatre_requires_distinct_category_review": 121,
+    "retail_child_not_restaurant": 98,
+    "nightlife_subtype_review": 41,
+    "restricted_access_lounge_review": 13,
+    "drinks_subtype_review": 23,
+    "performance_subtype_review": 117,
+    "comedy_requires_distinct_category_review": 30,
+    "fixed_location_and_food_stand_category_review": 55,
+    "food_and_drink_subtype_review": 22,
+    "shared_site_category_review": 7
+  },
+  "legacy_mapping_counts": {
+    "restaurant": 8924,
+    "cafe": 1926,
+    "bar": 946,
+    "music": 279
+  },
+  "mapping_count_changes": {
+    "unmapped -> cafe": 255,
+    "restaurant -> held_or_outside": 160,
+    "unmapped -> club": 103,
+    "unmapped -> bar": 107,
+    "restaurant -> cafe": 5
+  },
+  "mapping_reason_counts": {
+    "mapped_from_smoothie_juice_bar": 119,
+    "mapped_from_restaurant": 7168,
+    "entertainment_subtype_review": 1650,
+    "theatre_requires_distinct_category_review": 121,
+    "mapped_from_casual_eatery": 1263,
+    "mapped_from_cafe": 444,
+    "mapped_from_coffee_shop": 956,
+    "mapped_from_pub": 202,
+    "mapped_from_music_venue": 279,
+    "mapped_from_bakery": 531,
+    "mapped_from_bubble_tea_shop": 108,
+    "retail_child_not_restaurant": 98,
+    "mapped_from_bar": 658,
+    "mapped_from_fast_food_restaurant": 328,
+    "nightlife_subtype_review": 41,
+    "restricted_access_lounge_review": 13,
+    "drinks_subtype_review": 23,
+    "performance_subtype_review": 117,
+    "mapped_from_dance_club": 103,
+    "comedy_requires_distinct_category_review": 30,
+    "mapped_from_brewery": 86,
+    "mapped_from_tea_room": 28,
+    "mapped_from_lounge": 80,
+    "fixed_location_and_food_stand_category_review": 55,
+    "food_and_drink_subtype_review": 22,
+    "mapped_from_beer_garden": 27,
+    "shared_site_category_review": 7
+  },
+  "by_operating_status": {
+    "cafe": {
+      "open": 1745,
+      "not_provided": 325,
+      "permanently_closed": 116
+    },
+    "restaurant": {
+      "not_provided": 999,
+      "permanently_closed": 545,
+      "open": 7215
+    },
+    "review:entertainment_subtype_review": {
+      "open": 1209,
+      "not_provided": 398,
+      "permanently_closed": 43
+    },
+    "review:theatre_requires_distinct_category_review": {
+      "open": 70,
+      "not_provided": 51
+    },
+    "bar": {
+      "open": 761,
+      "not_provided": 211,
+      "permanently_closed": 81
+    },
+    "music": {
+      "open": 175,
+      "not_provided": 99,
+      "permanently_closed": 5
+    },
+    "review:retail_child_not_restaurant": {
+      "open": 77,
+      "not_provided": 19,
+      "permanently_closed": 2
+    },
+    "review:nightlife_subtype_review": {
+      "not_provided": 11,
+      "open": 28,
+      "permanently_closed": 2
+    },
+    "review:restricted_access_lounge_review": {
+      "open": 10,
+      "not_provided": 3
+    },
+    "review:drinks_subtype_review": {
+      "not_provided": 6,
+      "permanently_closed": 2,
+      "open": 15
+    },
+    "review:performance_subtype_review": {
+      "open": 102,
+      "permanently_closed": 6,
+      "not_provided": 9
+    },
+    "club": {
+      "not_provided": 47,
+      "open": 56
+    },
+    "review:comedy_requires_distinct_category_review": {
+      "not_provided": 11,
+      "open": 17,
+      "permanently_closed": 2
+    },
+    "review:fixed_location_and_food_stand_category_review": {
+      "open": 26,
+      "not_provided": 28,
+      "permanently_closed": 1
+    },
+    "review:food_and_drink_subtype_review": {
+      "not_provided": 13,
+      "open": 9
+    },
+    "review:shared_site_category_review": {
+      "permanently_closed": 1,
+      "not_provided": 2,
+      "open": 4
+    }
+  },
+  "by_existence_confidence": {
+    "cafe": {
+      "below_0.8": 443,
+      "0.9_to_under_0.95": 476,
+      "0.95_to_1.0": 1199,
+      "0.8_to_under_0.9": 68
+    },
+    "restaurant": {
+      "below_0.8": 1377,
+      "0.95_to_1.0": 4993,
+      "0.9_to_under_0.95": 2133,
+      "0.8_to_under_0.9": 256
+    },
+    "review:entertainment_subtype_review": {
+      "0.95_to_1.0": 385,
+      "below_0.8": 671,
+      "0.9_to_under_0.95": 505,
+      "0.8_to_under_0.9": 89
+    },
+    "review:theatre_requires_distinct_category_review": {
+      "below_0.8": 65,
+      "0.9_to_under_0.95": 25,
+      "0.8_to_under_0.9": 8,
+      "0.95_to_1.0": 23
+    },
+    "bar": {
+      "0.9_to_under_0.95": 275,
+      "0.95_to_1.0": 450,
+      "0.8_to_under_0.9": 59,
+      "below_0.8": 269
+    },
+    "music": {
+      "below_0.8": 140,
+      "0.95_to_1.0": 68,
+      "0.9_to_under_0.95": 59,
+      "0.8_to_under_0.9": 12
+    },
+    "review:retail_child_not_restaurant": {
+      "0.95_to_1.0": 23,
+      "0.9_to_under_0.95": 35,
+      "below_0.8": 35,
+      "0.8_to_under_0.9": 5
+    },
+    "review:nightlife_subtype_review": {
+      "below_0.8": 20,
+      "0.9_to_under_0.95": 13,
+      "0.95_to_1.0": 8
+    },
+    "review:restricted_access_lounge_review": {
+      "0.95_to_1.0": 6,
+      "below_0.8": 5,
+      "0.8_to_under_0.9": 1,
+      "0.9_to_under_0.95": 1
+    },
+    "review:drinks_subtype_review": {
+      "below_0.8": 13,
+      "0.9_to_under_0.95": 6,
+      "0.95_to_1.0": 3,
+      "0.8_to_under_0.9": 1
+    },
+    "review:performance_subtype_review": {
+      "0.9_to_under_0.95": 31,
+      "below_0.8": 54,
+      "0.95_to_1.0": 31,
+      "0.8_to_under_0.9": 1
+    },
+    "club": {
+      "below_0.8": 61,
+      "0.9_to_under_0.95": 16,
+      "0.8_to_under_0.9": 2,
+      "0.95_to_1.0": 24
+    },
+    "review:comedy_requires_distinct_category_review": {
+      "below_0.8": 14,
+      "0.95_to_1.0": 11,
+      "0.8_to_under_0.9": 2,
+      "0.9_to_under_0.95": 3
+    },
+    "review:fixed_location_and_food_stand_category_review": {
+      "below_0.8": 38,
+      "0.9_to_under_0.95": 6,
+      "0.95_to_1.0": 9,
+      "0.8_to_under_0.9": 2
+    },
+    "review:food_and_drink_subtype_review": {
+      "below_0.8": 17,
+      "0.9_to_under_0.95": 2,
+      "0.8_to_under_0.9": 2,
+      "0.95_to_1.0": 1
+    },
+    "review:shared_site_category_review": {
+      "0.9_to_under_0.95": 2,
+      "below_0.8": 4,
+      "0.95_to_1.0": 1
+    }
+  },
+  "by_address_completeness": {
+    "cafe": {
+      "one_distinct_explicit_MA_address": 2135,
+      "missing_explicit_complete_MA_address": 51
+    },
+    "restaurant": {
+      "one_distinct_explicit_MA_address": 8671,
+      "missing_explicit_complete_MA_address": 88
+    },
+    "review:entertainment_subtype_review": {
+      "one_distinct_explicit_MA_address": 1525,
+      "missing_explicit_complete_MA_address": 125
+    },
+    "review:theatre_requires_distinct_category_review": {
+      "one_distinct_explicit_MA_address": 113,
+      "missing_explicit_complete_MA_address": 8
+    },
+    "bar": {
+      "one_distinct_explicit_MA_address": 1040,
+      "missing_explicit_complete_MA_address": 13
+    },
+    "music": {
+      "one_distinct_explicit_MA_address": 259,
+      "missing_explicit_complete_MA_address": 20
+    },
+    "review:retail_child_not_restaurant": {
+      "one_distinct_explicit_MA_address": 97,
+      "missing_explicit_complete_MA_address": 1
+    },
+    "review:nightlife_subtype_review": {
+      "one_distinct_explicit_MA_address": 40,
+      "missing_explicit_complete_MA_address": 1
+    },
+    "review:restricted_access_lounge_review": {
+      "one_distinct_explicit_MA_address": 12,
+      "missing_explicit_complete_MA_address": 1
+    },
+    "review:drinks_subtype_review": {
+      "one_distinct_explicit_MA_address": 21,
+      "missing_explicit_complete_MA_address": 2
+    },
+    "review:performance_subtype_review": {
+      "one_distinct_explicit_MA_address": 116,
+      "missing_explicit_complete_MA_address": 1
+    },
+    "club": {
+      "one_distinct_explicit_MA_address": 93,
+      "missing_explicit_complete_MA_address": 10
+    },
+    "review:comedy_requires_distinct_category_review": {
+      "missing_explicit_complete_MA_address": 3,
+      "one_distinct_explicit_MA_address": 27
+    },
+    "review:fixed_location_and_food_stand_category_review": {
+      "one_distinct_explicit_MA_address": 47,
+      "missing_explicit_complete_MA_address": 8
+    },
+    "review:food_and_drink_subtype_review": {
+      "one_distinct_explicit_MA_address": 18,
+      "missing_explicit_complete_MA_address": 4
+    },
+    "review:shared_site_category_review": {
+      "one_distinct_explicit_MA_address": 6,
+      "missing_explicit_complete_MA_address": 1
+    }
+  },
+  "by_source_city": {
+    "Boston": {
+      "review:entertainment_subtype_review": 620,
+      "restaurant": 2839,
+      "cafe": 705,
+      "review:drinks_subtype_review": 10,
+      "review:theatre_requires_distinct_category_review": 44,
+      "review:comedy_requires_distinct_category_review": 11,
+      "review:performance_subtype_review": 52,
+      "bar": 468,
+      "club": 41,
+      "music": 103,
+      "review:nightlife_subtype_review": 25,
+      "review:fixed_location_and_food_stand_category_review": 23,
+      "review:food_and_drink_subtype_review": 5,
+      "review:retail_child_not_restaurant": 40,
+      "review:shared_site_category_review": 2,
+      "review:restricted_access_lounge_review": 10
+    },
+    "Cambridge": {
+      "cafe": 181,
+      "restaurant": 706,
+      "club": 19,
+      "review:entertainment_subtype_review": 142,
+      "review:fixed_location_and_food_stand_category_review": 7,
+      "review:performance_subtype_review": 12,
+      "bar": 89,
+      "review:comedy_requires_distinct_category_review": 3,
+      "music": 37,
+      "review:nightlife_subtype_review": 1,
+      "review:drinks_subtype_review": 1,
+      "review:retail_child_not_restaurant": 4,
+      "review:theatre_requires_distinct_category_review": 11,
+      "review:shared_site_category_review": 4,
+      "review:food_and_drink_subtype_review": 2
+    },
+    "Somerville": {
+      "review:entertainment_subtype_review": 73,
+      "restaurant": 386,
+      "cafe": 90,
+      "bar": 56,
+      "review:theatre_requires_distinct_category_review": 7,
+      "music": 18,
+      "review:comedy_requires_distinct_category_review": 5,
+      "club": 3,
+      "review:fixed_location_and_food_stand_category_review": 1,
+      "review:performance_subtype_review": 3,
+      "review:retail_child_not_restaurant": 6
+    },
+    "Quincy": {
+      "review:entertainment_subtype_review": 43,
+      "restaurant": 319,
+      "bar": 48,
+      "review:food_and_drink_subtype_review": 2,
+      "cafe": 93,
+      "review:theatre_requires_distinct_category_review": 3,
+      "review:performance_subtype_review": 3,
+      "review:comedy_requires_distinct_category_review": 1,
+      "music": 2,
+      "review:nightlife_subtype_review": 2,
+      "review:retail_child_not_restaurant": 1,
+      "review:fixed_location_and_food_stand_category_review": 1
+    },
+    "Waltham": {
+      "restaurant": 243,
+      "review:entertainment_subtype_review": 65,
+      "cafe": 47,
+      "review:fixed_location_and_food_stand_category_review": 2,
+      "bar": 19,
+      "review:performance_subtype_review": 3,
+      "review:theatre_requires_distinct_category_review": 3,
+      "music": 3,
+      "review:food_and_drink_subtype_review": 1
+    },
+    "Brookline": {
+      "restaurant": 229,
+      "cafe": 57,
+      "review:entertainment_subtype_review": 31,
+      "music": 4,
+      "bar": 12,
+      "review:nightlife_subtype_review": 2,
+      "review:drinks_subtype_review": 1,
+      "review:performance_subtype_review": 2,
+      "review:theatre_requires_distinct_category_review": 2,
+      "review:retail_child_not_restaurant": 1
+    },
+    "<missing-explicit-MA-address>": {
+      "cafe": 51,
+      "review:entertainment_subtype_review": 125,
+      "restaurant": 88,
+      "review:comedy_requires_distinct_category_review": 3,
+      "music": 20,
+      "review:fixed_location_and_food_stand_category_review": 8,
+      "review:theatre_requires_distinct_category_review": 8,
+      "club": 10,
+      "review:nightlife_subtype_review": 1,
+      "review:drinks_subtype_review": 2,
+      "bar": 13,
+      "review:performance_subtype_review": 1,
+      "review:food_and_drink_subtype_review": 4,
+      "review:retail_child_not_restaurant": 1,
+      "review:shared_site_category_review": 1,
+      "review:restricted_access_lounge_review": 1
+    },
+    "Lynn": {
+      "cafe": 43,
+      "restaurant": 234,
+      "bar": 26,
+      "review:entertainment_subtype_review": 22,
+      "music": 4,
+      "review:nightlife_subtype_review": 2,
+      "review:comedy_requires_distinct_category_review": 1,
+      "review:theatre_requires_distinct_category_review": 1,
+      "review:food_and_drink_subtype_review": 1,
+      "club": 2,
+      "review:fixed_location_and_food_stand_category_review": 1
+    },
+    "Newton": {
+      "cafe": 61,
+      "bar": 14,
+      "review:entertainment_subtype_review": 36,
+      "restaurant": 191,
+      "review:performance_subtype_review": 6,
+      "review:retail_child_not_restaurant": 5,
+      "music": 5,
+      "review:nightlife_subtype_review": 1,
+      "review:theatre_requires_distinct_category_review": 2,
+      "review:drinks_subtype_review": 1
+    },
+    "Malden": {
+      "music": 3,
+      "cafe": 35,
+      "restaurant": 186,
+      "bar": 14,
+      "review:theatre_requires_distinct_category_review": 2,
+      "review:entertainment_subtype_review": 16,
+      "club": 1
+    },
+    "Medford": {
+      "restaurant": 156,
+      "review:entertainment_subtype_review": 27,
+      "cafe": 53,
+      "bar": 9,
+      "music": 6,
+      "review:theatre_requires_distinct_category_review": 2,
+      "review:drinks_subtype_review": 1,
+      "review:performance_subtype_review": 2
+    },
+    "Revere": {
+      "review:fixed_location_and_food_stand_category_review": 1,
+      "review:entertainment_subtype_review": 11,
+      "cafe": 42,
+      "restaurant": 171,
+      "bar": 18,
+      "review:food_and_drink_subtype_review": 1,
+      "club": 5,
+      "music": 2,
+      "review:retail_child_not_restaurant": 1,
+      "review:theatre_requires_distinct_category_review": 1
+    },
+    "Everett": {
+      "bar": 39,
+      "restaurant": 146,
+      "club": 2,
+      "cafe": 39,
+      "review:entertainment_subtype_review": 11,
+      "music": 1,
+      "review:fixed_location_and_food_stand_category_review": 2,
+      "review:drinks_subtype_review": 1,
+      "review:nightlife_subtype_review": 1,
+      "review:theatre_requires_distinct_category_review": 1
+    },
+    "Braintree": {
+      "restaurant": 151,
+      "bar": 12,
+      "cafe": 35,
+      "review:entertainment_subtype_review": 20,
+      "review:retail_child_not_restaurant": 7,
+      "music": 1,
+      "review:performance_subtype_review": 2,
+      "review:theatre_requires_distinct_category_review": 1
+    },
+    "Watertown": {
+      "cafe": 27,
+      "restaurant": 141,
+      "bar": 10,
+      "review:entertainment_subtype_review": 26,
+      "review:performance_subtype_review": 2,
+      "review:theatre_requires_distinct_category_review": 1,
+      "music": 3,
+      "review:retail_child_not_restaurant": 2,
+      "review:food_and_drink_subtype_review": 1
+    },
+    "Saugus": {
+      "restaurant": 147,
+      "bar": 6,
+      "cafe": 25,
+      "review:entertainment_subtype_review": 12,
+      "club": 1,
+      "review:retail_child_not_restaurant": 2,
+      "review:theatre_requires_distinct_category_review": 2,
+      "review:fixed_location_and_food_stand_category_review": 1,
+      "review:performance_subtype_review": 2,
+      "review:comedy_requires_distinct_category_review": 2,
+      "music": 3
+    },
+    "Arlington": {
+      "restaurant": 134,
+      "music": 8,
+      "cafe": 29,
+      "review:entertainment_subtype_review": 18,
+      "review:theatre_requires_distinct_category_review": 2,
+      "bar": 4,
+      "review:drinks_subtype_review": 1,
+      "review:performance_subtype_review": 2,
+      "club": 1
+    },
+    "Burlington": {
+      "restaurant": 133,
+      "review:fixed_location_and_food_stand_category_review": 1,
+      "cafe": 36,
+      "review:drinks_subtype_review": 1,
+      "bar": 7,
+      "review:entertainment_subtype_review": 13,
+      "review:retail_child_not_restaurant": 3,
+      "review:theatre_requires_distinct_category_review": 1
+    },
+    "Dedham": {
+      "restaurant": 121,
+      "bar": 10,
+      "review:entertainment_subtype_review": 19,
+      "cafe": 22,
+      "review:performance_subtype_review": 1,
+      "review:theatre_requires_distinct_category_review": 1,
+      "review:retail_child_not_restaurant": 1,
+      "club": 1
+    },
+    "Woburn": {
+      "cafe": 23,
+      "restaurant": 108,
+      "bar": 11,
+      "review:entertainment_subtype_review": 25,
+      "review:comedy_requires_distinct_category_review": 1,
+      "music": 1
+    },
+    "Chelsea": {
+      "restaurant": 120,
+      "cafe": 21,
+      "review:entertainment_subtype_review": 11,
+      "bar": 9,
+      "review:theatre_requires_distinct_category_review": 1,
+      "review:performance_subtype_review": 1,
+      "club": 1
+    },
+    "Allston": {
+      "restaurant": 97,
+      "review:entertainment_subtype_review": 14,
+      "music": 6,
+      "cafe": 18,
+      "bar": 13,
+      "review:nightlife_subtype_review": 1,
+      "club": 6,
+      "review:fixed_location_and_food_stand_category_review": 1,
+      "review:performance_subtype_review": 1
+    },
+    "Dorchester": {
+      "cafe": 24,
+      "bar": 11,
+      "restaurant": 108,
+      "review:entertainment_subtype_review": 9,
+      "review:theatre_requires_distinct_category_review": 3,
+      "review:performance_subtype_review": 1,
+      "music": 1
+    },
+    "Brighton": {
+      "restaurant": 104,
+      "review:entertainment_subtype_review": 6,
+      "cafe": 18,
+      "review:fixed_location_and_food_stand_category_review": 1,
+      "bar": 9,
+      "club": 1,
+      "music": 1,
+      "review:performance_subtype_review": 1
+    },
+    "Weymouth": {
+      "review:entertainment_subtype_review": 9,
+      "restaurant": 80,
+      "cafe": 29,
+      "bar": 14,
+      "review:fixed_location_and_food_stand_category_review": 2,
+      "music": 1,
+      "review:comedy_requires_distinct_category_review": 1,
+      "club": 1,
+      "review:nightlife_subtype_review": 1
+    },
+    "Lexington": {
+      "restaurant": 73,
+      "cafe": 31,
+      "bar": 2,
+      "review:fixed_location_and_food_stand_category_review": 1,
+      "review:entertainment_subtype_review": 18,
+      "music": 7,
+      "club": 1,
+      "review:performance_subtype_review": 1,
+      "review:theatre_requires_distinct_category_review": 1
+    },
+    "Norwood": {
+      "music": 4,
+      "review:entertainment_subtype_review": 13,
+      "restaurant": 85,
+      "cafe": 13,
+      "bar": 5,
+      "review:retail_child_not_restaurant": 1,
+      "review:nightlife_subtype_review": 1,
+      "review:restricted_access_lounge_review": 1
+    },
+    "Jamaica Plain": {
+      "cafe": 19,
+      "restaurant": 68,
+      "bar": 9,
+      "review:entertainment_subtype_review": 8,
+      "club": 1,
+      "review:performance_subtype_review": 2,
+      "music": 6,
+      "review:theatre_requires_distinct_category_review": 1,
+      "review:comedy_requires_distinct_category_review": 1
+    },
+    "Wellesley": {
+      "cafe": 21,
+      "review:entertainment_subtype_review": 7,
+      "restaurant": 72,
+      "music": 3,
+      "review:performance_subtype_review": 1,
+      "review:retail_child_not_restaurant": 2,
+      "review:theatre_requires_distinct_category_review": 1,
+      "bar": 1
+    },
+    "Needham": {
+      "restaurant": 71,
+      "review:entertainment_subtype_review": 10,
+      "review:theatre_requires_distinct_category_review": 3,
+      "cafe": 16,
+      "review:drinks_subtype_review": 1,
+      "bar": 2,
+      "review:performance_subtype_review": 2,
+      "music": 2
+    },
+    "Stoneham": {
+      "restaurant": 65,
+      "review:theatre_requires_distinct_category_review": 2,
+      "review:entertainment_subtype_review": 6,
+      "cafe": 17,
+      "music": 2,
+      "bar": 3,
+      "club": 1,
+      "review:performance_subtype_review": 1,
+      "review:retail_child_not_restaurant": 2
+    },
+    "Chestnut Hill": {
+      "restaurant": 60,
+      "review:entertainment_subtype_review": 13,
+      "cafe": 21,
+      "music": 2,
+      "review:performance_subtype_review": 1,
+      "bar": 1
+    },
+    "Belmont": {
+      "restaurant": 56,
+      "cafe": 23,
+      "review:retail_child_not_restaurant": 2,
+      "review:entertainment_subtype_review": 9,
+      "music": 1,
+      "bar": 2,
+      "review:drinks_subtype_review": 1,
+      "review:performance_subtype_review": 1
+    },
+    "Hingham": {
+      "bar": 8,
+      "review:entertainment_subtype_review": 18,
+      "restaurant": 44,
+      "cafe": 13,
+      "review:drinks_subtype_review": 1,
+      "review:retail_child_not_restaurant": 3,
+      "review:theatre_requires_distinct_category_review": 1,
+      "review:performance_subtype_review": 1,
+      "club": 1
+    },
+    "Melrose": {
+      "restaurant": 50,
+      "review:entertainment_subtype_review": 7,
+      "cafe": 16,
+      "review:performance_subtype_review": 3,
+      "review:retail_child_not_restaurant": 1,
+      "bar": 6,
+      "music": 2
+    },
+    "Winthrop": {
+      "review:entertainment_subtype_review": 13,
+      "restaurant": 45,
+      "cafe": 13,
+      "review:comedy_requires_distinct_category_review": 1,
+      "bar": 2,
+      "review:performance_subtype_review": 1,
+      "review:fixed_location_and_food_stand_category_review": 1,
+      "review:theatre_requires_distinct_category_review": 2,
+      "music": 1
+    },
+    "Swampscott": {
+      "cafe": 14,
+      "restaurant": 53,
+      "review:entertainment_subtype_review": 3,
+      "bar": 3,
+      "music": 1,
+      "review:retail_child_not_restaurant": 2
+    },
+    "Winchester": {
+      "club": 1,
+      "review:entertainment_subtype_review": 13,
+      "restaurant": 39,
+      "cafe": 12,
+      "review:performance_subtype_review": 1,
+      "review:drinks_subtype_review": 1,
+      "bar": 2,
+      "review:retail_child_not_restaurant": 1
+    },
+    "Westwood": {
+      "restaurant": 41,
+      "cafe": 22,
+      "review:entertainment_subtype_review": 2,
+      "review:retail_child_not_restaurant": 2
+    },
+    "Roslindale": {
+      "restaurant": 49,
+      "bar": 5,
+      "cafe": 9,
+      "review:entertainment_subtype_review": 4
+    },
+    "East Boston": {
+      "restaurant": 44,
+      "cafe": 9,
+      "review:fixed_location_and_food_stand_category_review": 1,
+      "bar": 6,
+      "review:restricted_access_lounge_review": 1,
+      "review:retail_child_not_restaurant": 1,
+      "club": 1
+    },
+    "West Roxbury": {
+      "review:entertainment_subtype_review": 4,
+      "restaurant": 47,
+      "cafe": 8,
+      "bar": 2,
+      "review:theatre_requires_distinct_category_review": 1
+    },
+    "Hyde Park": {
+      "cafe": 8,
+      "review:entertainment_subtype_review": 8,
+      "review:retail_child_not_restaurant": 2,
+      "restaurant": 38,
+      "bar": 2,
+      "review:theatre_requires_distinct_category_review": 2,
+      "review:performance_subtype_review": 2
+    },
+    "Bedford": {
+      "restaurant": 41,
+      "review:entertainment_subtype_review": 4,
+      "cafe": 10,
+      "bar": 1
+    },
+    "Milton": {
+      "review:theatre_requires_distinct_category_review": 1,
+      "restaurant": 23,
+      "review:entertainment_subtype_review": 14,
+      "cafe": 13,
+      "music": 1
+    },
+    "Charlestown": {
+      "cafe": 5,
+      "restaurant": 29,
+      "review:entertainment_subtype_review": 12,
+      "review:theatre_requires_distinct_category_review": 1,
+      "bar": 5
+    },
+    "Roxbury": {
+      "cafe": 4,
+      "restaurant": 33,
+      "review:entertainment_subtype_review": 5,
+      "review:theatre_requires_distinct_category_review": 1,
+      "music": 1,
+      "bar": 4
+    },
+    "Randolph": {
+      "restaurant": 24,
+      "review:entertainment_subtype_review": 6,
+      "review:retail_child_not_restaurant": 1,
+      "cafe": 6,
+      "review:theatre_requires_distinct_category_review": 1,
+      "review:nightlife_subtype_review": 1,
+      "bar": 2
+    },
+    "Wakefield": {
+      "review:entertainment_subtype_review": 3,
+      "review:food_and_drink_subtype_review": 1,
+      "cafe": 2,
+      "restaurant": 29,
+      "bar": 4,
+      "music": 1
+    },
+    "South Boston": {
+      "cafe": 8,
+      "restaurant": 26,
+      "music": 1,
+      "bar": 3,
+      "review:entertainment_subtype_review": 1
+    },
+    "Mattapan": {
+      "review:entertainment_subtype_review": 1,
+      "restaurant": 31,
+      "cafe": 3,
+      "bar": 1
+    },
+    "Canton": {
+      "music": 3,
+      "bar": 7,
+      "restaurant": 11,
+      "review:entertainment_subtype_review": 6,
+      "cafe": 2,
+      "review:retail_child_not_restaurant": 1,
+      "review:food_and_drink_subtype_review": 1
+    },
+    "Auburndale": {
+      "restaurant": 12,
+      "club": 2,
+      "review:entertainment_subtype_review": 5,
+      "cafe": 5,
+      "review:performance_subtype_review": 1,
+      "music": 1,
+      "bar": 1
+    },
+    "Dorchester Center": {
+      "restaurant": 19,
+      "cafe": 4,
+      "review:nightlife_subtype_review": 1,
+      "review:entertainment_subtype_review": 3
+    },
+    "Wellesley Hills": {
+      "restaurant": 17,
+      "cafe": 1,
+      "review:entertainment_subtype_review": 1
+    },
+    "Salem": {
+      "bar": 1,
+      "restaurant": 11,
+      "cafe": 4,
+      "review:entertainment_subtype_review": 1,
+      "review:performance_subtype_review": 1
+    },
+    "Newton Center": {
+      "cafe": 2,
+      "review:entertainment_subtype_review": 3,
+      "restaurant": 9
+    },
+    "Hull": {
+      "restaurant": 7,
+      "bar": 2,
+      "review:entertainment_subtype_review": 4
+    },
+    "West Newton": {
+      "music": 1,
+      "cafe": 2,
+      "review:entertainment_subtype_review": 1,
+      "restaurant": 6,
+      "bar": 2
+    },
+    "Newton Highlands": {
+      "restaurant": 10,
+      "cafe": 2
+    },
+    "East Weymouth": {
+      "restaurant": 3,
+      "cafe": 1,
+      "bar": 3,
+      "review:nightlife_subtype_review": 1,
+      "review:retail_child_not_restaurant": 1,
+      "music": 1,
+      "review:entertainment_subtype_review": 1
+    },
+    "Newtonville": {
+      "restaurant": 7,
+      "cafe": 1,
+      "review:food_and_drink_subtype_review": 1,
+      "bar": 1
+    },
+    "Needham Heights": {
+      "restaurant": 4,
+      "review:theatre_requires_distinct_category_review": 1,
+      "review:entertainment_subtype_review": 2,
+      "bar": 1,
+      "review:food_and_drink_subtype_review": 1
+    },
+    "Weston": {
+      "review:entertainment_subtype_review": 2,
+      "restaurant": 5,
+      "review:performance_subtype_review": 1,
+      "cafe": 1
+    },
+    "Dover": {
+      "review:entertainment_subtype_review": 4,
+      "restaurant": 3,
+      "cafe": 1
+    },
+    "Nahant": {
+      "review:entertainment_subtype_review": 3,
+      "bar": 1,
+      "restaurant": 3,
+      "cafe": 1
+    },
+    "Medfield": {
+      "cafe": 1,
+      "restaurant": 5,
+      "review:theatre_requires_distinct_category_review": 1
+    },
+    "Newton Centre": {
+      "music": 1,
+      "restaurant": 3,
+      "cafe": 3
+    },
+    "Roxbury Crossing": {
+      "restaurant": 5,
+      "review:entertainment_subtype_review": 1,
+      "bar": 1
+    },
+    "Waban": {
+      "restaurant": 5,
+      "review:entertainment_subtype_review": 1
+    },
+    "Babson Park": {
+      "bar": 1,
+      "review:theatre_requires_distinct_category_review": 1,
+      "restaurant": 1,
+      "cafe": 2,
+      "review:entertainment_subtype_review": 1
+    },
+    "North Weymouth": {
+      "restaurant": 4,
+      "bar": 1,
+      "cafe": 1
+    },
+    "Peabody": {
+      "music": 1,
+      "restaurant": 2,
+      "review:food_and_drink_subtype_review": 1,
+      "cafe": 1
+    },
+    "Hanscom AFB": {
+      "restaurant": 3,
+      "cafe": 1
+    },
+    "Marblehead": {
+      "review:retail_child_not_restaurant": 1,
+      "restaurant": 1,
+      "cafe": 1,
+      "review:theatre_requires_distinct_category_review": 1
+    },
+    "Walpole": {
+      "bar": 1,
+      "music": 1,
+      "review:entertainment_subtype_review": 1
+    },
+    "Newton Upper Falls": {
+      "restaurant": 3
+    },
+    "Hanscom Air Force Base": {
+      "restaurant": 2,
+      "bar": 1
+    },
+    "South Weymouth": {
+      "music": 1,
+      "restaurant": 1,
+      "review:entertainment_subtype_review": 1
+    },
+    "BOSTON": {
+      "cafe": 1,
+      "restaurant": 2
+    },
+    "Lincoln": {
+      "music": 1,
+      "cafe": 1
+    },
+    "SOMERVILLE": {
+      "restaurant": 2
+    },
+    "ARLINGTON": {
+      "restaurant": 2
+    },
+    "North Quincy": {
+      "restaurant": 1,
+      "review:entertainment_subtype_review": 1
+    },
+    "LYNN": {
+      "restaurant": 2
+    },
+    "NORWOOD": {
+      "restaurant": 1
+    },
+    "Hyde park": {
+      "review:entertainment_subtype_review": 1
+    },
+    "concord": {
+      "bar": 1
+    },
+    "LEXINGTON": {
+      "bar": 1
+    },
+    "Lexington, MA, US": {
+      "restaurant": 1
+    },
+    "Newton Hlds": {
+      "restaurant": 1
+    },
+    "NEWTON HIGHLANDS": {
+      "bar": 1
+    },
+    "Allston Village": {
+      "restaurant": 1
+    },
+    "East Lexington": {
+      "restaurant": 1
+    },
+    "MEDFORD": {
+      "cafe": 1
+    },
+    "CAMBRIDGE": {
+      "bar": 1
+    },
+    "Wollaston": {
+      "restaurant": 1
+    },
+    "QUINCY": {
+      "restaurant": 1
+    },
+    "HINGHAM": {
+      "bar": 1
+    },
+    "Rockland": {
+      "bar": 1
+    },
+    "hingham": {
+      "review:retail_child_not_restaurant": 1
+    },
+    "N Weymouth": {
+      "restaurant": 1
+    },
+    "بوسطن": {
+      "cafe": 1
+    },
+    "lowell": {
+      "cafe": 1
+    },
+    "莫尔登": {
+      "cafe": 1
+    },
+    "SOM": {
+      "restaurant": 1
+    },
+    "Stratford": {
+      "restaurant": 1
+    },
+    "East Cambridge": {
+      "cafe": 1
+    },
+    "Washington St. Boston": {
+      "restaurant": 1
+    },
+    "Бостон": {
+      "restaurant": 1
+    },
+    "BOS": {
+      "cafe": 1
+    },
+    "Marshfield": {
+      "cafe": 1
+    },
+    "REVERE": {
+      "bar": 1
+    },
+    "SAUGUS": {
+      "restaurant": 1
+    },
+    "Danvers": {
+      "review:entertainment_subtype_review": 1
+    },
+    "BURLINGTON": {
+      "restaurant": 1
+    }
+  },
+  "scope_notes": [
+    "Ordinary lounge maps to bar but airport_lounge is held.",
+    "Dance club maps to club. Generic nightlife requires subtype review.",
+    "Theatre, comedy and generic performing arts are held; they are not represented as music.",
+    "Retail candy/chocolate child categories are held before casual_eatery can map to restaurant.",
+    "Cafe mapping includes explicit tea, bubble-tea and smoothie/juice beverage venues; this proposed choice needs product acceptance.",
+    "Brewery category alone does not prove an accessible taproom; public-access review remains separate."
+  ]
+}
