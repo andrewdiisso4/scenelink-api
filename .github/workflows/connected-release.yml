@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [api, ingestion, upgrade, welcome]
+        suite: [api, ingestion, upgrade, welcome, concierge]
     services:
       postgres:
         image: postgres:18.3
@@ -73,3 +73,6 @@ jobs:
         env:
           TEST_WELCOME_DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
         run: node --test qa/welcome-email.test.cjs
+      - name: Native Concierge conversation acceptance
+        if: matrix.suite == 'concierge'
+        run: node --unhandled-rejections=strict qa/concierge-conversation-native.cjs
