@@ -13,7 +13,7 @@ function PUBLIC_EVENT(e='e',v='v') {
     AND ${e}.source_url ~ '^https://[^[:space:]]+$' AND ${e}.date IS NOT NULL
     AND (${e}.venue_id IS NULL OR (${availableVenueSQL(v)}))
     AND (COALESCE(${e}.external_id,'') NOT LIKE 'city-winery-boston:%'
-      OR (${e}.venue_id IS NOT NULL AND COALESCE(to_jsonb(${v})->>'duplicate_of','')=''))`;
+      OR (${e}.venue_id IS NOT NULL AND ${officialEvent.pilotVenuePublicSQL(v)}))`;
 }
 // Counts deliberately exclude private RSVPs, private accounts, suspended/deleted users,
 // seeded attendance metrics and individual identities. This is not venue attendance.

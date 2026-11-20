@@ -90,13 +90,24 @@ function normalize(body, calendarDate) {
     title:H.text(body.title,'title',200,{required:true}), date:calendarDate(body.date),
     startTime:body.start_time, category:H.text(body.category,'category',80)||null, eventUrl:body.event_url==null?null:sourceUrl };
 }
+// Use the same eligibility on review and public reads; an added matching
+// record can make a previously reviewed venue ambiguous without editing it.
+// Conservatively hold even an annotated sibling while it is visibly operational.
+function pilotVenueIdentitySQL(alias) {
+  return `${availableVenueSQL(alias)}
+      AND lower(btrim(${alias}.city))='boston' AND lower(btrim(${alias}.state))='ma'
+      AND lower(regexp_replace(btrim(${alias}.name),'[[:space:]]+',' ','g'))='city winery boston'
+      AND lower(regexp_replace(btrim(${alias}.address),'[[:space:]]+',' ','g')) IN ('80 beverly street','80 beverly st','80 beverly st.')`;
+}
+function pilotVenuePublicSQL(alias) {
+  const sibling='official_sibling';
+  return `(${pilotVenueIdentitySQL(alias)} AND COALESCE(to_jsonb(${alias})->>'duplicate_of','')=''
+    AND NOT EXISTS (SELECT 1 FROM venues ${sibling}
+      WHERE ${sibling}.id<>${alias}.id AND ${pilotVenueIdentitySQL(sibling)}))`;
+}
 async function requirePilotVenue(db, venueId) {
   const {rows}=await db.query(`SELECT name,slug,neighborhood,id FROM venues v
-    WHERE ${availableVenueSQL('v')} AND COALESCE(to_jsonb(v)->>'duplicate_of','')=''
-      AND lower(btrim(city))='boston' AND lower(btrim(state))='ma'
-      AND lower(regexp_replace(btrim(name),'[[:space:]]+',' ','g'))='city winery boston'
-      AND lower(regexp_replace(btrim(address),'[[:space:]]+',' ','g')) IN ('80 beverly street','80 beverly st','80 beverly st.')
-    ORDER BY id LIMIT 2 FOR SHARE`);
+    WHERE ${pilotVenuePublicSQL('v')} ORDER BY id LIMIT 2 FOR SHARE`);
   if (rows.length!==1 || rows[0].id!==venueId) throw conflict('The exact active City Winery Boston venue match needs review','OFFICIAL_VENUE_UNRESOLVED');
   return rows[0];
 }
@@ -197,4 +208,4 @@ async function checkReview(db, req, event, body, url, externalId) {
   }
   return false;
 }
-module.exports={enabled,wantsStage,stage,checkReview,reserved,reservedSQL,serializeWrites,checkLegacyWrite,isExactRetraction};
+module.exports={enabled,wantsStage,stage,checkReview,reserved,reservedSQL,pilotVenuePublicSQL,serializeWrites,checkLegacyWrite,isExactRetraction};

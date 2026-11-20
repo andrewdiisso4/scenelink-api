@@ -167,6 +167,23 @@ let pool,server;
  await assert.rejects(pool.query('DELETE FROM events WHERE id=$1',[one.id]),e=>['23001','23503'].includes(e.code));
  console.log('PASS explicit verified identity-bound review publishes only selected occurrence; review retry has one audit; PATCH and hard delete held');
  const {rsvp:beforeBackout}=await api('PUT','/events/'+one.id+'/rsvp',{status:'going',audience:'private'},viewer);
+ // A late venue writer need not use the event writer lock. Read visibility
+ // must be fail-closed even if the event itself and its review remain intact.
+ await pool.query("INSERT INTO venues(id,name,slug,type,address,is_active) VALUES($1,'City Winery Boston','qa-duplicate-city-winery','restaurant','80 Beverly St.',true)",[dup]);
+ await api('GET','/events/'+one.id,null,null,404);
+ assert.equal((await api('GET','/events')).total,0);
+ assert.equal((await api('GET','/events?q=Synthetic')).total,0);
+ await api('PUT','/events/'+one.id+'/rsvp',{status:'interested',audience:'private'},viewer,404);
+ const {rsvps:[duringVenueHold]}=await api('GET','/events/rsvps/mine',null,viewer);
+ assert.equal(duringVenueHold.event_id,one.id);assert.equal(duringVenueHold.revision,beforeBackout.revision);
+ assert.equal(duringVenueHold.event_available,false);assert.equal(duringVenueHold.title,null);assert.equal(duringVenueHold.date,null);
+ await pool.query('DELETE FROM venues WHERE id=$1',[dup]);
+ await pool.query("UPDATE venues SET address='82 Beverly Street' WHERE id=$1",[venue]);
+ await api('GET','/events/'+one.id,null,null,404);
+ await pool.query("UPDATE venues SET address='80 Beverly Street' WHERE id=$1",[venue]);
+ assert.equal((await api('GET','/events/'+one.id)).event.id,one.id);
+ console.log('PASS post-review venue ambiguity and linked identity drift hide the pilot without changing its existing private RSVP');
+
  // Prove the flag can stop forward writes without stranding a published event.
  delete process.env.SCENELINK_OFFICIAL_EVENT_STAGE_MODE;
  await post(first,503);
