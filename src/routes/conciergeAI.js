@@ -19,7 +19,10 @@
  */
 
 const pool = require('../config/database');
-const { resolveNamedVenue } = require('../services/concierge-named-venue');
+const { classifyIntent } = require('../services/concierge-intent');
+const { parseNeighborhoods } = require('../services/concierge-constraints');
+const { resolveConversation } = require('../services/concierge-conversation');
+const { venueTypeSQL, exclusionSQL } = require('../services/concierge-query-constraints');
 const {publicVenue,availableVenueSQL} = require('../services/venue-helpers');
 const {visibleDiscoveryVenueSQL} = require('../services/venue-duplicate-discovery');
 const {reviewedPriceSQL} = require('../services/venue-facts');
@@ -49,7 +52,8 @@ HARD RULES (never break these):
 9. For simple lookup questions ("best italian in north end"), leave recommendedPlan null and fill recommendedVenues with the 3–6 best matches.
 10. Honor the user's stated neighborhood, vibe, price, party size. If they didn't specify, pick reasonable defaults and briefly explain.
 11. recommendedPlan.stops: 1 to 3 items max. recommendedVenues: max 6. quickReplies: 3 to 4 items.
-12. For every stop: always include bestTime (e.g. "7:30 PM"), priceLevel (e.g. "$$" or null if unknown), and vibeTags (array of 1 to 4 short tags).
+12. For every stop: include bestTime as null because opening hours and seating are unverified. Include priceLevel only when provided in the candidate facts; use null otherwise. Include only supported vibeTags, or an empty array.
+13. Parsed filters describe the current search. Earlier conversation turns must not reintroduce excluded venues, cuisines, types or neighborhoods. A group size is a preference, not verified venue capacity.
 
 OUTPUT: JSON only, enforced by schema. No prose outside JSON.`;
 
@@ -123,116 +127,12 @@ const RESPONSE_SCHEMA = {
 // ═══════════════════════════════════════════════════════════════════════════
 // INPUT PARSING
 // ═══════════════════════════════════════════════════════════════════════════
-const NEIGHBORHOODS = [
-    'Allston', 'Back Bay', 'Beacon Hill', 'Boston', 'Brookline', 'Cambridge',
-    'Dorchester', 'Downtown', 'Fenway', 'Jamaica Plain', 'North End',
-    'Seaport', 'Somerville', 'South End'
-];
-const NEIGHBORHOOD_ALIASES = {
-    'south boston': 'South Boston',
-    'southie': 'South Boston',
-    'east boston': 'East Boston',
-    'eastie': 'East Boston',
-    'charlestown': 'Charlestown',
-    'roxbury': 'Roxbury',
-    'mission hill': 'Mission Hill',
-    'kendall square': 'Cambridge',
-    'harvard square': 'Cambridge',
-    'central square': 'Cambridge',
-    'davis square': 'Somerville',
-    'union square': 'Somerville',
-    'chinatown': 'Downtown',
-    'theater district': 'Downtown',
-    'financial district': 'Downtown'
-};
-
-const VIBE_KEYWORDS = {
-    romantic:  ['date', 'romantic', 'anniversary', 'intimate', 'cozy'],
-    upscale:   ['upscale', 'fancy', 'elegant', 'high-end', 'fine dining', 'fine-dining'],
-    trendy:    ['trendy', 'hot', 'buzzy', 'popular', 'hip', 'scene'],
-    lively:    ['lively', 'fun', 'energetic', 'loud', 'happening'],
-    lowkey:    ['low-key', 'lowkey', 'chill', 'casual', 'relaxed', 'quiet'],
-    group:     ['group', 'friends', 'party', 'bachelor', 'bachelorette', 'birthday'],
-    rooftop:   ['rooftop', 'outdoor', 'patio', 'views', 'view'],
-    cocktails: ['cocktail', 'cocktails', 'speakeasy', 'mixology'],
-    wine:      ['wine', 'wine bar'],
-    beer:      ['beer', 'brewery', 'draft'],
-    latenight: ['late night', 'late-night', 'after hours', 'dj', 'club', 'dancing']
-};
-
-const CUISINES = [
-    'italian','japanese','sushi','steakhouse','steak','seafood','american','mexican',
-    'french','thai','chinese','korean','indian','mediterranean','pizza','burger',
-    'vietnamese','greek','spanish','tapas','bbq','southern','diner','vegan','vegetarian'
-];
-
 function parseFilters(message = '', context = {}) {
-    const text = String(message || '').toLowerCase();
-    const out = {
-        neighborhoods: [],
-        vibes: [],
-        cuisines: [],
-        priceMax: null,
-        partySize: null,
-        venueType: null,
-        isPlan: false,
-        isEvent: false
-    };
-
-    // Check aliases FIRST (e.g. "southie" → South Boston) and strip them from
-    // the text so the literal "Boston" scan below doesn't re-match "boston"
-    // inside "south boston".
-    let stripped = text;
-    for (const [alias, real] of Object.entries(NEIGHBORHOOD_ALIASES)) {
-        if (stripped.includes(alias)) {
-            if (!out.neighborhoods.includes(real)) out.neighborhoods.push(real);
-            stripped = stripped.split(alias).join(' ');
-        }
+    const intent = classifyIntent(message);
+    if (!intent.neighborhoods.length && context && typeof context.neighborhood === 'string') {
+        intent.neighborhoods = parseNeighborhoods(context.neighborhood.slice(0, 100));
     }
-    // Then literal neighborhood names, word-boundary, on the stripped text
-    for (const n of NEIGHBORHOODS) {
-        const re = new RegExp('\\b' + n.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b');
-        if (re.test(stripped) && !out.neighborhoods.includes(n)) out.neighborhoods.push(n);
-    }
-
-    for (const [vibe, kws] of Object.entries(VIBE_KEYWORDS)) {
-        if (kws.some(kw => text.includes(kw))) out.vibes.push(vibe);
-    }
-
-    for (const c of CUISINES) {
-        if (text.includes(c)) out.cuisines.push(c);
-    }
-
-    if (/\$\$\$\$|most expensive|splurge/.test(text)) out.priceMax = 4;
-    else if (/\$\$\$|upscale|fine dining/.test(text)) out.priceMax = 3;
-    else if (/cheap|budget|affordable|inexpensive/.test(text)) out.priceMax = 2;
-
-    const pm = text.match(/\b(?:for|party of|table for|group of)\s+(\d+)\b/) ||
-               text.match(/\b(\d+)\s+(?:people|person|friends?|of us)\b/);
-    if (pm) out.partySize = parseInt(pm[1], 10);
-
-    if (/\b(bar|cocktail|drinks|pub)\b/.test(text)) out.venueType = 'bar';
-    else if (/\b(club|nightlife|dance|dj)\b/.test(text)) out.venueType = 'nightlife';
-    else if (/\b(restaurant|dinner|lunch|brunch|eat|dining|food)\b/.test(text)) out.venueType = 'restaurant';
-    else if (/\b(cafe|coffee)\b/.test(text)) out.venueType = 'cafe';
-
-    if (/\b(plan|itinerary|night out|date night|dinner then|drinks after|dinner and drinks|full night|schedule)\b/.test(text)) {
-        out.isPlan = true;
-    }
-    if (/\b(event|concert|show|live music|dj set|performing|playing tonight)\b/.test(text)) {
-        out.isEvent = true;
-    }
-
-    if (context && typeof context === 'object') {
-        if (context.neighborhood && !out.neighborhoods.includes(context.neighborhood)) {
-            out.neighborhoods.push(context.neighborhood);
-        }
-        if (Array.isArray(context.vibes)) {
-            for (const v of context.vibes) if (!out.vibes.includes(v)) out.vibes.push(v);
-        }
-    }
-
-    return out;
+    return { ...intent, priceMax: intent.budget, partySize: intent.group_size, isEvent: intent.is_event };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -269,21 +169,18 @@ async function fetchCandidateVenues(filters, limit = MAX_CANDIDATE_VENUES) {
         params.push(filters.priceMax);
         i++;
     }
-    if (filters.venueType === 'bar') {
-        where.push(`(type IN ('bar','nightlife','cocktail') OR category ILIKE '%bar%')`);
-    } else if (filters.venueType === 'nightlife') {
-        where.push(`(type IN ('nightlife','club','bar') OR category ILIKE '%nightlife%' OR category ILIKE '%club%')`);
-    } else if (filters.venueType === 'restaurant') {
-        where.push(`(type = 'restaurant' OR category ILIKE '%restaurant%')`);
-    } else if (filters.venueType === 'cafe') {
-        where.push(`(type = 'cafe' OR category ILIKE '%cafe%' OR category ILIKE '%coffee%')`);
-    }
+    const placeConstraint = filters.venueName == null ? venueTypeSQL(filters.venueType) : null;
+    if (placeConstraint) where.push(placeConstraint);
     if (filters.cuisines && filters.cuisines.length) {
         const likes = filters.cuisines.map((_, idx) => `cuisine ILIKE $${i + idx}`);
         where.push(`(${likes.join(' OR ')})`);
         filters.cuisines.forEach(c => params.push(`%${c}%`));
         i += filters.cuisines.length;
     }
+
+    const excluded = exclusionSQL(filters, i);
+    where.push(...excluded.conditions);
+    params.push(...excluded.values);
 
     // Search constraints come from facts; seed popularity, random order and
     // unreviewed marketing copy never become a recommendation score.
@@ -390,7 +287,11 @@ async function callOpenAI({ message, history, filters, candidates, userContext }
             partySize: filters.partySize,
             venueType: filters.venueType,
             isPlan: filters.isPlan,
-            isEvent: filters.isEvent
+            isEvent: filters.isEvent,
+            excludedCuisines: filters.excludedCuisines,
+            excludedNeighborhoods: filters.excludedNeighborhoods,
+            excludedVenueTypes: filters.excludedVenueTypes,
+            excludedVenueNames: filters.excludedVenueNames
         })}`,
         ``,
         userContext
@@ -496,11 +397,14 @@ function extractStructured(resp) {
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN ENTRY
 // ═══════════════════════════════════════════════════════════════════════════
-async function runAIConcierge({ message, history = [], context = {}, userId = null }) {
+async function runAIConcierge({ message, history = [], context = {}, resolvedRequest = null }) {
     const startedAt = Date.now();
-    const named = await resolveNamedVenue(pool, message);
-    const filters = parseFilters(named ? named.filterText : message, context);
-    if (named) filters.venueName = named.name;
+    const request = resolvedRequest || await resolveConversation({ pool, message, history, context, parse: parseFilters });
+    const filters = request.filters;
+    if (request.clarification) {
+        return { ok: true, source: 'clarify', reply: request.clarification, intent: 'clarify',
+            recommendedPlan: null, recommendedVenues: [], quickReplies: [], candidates: [], filters, tokensUsed: 0, ms: Date.now() - startedAt };
+    }
 
     const [candidates, userContext] = await Promise.all([
         fetchCandidateVenues(filters),

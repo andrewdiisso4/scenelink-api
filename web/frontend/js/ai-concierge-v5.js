@@ -196,6 +196,8 @@
     var _backendAvailable = null;
     var sessionGeneration = 0;
     var _convoHistory = []; // last few turns for multi-turn context
+    var _searchContext = null; // bounded public preferences returned by the backend
+    var _requestQueue = Promise.resolve();
 
     function getAuthToken() {
         try {
@@ -206,7 +208,17 @@
         } catch (_) { return null; }
     }
 
-    async function generateResponse(query) {
+    function generateResponse(query) {
+        var generation = sessionGeneration;
+        var pending = _requestQueue.then(function () {
+            if (generation !== sessionGeneration) return null;
+            return requestConciergeResponse(query);
+        });
+        _requestQueue = pending.catch(function () {});
+        return pending;
+    }
+
+    async function requestConciergeResponse(query) {
         var generation = sessionGeneration;
         try {
             window.dispatchEvent(new CustomEvent('sl:concierge-ask', { detail: { query: query } }));
@@ -220,6 +232,7 @@
 
                 // Build pageContext from current page (no PII)
                 var pageContext = { pageId: (location.pathname.split('/').pop() || 'index').replace(/\.html$/, '') };
+                if (_searchContext !== null) pageContext.search = _searchContext;
 
                 var res = await fetch(API_BASE + '/concierge', {
                     method: 'POST',
@@ -231,9 +244,11 @@
                         context: pageContext
                     })
                 });
+                if (generation !== sessionGeneration) return null;
                 if (res.status === 429) {
                     _backendAvailable = true;
                     var rd = await res.json().catch(function(){ return {}; });
+                    if (generation !== sessionGeneration) return null;
                     return {
                         text: rd.reply || 'Whoa — slow down for a moment. Try again in a few seconds.',
                         plan: null, venueCards: [], quickReplies: [], requiresLogin: false, isLoggedIn: !!tok, notice: null
@@ -242,8 +257,9 @@
                 if (res.ok) {
                     _backendAvailable = true;
                     var data = await res.json();
+                    if (generation !== sessionGeneration) return null;
                     if (data.ok) {
-                        if (generation !== sessionGeneration) return null;
+                        _searchContext = data.search_context || null;
                         // Track conversation for context
                         _convoHistory.push({ role: 'user', content: query });
                         var reply = typeof data.response === 'string' ? data.response : (data.reply || '');
@@ -267,6 +283,7 @@
                 }
                 if (res.status >= 400 && res.status < 500) {
                     var ed = await res.json().catch(function(){ return {}; });
+                    if (generation !== sessionGeneration) return null;
                     return {
                         text: ed.error || 'That message didn\u2019t work — try rephrasing?',
                         plan: null, venueCards: [], quickReplies: [], requiresLogin: false, isLoggedIn: !!tok, notice: null
@@ -274,6 +291,7 @@
                 }
                 _backendAvailable = false;
             } catch (err) {
+                if (generation !== sessionGeneration) return null;
                 console.warn('[concierge] backend unavailable, using client fallback:', err.message);
                 _backendAvailable = false;
             }
@@ -281,6 +299,7 @@
 
         // Last-resort client-side fallback (should rarely hit — backend has its own fallback)
         var cs = await generateResponseClientSide(query);
+        if (generation !== sessionGeneration) return null;
         return {
             text: cs.text,
             plan: null,
@@ -672,7 +691,7 @@
                 }, 350 + Math.random() * 250);
             } catch (e) {
                 t.remove();
-                addMessage("Hmm, something went wrong. Try again?", 'bot');
+                if (generation === sessionGeneration) addMessage("Hmm, something went wrong. Try again?", 'bot');
             }
         }
 
@@ -959,41 +978,62 @@
 
         async function generateItinerary() {
             var t = addTyping();
-            var vibe = _bmnState.vibe || '';
-            var hood = _bmnState.hood || '';
-            var group = _bmnState.group || '';
+            var generation = sessionGeneration, night = _bmnState;
+            var vibe = night.vibe || '';
+            var hood = night.hood || '';
 
             // Build 3 queries for dinner / drinks / late-night
-            var q1 = (vibe === 'upscale' ? 'upscale' : 'great') + ' dinner' + (hood ? ' in ' + hood : '');
+            var q1 = (vibe === 'upscale' ? 'upscale ' : '') + 'restaurants for dinner' + (hood ? ' in ' + hood : '');
             var q2 = (vibe === 'lowkey' ? 'cozy' : 'great') + ' cocktail bar' + (hood ? ' in ' + hood : '');
             var q3 = (vibe === 'live' ? 'live music' : 'late night') + (hood ? ' in ' + hood : '');
             try {
-                var r1 = await generateResponse(q1);
-                var r2 = await generateResponse(q2);
-                var r3 = await generateResponse(q3);
-                setTimeout(function () {
-                    t.remove();
-                    var title = 'Your itinerary';
-                    if (hood) title += ' in ' + hood;
-                    addMessage('<strong>🌙 ' + title + '</strong>', 'bot');
-                    addItineraryStop('1. Dinner', r1.venues && r1.venues[0]);
-                    addItineraryStop('2. Drinks', r2.venues && r2.venues[0]);
-                    addItineraryStop('3. Late night', r3.venues && r3.venues[0]);
-                    addMessage('<span class="slc-tip">💡 Tap <strong>Add to Plan</strong> on each stop to save this as your night plan — or ask me to swap any of them.</span>', 'bot');
-                    addQuickActions(['Swap dinner', 'Swap drinks', 'Different neighborhood', 'Start over']);
-                }, 450);
+                var queries = [q1, q2, q3], responses = [];
+                for (var i = 0; i < queries.length; i++) {
+                    var response;
+                    try { response = await generateResponse(queries[i]); } catch (_) { response = null; }
+                    if (generation !== sessionGeneration || night !== _bmnState) return;
+                    responses.push(response);
+                }
+                var seen = new Set();
+                var stops = responses.map(function (response) {
+                    // Broad directory fallback does not establish a match for a plan segment.
+                    var unavailable = !response || response.source === 'client-fallback';
+                    var cards = !unavailable && Array.isArray(response.venueCards) ? response.venueCards : [];
+                    var valid = cards.filter(function (card) {
+                        return card && typeof card.id === 'string' && card.id.trim() &&
+                            typeof card.name === 'string' && card.name.trim();
+                    });
+                    var selected = valid.find(function (card) { return !seen.has(card.id.trim().toLowerCase()); });
+                    if (selected) seen.add(selected.id.trim().toLowerCase());
+                    return { venue: selected, empty: unavailable
+                        ? 'Could not check this part of the plan. Try again.'
+                        : valid.length ? 'No different venue found for this part of the plan.'
+                        : 'No venue match found for this part of the plan.' };
+                });
+                var count = stops.filter(function (stop) { return !!stop.venue; }).length;
+                var title = count === 3 ? 'Venue options for your night' : count ? 'Partial venue options for your night' : 'No venue options found for this plan';
+                if (hood) title += ' in ' + hood;
+                addMessage('<strong>' + escHtmlC(title) + '</strong>', 'bot');
+                ['1. Dinner option', '2. Drinks option', '3. Later option'].forEach(function (label, i) {
+                    addItineraryStop(label, stops[i].venue, stops[i].empty);
+                });
+                if (count) {
+                    addMessage('<span class="slc-tip">Opening hours, menus and space for your group need confirmation with each venue. No reservation has been made. Use <strong>Add to Plan</strong> to save an option.</span>', 'bot');
+                }
+                addQuickActions(['Plan my night', 'Explore venues']);
             } catch (e) {
+                if (generation === sessionGeneration && night === _bmnState) addMessage('I couldn\'t build that plan. Try again?', 'bot');
+            } finally {
                 t.remove();
-                addMessage('Hmm — couldn\'t build that itinerary. Try again?', 'bot');
             }
         }
 
-        function addItineraryStop(label, venue) {
+        function addItineraryStop(label, venue, empty) {
             if (!venue) {
-                addMessage('<div class="slc-stop-label">' + label + '</div><div class="slc-msg-empty">No match found — try a different vibe/neighborhood.</div>', 'bot');
+                addMessage('<div class="slc-stop-label">' + escHtmlC(label) + '</div><div class="slc-msg-empty">' + escHtmlC(empty || 'No venue match found. Try different preferences.') + '</div>', 'bot');
                 return;
             }
-            addMessage('<div class="slc-stop-label">' + label + '</div>', 'bot');
+            addMessage('<div class="slc-stop-label">' + escHtmlC(label) + '</div>', 'bot');
             addVenues([venue]);
         }
 
@@ -1115,7 +1155,7 @@
 
         // Expose
         window.SLConcierge = {
-            resetSession: function(){sessionGeneration++;_conciergeSession='sess_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);clearTimeout(askTimer);input.value='';_convoHistory=[];messages.textContent='';state.greeted=false;closePanel();},
+            resetSession: function(){sessionGeneration++;_conciergeSession='sess_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);clearTimeout(askTimer);input.value='';_convoHistory=[];_searchContext=null;_backendAvailable=null;_requestQueue=Promise.resolve();messages.textContent='';state.greeted=false;closePanel();},
             draft: function (q) { clearTimeout(askTimer); openPanel(); input.value = String(q || "").slice(0,500); if (draftStore) draftStore.save(input.value); },
             open: openPanel,
             close: closePanel,
