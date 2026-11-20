@@ -14,10 +14,7 @@
   // ── State ────────────────────────────────────
   const state = {
     section: 'overview',
-    venues: { page: 1, perPage: 25, total: 0, filters: {} },
-    osmCategories: [],
-    osmSelected: new Set(),
-    csvRows: null,
+    venues: { page: 1, perPage: 25, total: 0, request: 0 },
     me: null
   };
 
@@ -38,8 +35,12 @@
     });
     return e;
   };
-  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&','<':'<','>':'>','"':'"',"'":'&#39;'})[m]);
-  const fmtNum = (n) => (n == null ? '—' : Number(n).toLocaleString());
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
+  const isCount = (n) => (typeof n === 'number' || typeof n === 'string' && /^[0-9]+$/.test(n)) && Number.isSafeInteger(Number(n)) && Number(n) >= 0;
+  const fmtNum = (n) => isCount(n) ? Number(n).toLocaleString() : '—';
+  function safeWebLink(value) {
+    try { const u = new URL(value); return (u.protocol === 'https:' || u.protocol === 'http:') && !u.username && !u.password ? u.href : null; } catch (_) { return null; }
+  }
   const fmtDate = (d) => {
     if (!d) return '—';
     try { return new Date(d).toLocaleString(); } catch { return String(d); }
@@ -84,7 +85,7 @@
     let data = null;
     const text = await resp.text();
     try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
-    if (!resp.ok) {
+    if (!resp.ok || data?.ok === false) {
       const err = new Error((data && (data.error || data.message)) || `HTTP ${resp.status}`);
       err.status = resp.status;
       err.data = data;
@@ -191,9 +192,9 @@
     const titles = {
       'overview': ['Overview', 'SceneLink operations dashboard'],
       'venues': ['Venues', 'Browse, filter, and edit venues'],
-      'csv-import': ['CSV Import', 'Upload and import venues from CSV'],
-      'osm-import': ['OSM Import', 'Import venue data from OpenStreetMap'],
-      'import-history': ['Import History', 'Audit log of imports'],
+      'csv-import': ['CSV Import', 'Unavailable in this admin build'],
+      'osm-import': ['OSM Import', 'Unavailable in this admin build'],
+      'import-history': ['Import History', 'Published audit history is unavailable'],
       'data-quality': ['Data Quality', 'Identify and fix data issues'],
       'users': ['Users', 'Registered users (read-only)'],
       'contacts': ['Contact Messages', 'Inbound messages from the contact form'],
@@ -208,8 +209,6 @@
     // Lazy load data
     if (section === 'overview') loadOverview();
     if (section === 'venues') loadVenues();
-    if (section === 'osm-import') loadOsmCategories();
-    if (section === 'import-history') loadHistory();
     if (section === 'data-quality') loadDataQuality();
     if (section === 'overview') loadOverviewStats();
     if (section === 'users') { loadUserStats(); loadUsers(1, ''); }
@@ -226,33 +225,15 @@
     try {
       const s = await api('/admin/venues/summary');
       $('#stat-total').textContent = fmtNum(s.total);
-      $('#stat-total-sub').textContent = `${fmtNum(s.active)} active / ${fmtNum((s.total||0) - (s.active||0))} inactive`;
+      $('#stat-total-sub').textContent = 'Admin inventory count';
       $('#stat-active').textContent = fmtNum(s.active);
       $('#stat-no-web').textContent = fmtNum(s.missing_website);
       $('#stat-no-coords').textContent = fmtNum(s.missing_coords);
-      $('#stat-osm').textContent = fmtNum(s.osm || s.osm_count || 0);
+      $('#stat-osm').textContent = fmtNum(s.osm ?? s.osm_count);
       const avgQ = s.avg_quality != null ? s.avg_quality : (s.avg_quality_score != null ? s.avg_quality_score : null);
       $('#stat-quality').textContent = avgQ != null && avgQ > 0 ? Math.round(avgQ) : '—';
 
-      // Sources table — derived from summary counts
-      const sources = [];
-      if (s.osm != null) sources.push({ source: 'osm', count: s.osm });
-      if (s.csv != null) sources.push({ source: 'csv', count: s.csv });
-      if (s.curated != null) sources.push({ source: 'curated', count: s.curated });
-      // unknown / legacy
-      const known = (s.osm||0) + (s.csv||0) + (s.curated||0);
-      const legacy = Math.max(0, (s.total||0) - known);
-      if (legacy) sources.push({ source: 'legacy/other', count: legacy });
-
-      const rows = sources.map(r => `
-        <tr>
-          <td><span class="chip ${r.source === 'osm' ? 'blue' : r.source === 'csv' ? 'gold' : r.source === 'curated' ? 'good' : ''}">${esc(r.source)}</span></td>
-          <td class="num">${fmtNum(r.count)}</td>
-          <td class="num text-muted">—</td>
-          <td class="num text-muted">—</td>
-          <td class="num text-muted">—</td>
-        </tr>`).join('');
-      $('#sourcesTbody').innerHTML = rows || '<tr><td colspan="5" class="loading-state">No data</td></tr>';
+      $('#sourcesTbody').innerHTML = '<tr><td colspan="5" class="loading-state">Source breakdown unavailable in the current API.</td></tr>';
     } catch (err) {
       toast('Failed to load overview: ' + err.message, 'error');
       $('#sourcesTbody').innerHTML = `<tr><td colspan="5" class="loading-state">Error: ${esc(err.message)}</td></tr>`;
@@ -260,532 +241,149 @@
   }
 
   // ── Venues ───────────────────────────────────
-  async function loadVenues() {
-    const tbody = $('#venuesTbody');
-    tbody.innerHTML = '<tr><td colspan="9" class="loading-state"><div class="loading-spinner"></div></td></tr>';
-    const { page, perPage, filters } = state.venues;
-    const params = new URLSearchParams();
-    params.set('limit', perPage);
-    params.set('offset', (page - 1) * perPage);
-    if (filters.q) params.set('q', filters.q);
-    if (filters.source) params.set('source', filters.source);
-    if (filters.quality) params.set('quality', filters.quality);
-
+  async function loadVenues(page = state.venues.page) {
+    const s = state.venues, request = ++s.request, tbody = $('#venuesTbody');
+    $('#venuesPrev').disabled = $('#venuesNext').disabled = true;
+    $('#venuesCount').textContent = 'Loading…';
+    tbody.innerHTML = '<tr><td colspan="6" class="loading-state"><div class="loading-spinner"></div></td></tr>';
+    const offset = (page - 1) * s.perPage;
     try {
-      const data = await api(`/admin/venues/list?${params}`);
-      const venues = data.venues || [];
-      state.venues.total = data.total || 0;
-
-      if (!venues.length) {
-        tbody.innerHTML = '<tr><td colspan="9" class="loading-state">No venues match</td></tr>';
-      } else {
-        tbody.innerHTML = venues.map(v => {
-          const lat = v.latitude || v.lat;
-          const lng = v.longitude || v.lng;
-          const qualityChip = v.data_quality === 'complete' ? '<span class="chip good">complete</span>' :
-                              v.data_quality === 'partial' ? '<span class="chip warn">partial</span>' :
-                              v.data_quality === 'stub' ? '<span class="chip bad">stub</span>' :
-                              '<span class="chip">—</span>';
-          const srcKey = (v.source||'').toLowerCase();
-          const isOsm = srcKey === 'osm' || srcKey === 'openstreetmap';
-          const src = v.source ? `<span class="chip ${isOsm ? 'blue' : srcKey === 'csv' ? 'gold' : ''}">${esc(v.source)}</span>` : '—';
-          return `<tr>
-            <td><div style="font-weight:600">${esc(v.name)}</div><div class="text-muted" style="font-size:11px">${esc(v.address || v.neighborhood || '')}</div></td>
-            <td>${esc(v.type || v.category || '—')}</td>
-            <td>${esc(v.city || '—')}</td>
-            <td>${src}</td>
-            <td>${qualityChip} <span class="text-muted mono">${v.data_quality_score != null ? v.data_quality_score : ''}</span></td>
-            <td>${v.website ? `<a href="${esc(v.website)}" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i></a>` : '<span class="text-muted">—</span>'}</td>
-            <td>${lat && lng ? '<i class="fas fa-check" style="color:var(--green)"></i>' : '<i class="fas fa-times" style="color:var(--red)"></i>'}</td>
-            <td>${v.is_active ? '<span class="chip good">yes</span>' : '<span class="chip bad">no</span>'}</td>
-            <td><button class="btn btn-ghost btn-xs" data-edit-venue="${v.id}"><i class="fas fa-pen"></i></button></td>
-          </tr>`;
-        }).join('');
-        // Attach edit handlers
-        $$('[data-edit-venue]').forEach(b => b.addEventListener('click', () => openVenueModal(b.getAttribute('data-edit-venue'))));
-      }
-
-      const start = (page - 1) * perPage + 1;
-      const end = Math.min(page * perPage, state.venues.total);
-      $('#venuesCount').textContent = state.venues.total ? `Showing ${start}–${end} of ${fmtNum(state.venues.total)}` : 'No results';
+      const data = await api(`/admin/venues/list?limit=${s.perPage}&offset=${offset}`);
+      if (request !== s.request) return;
+      if (!Array.isArray(data?.venues) || !isCount(data.total) || data.offset !== offset || data.limit !== s.perPage || data.venues.length > s.perPage) throw Error('Venue list response was not confirmed.');
+      const venues = data.venues;
+      s.total = Number(data.total); s.page = page;
+      tbody.innerHTML = venues.length ? venues.map((v, i) => {
+        const website = safeWebLink(v.website);
+        const active = v.is_active === true ? '<span class="chip good">yes</span>' : v.is_active === false ? '<span class="chip bad">no</span>' : '—';
+        return `<tr>
+          <td><strong>${esc(v.name)}</strong><div class="text-muted">${esc(v.neighborhood || '—')}</div></td>
+          <td>${esc(v.type || '—')}</td><td>${v.is_featured === true ? 'Yes' : v.is_featured === false ? 'No' : '—'}</td><td>${v.is_trending === true ? 'Yes' : v.is_trending === false ? 'No' : '—'}</td>
+          <td>${website ? `<a href="${esc(website)}" target="_blank" rel="noopener noreferrer">Website ↗</a>` : '—'}</td>
+          <td>${active} <button type="button" class="btn btn-ghost btn-xs" data-edit-index="${i}" aria-label="Edit venue flags"><i class="fas fa-pen"></i></button></td></tr>`;
+      }).join('') : '<tr><td colspan="6" class="loading-state">No venues on this page.</td></tr>';
+      tbody.querySelectorAll('[data-edit-index]').forEach(b => b.addEventListener('click', () => openVenueModal(venues[Number(b.dataset.editIndex)])));
+      const end = offset + venues.length;
+      $('#venuesCount').textContent = venues.length ? `Showing ${offset + 1}–${end} of ${fmtNum(s.total)}` : 'No results on this page';
       $('#venuesPrev').disabled = page <= 1;
-      $('#venuesNext').disabled = end >= state.venues.total;
+      $('#venuesNext').disabled = !venues.length || end >= s.total;
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="9" class="loading-state">Error: ${esc(err.message)}</td></tr>`;
+      if (request !== s.request) return;
+      $('#venuesCount').textContent = 'Venue list unavailable';
+      tbody.innerHTML = `<tr><td colspan="6" class="loading-state">Error: ${esc(err.message)}. Use Refresh to try again.</td></tr>`;
     }
   }
 
-  // ── Venue modal ──────────────────────────────
-  async function openVenueModal(id) {
-    try {
-      const v = await api(`/venues/${encodeURIComponent(id)}`);
-      const venue = v.venue || v;
-      $('#venueModalBody').innerHTML = `
-        <div class="form-row">
-          <div class="form-field"><label class="form-label">Name</label><input class="form-input" data-field="name" value="${esc(venue.name || '')}"></div>
-          <div class="form-field"><label class="form-label">Type</label><input class="form-input" data-field="type" value="${esc(venue.type || '')}"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-field"><label class="form-label">City</label><input class="form-input" data-field="city" value="${esc(venue.city || '')}"></div>
-          <div class="form-field"><label class="form-label">Neighborhood</label><input class="form-input" data-field="neighborhood" value="${esc(venue.neighborhood || '')}"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-field"><label class="form-label">Address</label><input class="form-input" data-field="address" value="${esc(venue.address || '')}"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-field"><label class="form-label">Latitude</label><input class="form-input" data-field="lat" type="number" step="any" value="${venue.lat || venue.latitude || ''}"></div>
-          <div class="form-field"><label class="form-label">Longitude</label><input class="form-input" data-field="lng" type="number" step="any" value="${venue.lng || venue.longitude || ''}"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-field"><label class="form-label">Website</label><input class="form-input" data-field="website" value="${esc(venue.website || '')}"></div>
-          <div class="form-field"><label class="form-label">Phone</label><input class="form-input" data-field="phone" value="${esc(venue.phone || '')}"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-field"><label class="form-label">Description</label><textarea class="form-textarea" data-field="description">${esc(venue.description || '')}</textarea></div>
-        </div>
-        <div class="form-row">
-          <div class="form-field"><label class="form-label">Active</label>
-            <select class="form-select" data-field="is_active">
-              <option value="true" ${venue.is_active ? 'selected' : ''}>Yes</option>
-              <option value="false" ${!venue.is_active ? 'selected' : ''}>No</option>
-            </select>
-          </div>
-          <div class="form-field"><label class="form-label">Source</label><input class="form-input" data-field="source" value="${esc(venue.source || '')}" readonly></div>
-        </div>
-      `;
-      $('#venueModal').setAttribute('data-venue-id', venue.id);
-      $('#venueModal').classList.add('open');
-    } catch (err) {
-      toast('Failed to load venue: ' + err.message, 'error');
-    }
+  // Use the admin row even for inactive venues; public venue details intentionally exclude them.
+  let venueDraft = null, venueSavePending = false;
+  function closeVenueModal() {
+    if (venueSavePending) return;
+    venueDraft = null;
+    $('#venueModal').classList.remove('open');
+  }
+  function openVenueModal(venue) {
+    if (venueSavePending || !venue || typeof venue.id !== 'string' || !venue.id) return;
+    const {id, is_featured, is_trending} = venue;
+    if (typeof is_featured !== 'boolean' || typeof is_trending !== 'boolean') { toast('Live venue flags could not be verified. Refresh the venue list first.', 'error'); return; }
+    venueDraft = {id, featured:is_featured, trending:is_trending};
+    $('#venueModalBody').innerHTML = `<h3>${esc(venue.name)}</h3><p class="text-muted">Only Featured and Trending are editable here. Venue facts, activation and source approvals use a separate review process.</p>
+      <p>Type: ${esc(venue.type || '—')} · Neighborhood: ${esc(venue.neighborhood || '—')} · Active: ${venue.is_active === true ? 'Yes' : venue.is_active === false ? 'No' : 'Unavailable'}</p>
+      <label><input type="checkbox" data-venue-flag="featured" ${is_featured ? 'checked' : ''}> Featured</label>
+      <label><input type="checkbox" data-venue-flag="trending" ${is_trending ? 'checked' : ''}> Trending</label>`;
+    $('#venueModal').classList.add('open');
   }
 
   async function saveVenueModal() {
-    const id = $('#venueModal').getAttribute('data-venue-id');
-    if (!id) return;
-    const data = {};
-    $$('#venueModalBody [data-field]').forEach(i => {
-      const k = i.getAttribute('data-field');
-      let v = i.value;
-      if (k === 'is_active') v = v === 'true';
-      if (k === 'lat' || k === 'lng' || k === 'latitude' || k === 'longitude') v = v === '' ? null : parseFloat(v);
-      if (k === 'source') return; // readonly
-      data[k] = v;
-    });
+    if (!state.me || !venueDraft || venueSavePending) return;
+    const entry = venueDraft, data = {}, controls = [];
+    for (const field of ['featured','trending']) {
+      const el = $(`#venueModalBody [data-venue-flag="${field}"]`);
+      if (!el) return;
+      controls.push(el);
+      if (el.checked !== entry[field]) data[field] = el.checked;
+    }
+    if (!Object.keys(data).length) { toast('No venue flag changes to save.', 'info'); return; }
+    const save = $('#venueModalSave');
+    venueSavePending = true; save.disabled = true; controls.forEach(el => el.disabled = true);
     try {
-      await api(`/admin/venues/${encodeURIComponent(id)}`, { method: 'PATCH', body: data });
-      toast('Venue updated', 'success');
+      const result = await api(`/admin/venues/${encodeURIComponent(entry.id)}`, { method: 'PATCH', body: data });
+      const returned = result?.venue;
+      if (returned?.id !== entry.id || Object.keys(data).some(key => returned[key] !== data[key])) throw Error('The API did not confirm the selected flags. Refresh to verify before retrying.');
+      toast('Venue flags updated.', 'success');
+      venueDraft = null;
       $('#venueModal').classList.remove('open');
       loadVenues();
     } catch (err) {
-      toast('Save failed: ' + err.message, 'error');
-    }
-  }
-
-  // ── CSV Import ───────────────────────────────
-  function setupCsvImport() {
-    const drop = $('#csvDropzone');
-    const fileInput = $('#csvFile');
-    ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('dragging'); }));
-    ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('dragging'); }));
-    drop.addEventListener('drop', e => {
-      const f = e.dataTransfer.files && e.dataTransfer.files[0];
-      if (f) handleCsvFile(f);
-    });
-    fileInput.addEventListener('change', e => {
-      const f = e.target.files && e.target.files[0];
-      if (f) handleCsvFile(f);
-    });
-  }
-
-  function handleCsvFile(file) {
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { toast('File too large (max 10 MB)', 'error'); return; }
-    if (!window.Papa) { toast('CSV parser not loaded', 'error'); return; }
-    window.Papa.parse(file, {
-      header: true,
-      skipEmptyLines: 'greedy',
-      dynamicTyping: false,
-      complete: (results) => {
-        const rows = results.data || [];
-        const errs = results.errors || [];
-        const valid = rows.filter(r => r.name && (r.city || r.address || r.neighborhood));
-        state.csvRows = valid;
-        renderCsvPreview(valid, rows.length, errs);
-      },
-      error: (err) => toast('CSV parse error: ' + err.message, 'error')
-    });
-  }
-
-  function renderCsvPreview(valid, totalRows, errs) {
-    const wrap = $('#csvPreviewWrap');
-    wrap.classList.remove('hidden');
-    $('#csvPreviewStats').textContent =
-      `Parsed ${totalRows} rows. ${valid.length} look valid (have name + location). ${errs.length ? errs.length + ' parse errors.' : ''}`;
-    $('#csvImportCount').textContent = `(${valid.length})`;
-
-    const cols = valid.length ? Object.keys(valid[0]).slice(0, 10) : [];
-    $('#csvPreviewHead').innerHTML = '<tr>' + cols.map(c => `<th>${esc(c)}</th>`).join('') + '</tr>';
-    const body = valid.slice(0, 25).map(r =>
-      '<tr>' + cols.map(c => `<td>${esc(r[c] || '')}</td>`).join('') + '</tr>'
-    ).join('');
-    $('#csvPreviewBody').innerHTML = body;
-  }
-
-  async function doCsvImport() {
-    if (!state.csvRows || !state.csvRows.length) { toast('Nothing to import', 'warning'); return; }
-    const btn = $('#csvImportBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing…';
-    try {
-      const res = await api('/admin/venues/import', { method: 'POST', body: { rows: state.csvRows, ifExists: 'update', label: 'admin-csv-' + Date.now() } });
-      renderImportResult(res);
-      const errCount = res.errored != null ? res.errored : (res.errors && Array.isArray(res.errors) ? res.errors.length : 0);
-      toast(`Imported: +${res.inserted || 0} new, ~${res.updated || 0} updated, ${errCount} errors`, errCount ? 'warning' : 'success');
-      state.csvRows = null;
-      $('#csvPreviewWrap').classList.add('hidden');
-      $('#csvFile').value = '';
-    } catch (err) {
-      toast('Import failed: ' + err.message, 'error');
-      $('#csvResultWrap').innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i> ${esc(err.message)}</div>`;
+      toast('Save not confirmed: ' + err.message, 'error');
     } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Import <span id="csvImportCount"></span> Venues';
+      venueSavePending = false; save.disabled = false; controls.forEach(el => el.disabled = false);
     }
   }
 
-  function renderImportResult(res) {
-    const wrap = $('#csvResultWrap');
-    wrap.classList.remove('hidden');
-    const errArr = Array.isArray(res.errors) ? res.errors : (res.sample_errors || []);
-    const errCount = res.errored != null ? res.errored : errArr.length;
-    const sampleErrors = errArr.slice(0, 5).map(e =>
-      `<li>Row ${esc(e.row)}${e.name ? ' ('+esc(e.name)+')' : ''}: ${esc((e.errors && e.errors.join(', ')) || e.message || e.error || '')}</li>`
-    ).join('');
-    wrap.innerHTML = `
-      <div class="alert alert-success">
-        <i class="fas fa-check-circle"></i>
-        <div>
-          <div><strong>Import complete</strong></div>
-          <div>Total: ${fmtNum(res.total)} · Inserted: ${fmtNum(res.inserted)} · Updated: ${fmtNum(res.updated)} · Skipped: ${fmtNum(res.skipped)} · Errors: ${fmtNum(errCount)}</div>
-          ${sampleErrors ? `<div class="text-muted" style="font-size:11px;margin-top:8px">Sample errors:</div><ul style="margin-top:4px;padding-left:20px;font-size:12px">${sampleErrors}</ul>` : ''}
-        </div>
-      </div>`;
-  }
-
-  function downloadCsvTemplate() {
-    const headers = ['name','type','category','city','neighborhood','address','latitude','longitude','website','phone','description','price_range','vibe_tags'];
-    const sample = ['The Example Lounge','bar','nightlife','Boston','Back Bay','123 Main St','42.3505','-71.0760','https://example.com','617-555-0100','A cozy craft cocktail spot','$$','cocktails, jazz, date-night'];
-    const csv = headers.join(',') + '\n' + sample.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',') + '\n';
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'scenelink-venue-template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  // ── OSM Import ───────────────────────────────
-  async function loadOsmCategories() {
-    if (state.osmCategories.length) { renderOsmCategories(); return; }
+  // Only the three documented summary fields are available. No inferred quality scores, source labels or coordinates.
+  let qualityRead = 0;
+  async function loadDataQuality() {
+    const read = ++qualityRead;
+    const fields = [['dq-no-image','missing_image'],['dq-no-website','missing_website'],['dq-no-nhood','missing_neighborhood']];
+    fields.forEach(([id]) => { document.getElementById(id).textContent = '—'; });
+    $('#dq-status').textContent = 'Loading catalog summary…';
     try {
-      const r = await api('/admin/venues/osm/categories');
-      // Normalize: backend returns array of strings; we want objects
-      const raw = r.categories || [];
-      state.osmCategories = raw.map(c =>
-        typeof c === 'string'
-          ? { key: c, label: c.replace(/_/g,' ').replace(/\b\w/g, m=>m.toUpperCase()) }
-          : c
-      );
-      // Also stash city presets
-      state.osmPresets = r.city_presets || r.presets || null;
-      renderOsmCategories();
-      // Update preset dropdown with real backend presets if present
-      if (state.osmPresets) {
-        const sel = $('#osmPreset');
-        const cur = sel.value;
-        sel.innerHTML = '<option value="">— select city —</option>' +
-          Object.keys(state.osmPresets).map(k => {
-            const p = state.osmPresets[k];
-            const name = (p && p.name) || k;
-            return `<option value="${esc(k)}">${esc(name)}</option>`;
-          }).join('') +
-          '<option value="custom">Custom bbox…</option>';
-        sel.value = cur;
-      }
+      const summary = await api('/admin/venues/summary');
+      if (read !== qualityRead) return;
+      fields.forEach(([id,key]) => { document.getElementById(id).textContent = fmtNum(summary?.[key]); });
+      $('#dq-status').textContent = 'Catalog totals reported by the current API. Quality scores, detailed issue filters and source review are unavailable here.';
     } catch (err) {
-      toast('Failed to load OSM categories: ' + err.message, 'error');
+      if (read === qualityRead) $('#dq-status').textContent = 'Catalog summary unavailable: ' + err.message;
     }
   }
 
-  function renderOsmCategories() {
-    const wrap = $('#osmCategories');
-    wrap.innerHTML = state.osmCategories.map(c => `
-      <label class="cat-chip" data-cat="${esc(c.key)}">
-        <input type="checkbox" value="${esc(c.key)}">
-        <span>${esc(c.label || c.key)}</span>
-      </label>
-    `).join('');
-    wrap.querySelectorAll('.cat-chip').forEach(chip => {
-      const cb = chip.querySelector('input');
-      cb.addEventListener('change', () => {
-        chip.classList.toggle('selected', cb.checked);
-        if (cb.checked) state.osmSelected.add(cb.value);
-        else state.osmSelected.delete(cb.value);
-        $('#osmImportBtn').disabled = state.osmSelected.size === 0 || !osmHasLocation();
-      });
-    });
+  // Users GET uses page and limit, not offset. Old servers omit search_supported.
+  const _usersState = { page: 1, limit: 25, pages: 0, request: 0, search: '', searchSupported: false };
+  function updateUserSearch(supported) {
+    _usersState.searchSupported = supported;
+    $('#usersSearch').disabled = $('#usersSearchBtn').disabled = !supported;
+    $('#usersSearchNote').textContent = supported ? 'Search by email, display name, or username.' : 'User search is unavailable in this admin build. Browse by page below.';
   }
-
-  function osmHasLocation() {
-    const preset = $('#osmPreset').value;
-    if (preset && preset !== 'custom') return true;
-    if (preset === 'custom') return !!$('#osmBbox').value.trim();
-    return false;
-  }
-
-  function buildOsmPayload() {
-    const preset = $('#osmPreset').value;
-    const payload = { categories: Array.from(state.osmSelected) };
-    if (preset === 'custom') {
-      const bbox = $('#osmBbox').value.trim();
-      if (!bbox) return null;
-      payload.bbox = bbox;
-    } else if (preset) {
-      payload.city = preset;
-    } else {
-      return null;
-    }
-    return payload;
-  }
-
-  async function osmPreview() {
-    const payload = buildOsmPayload();
-    if (!payload) { toast('Select a city or bbox', 'warning'); return; }
-    if (!payload.categories.length) { toast('Select at least one category', 'warning'); return; }
-    const btn = $('#osmPreviewBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Querying Overpass…';
-    try {
-      const r = await api('/admin/venues/osm/preview', { method: 'POST', body: payload });
-      const count = r.total != null ? r.total : (r.count || 0);
-      const wrap = $('#osmResultWrap');
-      const sampleList = (r.sample || []).slice(0, 5).map(s =>
-        `<li>${esc(s.name || '(unnamed)')} <span class="text-muted">— ${esc(s.category || '')}</span></li>`
-      ).join('');
-      wrap.innerHTML = `
-        <div class="alert alert-info">
-          <i class="fas fa-info-circle"></i>
-          <div>
-            <strong>Preview:</strong> ${fmtNum(count)} venues found in OSM.
-            ${r.cached ? ' <span class="chip">cached</span>' : ''}
-            ${r.endpoint ? `<div class="text-muted" style="margin-top:4px;font-size:11px">Endpoint: ${esc(r.endpoint)}</div>` : ''}
-            ${sampleList ? `<div class="text-muted" style="font-size:11px;margin-top:8px">Sample:</div><ul style="padding-left:20px;font-size:12px;margin-top:4px">${sampleList}</ul>` : ''}
-            ${r.attribution ? `<div class="text-muted" style="font-size:10px;margin-top:6px">${esc(r.attribution)}</div>` : ''}
-          </div>
-        </div>`;
-      $('#osmImportBtn').disabled = count === 0;
-    } catch (err) {
-      $('#osmResultWrap').innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i> ${esc(err.message)}</div>`;
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-eye"></i> Preview Count';
-    }
-  }
-
-  async function osmImport() {
-    const payload = buildOsmPayload();
-    if (!payload) return;
-    if (!confirm(`Import venues from OpenStreetMap?\n\nCategories: ${payload.categories.join(', ')}\nLocation: ${payload.city || payload.bbox}\n\nThis may take 30–60 seconds.`)) return;
-    const btn = $('#osmImportBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing… (may take up to 60s)';
-    try {
-      payload.ifExists = 'update';
-      const r = await api('/admin/venues/osm/import', { method: 'POST', body: payload });
-      const errCount = r.errored != null ? r.errored : 0;
-      $('#osmResultWrap').innerHTML = `
-        <div class="alert alert-success">
-          <i class="fas fa-check-circle"></i>
-          <div>
-            <strong>OSM import complete</strong>
-            <div>Fetched: ${fmtNum(r.total_elements || 0)} · Processed: ${fmtNum(r.processed || 0)} · Inserted: ${fmtNum(r.inserted)} · Updated: ${fmtNum(r.updated)} · Skipped: ${fmtNum(r.skipped)} · Errors: ${fmtNum(errCount)}</div>
-            ${r.endpoint ? `<div class="text-muted mono" style="font-size:11px;margin-top:4px">via ${esc(r.endpoint)}${r.cached ? ' (cached)' : ''}</div>` : ''}
-            ${r.attribution ? `<div class="text-muted" style="font-size:10px;margin-top:6px">${esc(r.attribution)}</div>` : ''}
-          </div>
-        </div>`;
-      toast(`OSM import: +${r.inserted||0} new, ~${r.updated||0} updated`, 'success');
-      loadOverview();
-    } catch (err) {
-      $('#osmResultWrap').innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i> ${esc(err.message)}</div>`;
-      toast('OSM import failed: ' + err.message, 'error');
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-cloud-download-alt"></i> Import Venues';
-    }
-  }
-
-  // ── Import History ───────────────────────────
-  async function loadHistory() {
-    const tbody = $('#historyTbody');
-    tbody.innerHTML = '<tr><td colspan="10" class="loading-state"><div class="loading-spinner"></div></td></tr>';
-    try {
-      const r = await api('/admin/venues/imports');
-      const rows = r.imports || [];
-      if (!rows.length) { tbody.innerHTML = '<tr><td colspan="10" class="loading-state">No imports yet</td></tr>'; return; }
-      tbody.innerHTML = rows.map(im => {
-        const errN = im.rows_errored || 0;
-        return `<tr>
-          <td>${fmtDate(im.started_at || im.created_at)}</td>
-          <td><span class="chip ${im.source === 'osm' ? 'blue' : 'gold'}">${esc(im.source || '—')}</span></td>
-          <td class="text-muted truncate" style="max-width:220px">${esc(im.label || '—')}</td>
-          <td class="num">${fmtNum(im.rows_total)}</td>
-          <td class="num" style="color:var(--green)">${fmtNum(im.rows_inserted)}</td>
-          <td class="num" style="color:var(--blue)">${fmtNum(im.rows_updated)}</td>
-          <td class="num text-muted">${fmtNum(im.rows_skipped)}</td>
-          <td class="num" style="color:${errN ? 'var(--red)' : 'var(--text3)'}">${fmtNum(errN)}</td>
-          <td>${esc(im.status || '—')}</td>
-          <td>${errN ? `<button class="btn btn-ghost btn-xs" data-errors="${im.id}">View</button>` : ''}</td>
-        </tr>`;
-      }).join('');
-      $$('[data-errors]').forEach(b => b.addEventListener('click', () => showImportErrors(b.getAttribute('data-errors'))));
-    } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="10" class="loading-state">Error: ${esc(err.message)}</td></tr>`;
-    }
-  }
-
-  async function showImportErrors(id) {
-    try {
-      const r = await api(`/admin/venues/imports/${encodeURIComponent(id)}/errors`);
-      const errs = r.errors || [];
-      alert(errs.length
-        ? `Errors (${errs.length}):\n\n` + errs.slice(0, 30).map(e => `Row ${e.row}: ${e.message || e.error}`).join('\n')
-        : 'No errors recorded.');
-    } catch (err) {
-      toast('Failed to load errors: ' + err.message, 'error');
-    }
-  }
-
-  // ── Data Quality ─────────────────────────────
-  async function loadDataQuality(filter) {
-    const tbody = $('#dqTbody');
-    tbody.innerHTML = '<tr><td colspan="6" class="loading-state"><div class="loading-spinner"></div></td></tr>';
-    try {
-      // Fetch quality bucket counts in parallel — using actual status names
-      const [complete, needsImage, needsNhood, lowQ, summary] = await Promise.all([
-        api('/admin/venues/list?quality=complete&limit=1').catch(()=>({total:0})),
-        api('/admin/venues/list?quality=needs_image&limit=1').catch(()=>({total:0})),
-        api('/admin/venues/list?quality=needs_neighborhood&limit=1').catch(()=>({total:0})),
-        api('/admin/venues/list?quality=low_quality&limit=1').catch(()=>({total:0})),
-        api('/admin/venues/summary').catch(()=>({missing_website:0}))
-      ]);
-      $('#dq-complete').textContent = fmtNum(complete.total || 0);
-      $('#dq-no-image').textContent = fmtNum(needsImage.total || 0);
-      $('#dq-no-website').textContent = fmtNum(summary.missing_website || 0);
-      $('#dq-no-nhood').textContent = fmtNum(needsNhood.total || 0);
-      $('#dq-low').textContent = fmtNum(lowQ.total || 0);
-
-      // Map filter button keys to actual quality statuses where supported
-      const qualityMap = {
-        'stub': 'low_quality',
-        'no_image': 'needs_image',
-        'no_neighborhood': 'needs_neighborhood',
-        'no_type': 'needs_category'
-      };
-      const q = new URLSearchParams({ limit: '50' });
-      if (filter && qualityMap[filter]) {
-        q.set('quality', qualityMap[filter]);
-      } else if (filter && filter !== 'stub') {
-        // For filters not mapped to backend quality (no_website, no_coords, no_phone),
-        // fetch a larger page and filter client-side
-        q.set('limit', '200');
-      }
-      const v = await api(`/admin/venues/list?${q}`);
-      let rows = v.venues || [];
-      if (filter && filter !== 'stub') {
-        rows = rows.filter(ven => {
-          if (filter === 'no_website') return !ven.website;
-          if (filter === 'no_coords') return !(ven.lat || ven.latitude) || !(ven.lng || ven.longitude);
-          if (filter === 'no_phone') return !ven.phone;
-          if (filter === 'no_type') return !ven.type && !ven.category;
-          if (filter === 'no_neighborhood') return !ven.neighborhood;
-          return true;
-        }).slice(0, 50);
-      }
-      if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6" class="loading-state">No venues match</td></tr>'; return; }
-      tbody.innerHTML = rows.map(venue => {
-        const lat = venue.lat || venue.latitude;
-        const lng = venue.lng || venue.longitude;
-        const issues = [];
-        if (!venue.website) issues.push('<span class="chip bad">no website</span>');
-        if (!lat || !lng) issues.push('<span class="chip bad">no coords</span>');
-        if (!venue.phone) issues.push('<span class="chip warn">no phone</span>');
-        if (!venue.neighborhood) issues.push('<span class="chip warn">no neighborhood</span>');
-        if (!venue.type && !venue.category) issues.push('<span class="chip warn">no type</span>');
-        const scoreColor = venue.data_quality_score >= 80 ? 'var(--green)' :
-                          venue.data_quality_score >= 40 ? 'var(--orange)' : 'var(--red)';
-        return `<tr>
-          <td><div style="font-weight:600">${esc(venue.name)}</div><div class="text-muted" style="font-size:11px">${esc(venue.source || '—')}</div></td>
-          <td>${esc(venue.city || '—')}</td>
-          <td>${esc(venue.source || '—')}</td>
-          <td><span class="mono" style="color:${scoreColor};font-weight:700">${venue.data_quality_score != null ? venue.data_quality_score : '—'}</span></td>
-          <td>${issues.join(' ') || '<span class="chip good">OK</span>'}</td>
-          <td><button class="btn btn-ghost btn-xs" data-edit-venue="${venue.id}"><i class="fas fa-pen"></i></button></td>
-        </tr>`;
-      }).join('');
-      $$('[data-edit-venue]').forEach(b => b.addEventListener('click', () => openVenueModal(b.getAttribute('data-edit-venue'))));
-    } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="6" class="loading-state">Error: ${esc(err.message)}</td></tr>`;
-    }
-  }
-
-  async function recomputeQuality() {
-    if (!confirm('Recompute data quality scores for all venues? This may take a minute.')) return;
-    try {
-      toast('Recomputing quality scores…', 'info');
-      const r = await api('/admin/venues/recompute-quality', { method: 'POST' });
-      toast(`Updated ${fmtNum(r.updated)} venues`, 'success');
-      loadOverview();
-      if (state.section === 'data-quality') loadDataQuality();
-    } catch (err) {
-      toast('Recompute failed: ' + err.message, 'error');
-    }
-  }
-
-  // ── Users ────────────────────────────────────
-  // ── Users (paginated + search) ──────────────────────────────────────────
-  let _usersState = { page: 1, limit: 25, total: 0, search: '' };
-
-  async function loadUsers(page, search) {
-    if (page != null) _usersState.page = page;
-    if (search != null) _usersState.search = search;
-    const tbody = $('#usersTbody');
+  async function loadUsers(page = _usersState.page, search = _usersState.search) {
+    const s = _usersState, request = ++s.request, tbody = $('#usersTbody');
+    search = s.searchSupported ? search.trim().slice(0,100) : '';
+    $('#usersSearch').value = search;
+    $('#usersPrev').disabled = $('#usersNext').disabled = true;
+    $('#usersCount').textContent = 'Loading…';
     tbody.innerHTML = '<tr><td colspan="7" class="loading-state"><div class="loading-spinner"></div></td></tr>';
     try {
-      const offset = (_usersState.page - 1) * _usersState.limit;
-      const qs = `/admin/users?limit=${_usersState.limit}&offset=${offset}` +
-        (_usersState.search ? `&search=${encodeURIComponent(_usersState.search)}` : '');
-      const r = await api(qs);
-      const users = r.users || [];
-      _usersState.total = r.total || users.length;
-      if (!users.length) { tbody.innerHTML = '<tr><td colspan="7" class="loading-state">No users found</td></tr>'; return; }
-      tbody.innerHTML = users.map(u => `
+      const params = new URLSearchParams({page,limit:s.limit});
+      if (search) params.set('search',search);
+      const r = await api(`/admin/users?${params}`);
+      if (request !== s.request) return;
+      if (!Array.isArray(r?.users) || !isCount(r.total) || r.page !== page || r.limit !== s.limit || r.pages !== Math.ceil(Number(r.total) / s.limit) || r.users.length > s.limit) throw Error('User list response was not confirmed.');
+      if (page === 1 && !search) updateUserSearch(r.search_supported === true);
+      if (search && r.search_supported !== true) {
+        updateUserSearch(false);
+        return loadUsers(1, '');
+      }
+      s.page = page; s.pages = r.pages; s.search = search;
+      tbody.innerHTML = r.users.length ? r.users.map(u => `
         <tr>
-          <td><strong>${esc(u.display_name || u.username || '—')}</strong></td>
-          <td><a href="mailto:${esc(u.email)}" style="color:var(--gold)">${esc(u.email || '—')}</a></td>
-          <td class="mono">${esc(u.username || '—')}</td>
+          <td><strong>${esc(u.display_name || u.username || '—')}</strong></td><td>${esc(u.email || '—')}</td><td class="mono">${esc(u.username || '—')}</td>
           <td>${u.role === 'admin' ? '<span class="chip gold">admin</span>' : `<span class="chip">${esc(u.role || 'user')}</span>`}</td>
-          <td class="num">${fmtNum(u.favorite_count || 0)}</td>
-          <td class="num">${fmtNum(u.checkin_count || 0)}</td>
-          <td>${fmtDate(u.created_at)}</td>
-        </tr>`).join('');
-      const start = offset + 1, end = Math.min(offset + users.length, _usersState.total);
-      const countEl = $('#usersCount');
-      if (countEl) countEl.textContent = `Showing ${start}–${end} of ${fmtNum(_usersState.total)} users`;
-      const sbBadge = $('#sb-users-count');
-      if (sbBadge) { sbBadge.textContent = fmtNum(_usersState.total); sbBadge.style.display = ''; }
+          <td class="num">${fmtNum(u.favorite_count)}</td><td class="num">${fmtNum(u.checkin_count)}</td><td>${esc(fmtDate(u.created_at))}</td>
+        </tr>`).join('') : '<tr><td colspan="7" class="loading-state">No users on this page.</td></tr>';
+      const offset = (page - 1) * s.limit;
+      $('#usersCount').textContent = r.users.length ? `Showing ${offset + 1}–${offset + r.users.length} of ${fmtNum(r.total)} users` : 'No results on this page';
+      $('#usersPrev').disabled = page <= 1;
+      $('#usersNext').disabled = !r.users.length || page >= r.pages;
+      const badge = $('#sb-users-count'); if (badge && !search) badge.textContent = fmtNum(r.total);
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="7" class="loading-state">Error: ${esc(err.message)}</td></tr>`;
+      if (request !== s.request) return;
+      if (search) {
+        // A backend rollback can reject filtered requests. A verified, unfiltered
+        // page is safe to show, but never present it as search results.
+        toast('User search failed. Returning to the full list.', 'warning');
+        return loadUsers(1, '');
+      }
+      $('#usersCount').textContent = 'User list unavailable';
+      tbody.innerHTML = `<tr><td colspan="7" class="loading-state">Error: ${esc(err.message)}. Use Refresh to try again.</td></tr>`;
     }
   }
 
@@ -901,15 +499,12 @@
       if (s) goto(s);
     }));
 
-    // Users search + pagination
-    const usersSearchBtn = $('#usersSearchBtn');
-    const usersSearchInput = $('#usersSearch');
-    if (usersSearchBtn) usersSearchBtn.addEventListener('click', () => loadUsers(1, usersSearchInput ? usersSearchInput.value : ''));
-    if (usersSearchInput) usersSearchInput.addEventListener('keydown', e => { if (e.key === 'Enter') loadUsers(1, usersSearchInput.value); });
-    const usersPrev = $('#usersPrev');
-    const usersNext = $('#usersNext');
-    if (usersPrev) usersPrev.addEventListener('click', () => { if (_usersState.page > 1) loadUsers(_usersState.page - 1); });
-    if (usersNext) usersNext.addEventListener('click', () => { if (_usersState.page * _usersState.limit < _usersState.total) loadUsers(_usersState.page + 1); });
+    // User pages are supplied by the server, including the last-page boundary.
+    const searchUsers = () => { if (_usersState.searchSupported) loadUsers(1,$('#usersSearch').value); };
+    $('#usersSearchBtn').addEventListener('click',searchUsers);
+    $('#usersSearch').addEventListener('keydown',e => { if (e.key === 'Enter') { e.preventDefault(); searchUsers(); } });
+    $('#usersPrev').addEventListener('click', () => { if (_usersState.page > 1) loadUsers(_usersState.page - 1); });
+    $('#usersNext').addEventListener('click', () => { if (_usersState.page < _usersState.pages) loadUsers(_usersState.page + 1); });
 
     // Contacts filter
     const contactsFilter = $('#contactsFilter');
@@ -961,58 +556,11 @@
       window.location.reload();
     });
 
-    // Venues filters
-    $('#venuesApplyFilters').addEventListener('click', () => {
-      state.venues.filters = {
-        q: $('#venuesSearch').value.trim(),
-        source: $('#venuesSource').value,
-        quality: $('#venuesQuality').value
-      };
-      state.venues.page = 1;
-      loadVenues();
-    });
-    $('#venuesSearch').addEventListener('keydown', e => { if (e.key === 'Enter') $('#venuesApplyFilters').click(); });
-    $('#venuesPrev').addEventListener('click', () => { if (state.venues.page > 1) { state.venues.page--; loadVenues(); } });
-    $('#venuesNext').addEventListener('click', () => { state.venues.page++; loadVenues(); });
-
-    // Venue modal
-    $('#venueModalClose').addEventListener('click', () => $('#venueModal').classList.remove('open'));
-    $('#venueModalCancel').addEventListener('click', () => $('#venueModal').classList.remove('open'));
+    $('#venuesPrev').addEventListener('click', () => { if (state.venues.page > 1) loadVenues(state.venues.page - 1); });
+    $('#venuesNext').addEventListener('click', () => { if (state.venues.page * state.venues.perPage < state.venues.total) loadVenues(state.venues.page + 1); });
+    $('#venueModalClose').addEventListener('click', closeVenueModal);
+    $('#venueModalCancel').addEventListener('click', closeVenueModal);
     $('#venueModalSave').addEventListener('click', saveVenueModal);
-
-    // CSV
-    setupCsvImport();
-    $('#csvClearBtn').addEventListener('click', () => {
-      state.csvRows = null;
-      $('#csvPreviewWrap').classList.add('hidden');
-      $('#csvFile').value = '';
-    });
-    $('#csvImportBtn').addEventListener('click', doCsvImport);
-    $('#downloadTemplateBtn').addEventListener('click', downloadCsvTemplate);
-
-    // OSM
-    $('#osmPreset').addEventListener('change', e => {
-      $('#osmBboxWrap').style.display = e.target.value === 'custom' ? '' : 'none';
-      $('#osmImportBtn').disabled = state.osmSelected.size === 0 || !osmHasLocation();
-    });
-    $('#osmBbox').addEventListener('input', () => {
-      $('#osmImportBtn').disabled = state.osmSelected.size === 0 || !osmHasLocation();
-    });
-    $('#osmPreviewBtn').addEventListener('click', osmPreview);
-    $('#osmImportBtn').addEventListener('click', osmImport);
-
-    // Data quality filters
-    $$('[data-dq-filter]').forEach(b => b.addEventListener('click', () => {
-      $$('[data-dq-filter]').forEach(x => x.classList.remove('btn-primary'));
-      $$('[data-dq-filter]').forEach(x => x.classList.add('btn-ghost'));
-      b.classList.remove('btn-ghost');
-      b.classList.add('btn-primary');
-      loadDataQuality(b.getAttribute('data-dq-filter'));
-    }));
-
-    // Recompute
-    $('#recomputeQualityBtn').addEventListener('click', recomputeQuality);
-    $('#recomputeQualityBtn2').addEventListener('click', recomputeQuality);
   }
 
   // \u2500\u2500 Events Curation \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -1085,7 +633,7 @@
     const results = document.getElementById('evVenueResults');
     if (results) results.innerHTML = '';
     m.style.display = 'flex';
-    wireVenueSearch();
+
   }
 
   function closeEventModal() {
@@ -1130,37 +678,14 @@
     }
   }
 
-  let _venueSearchTimer = null;
-  function wireVenueSearch() {
-    const input = document.getElementById('evVenueSearch');
-    const results = document.getElementById('evVenueResults');
-    if (!input || !results || input.dataset.wired === '1') return;
-    input.dataset.wired = '1';
-    input.addEventListener('input', () => {
-      clearTimeout(_venueSearchTimer);
-      const q = (input.value || '').trim();
-      if (!q || q.length < 2) { results.innerHTML = ''; return; }
-      _venueSearchTimer = setTimeout(async () => {
-        try {
-          const r = await api('/admin/venues?search=' + encodeURIComponent(q) + '&limit=8');
-          const vs = r.venues || [];
-          results.innerHTML = vs.length ? vs.map(v => {
-            const nm = (v.name || '').replace(/'/g, "\\'");
-            const nb = (v.neighborhood || '').replace(/'/g, "\\'");
-            return `<div style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:4px;cursor:pointer;font-size:12px" onclick="window.SLAdmin.pickVenue('${v.id}','${nm}','${nb}')"><strong>${esc(v.name || '')}</strong> <span class="text-muted">${esc(v.neighborhood || '')}</span></div>`;
-          }).join('') : '<div class="text-muted" style="font-size:11px">No matches</div>';
-        } catch (_) {}
-      }, 250);
-    });
-  }
-
   // ── Bootstrap ────────────────────────────────
+  let wired = false;
   async function bootstrap() {
+    if (!wired) { wireEvents(); wired = true; }
     $('#sl-admin-loading').style.display = 'flex';
     const status = await ensureAdmin();
     if (status === true) {
       showApp();
-      wireEvents();
       goto('overview');
     } else if (status === 'deny') {
       showDeny();
@@ -1219,7 +744,7 @@
       setV('evVenueName', name);
       setV('evVenueNeighborhood', neighborhood);
       const results = document.getElementById('evVenueResults');
-      if (results) results.innerHTML = '<div class="text-muted" style="font-size:11px">\u2713 ' + (name || '') + '</div>';
+      if (results) results.textContent = 'Selected: ' + (name || '');
       const search = document.getElementById('evVenueSearch');
       if (search) search.value = name || '';
     }

@@ -53,12 +53,15 @@ router.get('/stats', requireAdmin, async (req, res) => {
 // GET /api/admin/users?page=1&limit=50&search=
 router.get('/users', requireAdmin, async (req, res) => {
     try {
-        const page = Math.max(1, parseInt(req.query.page) || 1);
-        const limit = Math.min(100, parseInt(req.query.limit) || 50);
+        const requestedLimit = parseInt(req.query.limit, 10);
+        const limit = Number.isSafeInteger(requestedLimit) && requestedLimit > 0 ? Math.min(100, requestedLimit) : 50;
+        const requestedPage = parseInt(req.query.page, 10);
+        const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 && requestedPage <= Math.floor(Number.MAX_SAFE_INTEGER / limit) ? requestedPage : 1;
         const offset = (page - 1) * limit;
-        const search = req.query.search ? `%${req.query.search}%` : null;
+        const term = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+        const search = term ? `%${term}%` : null;
 
-        const whereClause = search ? 'WHERE email ILIKE $3 OR display_name ILIKE $3 OR username ILIKE $3' : '';
+        const where = parameter => search ? `WHERE email ILIKE ${parameter} OR display_name ILIKE ${parameter} OR username ILIKE ${parameter}` : '';
         const params = search ? [limit, offset, search] : [limit, offset];
 
         const [usersResult, countResult] = await Promise.all([
@@ -67,12 +70,12 @@ router.get('/users', requireAdmin, async (req, res) => {
                         is_active, created_at, updated_at,
                         (SELECT COUNT(*) FROM checkins WHERE user_id = users.id) as checkin_count,
                         (SELECT COUNT(*) FROM favorites WHERE user_id = users.id) as favorite_count
-                 FROM users ${whereClause}
-                 ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+                 FROM users ${where('$3')}
+                 ORDER BY created_at DESC, id DESC LIMIT $1 OFFSET $2`,
                 params
             ),
             pool.query(
-                `SELECT COUNT(*) as total FROM users ${whereClause}`,
+                `SELECT COUNT(*) as total FROM users ${where('$1')}`,
                 search ? [search] : []
             ),
         ]);
@@ -80,6 +83,7 @@ router.get('/users', requireAdmin, async (req, res) => {
         res.json({
             users: usersResult.rows,
             total: parseInt(countResult.rows[0].total),
+            search_supported: true,
             page,
             limit,
             pages: Math.ceil(parseInt(countResult.rows[0].total) / limit),
