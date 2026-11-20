@@ -217,6 +217,208 @@ let pool,server;
  await api('PATCH','/admin/events/'+old.id,{title:'Legacy revised'},admin);
  await api('DELETE','/admin/events/'+old.id,null,admin);
  console.log('PASS legacy duplicates are held instead of adopted, existing manual create/review/edit/delete still work');
+
+ // A disabled importer still owns the identities it has already staged. Legacy
+ // POST/PATCH/source review must neither duplicate them nor change private RSVPs
+ // or append an audit record when a conflicting write is rejected.
+ const manualBody=(candidate,extra={})=>({title:candidate.title,date:candidate.date,
+   start_time:candidate.start_time,venue_id:candidate.venue_id,...extra});
+ const sourceAliases=url=>[
+   url.replace('https://tickets.citywinery.com','https://TICKETS.CITYWINERY.COM:443')+'/?ref=legacy#details',
+   url.replace('tickets.citywinery.com/','tickets.citywinery.com./')+'/#details',
+   url.replace('tickets.citywinery.com/','tickets.%63itywinery.com/')+'/?ref=encoded-letter',
+   url.replace('tickets.citywinery.com/','tickets.citywinery%2ecom/')+'/#encoded-dot',
+ ];
+ const eventSnapshot=async id=>(await pool.query(`SELECT to_jsonb(e) AS event,
+   (SELECT to_jsonb(o) FROM official_event_occurrences o WHERE o.event_id=e.id) AS mapping,
+   (SELECT COALESCE(jsonb_agg(to_jsonb(a) ORDER BY a.id),'[]'::jsonb)
+     FROM event_source_reviews a WHERE a.event_id=e.id) AS audit,
+   (SELECT COALESCE(jsonb_agg(to_jsonb(r) ORDER BY r.user_id),'[]'::jsonb)
+     FROM event_rsvps r WHERE r.event_id=e.id) AS rsvps
+   FROM events e WHERE e.id=$1`,[id])).rows;
+ const protectedBefore=await eventSnapshot(one.id);
+ delete process.env.SCENELINK_OFFICIAL_EVENT_STAGE_MODE;
+ for(const start_time of [first.start_time,first.start_time+':00','']){
+   await post(manualBody(first,{title:'  '+first.title.toUpperCase()+'  ',start_time}),409);
+ }
+ for(const event_url of sourceAliases(first.source_url)){
+   await post(manualBody(first,{title:'QA differently named link duplicate',venue_id:differentVenue,event_url}),409);
+ }
+ const {event:editable}=await post(manualBody(first,{title:'QA unrelated editable event'}));
+ const editableReview='/admin/events/'+editable.id+'/source-review';
+ await api('PUT',editableReview,{source:'organizer',source_url:'https://example.com/qa-unrelated-event',
+   external_id:'qa-unrelated-event',status:'reviewed'},admin);
+ await api('PUT','/events/'+editable.id+'/rsvp',{status:'interested',audience:'private'},viewer);
+ const editableBefore=await eventSnapshot(editable.id);
+ await api('PATCH','/admin/events/'+editable.id,{title:first.title},admin,409);
+ await api('PATCH','/admin/events/'+editable.id,{event_url:first.source_url+'/?ref=patch'},admin,409);
+ await api('PUT',editableReview,{source:'organizer',source_url:first.source_url+'/?ref=review',
+   external_id:null,status:'reviewed'},admin,409);
+ await api('PUT',editableReview,{source:'official_venue',source_url:'https://example.com/qa-other-url',
+   external_id:first.external_id,status:'reviewed'},admin,409);
+ await api('PUT',editableReview,{source:'organizer',source_url:'https://example.com/qa-other-url',
+   external_id:one.external_id,status:'reviewed'},admin,409);
+ // Immutable submitted facts reserve the original occurrence even if an old
+ // writer has drifted the current display fields outside these HTTP routes.
+ try {
+   await pool.query("UPDATE events SET title='QA external title drift' WHERE id=$1",[one.id]);
+   await post(manualBody(first),409);
+ } finally {await pool.query('UPDATE events SET title=$2 WHERE id=$1',[one.id,first.title]);}
+ assert.deepEqual(await eventSnapshot(one.id),protectedBefore);
+ assert.deepEqual(await eventSnapshot(editable.id),editableBefore);
+ await api('PATCH','/admin/events/'+editable.id,{description:'QA unrelated edit still allowed'},admin);
+ assert.deepEqual((await eventSnapshot(editable.id))[0].rsvps,editableBefore[0].rsvps);
+ await api('DELETE','/admin/events/'+editable.id,null,admin);
+ process.env.SCENELINK_OFFICIAL_EVENT_STAGE_MODE='local-test';
+ console.log('PASS legacy POST, merged PATCH and source review hold managed identities with staging OFF; immutable facts, audit and private RSVPs survive');
+ for(const aliasIndex of sourceAliases(first.source_url).keys()){
+   const candidate=mk('qa-legacy-url-alias-'+aliasIndex,'21:05','QA alias occurrence '+aliasIndex);
+   const {event:aliased}=await post(manualBody(candidate,{title:'QA unrelated alias title '+aliasIndex,
+     venue_id:differentVenue,event_url:sourceAliases(candidate.source_url)[aliasIndex]}));
+   assert.equal((await post(candidate,409)).code,'OFFICIAL_LEGACY_EVENT_HOLD');
+   await api('DELETE','/admin/events/'+aliased.id,null,admin);
+ }
+ console.log('PASS URL-only identity holds in both directions for uppercase/default-port, trailing-dot and encoded host aliases');
+
+ // Queue each HTTP writer behind a real PostgreSQL session. Observe the first
+ // waiter before starting the second, then observe both before releasing them.
+ // The two orders prove that the winner commits before the loser checks facts;
+ // simply firing Promise.all would not reliably exercise the original race.
+ const orderedWriterRace=async(firstWrite,secondWrite)=>{
+   const blocker=await pool.connect(),pending=[];
+   let gateError;
+   const waitFor=async count=>{
+     const deadline=Date.now()+2500;
+     do {
+       const {rows:[{n}]}=await pool.query(`SELECT count(*)::int n FROM pg_stat_activity
+         WHERE datname=current_database() AND wait_event_type='Lock'
+           AND lower(wait_event)='advisory' AND query LIKE '%pg_advisory_xact_lock%'`);
+       if(n>=count)return;
+       await new Promise(resolve=>setTimeout(resolve,15));
+     }while(Date.now()<deadline);
+     assert.fail('Expected '+count+' native PostgreSQL event-writer advisory waiters');
+   };
+   try {
+     await blocker.query('BEGIN');
+     await blocker.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',['scenelink:official-event:writes']);
+     pending.push(firstWrite());pending[0].catch(()=>{});
+     await waitFor(1);
+     pending.push(secondWrite());pending[1].catch(()=>{});
+     await waitFor(2);
+   }catch(error){gateError=error;}
+   finally {await blocker.query('ROLLBACK');blocker.release();}
+   const settled=await Promise.allSettled(pending);
+   if(gateError)throw gateError;
+   for(const result of settled)if(result.status==='rejected')throw result.reason;
+   return settled.map(result=>result.value);
+ };
+ const mappedCount=async candidate=>(await pool.query('SELECT count(*)::int n FROM official_event_occurrences WHERE occurrence_key=$1',
+   ['city-winery-boston:'+candidate.external_id])).rows[0].n;
+ const matchingFactCount=async candidate=>(await pool.query(`SELECT count(*)::int n FROM events
+   WHERE venue_id=$1 AND date=$2::date AND lower(btrim(title))=lower($3)
+     AND btrim(COALESCE(start_time,'')) IN ('',$4,$4||':00')`,
+   [candidate.venue_id,candidate.date,candidate.title,candidate.start_time])).rows[0].n;
+ for(const manualFirst of [true,false]){
+   const candidate=mk('qa-create-race-'+(manualFirst?'legacy-first':'stage-first'),'21:10',
+     'QA create race '+(manualFirst?'legacy first':'stage first'));
+   const legacyRequest=()=>post(manualBody(candidate,{title:' '+candidate.title.toUpperCase()+' ',
+     start_time:candidate.start_time+':00'}),manualFirst?200:409);
+   const stageRequest=()=>post(candidate,manualFirst?409:200);
+   const results=await orderedWriterRace(...(manualFirst?[legacyRequest,stageRequest]:[stageRequest,legacyRequest]));
+   assert.equal(await matchingFactCount(candidate),1);
+   assert.equal(await mappedCount(candidate),manualFirst?0:1);
+   if(manualFirst){
+     assert.equal(results[1].code,'OFFICIAL_LEGACY_EVENT_HOLD');
+     await api('DELETE','/admin/events/'+results[0].event.id,null,admin);
+   }else assert.equal((await post(candidate)).event.id,results[0].event.id);
+ }
+ console.log('PASS native queued legacy POST versus official stage in both orders commits exactly one occurrence');
+ for(const manualFirst of [true,false]){
+   const candidate=mk('qa-patch-race-'+(manualFirst?'legacy-first':'stage-first'),'21:20',
+     'QA patch race '+(manualFirst?'legacy first':'stage first'));
+   const {event:target}=await post(manualBody(candidate,{title:'QA editable '+candidate.external_id}));
+   const beforePatch=await eventSnapshot(target.id);
+   const legacyRequest=()=>api('PATCH','/admin/events/'+target.id,{title:candidate.title},admin,manualFirst?200:409);
+   const stageRequest=()=>post(candidate,manualFirst?409:200);
+   const results=await orderedWriterRace(...(manualFirst?[legacyRequest,stageRequest]:[stageRequest,legacyRequest]));
+   assert.equal(await matchingFactCount(candidate),1);
+   assert.equal(await mappedCount(candidate),manualFirst?0:1);
+   if(manualFirst)assert.equal(results[1].code,'OFFICIAL_LEGACY_EVENT_HOLD');
+   else assert.deepEqual(await eventSnapshot(target.id),beforePatch);
+   await api('DELETE','/admin/events/'+target.id,null,admin);
+ }
+ console.log('PASS native queued legacy PATCH versus official stage in both orders holds the losing write atomically');
+ for(const manualFirst of [true,false]){
+   const candidate=mk('qa-review-race-'+(manualFirst?'legacy-first':'stage-first'),'21:30',
+     'QA source review race '+(manualFirst?'legacy first':'stage first'));
+   const {event:target}=await post(manualBody(candidate,{title:'QA source review '+candidate.external_id,venue_id:differentVenue}));
+   const beforeReview=await eventSnapshot(target.id);
+   const legacyRequest=()=>api('PUT','/admin/events/'+target.id+'/source-review',{
+     source:'official_venue',source_url:'https://example.com/'+candidate.external_id,
+     external_id:candidate.external_id,status:'reviewed'},admin,manualFirst?200:409);
+   const stageRequest=()=>post(candidate,manualFirst?409:200);
+   const results=await orderedWriterRace(...(manualFirst?[legacyRequest,stageRequest]:[stageRequest,legacyRequest]));
+   assert.equal(await mappedCount(candidate),manualFirst?0:1);
+   if(manualFirst)assert.equal(results[1].code,'OFFICIAL_LEGACY_EVENT_HOLD');
+   else assert.deepEqual(await eventSnapshot(target.id),beforeReview);
+   await api('DELETE','/admin/events/'+target.id,null,admin);
+ }
+ console.log('PASS native queued legacy source review versus official stage in both orders reserves identity without a duplicate audit');
+
+ // Historic legacy duplicates can predate the guard. Hiding their exact stored
+ // identity must stay available to a verified operator without erasing history.
+ for(const stagingOn of [true,false]){
+   if(stagingOn)process.env.SCENELINK_OFFICIAL_EVENT_STAGE_MODE='local-test';
+   else delete process.env.SCENELINK_OFFICIAL_EVENT_STAGE_MODE;
+   const historicalId=crypto.randomUUID();
+   const historical=manualBody(first,stagingOn?{title:'QA historical source-only duplicate',venue_id:differentVenue}:{});
+   const identity=stagingOn?{source:'official_venue',source_url:first.source_url.replace('tickets.citywinery.com/','tickets.%63itywinery.com/'),external_id:first.external_id}:
+     {source:'organizer',source_url:'https://example.com/qa-historical-fact-duplicate',external_id:'qa-historical-fact-duplicate'};
+   await pool.query(`INSERT INTO events(id,title,venue_id,date,start_time,source,source_url,external_id,
+     source_review_status,source_reviewed_at,source_reviewed_by)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,'reviewed',now(),$9)`,
+     [historicalId,historical.title,historical.venue_id,historical.date,historical.start_time,
+       identity.source,identity.source_url,identity.external_id,u.user.id]);
+   await pool.query(`INSERT INTO event_source_reviews(event_id,reviewer_id,source,source_url,external_id,status)
+     VALUES($1,$2,$3,$4,$5,'reviewed')`,[historicalId,u.user.id,identity.source,identity.source_url,identity.external_id]);
+   await pool.query("INSERT INTO event_rsvps(event_id,user_id,status,audience,revision) VALUES($1,$2,'going','private',9)",[historicalId,v.user.id]);
+   const beforeRetraction=(await eventSnapshot(historicalId))[0];
+   const reject={...identity,status:'rejected'},historyReview='/admin/events/'+historicalId+'/source-review';
+   const publicSearch='/events?q='+encodeURIComponent(historical.title);
+   await api('GET','/events/'+historicalId);
+   assert((await api('GET',publicSearch)).events.some(event=>event.id===historicalId));
+   await api('PUT',historyReview,reject,viewer,403);
+   await api('PUT',historyReview,reject,null,403,{'X-Admin-Secret':process.env.ADMIN_SECRET});
+   await pool.query('UPDATE users SET email_verified_at=NULL WHERE id=$1',[u.user.id]);
+   try {await api('PUT',historyReview,reject,admin,403);}
+   finally {await pool.query('UPDATE users SET email_verified_at=now() WHERE id=$1',[u.user.id]);}
+   for(const changed of [
+     {source:identity.source==='official_venue'?'organizer':'official_venue'},
+     {source_url:'https://example.com/qa-rebound-identity'},
+     {external_id:'qa-rebound-identity'},
+     {source_url:'https://example.com/qa-rebound-identity',external_id:'qa-rebound-identity'},
+   ])await api('PUT',historyReview,{...reject,...changed},admin,409);
+   assert.deepEqual((await eventSnapshot(historicalId))[0],beforeRetraction);
+   await api('PUT',historyReview,reject,admin);
+   const afterRetraction=(await eventSnapshot(historicalId))[0];
+   assert.equal(afterRetraction.event.source_review_status,'rejected');
+   const withoutReviewFields=({source_review_status,source_reviewed_at,source_reviewed_by,updated_at,...facts})=>facts;
+   assert.deepEqual(withoutReviewFields(afterRetraction.event),withoutReviewFields(beforeRetraction.event));
+   assert.deepEqual(afterRetraction.rsvps,beforeRetraction.rsvps);
+   assert.equal(afterRetraction.audit.length,beforeRetraction.audit.length+1);
+   for(const oldAudit of beforeRetraction.audit)assert.deepEqual(afterRetraction.audit.find(row=>row.id===oldAudit.id),oldAudit);
+   assert.equal(afterRetraction.audit.filter(row=>row.status==='rejected').length,1);
+   await api('PUT',historyReview,reject,admin);
+   assert.deepEqual((await eventSnapshot(historicalId))[0],afterRetraction);
+   await api('GET','/events/'+historicalId,null,null,404);
+   assert(!(await api('GET',publicSearch)).events.some(event=>event.id===historicalId));
+   const retained=(await api('GET','/events/rsvps/mine',null,viewer)).rsvps.find(rsvp=>rsvp.event_id===historicalId);
+   assert(retained);assert.equal(retained.revision,9);assert.equal(retained.audience,'private');
+   assert.equal(retained.event_available,false);assert.equal(retained.title,null);
+   await api('PUT',historyReview,{...identity,status:'reviewed'},admin,409);
+ }
+ process.env.SCENELINK_OFFICIAL_EVENT_STAGE_MODE='local-test';
+ console.log('PASS exact verified legacy retraction with staging ON/OFF is idempotent, preserves private RSVPs/history and rejects identity changes or unauthorized bypasses');
  // ON DELETE SET NULL on the event's venue reference must not make it public.
  await api('PUT','/admin/events/'+two.id+'/source-review',reviews(two),admin);
  await pool.query('DELETE FROM venues WHERE id=$1',[venue]);

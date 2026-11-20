@@ -53,6 +53,36 @@ and concurrent writers, migration/index footprint, release order, staffed
 approval and correction workflows, backup and backout. Do not drop the mapping
 while source-managed events remain.
 
+## Legacy writer concurrency and retraction
+
+Official staging, manual event creation, manual PATCH and source review share
+one transaction advisory gate, acquired before event, reviewer or venue row
+locks. A manual write checks its complete database-coerced event before commit;
+a collision rolls the whole transaction back. Source review checks the proposed
+identity before appending its audit. This makes a legacy-first write hold the
+stage, and a stage-first write hold the conflicting legacy write.
+
+Both current reserved facts and immutable occurrence facts remain protected,
+including after rejection or disabling the stage switch. Comparison includes
+the issuer-scoped ID, canonical HTTPS source/event links, and ambiguous matching
+venue/date/title/time. Blank time is not evidence of a separate performance;
+`HH:MM` and `HH:MM:00` are equivalent. URL parsing covers query/fragment,
+trailing slash/dot, hostname case, default port and encoded-host aliases.
+Distinct identified performances and unrelated manual events remain supported.
+The optional occurrence table is not required for ordinary manual writes.
+
+A historical duplicate can still be explicitly rejected by a verified current
+administrator using its exact stored source, URL and identifier. That operation
+does not rebind identity, retains private RSVPs and history, and adds only one
+rejection audit on retries. Changing source identity while rejecting does not
+bypass the collision guard.
+
+The shared gate coordinates these application routes only. It does not protect
+against direct SQL, a separately running older binary, or any newly mounted
+writer that omits the gate. Retire old writers and review all write paths before
+considering wider enablement. No production setting, migration, provider job or
+activation is included in this helper patch.
+
 ## Native test
 
 `node qa/official-event-stage-native.cjs` with Node 24 and a previously empty
@@ -61,4 +91,8 @@ database, supplied as `TEST_DATABASE_URL` and
 `SCENELINK_TEST_ALLOW_SCHEMA_INIT=yes`. Test creates fixture events and
 accounts only, starts Express on loopback, applies migration itself after
 checking disabled/missing-migration behavior, and makes no provider calls.
-Discard the test database afterward. Not wired into normal CI by this patch.
+Discard the test database afterward. The `official-events` matrix entry in
+`.github/workflows/connected-release.yml` runs this harness on PostgreSQL 18.3.
+It observes real advisory-lock waiters before releasing ordered POST, PATCH
+and source-review races in both directions, and verifies exact event, mapping,
+review-audit and private-RSVP preservation on rejected writes.

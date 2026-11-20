@@ -128,10 +128,20 @@ function install({router,pool,auth,write}) {
     const url=safeURL(b.source_url);if(!url)throw new H.HttpError(400,'Provide the official source URL');
     const externalId=H.text(b.external_id,'source identifier',300)||null;
     await H.transaction(pool,async db=>{
+      await officialEvent.serializeWrites(db);
       const old=await db.query("SELECT e.*,to_char(e.date,'YYYY-MM-DD') AS stage_date FROM events e WHERE e.id=$1 FOR UPDATE",[eventId]);if(!old.rows.length)throw new H.HttpError(404,'Event unavailable');
+      const exactRetraction=officialEvent.isExactRetraction(old.rows[0],b,url,externalId);
       if(await officialEvent.checkReview(db,req,old.rows[0],b,url,externalId))return;
-      await db.query(`INSERT INTO event_source_reviews(event_id,reviewer_id,source,source_url,external_id,status) VALUES($1,$2,$3,$4,$5,$6)`,[eventId,req.user?.id||null,b.source,url,externalId,b.status]);
-      await db.query(`UPDATE events SET source=$2,source_url=$3,external_id=$4,source_review_status=$5,source_reviewed_at=clock_timestamp(),source_reviewed_by=$6,updated_at=clock_timestamp() WHERE id=$1`,[eventId,b.source,url,externalId,b.status,req.user?.id||null]);
+      if(!officialEvent.reserved(old.rows[0].external_id)&&!exactRetraction) {
+        if(b.status==='rejected')await officialEvent.checkLegacyWrite(db,eventId);
+        await officialEvent.checkLegacyWrite(db,eventId,{source:b.source,source_url:url,external_id:externalId});
+      }
+      // Exact rejection retains the original stored identity, including a
+      // historical URL spelling that normalizes to the same trusted URL.
+      const reviewUrl=exactRetraction?old.rows[0].source_url:url;
+      const reviewId=exactRetraction?old.rows[0].external_id:externalId;
+      await db.query(`INSERT INTO event_source_reviews(event_id,reviewer_id,source,source_url,external_id,status) VALUES($1,$2,$3,$4,$5,$6)`,[eventId,req.user?.id||null,b.source,reviewUrl,reviewId,b.status]);
+      await db.query(`UPDATE events SET source=$2,source_url=$3,external_id=$4,source_review_status=$5,source_reviewed_at=clock_timestamp(),source_reviewed_by=$6,updated_at=clock_timestamp() WHERE id=$1`,[eventId,b.source,reviewUrl,reviewId,b.status,req.user?.id||null]);
     });
     res.json({ok:true,event_id:eventId,source_review_status:b.status,provider_verified:false,reservation_confirmed:false});
   }));

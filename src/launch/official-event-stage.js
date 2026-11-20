@@ -27,6 +27,52 @@ function isolatedTestTarget(env) {
 function enabled(env = process.env) {
   return isolatedTestTarget(env) && env.SCENELINK_OFFICIAL_EVENT_STAGE_MODE==='local-test';
 }
+// Every mounted event identity writer must take this gate before event, user or
+// venue row locks. It remains in force when staging is OFF: a retained/rejected
+// occurrence must not be recreated through the older manual routes.
+async function serializeWrites(db) {
+  await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',['scenelink:official-event:writes']);
+}
+function canonicalEventURL(value) {
+  const safe=safePublicHttps(value);
+  if(!safe)return null;
+  const url=new URL(safe);
+  url.hostname=url.hostname.replace(/\.$/,'');
+  url.search='';url.hash='';url.pathname=url.pathname.replace(/\/+$/,'');
+  return url.href.replace(/\/$/,'');
+}
+const folded=value=>String(value??'').trim().toLowerCase();
+const eventTime=value=>String(value??'').trim().replace(/^(\d{2}:\d{2}):00$/,'$1');
+function overlaps(event,facts) {
+  const sourceUrl=canonicalEventURL(facts.sourceUrl);
+  if(sourceUrl&&[event.source_url,event.event_url].some(value=>canonicalEventURL(value)===sourceUrl))return true;
+  if(event.external_id===facts.key || (event.source==='official_venue'&&PREFIX+event.external_id===facts.key))return true;
+  // Different explicitly identified performances may share a title/day. A
+  // legacy row has no such identity; a missing time is ambiguous, never proof
+  // that it is a different performance.
+  const a=eventTime(event.start_time),b=eventTime(facts.startTime);
+  return !reserved(event.external_id)&&!!event.venue_id&&!!facts.venueId&&
+    folded(event.venue_id)===folded(facts.venueId)&&event.date===facts.date&&
+    folded(event.title)===folded(facts.title)&&(!a||!b||a===b);
+}
+async function checkLegacyWrite(db,eventId,changes={}) {
+  const {rows:[stored]}=await db.query(`SELECT source,source_url,event_url,external_id,venue_id,title,
+    to_char(date,'YYYY-MM-DD') AS date,start_time FROM events WHERE id=$1`,[eventId]);
+  const candidate={...stored,...changes};
+  // The optional mapping is never a prerequisite for unrelated manual writes.
+  // Protect both current reserved facts and immutable original facts when it
+  // exists, even if a display field was changed outside the supported routes.
+  const {rows:[schema]}=await db.query("SELECT to_regclass('public.official_event_occurrences') AS mapping");
+  const facts=await db.query(`SELECT external_id AS key,source_url AS "sourceUrl",venue_id::text AS "venueId",
+    to_char(date,'YYYY-MM-DD') AS date,title,start_time AS "startTime" FROM events
+    WHERE id<>$1 AND NOT (${reservedSQL})`,[eventId]);
+  if(schema.mapping){
+    const originals=await db.query('SELECT original_facts FROM official_event_occurrences WHERE event_id<>$1',[eventId]);
+    facts.rows.push(...originals.rows.map(row=>row.original_facts));
+  }
+  if(facts.rows.some(fact=>overlaps(candidate,fact)))throw conflict(
+    'A managed official occurrence may represent this event. Reconcile it before changing a legacy event.','OFFICIAL_LEGACY_EVENT_HOLD');
+}
 function requireReviewer(req) {
   if (!req.user?.id || req.user.role !== 'admin' || !verified(req.user)) {
     throw new H.HttpError(403,'A verified administrator session is required','VERIFIED_ADMIN_REQUIRED');
@@ -75,6 +121,7 @@ async function stage(pool, body, req, calendarDate) {
   const facts=JSON.stringify(candidate);
   try {
     return await H.transaction(pool,async db=>{
+      await serializeWrites(db);
       await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',['scenelink:official-event:'+candidate.key]);
       await currentReviewer(db,req);
       const current=await db.query(`SELECT e.*,to_char(e.date,'YYYY-MM-DD') AS stage_date,o.original_facts=$2::jsonb AS same_original_facts
@@ -88,14 +135,12 @@ async function stage(pool, body, req, calendarDate) {
         return {ok:true,event,replayed:true};
       }
       const venue=await requirePilotVenue(db,candidate.venueId);
-      const prior=await db.query(`SELECT 1 FROM events
-        WHERE regexp_replace(regexp_replace(btrim(COALESCE(source_url,'')), '[?#].*$', ''), '/+$', '')=$2
-          OR regexp_replace(regexp_replace(btrim(COALESCE(event_url,'')), '[?#].*$', ''), '/+$', '')=$2
-          OR external_id=$1 OR (source='official_venue' AND external_id=$3)
-          OR (COALESCE(external_id,'') NOT LIKE 'city-winery-boston:%' AND venue_id=$4 AND date=$5::date
-              AND lower(btrim(title))=lower($6) AND btrim(COALESCE(start_time,'')) IN ('',$7,$7||':00'))
-        LIMIT 1`,[candidate.key,candidate.sourceUrl,body.external_id,candidate.venueId,candidate.date,candidate.title,candidate.startTime]);
-      if(prior.rows.length) throw conflict('A legacy event may represent this occurrence. Reconcile it before staging.','OFFICIAL_LEGACY_EVENT_HOLD');
+      const prior=await db.query(`SELECT source,source_url,event_url,external_id,venue_id,title,
+        to_char(date,'YYYY-MM-DD') AS date,start_time FROM events
+        WHERE NULLIF(btrim(source_url),'') IS NOT NULL OR NULLIF(btrim(event_url),'') IS NOT NULL
+          OR external_id IN ($1,$2) OR (venue_id=$3 AND date=$4::date)`,
+        [candidate.key,body.external_id,candidate.venueId,candidate.date]);
+      if(prior.rows.some(event=>overlaps(event,candidate))) throw conflict('A legacy event may represent this occurrence. Reconcile it before staging.','OFFICIAL_LEGACY_EVENT_HOLD');
       const {rows:[event]}=await db.query(`INSERT INTO events
         (title,category,venue_id,venue_name,venue_slug,venue_neighborhood,date,start_time,event_url,source,source_url,external_id,source_review_status)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'official_venue',$10,$11,'unreviewed') RETURNING *`,
@@ -109,8 +154,20 @@ async function stage(pool, body, req, calendarDate) {
     throw err;
   }
 }
+function isExactRetraction(event,body,url,externalId) {
+  return body.status==='rejected'&&body.source===event.source&&body.source_url===event.source_url&&
+    url===safePublicHttps(event.source_url)&&(body.external_id??null)===event.external_id&&
+    externalId===(typeof event.external_id==='string'?event.external_id.trim()||null:null);
+}
 async function checkReview(db, req, event, body, url, externalId) {
   if(!reserved(event.external_id)) {
+    // Historical duplicates may already be public. A verified operator must
+    // still be able to hide the exact existing identity, without rebinding it,
+    // hard-deleting history, or losing private RSVPs.
+    if(isExactRetraction(event,body,url,externalId)) {
+      requireReviewer(req);await currentReviewer(db,req);
+      return event.source_review_status==='rejected';
+    }
     const isPilotEventSource=new URL(url).hostname.replace(/\.$/,'')==='tickets.citywinery.com';
     if(reserved(externalId)||(enabled()&&isPilotEventSource)) throw conflict('A City Winery occurrence must use its dedicated official staging before source review');
     return false;
@@ -140,4 +197,4 @@ async function checkReview(db, req, event, body, url, externalId) {
   }
   return false;
 }
-module.exports={enabled,wantsStage,stage,checkReview,reserved,reservedSQL};
+module.exports={enabled,wantsStage,stage,checkReview,reserved,reservedSQL,serializeWrites,checkLegacyWrite,isExactRetraction};
