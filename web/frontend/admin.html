@@ -37,9 +37,6 @@
   <script defer src="js/sl-nav-gate.js?v=connected-20261119-been-with-friends"></script>
   <script defer src="js/sl-unread-poller.js?v=connected-20261119-been-with-friends"></script>
 
-<!-- PapaParse for CSV -->
-<script defer src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -382,12 +379,12 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
     <!-- ── Overview ── -->
     <section class="admin-section active" id="section-overview">
       <div class="stats-grid" id="statsGrid">
-        <div class="stat-card"><div class="stat-label">Total Venues</div><div class="stat-value" id="stat-total">—</div><div class="stat-sub" id="stat-total-sub">loading…</div></div>
+        <div class="stat-card"><div class="stat-label">Total Venues</div><div class="stat-value" id="stat-total">—</div><div class="stat-sub" id="stat-total-sub">Admin inventory count</div></div>
         <div class="stat-card"><div class="stat-label">Active</div><div class="stat-value" id="stat-active">—</div><div class="stat-sub">published</div></div>
         <div class="stat-card"><div class="stat-label">Missing Website</div><div class="stat-value" id="stat-no-web">—</div><div class="stat-sub">quality gap</div></div>
-        <div class="stat-card"><div class="stat-label">Missing Coords</div><div class="stat-value" id="stat-no-coords">—</div><div class="stat-sub">map critical</div></div>
-        <div class="stat-card"><div class="stat-label">OSM Venues</div><div class="stat-value" id="stat-osm">—</div><div class="stat-sub">OpenStreetMap</div></div>
-        <div class="stat-card"><div class="stat-label">Avg Quality</div><div class="stat-value" id="stat-quality">—</div><div class="stat-sub">0–100 score</div></div>
+        <div class="stat-card"><div class="stat-label">Missing Coords</div><div class="stat-value" id="stat-no-coords">—</div><div class="stat-sub">not reported</div></div>
+        <div class="stat-card"><div class="stat-label">OSM Venues</div><div class="stat-value" id="stat-osm">—</div><div class="stat-sub">not reported</div></div>
+        <div class="stat-card"><div class="stat-label">Avg Quality</div><div class="stat-value" id="stat-quality">—</div><div class="stat-sub">not reported</div></div>
       </div>
 
       <div class="panel">
@@ -398,11 +395,12 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
           </div>
         </div>
         <div class="form-row">
-          <button class="btn btn-primary" data-goto="csv-import"><i class="fas fa-file-csv"></i> Upload CSV</button>
-          <button class="btn btn-primary" data-goto="osm-import"><i class="fas fa-globe"></i> Import from OSM</button>
+          <button class="btn btn-primary" data-goto="csv-import"><i class="fas fa-file-csv"></i> CSV import status</button>
+          <button class="btn btn-primary" data-goto="osm-import"><i class="fas fa-globe"></i> OSM import status</button>
           <button class="btn btn-secondary" data-goto="data-quality"><i class="fas fa-shield-halved"></i> Data Quality</button>
-          <button class="btn btn-secondary" id="recomputeQualityBtn"><i class="fas fa-recycle"></i> Recompute Quality Scores</button>
+          <button class="btn btn-secondary" id="recomputeQualityBtn" disabled aria-describedby="qualityControlNote"><i class="fas fa-recycle"></i> Recompute unavailable</button>
         </div>
+        <p id="qualityControlNote" class="text-muted">Score recomputation is not available in this admin build.</p>
       </div>
 
       <div class="panel">
@@ -424,52 +422,20 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
     <!-- ── Venues ── -->
     <section class="admin-section" id="section-venues">
       <div class="panel">
-        <div class="filter-bar">
-          <input type="search" class="form-input grow" id="venuesSearch" placeholder="Search by name, address, city, neighborhood…" aria-label="Search by name, address, city, neighborhood…">
-          <select class="form-select" id="venuesSource">
-            <option value="">All sources</option>
-            <option value="curated">Curated</option>
-            <option value="csv">CSV</option>
-            <option value="osm">OSM</option>
-            <option value="openstreetmap">OpenStreetMap</option>
-          </select>
-          <select class="form-select" id="venuesQuality">
-            <option value="">All quality</option>
-            <option value="complete">Complete</option>
-            <option value="needs_image">Needs image</option>
-            <option value="needs_neighborhood">Needs neighborhood</option>
-            <option value="needs_category">Needs category</option>
-            <option value="needs_coordinates">Needs coordinates</option>
-            <option value="needs_vibe_tags">Needs vibe tags</option>
-            <option value="low_quality">Low quality</option>
-          </select>
-          <button class="btn btn-primary" id="venuesApplyFilters"><i class="fas fa-filter"></i> Filter</button>
-        </div>
+        <p class="text-muted" id="venues-search-status">Catalog search and source filters are unavailable in this admin build. Browse the paginated inventory below.</p>
 
         <div class="table-wrap">
           <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>City</th>
-                <th>Source</th>
-                <th>Quality</th>
-                <th>Website</th>
-                <th>Coords</th>
-                <th>Active</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="venuesTbody"><tr><td colspan="9" class="loading-state"><div class="loading-spinner"></div></td></tr></tbody>
+            <thead><tr><th>Name</th><th>Type</th><th>Featured</th><th>Trending</th><th>Website</th><th>Active / flags</th></tr></thead>
+            <tbody id="venuesTbody"><tr><td colspan="6" class="loading-state"><div class="loading-spinner"></div></td></tr></tbody>
           </table>
         </div>
 
         <div class="flex gap-12 mt-16" style="justify-content:space-between;align-items:center">
-          <div class="text-muted" style="font-size:12px" id="venuesCount">—</div>
+          <div class="text-muted" style="font-size:12px" id="venuesCount" role="status">—</div>
           <div class="flex gap-8">
-            <button class="btn btn-ghost btn-sm" id="venuesPrev"><i class="fas fa-chevron-left"></i> Prev</button>
-            <button class="btn btn-ghost btn-sm" id="venuesNext">Next <i class="fas fa-chevron-right"></i></button>
+            <button class="btn btn-ghost btn-sm" id="venuesPrev" disabled><i class="fas fa-chevron-left"></i> Prev</button>
+            <button class="btn btn-ghost btn-sm" id="venuesNext" disabled>Next <i class="fas fa-chevron-right"></i></button>
           </div>
         </div>
       </div>
@@ -478,111 +444,24 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
     <!-- ── CSV Import ── -->
     <section class="admin-section" id="section-csv-import">
       <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="panel-title">CSV Venue Import</div>
-            <div class="panel-sub">Upload a CSV. Required columns: <code>name, city</code>. Recommended: <code>address, neighborhood, latitude, longitude, website, phone, type, category, description, price_range, vibe_tags</code>.</div>
-          </div>
-          <button class="btn btn-ghost" id="downloadTemplateBtn"><i class="fas fa-download"></i> Template</button>
-        </div>
-
-        <label class="dropzone" id="csvDropzone">
-          <input type="file" id="csvFile" accept=".csv,text/csv">
-          <div class="dropzone-icon"><i class="fas fa-file-csv"></i></div>
-          <div class="dropzone-title">Drop CSV file or click to browse</div>
-          <div class="dropzone-sub">Max 10 MB. UTF-8 encoded.</div>
-        </label>
-
-        <div id="csvPreviewWrap" class="hidden mt-16">
-          <div class="alert alert-info"><i class="fas fa-info-circle"></i> <span id="csvPreviewStats">—</span></div>
-          <div class="table-wrap" style="max-height:400px;overflow-y:auto">
-            <table id="csvPreviewTable">
-              <thead id="csvPreviewHead"></thead>
-              <tbody id="csvPreviewBody"></tbody>
-            </table>
-          </div>
-          <div class="flex gap-12 mt-16" style="justify-content:flex-end">
-            <button class="btn btn-ghost" id="csvClearBtn">Clear</button>
-            <button class="btn btn-primary" id="csvImportBtn"><i class="fas fa-cloud-upload-alt"></i> Import <span id="csvImportCount"></span> Venues</button>
-          </div>
-        </div>
-
-        <div id="csvResultWrap" class="hidden mt-16"></div>
+        <h2 class="panel-title">CSV Import unavailable</h2>
+        <p class="text-muted">CSV upload from this page is disabled. Venue imports must go through the separate staged review process. Nothing can be uploaded here.</p>
       </div>
     </section>
 
     <!-- ── OSM Import ── -->
     <section class="admin-section" id="section-osm-import">
       <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="panel-title">OpenStreetMap Import</div>
-            <div class="panel-sub">Pull verified venue data from OpenStreetMap via Overpass API with safety rails.</div>
-          </div>
-        </div>
-
-        <div class="alert alert-info">
-          <i class="fas fa-shield-halved"></i>
-          <div>Safe mode enabled: max bbox 0.5°, max 500 results per query, 10-minute cache, multiple endpoint fallbacks.</div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-field">
-            <label class="form-label">City preset</label>
-            <select class="form-select" id="osmPreset">
-              <option value="">— select city —</option>
-              <option value="boston">Boston, MA</option>
-              <option value="cambridge">Cambridge, MA</option>
-              <option value="somerville">Somerville, MA</option>
-              <option value="custom">Custom bbox…</option>
-            </select>
-          </div>
-          <div class="form-field" id="osmBboxWrap" style="display:none">
-            <label class="form-label">Custom bbox (south,west,north,east)</label>
-            <input type="text" class="form-input" id="osmBbox" placeholder="42.30,-71.20,42.40,-71.00" aria-label="42.30,-71.20,42.40,-71.00">
-          </div>
-        </div>
-
-        <label class="form-label" style="margin-top:10px">Categories to import</label>
-        <div class="cat-grid" id="osmCategories"></div>
-
-        <div class="flex gap-12 mt-16" style="flex-wrap:wrap">
-          <button class="btn btn-secondary" id="osmPreviewBtn"><i class="fas fa-eye"></i> Preview Count</button>
-          <button class="btn btn-primary" id="osmImportBtn" disabled><i class="fas fa-cloud-download-alt"></i> Import Venues</button>
-        </div>
-
-        <div id="osmResultWrap" class="mt-16"></div>
+        <h2 class="panel-title">OpenStreetMap Import unavailable</h2>
+        <p class="text-muted">Map import and preview are disabled. No query or venue writes are sent from this page.</p>
       </div>
     </section>
 
     <!-- ── Import History ── -->
     <section class="admin-section" id="section-import-history">
       <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="panel-title">Import History</div>
-            <div class="panel-sub">Audit log of all CSV / OSM imports</div>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>Source</th>
-                <th>Label</th>
-                <th class="num">Total</th>
-                <th class="num">Inserted</th>
-                <th class="num">Updated</th>
-                <th class="num">Skipped</th>
-                <th class="num">Errors</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="historyTbody"><tr><td colspan="10" class="loading-state"><div class="loading-spinner"></div></td></tr></tbody>
-          </table>
-        </div>
+        <h2 class="panel-title">Import History unavailable</h2>
+        <p class="text-muted">The current API cannot verify an import audit history. This does not mean there were no imports.</p>
       </div>
     </section>
 
@@ -590,34 +469,14 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
     <section class="admin-section" id="section-data-quality">
       <div class="panel">
         <div class="panel-header">
-          <div>
-            <div class="panel-title">Data Quality Dashboard</div>
-            <div class="panel-sub">Identify venues with missing or low-quality data</div>
-          </div>
-          <button class="btn btn-secondary" id="recomputeQualityBtn2"><i class="fas fa-recycle"></i> Recompute Scores</button>
+          <div><h2 class="panel-title">Catalog quality summary</h2><p class="panel-sub">Counts for fields reported by the current API</p></div>
+          <button class="btn btn-secondary" id="recomputeQualityBtn2" disabled aria-describedby="dq-status">Recompute unavailable</button>
         </div>
+        <p id="dq-status" class="text-muted" role="status">Catalog summary not loaded.</p>
         <div class="stats-grid">
-          <div class="stat-card"><div class="stat-label">Complete</div><div class="stat-value" id="dq-complete">—</div><div class="stat-sub">all fields present</div></div>
-          <div class="stat-card"><div class="stat-label">Needs Image</div><div class="stat-value" id="dq-no-image">—</div><div class="stat-sub">no image_url</div></div>
-          <div class="stat-card"><div class="stat-label">Needs Website</div><div class="stat-value" id="dq-no-website">—</div><div class="stat-sub">no website URL</div></div>
-          <div class="stat-card"><div class="stat-label">Needs Neighborhood</div><div class="stat-value" id="dq-no-nhood">—</div><div class="stat-sub">no neighborhood</div></div>
-          <div class="stat-card"><div class="stat-label">Low Quality</div><div class="stat-value" id="dq-low">—</div><div class="stat-sub">score < 40</div></div>
-        </div>
-
-        <div class="filter-bar mt-16">
-          <button class="btn btn-ghost btn-sm" data-dq-filter="no_website">Missing website</button>
-          <button class="btn btn-ghost btn-sm" data-dq-filter="no_coords">Missing coords</button>
-          <button class="btn btn-ghost btn-sm" data-dq-filter="no_phone">Missing phone</button>
-          <button class="btn btn-ghost btn-sm" data-dq-filter="no_type">Missing type</button>
-          <button class="btn btn-ghost btn-sm" data-dq-filter="no_neighborhood">Missing neighborhood</button>
-          <button class="btn btn-ghost btn-sm" data-dq-filter="stub">Stub only</button>
-        </div>
-
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Venue</th><th>City</th><th>Source</th><th>Score</th><th>Issues</th><th></th></tr></thead>
-            <tbody id="dqTbody"><tr><td colspan="6" class="loading-state"><div class="loading-spinner"></div></td></tr></tbody>
-          </table>
+          <div class="stat-card"><div class="stat-label">Missing stored image URL</div><div class="stat-value" id="dq-no-image">—</div></div>
+          <div class="stat-card"><div class="stat-label">Missing stored website</div><div class="stat-value" id="dq-no-website">—</div></div>
+          <div class="stat-card"><div class="stat-label">Missing stored neighborhood</div><div class="stat-value" id="dq-no-nhood">—</div></div>
         </div>
       </div>
     </section>
@@ -630,9 +489,12 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
             <div class="panel-title">Users</div>
             <div class="panel-sub">All registered SceneLink users · real-time from database</div>
           </div>
-          <div class="flex gap-8">
-            <input type="search" class="form-input" id="usersSearch" placeholder="Search email or name…" style="min-width:220px" aria-label="Search email or name…">
-            <button class="btn btn-primary" id="usersSearchBtn"><i class="fas fa-search"></i></button>
+          <div>
+            <div class="flex gap-8">
+              <input type="search" class="form-input" id="usersSearch" aria-label="Search users" aria-describedby="usersSearchNote" maxlength="100" placeholder="Email, name, or username" disabled>
+              <button type="button" class="btn btn-primary" id="usersSearchBtn" disabled>Search</button>
+            </div>
+            <p class="text-muted" id="usersSearchNote">User search is unavailable in this admin build. Browse by page below.</p>
           </div>
         </div>
         <div class="stats-grid" id="userStatsGrid" style="margin-bottom:16px">
@@ -648,10 +510,10 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
           </table>
         </div>
         <div class="flex gap-12 mt-16" style="justify-content:space-between;align-items:center">
-          <div class="text-muted" style="font-size:12px" id="usersCount">—</div>
+          <div class="text-muted" style="font-size:12px" id="usersCount" role="status">—</div>
           <div class="flex gap-8">
-            <button class="btn btn-ghost btn-sm" id="usersPrev"><i class="fas fa-chevron-left"></i> Prev</button>
-            <button class="btn btn-ghost btn-sm" id="usersNext">Next <i class="fas fa-chevron-right"></i></button>
+            <button class="btn btn-ghost btn-sm" id="usersPrev" disabled><i class="fas fa-chevron-left"></i> Prev</button>
+            <button class="btn btn-ghost btn-sm" id="usersNext" disabled>Next <i class="fas fa-chevron-right"></i></button>
           </div>
         </div>
       </div>
@@ -759,10 +621,10 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
             </div>
             <div>
               <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Venue (optional)</label>
-              <input id="evVenueSearch" class="gate-input" placeholder="Search venue by name..." aria-label="Search venue by name...">
+              <p class="text-muted">Venue linking search is unavailable in this admin build. Enter display details below; existing venue links are retained.</p>
               <div id="evVenueResults" style="margin-top:6px;max-height:120px;overflow-y:auto;"></div>
               <input type="hidden" id="evVenueId">
-              <input id="evVenueName" class="gate-input" placeholder="Venue name (or auto-filled)" style="margin-top:6px" aria-label="Venue name (or auto-filled)">
+              <input id="evVenueName" class="gate-input" placeholder="Venue display name" style="margin-top:6px" aria-label="Venue display name">
               <input id="evVenueNeighborhood" class="gate-input" placeholder="Neighborhood" style="margin-top:6px" aria-label="Neighborhood">
             </div>
             <div>
@@ -817,12 +679,12 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
     <div id="venueModalBody"></div>
     <div class="sl-modal-footer">
       <button class="btn btn-ghost" id="venueModalCancel">Cancel</button>
-      <button class="btn btn-primary" id="venueModalSave">Save</button>
+      <button class="btn btn-primary" id="venueModalSave">Save flags</button>
     </div>
   </div>
 </div>
 
-<script defer src="js/sl-admin-portal.js?v=connected-20261119-been-with-friends"></script>
+<script defer src="js/sl-admin-portal.js?v=admin-20261120-contract-repair"></script>
 
     <script defer src="js/ai-concierge-v5.js?v=connected-20261119-been-with-friends"></script>
   <script src="js/sl-phase8-launch.js?v=connected-20261119-been-with-friends" defer></script>

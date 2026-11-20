@@ -15,7 +15,13 @@ for name in ['sl-bundle-7d.js','sl-bundle-7d-ui.js']:
 pattern=re.compile(r'((?:/?(?:js|css)/)[A-Za-z0-9_./-]+\.(?:js|css))(?:\?v=[A-Za-z0-9_.-]+)?(?=[\x27\x22])')
 for p in root.rglob('*'):
  if p.suffix not in ['.html','.js']:continue
- s=p.read_text();s=pattern.sub(lambda m:m[1]+'?v='+tag,s);p.write_text(s)
+ # The admin contract hotfix is served under a new URL without re-versioning the unchanged public app.
+ def asset_tag(asset):
+  if (tag == 'connected-20261119-been-with-friends' and p == root/'admin.html'
+      and asset.lstrip('/') == 'js/sl-admin-portal.js'):
+   return 'admin-20261120-contract-repair'
+  return tag
+ s=p.read_text();s=pattern.sub(lambda m:m[1]+'?v='+asset_tag(m[1]),s);p.write_text(s)
 p=root/'sw.js';s=p.read_text();s=re.sub(r"const VERSION = '[^']+';", "const VERSION = 'sl-"+tag+"';",s)
 for asset in ['sl-connected-api','sl-connected-actions','sl-connected-lists','sl-connected-plans','sl-events','sl-social-profile','sl-social-messages']:
  path="  '/js/"+asset+".js?v="+tag+"',"
