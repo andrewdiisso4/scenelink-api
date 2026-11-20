@@ -81,6 +81,7 @@ function classifyIntent(message) {
         times: [],
         group_size: null,
         budget: null,
+        venueType: null,
         is_booking: false,
         is_event: false,
         is_help: false,
@@ -130,10 +131,22 @@ function classifyIntent(message) {
     else if (/cheap|budget|affordable|\$\$/.test(m)) intent.budget = 2;
 
     // Event intent
-    if (/\b(event|concert|show|live music|tonight's event|what's happening)\b/.test(m)) intent.is_event = true;
+    if (/\b(events?|concerts?|live music|what's happening)\b|\bshows?\b(?!\s+(?:me|us)\b)/.test(m)) intent.is_event = true;
 
     // Booking intent
     if (/\b(book|reserve|reservation|table for|make a reservation)\b/.test(m)) intent.is_booking = true;
+
+    // A clearly requested place type is a hard constraint, not a guessed vibe.
+    // Leave generic, named, and mixed requests on their existing retrieval path.
+    const cocktailBars = /\bcocktail[- ]bars?\b/g;
+    const restaurant = /\brestaurants?\b/;
+    const otherPlaces = /\b(?:bars?|pubs?|brewery|breweries|wineries|caf[eé]s?|coffee shops?|lounges?|nightclubs?|clubs?|music venues?|live music|karaoke|events?)\b/;
+    if (!intent.is_event) {
+        if (restaurant.test(m) && !otherPlaces.test(m)) intent.venueType = 'restaurant';
+        else if (/\bcocktail[- ]bars?\b/.test(m) && !restaurant.test(m) &&
+                 !otherPlaces.test(m.replace(cocktailBars, ' ')) &&
+                 !/\b(?:dinner|lunch|brunch)\b/.test(m)) intent.venueType = 'cocktail_bar';
+    }
 
     // Primary intent
     if (intent.is_booking) intent.primary = 'book';
@@ -168,10 +181,22 @@ async function queryVenues(intent, limit) {
         i++;
     }
 
+    const placeType = intent.venueName == null ? intent.venueType : null;
+    if (placeType === 'restaurant') {
+        conditions.push("(lower(btrim(type)) = 'restaurant' OR lower(btrim(category)) = 'restaurant')");
+    } else if (placeType === 'cocktail_bar') {
+        const category = "replace(replace(lower(btrim(coalesce(category, ''))), '_', ' '), '-', ' ')";
+        const type = "replace(replace(lower(btrim(coalesce(type, ''))), '_', ' '), '-', ' ')";
+        // Generic bars remain possible matches. A known brewery/pub/winery is
+        // not a cocktail bar just because the import uses 'bar' as its broad type.
+        conditions.push(`(${category} IN ('cocktail bar','cocktail lounge','cocktail','speakeasy') OR
+          (${category} IN ('','bar','bars') AND ${type} IN ('bar','cocktail','cocktail bar')))`);
+    }
+
     // Vibe → type mapping
     const typeFilters = [];
     if (intent.vibes.indexOf('rooftop') !== -1) typeFilters.push('rooftop');
-    if (intent.vibes.indexOf('cocktail') !== -1) typeFilters.push('cocktail','bar','lounge');
+    if (intent.vibes.indexOf('cocktail') !== -1 && placeType !== 'cocktail_bar') typeFilters.push('cocktail','bar','lounge');
     if (intent.vibes.indexOf('nightclub') !== -1) typeFilters.push('nightclub','club');
     if (intent.vibes.indexOf('livemusic') !== -1) typeFilters.push('live music','music','jazz');
     if (intent.vibes.indexOf('brunch') !== -1) typeFilters.push('cafe','restaurant');
@@ -272,6 +297,9 @@ function generateResponse(intent, venues, events) {
         leadIn = `${venues.length} matching ${descParts}spots ${location}${timing ? ' ' + timing : ''}:`;
     } else {
         leadIn = `Here's what I found:`;
+    }
+    if (intent.venueName == null && intent.venueType === 'cocktail_bar') {
+        return `${venues.length} bar ${venues.length === 1 ? 'match' : 'matches'} ${location}. Cocktail menus aren't verified; check with the venue.`;
     }
     return leadIn;
 }
