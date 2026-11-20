@@ -67,7 +67,36 @@ let pool,server;
  assert.equal((await post(first,503)).code,'OFFICIAL_EVENT_STAGING_OFF');
  process.env.SCENELINK_OFFICIAL_EVENT_STAGE_MODE='local-test';
  await post(first,503);
- await pool.query(fs.readFileSync(path.join(root,'migrations/018_official_event_occurrences.sql'),'utf8'));
+ // Preserve exact data on an existing schema, not just a fresh install.
+ // Use the unrelated venue and remove this fixture after byte-level row replay
+ // so the business-flow assertions below still start with no published event.
+ const historicId=crypto.randomUUID();
+ await pool.query(`INSERT INTO events(id,title,venue_id,date,start_time,source,source_url,source_review_status,source_reviewed_at,source_reviewed_by)
+ VALUES($1,'Historic local QA event',$2,current_date-4,'16:00','organizer','https://example.invalid/historic','reviewed',now(),$3)`,[historicId,differentVenue,u.user.id]);
+ await pool.query(`INSERT INTO event_source_reviews(event_id,reviewer_id,source,source_url,status)
+ VALUES($1,$2,'organizer','https://example.invalid/historic','reviewed')`,[historicId,u.user.id]);
+ await pool.query("INSERT INTO event_rsvps(event_id,user_id,status,audience,revision) VALUES($1,$2,'going','private',7)",[historicId,v.user.id]);
+ const snapshot=async()=> (await pool.query(`SELECT to_jsonb(e) AS event,to_jsonb(a) AS audit,to_jsonb(r) AS rsvp,to_jsonb(v) AS venue
+ FROM events e JOIN event_source_reviews a ON a.event_id=e.id JOIN event_rsvps r ON r.event_id=e.id JOIN venues v ON v.id=e.venue_id WHERE e.id=$1`,[historicId])).rows;
+ const before=await snapshot();
+ assert.equal(before.length,1);
+ const migration=fs.readFileSync(path.join(root,'migrations/018_official_event_occurrences.sql'),'utf8');
+ const oldWriter=await pool.connect(), migrator=await pool.connect();
+ try {
+   await oldWriter.query('BEGIN');
+   await oldWriter.query('LOCK TABLE events IN ACCESS EXCLUSIVE MODE');
+   await assert.rejects(migrator.query(migration),e=>e.code==='55P03');
+   await migrator.query('ROLLBACK');
+   assert.equal((await migrator.query("SELECT to_regclass('public.official_event_occurrences') AS stage_table")).rows[0].stage_table,null);
+ } finally {
+   await oldWriter.query('ROLLBACK');oldWriter.release();
+   await migrator.query('ROLLBACK');migrator.release();
+ }
+ await pool.query(migration);await pool.query(migration);
+ assert.deepEqual(await snapshot(),before);
+ assert.equal((await pool.query('SELECT count(*)::int n FROM official_event_occurrences')).rows[0].n,0);
+ await pool.query('DELETE FROM events WHERE id=$1',[historicId]);
+ console.log('PASS migration times out atomically under an old writer lock; rerun preserves all preexisting fixture data');
  await post({...first,source_url:'https://tickets.citywinery.com.example.com/event/qa-no-remote-1'},400);
  await post({...first,source_url:'https://tickets.citywinery.com/event/mismatched'},400);
  await post({...first,source_review_status:'reviewed'},400);

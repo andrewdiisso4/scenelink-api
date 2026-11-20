@@ -28,21 +28,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [api, ingestion, upgrade, welcome]
+        suite: [api, ingestion, upgrade, welcome, official-events]
     services:
       postgres:
         image: postgres:18.3
         env:
-          POSTGRES_DB: scenelink_test_ci
+          POSTGRES_DB: ${{ matrix.suite == 'official-events' && 'scenelink_test_official_occurrences' || 'scenelink_test_ci' }}
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: scenelink_ci_disposable_only
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d scenelink_test_ci"
+          --health-cmd "pg_isready -U postgres"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      TEST_DATABASE_URL: postgresql://postgres:scenelink_ci_disposable_only@127.0.0.1:5432/scenelink_test_ci
+      TEST_DATABASE_URL: postgresql://postgres:scenelink_ci_disposable_only@127.0.0.1:5432/${{ matrix.suite == 'official-events' && 'scenelink_test_official_occurrences' || 'scenelink_test_ci' }}
       SCENELINK_TEST_ALLOW_SCHEMA_INIT: 'yes'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -73,3 +73,6 @@ jobs:
         env:
           TEST_WELCOME_DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
         run: node --test qa/welcome-email.test.cjs
+      - name: Official venue stage, migration and retraction acceptance
+        if: matrix.suite == 'official-events'
+        run: node --unhandled-rejections=strict qa/official-event-stage-native.cjs
