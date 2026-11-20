@@ -137,14 +137,36 @@ let pool,server;
  await api('DELETE','/admin/events/'+one.id,null,admin,409);
  await assert.rejects(pool.query('DELETE FROM events WHERE id=$1',[one.id]),e=>['23001','23503'].includes(e.code));
  console.log('PASS explicit verified identity-bound review publishes only selected occurrence; review retry has one audit; PATCH and hard delete held');
- await pool.query("INSERT INTO event_rsvps(event_id,user_id,status,audience,revision) VALUES($1,$2,'going','private',3)",[one.id,v.user.id]);
+ const {rsvp:beforeBackout}=await api('PUT','/events/'+one.id+'/rsvp',{status:'going',audience:'private'},viewer);
+ // Prove the flag can stop forward writes without stranding a published event.
+ delete process.env.SCENELINK_OFFICIAL_EVENT_STAGE_MODE;
+ await post(first,503);
+ await api('GET','/events/'+one.id);
+ await api('PUT','/admin/events/'+two.id+'/source-review',reviews(two),admin,503);
+ await api('PUT',reviewPath,reviews(one,'rejected'),viewer,403);
+ await api('PUT',reviewPath,{...reviews(one,'rejected'),source_url:two.source_url},admin,409);
+ // This is a QA-only retraction. A production mode must still refuse it.
+ const previousEnv=process.env.NODE_ENV;
+ process.env.NODE_ENV='production';
+ try { await api('PUT',reviewPath,reviews(one,'rejected'),admin,503); }
+ finally { process.env.NODE_ENV=previousEnv; }
+ await api('PUT',reviewPath,reviews(one,'rejected'),admin);
  await api('PUT',reviewPath,reviews(one,'rejected'),admin);
  await api('GET','/events/'+one.id,null,null,404);
+ assert.equal((await api('GET','/events?q=Synthetic')).total,0);
+ const {rsvps:[mine]}=await api('GET','/events/rsvps/mine',null,viewer);
+ assert.equal(mine.event_id,one.id);assert.equal(mine.revision,beforeBackout.revision);
+ assert.equal(mine.event_available,false);assert.equal(mine.title,null);
+ assert.deepEqual((await pool.query("SELECT status FROM event_source_reviews WHERE event_id=$1 ORDER BY created_at",[one.id])).rows,
+   [{status:'reviewed'},{status:'rejected'}]);
+ assert.equal((await pool.query("SELECT event_id FROM official_event_occurrences WHERE occurrence_key=$1",[one.external_id])).rows[0].event_id,one.id);
+ await api('PUT',reviewPath,reviews(one),admin,503);
+ process.env.SCENELINK_OFFICIAL_EVENT_STAGE_MODE='local-test';
  await api('PUT',reviewPath,reviews(one),admin,409);
  const hidden=await post();
  assert.equal(hidden.event.id,one.id);assert.equal(hidden.event.source_review_status,'rejected');
- assert.deepEqual((await pool.query('SELECT event_id,revision FROM event_rsvps WHERE event_id=$1',[one.id])).rows,[{event_id:one.id,revision:3}]);
- console.log('PASS explicit rejection hides it, preserves activity and cannot be replayed back to reviewed');
+ assert.deepEqual((await pool.query('SELECT event_id,revision FROM event_rsvps WHERE event_id=$1',[one.id])).rows,[{event_id:one.id,revision:beforeBackout.revision}]);
+ console.log('PASS disabling forward writes leaves exact retraction available: guest list/detail/search hide, one audit, exact mapping and private RSVP survive; no replay');
  const legacy={title:'Synthetic older import',date:day,start_time:'20:00',venue_id:venue};
  const {event:old}=await post(legacy);
  const legacyStage=mk('qa-legacy-hold','20:00',legacy.title);

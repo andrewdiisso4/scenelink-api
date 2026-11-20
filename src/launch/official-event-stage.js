@@ -15,14 +15,17 @@ function wantsStage(body) {
   return body?.source === 'official_venue' || Object.hasOwn(body || {},'external_id')
     || Object.hasOwn(body || {},'source_url');
 }
-function enabled(env = process.env) {
-  if (env.NODE_ENV!=='test'||env.SCENELINK_OFFICIAL_EVENT_STAGE_MODE!=='local-test') return false;
+function isolatedTestTarget(env) {
+  if (env.NODE_ENV!=='test') return false;
   try {
     const url=new URL(env.DATABASE_URL);
     return url.protocol==='postgresql:' && url.hostname==='127.0.0.1' && !!url.port &&
       url.pathname==='/scenelink_test_official_occurrences' && !url.search && !url.hash &&
       !/[?#]/.test(env.DATABASE_URL);
   } catch (_) { return false; }
+}
+function enabled(env = process.env) {
+  return isolatedTestTarget(env) && env.SCENELINK_OFFICIAL_EVENT_STAGE_MODE==='local-test';
 }
 function requireReviewer(req) {
   if (!req.user?.id || req.user.role !== 'admin' || !verified(req.user)) {
@@ -113,10 +116,21 @@ async function checkReview(db, req, event, body, url, externalId) {
     return false;
   }
   requireReviewer(req);
-  if (!enabled()) throw new H.HttpError(503,'Official event source review is disabled','OFFICIAL_EVENT_STAGING_OFF');
+  // OFF stops all forward progress, not the emergency ability to retract
+  // an exact existing mapping inside this same isolated test target.
+  if (!isolatedTestTarget(process.env) || (body.status !== 'rejected' && !enabled())) {
+    throw new H.HttpError(503,'Official event source review is disabled','OFFICIAL_EVENT_STAGING_OFF');
+  }
   await currentReviewer(db,req);
-  const bound=await db.query('SELECT original_facts FROM official_event_occurrences WHERE event_id=$1 AND occurrence_key=$2',[event.id,event.external_id]);
-  if(!bound.rows.length || body.source!=='official_venue'||url!==event.source_url||externalId!==event.external_id||
+  let bound;
+  try {
+    bound=await db.query('SELECT original_facts FROM official_event_occurrences WHERE event_id=$1 AND occurrence_key=$2',[event.id,event.external_id]);
+  } catch(err) {
+    if(err.code==='42P01') throw new H.HttpError(503,'The official-event staging migration has not been applied');
+    throw err;
+  }
+  if(!bound.rows.length || body.source!=='official_venue'||body.source_url!==url||body.external_id!==externalId||
+     url!==event.source_url||externalId!==event.external_id||bound.rows[0].original_facts?.sourceUrl!==url||
      !['reviewed','rejected'].includes(body.status)) throw conflict('Use the staged source, URL and occurrence identity for explicit review');
   if(event.source_review_status===body.status) return true;
   if(body.status==='reviewed'){

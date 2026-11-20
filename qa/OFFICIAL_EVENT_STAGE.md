@@ -2,11 +2,13 @@
 
 Local review only; this does not deploy, seed Boston listings, contact ticket
 providers, publish content, or enable an automatic source. Default OFF: stage
-and managed review require `NODE_ENV=test`, explicit
+and publication require `NODE_ENV=test`, explicit
 `SCENELINK_OFFICIAL_EVENT_STAGE_MODE=local-test`, a fixed literal-loopback
 disposable `scenelink_test_official_occurrences` PostgreSQL database with
 explicit port and no URL overrides, and explicitly applied migration 018.
-No startup migration or production activation is part of this change.
+In that same isolated test target, a verified administrator may still retract
+an exact bound occurrence when the stage switch is OFF. No startup migration or
+production activation is part of this change.
 
 ## Reviewed contract
 
@@ -35,7 +37,11 @@ No startup migration or production activation is part of this change.
    write transaction. The generic source-review route cannot attach an
    unbound pilot URL while enabled. A repeated identical review records no
    second audit. Explicit rejection hides the event, retains RSVPs and cannot
-   be undone by replay; generic edit/delete cannot bypass the hold.
+   be undone by replay; generic edit/delete cannot bypass the hold. Disabling the switch stops
+   new stages and reviews, but does not itself hide already-reviewed events.
+   Retract the exact occurrence explicitly while the mapping and restrictive
+   runtime still exist. Verify guest list/search and detail and the signed-in
+   RSVP readback before considering any runtime rollback. Do not hard-delete.
 
 The existing manual path and review of unrelated sources remain in place.
 Historical events are not modified. Any necessary ingest from previously
