@@ -11,6 +11,8 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
 const { requireAdmin } = require('../middleware/auth');
+const officialEvent = require('../launch/official-event-stage');
+const H = require('../launch/shared');
 
 // GET /api/admin/stats
 router.get('/stats', requireAdmin, async (req, res) => {
@@ -489,18 +491,25 @@ router.get('/events', requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/events  — create an event
-router.post('/events', requireAdmin, async (req, res) => {
-    try {
-        const b = req.body || {};
-        if (!b.title) return res.status(400).json({ error: 'title is required' });
-        if (!b.date) return res.status(400).json({ error: 'date is required (YYYY-MM-DD)' });
+router.post('/events', requireAdmin, (req, res, next) => {
+    if (!officialEvent.wantsStage(req.body)) return next();
+    return H.wrap(async (request, response) => {
+        const result = await officialEvent.stage(pool, request.body, request, require('../launch/events').calendarDate);
+        response.json(result);
+    })(req, res, next);
+}, H.wrap(async (req, res) => {
+    const b = req.body || {};
+    if (!b.title) return res.status(400).json({ error: 'title is required' });
+    if (!b.date) return res.status(400).json({ error: 'date is required (YYYY-MM-DD)' });
 
+    const event = await H.transaction(pool, async db => {
+        await officialEvent.serializeWrites(db);
         // If venue_id given, hydrate name/slug/neighborhood from venues
         let venueName = b.venue_name || null;
         let venueSlug = b.venue_slug || null;
         let venueNeighborhood = b.venue_neighborhood || null;
         if (b.venue_id) {
-            const vq = await pool.query('SELECT name, slug, neighborhood FROM venues WHERE id=$1', [b.venue_id]);
+            const vq = await db.query('SELECT name, slug, neighborhood FROM venues WHERE id=$1', [b.venue_id]);
             if (vq.rows.length) {
                 venueName = venueName || vq.rows[0].name;
                 venueSlug = venueSlug || vq.rows[0].slug;
@@ -508,7 +517,7 @@ router.post('/events', requireAdmin, async (req, res) => {
             }
         }
 
-        const ins = await pool.query(`
+        const ins = await db.query(`
             INSERT INTO events
             (title, description, category, venue_id, venue_name, venue_slug, venue_neighborhood,
              image_url, date, start_time, end_time, price, is_featured, is_live,
@@ -524,55 +533,67 @@ router.post('/events', requireAdmin, async (req, res) => {
             b.rating ? Number(b.rating) : null,
             b.event_url || null
         ]);
-        res.json({ ok: true, event: ins.rows[0] });
-    } catch (err) {
-        console.error('[admin/events POST]', err);
-        res.status(500).json({ error: err.message });
-    }
-});
+        // Inspect the database-coerced candidate before committing. A conflict
+        // rolls the insert back, leaving the managed event and its history intact.
+        await officialEvent.checkLegacyWrite(db, ins.rows[0].id);
+        return ins.rows[0];
+    });
+    res.json({ ok: true, event });
+}));
 
 // PATCH /api/admin/events/:id  — update an event
-router.patch('/events/:id', requireAdmin, async (req, res) => {
-    try {
-        const allowed = [
-            'title', 'description', 'category', 'venue_id', 'venue_name',
-            'venue_slug', 'venue_neighborhood', 'image_url', 'date', 'start_time',
-            'end_time', 'price', 'is_featured', 'is_live', 'attending_count',
-            'rating', 'event_url'
-        ];
-        const updates = [];
-        const values = [];
-        let idx = 1;
-        for (const key of allowed) {
-            if (req.body[key] !== undefined) {
-                let val = req.body[key];
-                if (['is_featured', 'is_live'].includes(key)) val = !!val;
-                if (['attending_count'].includes(key)) val = parseInt(val) || 0;
-                if (['rating'].includes(key)) val = val === null || val === '' ? null : Number(val);
-                updates.push(`${key}=$${idx++}`);
-                values.push(val);
-            }
+router.patch('/events/:id', requireAdmin, H.wrap(async (req, res) => {
+    const body = req.body || {};
+    const allowed = [
+        'title', 'description', 'category', 'venue_id', 'venue_name',
+        'venue_slug', 'venue_neighborhood', 'image_url', 'date', 'start_time',
+        'end_time', 'price', 'is_featured', 'is_live', 'attending_count',
+        'rating', 'event_url'
+    ];
+    const updates = [];
+    const values = [];
+    let idx = 1;
+    for (const key of allowed) {
+        if (body[key] !== undefined) {
+            let val = body[key];
+            if (['is_featured', 'is_live'].includes(key)) val = !!val;
+            if (['attending_count'].includes(key)) val = parseInt(val) || 0;
+            if (['rating'].includes(key)) val = val === null || val === '' ? null : Number(val);
+            updates.push(`${key}=$${idx++}`);
+            values.push(val);
         }
-        if (!updates.length) return res.status(400).json({ error: 'Nothing to update' });
-        updates.push('updated_at=NOW()');
-        values.push(req.params.id);
-        const q = await pool.query(
-            `UPDATE events SET ${updates.join(', ')} WHERE id=$${idx} RETURNING *`,
+    }
+    if (!updates.length) return res.status(400).json({ error: 'Nothing to update' });
+    updates.push('updated_at=NOW()');
+    values.push(req.params.id);
+    const event = await H.transaction(pool, async db => {
+        await officialEvent.serializeWrites(db);
+        const q = await db.query(
+            `UPDATE events SET ${updates.join(', ')} WHERE id=$${idx} AND ${officialEvent.reservedSQL} RETURNING *`,
             values
         );
-        if (!q.rows.length) return res.status(404).json({ error: 'Not found' });
-        res.json({ ok: true, event: q.rows[0] });
-    } catch (err) {
-        console.error('[admin/events PATCH]', err);
-        res.status(500).json({ error: err.message });
-    }
-});
+        if (!q.rows.length) {
+            const held = await db.query('SELECT external_id FROM events WHERE id=$1', [req.params.id]);
+            if (officialEvent.reserved(held.rows[0]?.external_id)) throw new H.HttpError(409,'Use official occurrence reconciliation to change this event');
+            throw new H.HttpError(404,'Not found');
+        }
+        // The UPDATE holds the event row lock and merges only allowed fields.
+        // Check that complete resulting identity, not just the PATCH body.
+        await officialEvent.checkLegacyWrite(db, q.rows[0].id);
+        return q.rows[0];
+    });
+    res.json({ ok: true, event });
+}));
 
 // DELETE /api/admin/events/:id
 router.delete('/events/:id', requireAdmin, async (req, res) => {
     try {
-        const q = await pool.query('DELETE FROM events WHERE id=$1 RETURNING id', [req.params.id]);
-        if (!q.rows.length) return res.status(404).json({ error: 'Not found' });
+        const q = await pool.query(`DELETE FROM events WHERE id=$1 AND ${officialEvent.reservedSQL} RETURNING id`, [req.params.id]);
+        if (!q.rows.length) {
+            const held = await pool.query('SELECT external_id FROM events WHERE id=$1', [req.params.id]);
+            if (officialEvent.reserved(held.rows[0]?.external_id)) return res.status(409).json({error:'Use explicit source rejection to hide this event without losing its history'});
+            return res.status(404).json({ error: 'Not found' });
+        }
         res.json({ ok: true, deleted: q.rows[0].id });
     } catch (err) {
         res.status(500).json({ error: err.message });
