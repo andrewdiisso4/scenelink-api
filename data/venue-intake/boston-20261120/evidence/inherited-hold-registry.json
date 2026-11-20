@@ -1,0 +1,572 @@
+{
+  "publication_ready": false,
+  "eligible_for_import": false,
+  "hold_count": 70,
+  "holds": [
+    {
+      "external_id": "00d62f01-be80-4215-b3bb-b574ce4f3795",
+      "name": "Brassica Kitchen & Cafe",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ]
+    },
+    {
+      "external_id": "0abbbf9d-8b28-4538-84d5-91d24a5dfb9e",
+      "name": "Papa Johns",
+      "reasons": [
+        "current_city_snapshot_no_exact_normalized_identity",
+        "fresh_city_coordinate_disagreement_or_missing",
+        "inherited_november_hold_retained",
+        "material_change:normalized_name_or_address_changed",
+        "no_exact_active_city_identity"
+      ]
+    },
+    {
+      "external_id": "0c4927b4-467f-4575-a1f5-c997b0cf2f0d",
+      "name": "Slush King",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "0f0fff2c-c30c-4c8d-b622-d29899fd0930",
+      "name": "State Street Provisions",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "17a8b823-40da-44dc-8438-388d0a4afd18",
+      "name": "The Joint",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "1d452a83-4aea-4beb-afa9-21e4ab59f919",
+      "name": "Garlic 'n Lemons",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ]
+    },
+    {
+      "external_id": "2b06ebbb-ea9b-4a9a-9a7c-a11e5e9a345b",
+      "name": "Right Taste Jamaican Restaurant",
+      "reasons": [
+        "city_coordinates_missing_or_over_200m",
+        "fresh_city_coordinate_disagreement_or_missing",
+        "inherited_november_hold_retained",
+        "missing_or_disputed_city_coordinates"
+      ]
+    },
+    {
+      "external_id": "3198b83b-efec-4937-a162-345cc26a9dd5",
+      "name": "Silhouette Lounge",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ]
+    },
+    {
+      "external_id": "34ae3268-8869-45b2-b811-8ce8b2dede29",
+      "name": "Flour Bakery and Cafe",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ]
+    },
+    {
+      "external_id": "4113b345-5d6a-4e88-821b-8c7a582c8301",
+      "name": "Gary's Pizza",
+      "reasons": [
+        "current_november_full_row_missing_from_recovered_cohort",
+        "fresh_source_no_explicit_US_MA_matching_address",
+        "inherited_november_hold_retained",
+        "legacy_MA_token_instead_of_required_US-MA"
+      ]
+    },
+    {
+      "external_id": "43a14922-b276-4826-880e-b53f8e931ba4",
+      "name": "The Ice Creamsmith",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "44522c7e-7dd3-4e68-96a8-aaeaac744fe9",
+      "name": "District 7 Tavern",
+      "reasons": [
+        "historical_district7_adjacent_business_association_review"
+      ]
+    },
+    {
+      "external_id": "45a26b13-0f0d-45ad-9a05-e1af2875abf7",
+      "name": "Cafe Bonjour",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ]
+    },
+    {
+      "external_id": "4cc505bb-6706-4bf1-ad5b-2285acf1bcd9",
+      "name": "Intelligentsia Coffee",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ]
+    },
+    {
+      "external_id": "4e6175ab-a41c-4098-b634-f257fd8a8360",
+      "name": "Crazy Dough's Pizza",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ]
+    },
+    {
+      "external_id": "508e58e8-e040-4d74-98a0-fe7bd5493f5e",
+      "name": "Ghost Light Tavern",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "5759bab9-875b-4ee2-bcc2-8d750410dc86",
+      "name": "Taqueria Jalisco",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ]
+    },
+    {
+      "external_id": "57b582ab-8b2e-4ffb-8af0-8b6d8e84404f",
+      "name": "Doughboy Donuts and Deli",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "58e0abd7-de5d-4e8d-9e6f-8956ed5c2bac",
+      "name": "Caffe Lil Italy",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ],
+      "classification": "potential_match_not_confirmed_duplicate",
+      "existing_venue_ids": [
+        "3977ee24-3c82-4c4b-88d4-099fa9a605b8",
+        "5ab80175-cb30-48dd-9c93-59e6a0d90913"
+      ],
+      "evidence_file": "independent-first-batch-data-review.json"
+    },
+    {
+      "external_id": "60361652-78be-452e-be79-b8bd7dc7e914",
+      "name": "Burger King",
+      "reasons": [
+        "city_coordinates_missing_or_over_200m",
+        "fresh_city_coordinate_disagreement_or_missing",
+        "inherited_november_hold_retained",
+        "missing_or_disputed_city_coordinates"
+      ]
+    },
+    {
+      "external_id": "609b9e5a-772a-45a4-842c-c75ba00aa536",
+      "name": "Hobgoblin",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "64511f57-61d1-465c-9da1-0bea252b0ae8",
+      "name": "Wink and Nod",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ],
+      "classification": "potential_match_not_confirmed_duplicate",
+      "existing_venue_ids": [
+        "4f0faf80-1204-4e25-a023-e481134c8ea6"
+      ],
+      "evidence_file": "independent-first-batch-data-review.json"
+    },
+    {
+      "external_id": "68a5eb83-6af4-47c8-b896-da62b3c6f958",
+      "name": "Sweet Sip",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "6916a89e-67e7-4a44-be04-0ee6ddc2469f",
+      "name": "Lower Mills Tavern",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "6bfc3d54-fa16-4c99-9950-341057bb3b4b",
+      "name": "Dunkin'",
+      "reasons": [
+        "material_change:normalized_category_changed"
+      ]
+    },
+    {
+      "external_id": "771fc793-5094-43d1-911d-b67edbda8aec",
+      "name": "Little Pizza King",
+      "reasons": [
+        "historical_little_pizza_king_duplicate_and_coordinate_hold"
+      ]
+    },
+    {
+      "external_id": "7be6a553-baf5-453d-bb76-4a706b820be1",
+      "name": "Toro",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "7f8549c3-e845-4a17-bcf3-36488134ffd4",
+      "name": "Stephanie's On Newbury",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ]
+    },
+    {
+      "external_id": "83d57610-8358-49f9-a2f2-c97f9abdb21a",
+      "name": "Larry J's BBQ Cafe",
+      "reasons": [
+        "city_coordinates_missing_or_over_200m",
+        "fresh_city_coordinate_disagreement_or_missing",
+        "inherited_november_hold_retained",
+        "missing_or_disputed_city_coordinates"
+      ]
+    },
+    {
+      "external_id": "84d8cfd3-ebab-40c4-9a0b-f6209f47da71",
+      "name": "Chicken And Rice Guys",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ]
+    },
+    {
+      "external_id": "8630f54e-713c-46d2-bc8d-8a81e3c99ca3",
+      "name": "Five Horses Tavern",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "86bfd725-7ede-497d-85b4-d897142a18ea",
+      "name": "Ashburton Cafe",
+      "reasons": [
+        "public_access_context_unresolved"
+      ]
+    },
+    {
+      "external_id": "86e6b22c-51a4-47d1-8389-e0a7b0dbfbe4",
+      "name": "Uncommon Ice Cream",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "87264ab9-56bc-4ae2-895a-b891820376af",
+      "name": "Taco Bell",
+      "reasons": [
+        "historical_incomplete_cc0_notice_bundle_hold"
+      ]
+    },
+    {
+      "external_id": "89660f0b-3a9c-4da2-bbf0-605fadeb5ff9",
+      "name": "Chill on Park",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "8da6a8db-99a4-4057-8c2a-01a6466dfdf1",
+      "name": "Tresca",
+      "reasons": [
+        "city_coordinates_missing_or_over_200m",
+        "fresh_city_coordinate_disagreement_or_missing",
+        "inherited_november_hold_retained",
+        "missing_or_disputed_city_coordinates"
+      ]
+    },
+    {
+      "external_id": "90df659c-1ed9-49ce-8b73-51de1314e0f7",
+      "name": "Food 4 Thought Cafe",
+      "reasons": [
+        "public_access_context_unresolved"
+      ]
+    },
+    {
+      "external_id": "922a5957-1918-4b38-af35-8913c474f7f5",
+      "name": "Chip City",
+      "reasons": [
+        "current_november_full_row_missing_from_recovered_cohort",
+        "fresh_source_no_explicit_US_MA_matching_address",
+        "inherited_november_hold_retained",
+        "legacy_MA_token_instead_of_required_US-MA"
+      ]
+    },
+    {
+      "external_id": "951f1ee7-7f39-4355-bf48-357ec96cdf18",
+      "name": "Mr. Tamole",
+      "reasons": [
+        "v2_specific_category_requires_mapping_review"
+      ]
+    },
+    {
+      "external_id": "9a5b8862-f77f-40fe-bde9-cc13f565b785",
+      "name": "District 7 Cafe",
+      "reasons": [
+        "historical_district7_adjacent_business_association_review"
+      ]
+    },
+    {
+      "external_id": "9cabcd97-83cb-49e5-9bd2-6be2c0a8082e",
+      "name": "J.P. Licks",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "9d238f20-3553-43c4-b038-6baf45dd4af8",
+      "name": "Pueblo Viejo's Cafe",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ]
+    },
+    {
+      "external_id": "a1e61257-b474-4165-b2e3-ce5b4c150c84",
+      "name": "Blackmoor Bar and Kitchen",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "ad2922ef-f9b3-4cbd-9a6c-8e5a96a49865",
+      "name": "Pollos A La Brasa Beto's",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ],
+      "classification": "potential_match_not_confirmed_duplicate",
+      "existing_venue_ids": [
+        "eb0c92fb-441f-452c-889e-1ed67e5fd8b4"
+      ],
+      "evidence_file": "independent-first-batch-data-review.json"
+    },
+    {
+      "external_id": "b2c7104c-86a8-4682-928d-643f06360f41",
+      "name": "Tasca Restaurant",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "b6951a9b-2117-4652-88d7-2e28c1b0b59a",
+      "name": "Honey Dew Donuts",
+      "reasons": [
+        "city_coordinates_missing_or_over_200m",
+        "fresh_city_coordinate_disagreement_or_missing",
+        "inherited_november_hold_retained",
+        "missing_or_disputed_city_coordinates",
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "bbc4316b-856f-4ebb-927e-51b779069dfc",
+      "name": "Citizen Public House & Oyster Bar",
+      "reasons": [
+        "current_catalog_potential_identity_collision",
+        "existing_catalog_identity_or_near_name_hold",
+        "inherited_november_hold_retained",
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "c71f5118-8a15-4b74-8562-092bced95674",
+      "name": "Subway",
+      "reasons": [
+        "inherited_november_hold_retained",
+        "provider_not_explicitly_open"
+      ]
+    },
+    {
+      "external_id": "c7c0bef6-2dad-4498-92d6-673d38267c81",
+      "name": "Effie's Kitchen",
+      "reasons": [
+        "current_november_full_row_missing_from_recovered_cohort",
+        "fresh_source_no_explicit_US_MA_matching_address",
+        "inherited_november_hold_retained",
+        "legacy_MA_token_instead_of_required_US-MA"
+      ]
+    },
+    {
+      "external_id": "c9ada27c-6e97-4f5c-8826-8a7f15c8650d",
+      "name": "Chipotle Mexican Grill",
+      "reasons": [
+        "historical_incomplete_cc0_notice_bundle_hold"
+      ]
+    },
+    {
+      "external_id": "d01a6dc7-4e33-48a0-8d0f-625bbd724704",
+      "name": "Delini Gelato",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "d0f06733-b7bb-4f13-8cd4-c20fe0252a17",
+      "name": "Mario's Restaurant",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ]
+    },
+    {
+      "external_id": "d13f5599-3357-4f3b-8ea5-998d6d2645bd",
+      "name": "Estragon",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "d41457c1-3341-4bd5-98d1-9b22a46e1a2c",
+      "name": "Eagle's Deli",
+      "reasons": [
+        "city_coordinates_missing_or_over_200m",
+        "fresh_city_coordinate_disagreement_or_missing",
+        "inherited_november_hold_retained",
+        "missing_or_disputed_city_coordinates"
+      ]
+    },
+    {
+      "external_id": "d80a2c77-9dac-45f2-9fea-903934ca8373",
+      "name": "Roadrunner",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ],
+      "classification": "potential_match_not_confirmed_duplicate",
+      "existing_venue_ids": [
+        "9c0d9694-60a0-411e-aa84-2b24da44f888"
+      ],
+      "evidence_file": "independent-first-batch-data-review.json"
+    },
+    {
+      "external_id": "d89cf225-2168-45ce-8eea-34881835c14e",
+      "name": "Domino's",
+      "reasons": [
+        "city_coordinates_missing_or_over_200m",
+        "fresh_city_coordinate_disagreement_or_missing",
+        "inherited_november_hold_retained",
+        "missing_or_disputed_city_coordinates"
+      ]
+    },
+    {
+      "external_id": "d8a78a17-a98c-4435-8d13-0379e22dc267",
+      "name": "Eagle Hill Cafe",
+      "reasons": [
+        "historical_eagle_hill_cafe_coordinate_hold"
+      ]
+    },
+    {
+      "external_id": "e2508d55-5655-49ed-a1a7-42c09b5e47f3",
+      "name": "J.P. Licks",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "e34acc07-99b1-418c-816f-9eb412b32c4e",
+      "name": "Bono Restaurant and Catering",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ]
+    },
+    {
+      "external_id": "e7378874-0c40-4638-8dbd-cc1327892680",
+      "name": "Yely's Coffee Shop",
+      "reasons": [
+        "current_november_full_row_missing_from_recovered_cohort",
+        "fresh_source_no_explicit_US_MA_matching_address",
+        "inherited_november_hold_retained",
+        "legacy_MA_token_instead_of_required_US-MA"
+      ]
+    },
+    {
+      "external_id": "ed8b8680-87d3-40c0-8f5b-55ae997c2239",
+      "name": "Coco Leaf",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "efe7cc34-69dd-46bf-8ab6-706e54806465",
+      "name": "Little Pizza King",
+      "reasons": [
+        "historical_little_pizza_king_duplicate_and_coordinate_hold"
+      ]
+    },
+    {
+      "external_id": "f01b923e-7ac6-4f2b-84be-43c380f76687",
+      "name": "Top Mix Bar and Kitchen",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ]
+    },
+    {
+      "external_id": "f35a067c-1134-486f-bbaf-147779ad69f1",
+      "name": "Aqua Pazza",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ]
+    },
+    {
+      "external_id": "f6c10718-4543-4fc0-a667-24382551614e",
+      "name": "Renegade's Pub",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "f9d6b399-45e6-4046-b416-9b0321fedd2e",
+      "name": "Boston Symphony Orchestra",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "fca1e431-e555-4807-83a7-e130575f3b00",
+      "name": "Lazy Bear Creamery",
+      "reasons": [
+        "specific_category_requires_review_before_staging"
+      ]
+    },
+    {
+      "external_id": "fcd6c1a7-0d18-48bd-b306-9e8e20a3de4b",
+      "name": "Fiskie's Cafe",
+      "reasons": [
+        "current_catalog_potential_identity_collision"
+      ],
+      "classification": "potential_match_not_confirmed_duplicate",
+      "existing_venue_ids": [
+        "b8dbbf2d-5954-4d21-9dfd-e5a4495a4dce"
+      ],
+      "evidence_file": "independent-first-batch-data-review.json"
+    },
+    {
+      "external_id": "fe99901c-caef-4782-a527-9b1d221da814",
+      "name": "Discovery Cafe",
+      "reasons": [
+        "public_access_context_unresolved"
+      ]
+    },
+    {
+      "external_id": "fec57432-afd2-4e01-83fa-efd04c5dc05d",
+      "name": "Chipotle Mexican Grill",
+      "reasons": [
+        "inherited_november_hold_retained",
+        "municipal_license_identity_collision_hold_all",
+        "provider_exact_or_near_same_name_collision"
+      ]
+    }
+  ],
+  "limited_first_batch_review": {
+    "reviewed": 25,
+    "new_potential_identity_holds": 5,
+    "remaining_first_batch": 20
+  }
+}
