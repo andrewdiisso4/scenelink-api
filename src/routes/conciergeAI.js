@@ -22,6 +22,7 @@ const pool = require('../config/database');
 const { classifyIntent } = require('../services/concierge-intent');
 const { parseNeighborhoods } = require('../services/concierge-constraints');
 const { resolveConversation } = require('../services/concierge-conversation');
+const { modeFor, runTypedPlan } = require('../services/concierge-typed-plan');
 const { venueTypeSQL, exclusionSQL } = require('../services/concierge-query-constraints');
 const {publicVenue,availableVenueSQL} = require('../services/venue-helpers');
 const {visibleDiscoveryVenueSQL} = require('../services/venue-duplicate-discovery');
@@ -182,7 +183,8 @@ async function fetchCandidateVenues(filters, limit = MAX_CANDIDATE_VENUES, reche
         params.push(filters.priceMax);
         i++;
     }
-    const placeConstraint = filters.venueName == null ? venueTypeSQL(filters.venueType) : null;
+    const roleChoice = filters.role === 'dinner' ? 'dinner_stage' : filters.role === 'drinks' ? 'drinks_stage' : null;
+    const placeConstraint = roleChoice ? venueTypeSQL(roleChoice) : filters.venueName == null ? venueTypeSQL(filters.venueType) : null;
     if (placeConstraint) where.push(placeConstraint);
     if (filters.cuisines && filters.cuisines.length) {
         const likes = filters.cuisines.map((_, idx) => `cuisine ILIKE $${i + idx}`);
@@ -194,6 +196,10 @@ async function fetchCandidateVenues(filters, limit = MAX_CANDIDATE_VENUES, reche
     const excluded = exclusionSQL(filters, i);
     where.push(...excluded.conditions);
     params.push(...excluded.values);
+    if (Array.isArray(filters.excludeIds) && filters.excludeIds.length) {
+        params.push(filters.excludeIds.filter(id => typeof id === 'string' && UUID.test(id)));
+        where.push(`NOT (id = ANY($${params.length}::uuid[]))`);
+    }
     if (recheckIds !== null) {
         const ids = recheckIds.filter(id => typeof id === 'string' && UUID.test(id));
         if (!ids.length) return [];
@@ -289,7 +295,7 @@ function summarizeVenueForLLM(v) {
     };
 }
 
-async function callOpenAI({ message, filters, candidates }) {
+async function callOpenAI({ message, filters, candidates, groups }) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('OPENAI_API_KEY not set');
 
@@ -314,7 +320,8 @@ async function callOpenAI({ message, filters, candidates }) {
         })}`,
         ``,
         `Available venues (ONLY recommend from this list — use these exact ids):`,
-        JSON.stringify(candidateSummaries)
+        JSON.stringify(candidateSummaries),
+        groups ? 'Allowed stop ids by role: ' + JSON.stringify(groups) : ''
     ].join('\n');
 
     // Consent covers the current prompt and parsed public search preferences,
@@ -324,7 +331,9 @@ async function callOpenAI({ message, filters, candidates }) {
     const body = {
         model: DEFAULT_MODEL,
         store: false,
-        instructions: SYSTEM_PROMPT,
+        instructions: SYSTEM_PROMPT + (groups ? (groups.swap
+            ? '\nThis is a drinks-only replacement. Return exactly one stop from drinks. The app retains dinner separately.'
+            : '\nReturn exactly two ordered stops: first from dinner, second from drinks. Do not put any venue in both.') : ''),
         input,
         max_output_tokens: MAX_OUTPUT_TOKENS,
         text: {
@@ -395,6 +404,17 @@ async function runAIConcierge({ message, history = [], context = {}, resolvedReq
     if (request.clarification) {
         return { ok: true, source: 'clarify', reply: request.clarification, intent: 'clarify',
             recommendedPlan: null, recommendedVenues: [], quickReplies: [], candidates: [], filters, tokensUsed: 0, ms: Date.now() - startedAt };
+    }
+
+    const typedMode = modeFor(message);
+    if (typedMode) {
+        const typed = await runTypedPlan({ mode: typedMode, message, filters, context, userId: access.userId,
+            fetchCandidates: fetchCandidateVenues, ask: callOpenAI, read: extractStructured });
+        return { ok: true, source: 'openai', intent: 'plan_night',
+            reply: 'Here’s a suggested dinner and drinks plan. Confirm hours and availability with each venue.',
+            recommendedPlan: { title: 'Dinner and drinks', summary: '', stops: typed.stops },
+            recommendedVenues: [], quickReplies: [], candidates: typed.candidates, filters, typedPlan: typed.state,
+            tokensUsed: typed.raw?.usage?.total_tokens || 0, ms: Date.now() - startedAt };
     }
 
     const candidates = await fetchCandidateVenues(filters);

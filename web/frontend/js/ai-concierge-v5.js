@@ -195,6 +195,7 @@
     var _conciergeSession = 'sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
     var _backendAvailable = null;
     var sessionGeneration = 0;
+    var _typedPlan = null;
     var _convoHistory = []; // last few turns for multi-turn context
     var _searchContext = null; // bounded public preferences returned by the backend
     var _requestQueue = Promise.resolve();
@@ -249,6 +250,8 @@
                 // Build pageContext from current page (no PII)
                 var pageContext = { pageId: (location.pathname.split('/').pop() || 'index').replace(/\.html$/, '') };
                 if (_searchContext !== null) pageContext.search = _searchContext;
+                if (optIn && _typedPlan !== null) pageContext.typedPlan = _typedPlan;
+                _typedPlan = null;
 
                 var res = await fetch(API_BASE + '/concierge', {
                     method: 'POST',
@@ -277,6 +280,7 @@
                     if (!isCurrentSession(generation, tok)) return null;
                     if (data.ok) {
                         _searchContext = data.search_context || null;
+                        if (optIn && data.source === 'openai') _typedPlan = data.typed_plan || null;
                         // Track conversation for context
                         _convoHistory.push({ role: 'user', content: query });
                         var reply = typeof data.response === 'string' ? data.response : (data.reply || '');
@@ -800,7 +804,7 @@
                     if (!card) return;
                     addMessage(
                         '<div class="slc-stop-label">' +
-                            '<span class="slc-stop-cat">' + escHtmlC(stop.category || 'Stop') + '</span>' +
+                            '<span class="slc-stop-cat">' + escHtmlC(stop.role === 'dinner' ? 'Dinner' : stop.role === 'drinks' ? 'Drinks' : stop.category || 'Stop') + '</span>' +
                             (stop.bestTime ? '<span class="slc-stop-time">' + escHtmlC(stop.bestTime) + '</span>' : '') +
                         '</div>' +
                         (stop.whyItFits ? '<div class="slc-stop-why">' + escHtmlC(stop.whyItFits) + '</div>' : ''),
@@ -882,26 +886,42 @@
 
         async function handleSavePlanWithPicker(resp) {
             if (!resp.isLoggedIn) return showLoginPromptMsg('save this plan');
+            var token = getAuthToken(), generation = sessionGeneration;
+            if (!token) return showLoginPromptMsg('save this plan');
+            var stops = planSaveStops(resp);
+            if (!stops.length) { addMessage('There are no venue stops to save.', 'bot'); return; }
+            var plans = [];
             try {
-                var tok = getAuthToken();
                 var listRes = await fetch(API_BASE + '/plans', {
-                    headers: { 'Authorization': 'Bearer ' + tok }
+                    headers: { 'Authorization': 'Bearer ' + token }, cache: 'no-store'
                 });
                 var listData = listRes.ok ? await listRes.json() : { plans: [] };
-                var plans = (listData && listData.plans) || [];
-                if (plans.length === 0) { return handleSavePlan(resp); }
-                showPlanPicker(resp, plans);
-            } catch (_) { return handleSavePlan(resp); }
+                plans = (listData && listData.plans) || [];
+            } catch (_) {}
+            if (!isCurrentSession(generation, token)) return;
+            if (!plans.length) return handleSavePlan(resp, stops, generation, token);
+            showPlanPicker(resp, plans, stops, generation, token);
         }
 
-        function showPlanPicker(resp, plans) {
+        function planSaveStops(resp) {
+            var seen = new Set();
+            return ((resp.plan && resp.plan.stops) || []).reduce(function (out, stop) {
+                if (!stop || !stop.venueId || seen.has(stop.venueId)) return out;
+                seen.add(stop.venueId);
+                var card = findCardInResp(resp.venueCards, stop.venueId);
+                out.push({ id: stop.venueId, label: (card && card.name) || stop.name || 'Stop ' + (out.length + 1) });
+                return out;
+            }, []);
+        }
+
+        function showPlanPicker(resp, plans, stops, generation, token) {
             var existing = document.getElementById('slcPlanPicker');
             if (existing) existing.remove();
             var picker = document.createElement('div');
             picker.id = 'slcPlanPicker';
             picker.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
             var rows = plans.slice(0, 8).map(function (p) {
-                return '<button class="slc-pp-row" data-pid="' + p.id + '" style="display:block;width:100%;text-align:left;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#fff;padding:12px 14px;border-radius:10px;margin-bottom:8px;cursor:pointer;">' +
+                return '<button class="slc-pp-row" data-pid="' + escHtmlC(p.id) + '" style="display:block;width:100%;text-align:left;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#fff;padding:12px 14px;border-radius:10px;margin-bottom:8px;cursor:pointer;">' +
                     '<strong style="display:block;">' + escHtmlC(p.name || 'Untitled') + '</strong>' +
                     (p.date ? '<small style="color:rgba(255,255,255,0.5);">' + escHtmlC(p.date) + '</small>' : '') +
                     '</button>';
@@ -919,58 +939,99 @@
                 btn.addEventListener('click', function () {
                     var pid = this.dataset.pid;
                     picker.remove();
-                    addStopsToPlan(resp, pid);
+                    addStopsToPlan(stops, pid, generation, token);
                 });
             });
-            picker.querySelector('.slc-pp-new').addEventListener('click', function () { picker.remove(); handleSavePlan(resp); });
+            picker.querySelector('.slc-pp-new').addEventListener('click', function () { picker.remove(); handleSavePlan(resp, stops, generation, token); });
             picker.querySelector('.slc-pp-cancel').addEventListener('click', function () { picker.remove(); });
-            picker.addEventListener('click', function (e) { if (e.target === picker) picker.remove(); });
+            picker.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (e.target === picker) picker.remove();
+            });
         }
 
-        async function addStopsToPlan(resp, planId) {
-            try {
-                var tok = getAuthToken();
-                var stops = (resp.plan && resp.plan.stops) || [];
-                for (var i = 0; i < stops.length; i++) {
-                    await fetch(API_BASE + '/plans/' + planId + '/venues', {
+        async function saveAndVerifyStops(stops, planId, generation, token) {
+            for (var i = 0; i < stops.length; i++) {
+                if (!isCurrentSession(generation, token)) return null;
+                try {
+                    await fetch(API_BASE + '/plans/' + encodeURIComponent(planId) + '/venues', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
-                        body: JSON.stringify({ venue_id: stops[i].venueId })
-                    }).catch(function () {});
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                        body: JSON.stringify({ venue_id: stops[i].id })
+                    });
+                } catch (_) {
+                    // A transport failure can still have committed. Read back before reporting.
                 }
-                addMessage('<span class="slc-tip"><i class="fas fa-check-circle"></i> Added ' + stops.length + ' stop' + (stops.length === 1 ? '' : 's') + ' to your plan.</span>', 'bot');
+            }
+            if (!isCurrentSession(generation, token)) return null;
+            try {
+                var read = await fetch(API_BASE + '/plans/' + encodeURIComponent(planId), {
+                    headers: { 'Authorization': 'Bearer ' + token }, cache: 'no-store'
+                });
+                if (!isCurrentSession(generation, token)) return null;
+                var data = read.ok ? await read.json() : null;
+                if (!isCurrentSession(generation, token)) return null;
+                if (data && data.plan && data.plan.id === planId && Array.isArray(data.plan.stops)) {
+                    return new Set(data.plan.stops.map(function (stop) { return stop.venue_id; }));
+                }
             } catch (_) {
-                addMessage('Couldn\u2019t add to that plan. Please try again.', 'bot');
+                if (!isCurrentSession(generation, token)) return null;
+            }
+            return { unverified: true };
+        }
+
+        function reportSavedStops(stops, present, planName) {
+            if (!present) return;
+            if (present.unverified) {
+                addMessage('Couldn’t verify which stops were saved. Reopen the plan before trying again.', 'bot');
+                return;
+            }
+            var saved = stops.filter(function (stop) { return present.has(stop.id); });
+            var missing = stops.filter(function (stop) { return !present.has(stop.id); });
+            if (missing.length) {
+                function names(list) { return list.map(function (stop) { return escHtmlC(stop.label); }).join(', '); }
+                if (saved.length) {
+                    addMessage('On your plan: ' + names(saved) + '. Not saved: ' + names(missing) + '.', 'bot');
+                } else {
+                    addMessage('None of these stops were saved: ' + names(missing) + '. The plan still exists.', 'bot');
+                }
+                return;
+            }
+            var label = planName ? ' on “' + escHtmlC(planName) + '”' : ' on your plan';
+            addMessage('<span class="slc-tip"><i class="fas fa-check-circle"></i> All ' + stops.length +
+                ' ' + (stops.length === 1 ? 'stop is' : 'stops are') + label + '.</span>', 'bot');
+            if (window.SLNotifications && typeof SLNotifications.success === 'function') {
+                SLNotifications.success('All requested stops are on your plan.');
             }
         }
 
-        async function handleSavePlan(resp) {
-            if (!resp.isLoggedIn) return showLoginPromptMsg('save this plan');
+        async function addStopsToPlan(stops, planId, generation, token) {
+            if (!isCurrentSession(generation, token)) return;
+            var present = await saveAndVerifyStops(stops, planId, generation, token);
+            if (isCurrentSession(generation, token)) reportSavedStops(stops, present);
+        }
+
+        async function handleSavePlan(resp, stops, generation, token) {
+            if (!isCurrentSession(generation, token)) return;
             try {
-                var tok = getAuthToken();
                 var planName = (resp.plan && resp.plan.title) ? resp.plan.title : 'SceneLink Night';
                 var pr = await fetch(API_BASE + '/plans', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                     body: JSON.stringify({ name: planName })
                 });
-                if (!pr.ok) { addMessage('Couldn\u2019t save that plan \u2014 please try again.', 'bot'); return; }
+                if (!isCurrentSession(generation, token)) return;
+                if (!pr.ok) { addMessage('Couldn’t create that plan. Please try again.', 'bot'); return; }
                 var pd = await pr.json();
+                if (!isCurrentSession(generation, token)) return;
                 var planId = pd.plan && pd.plan.id;
-                if (!planId) { addMessage('Couldn\u2019t save that plan \u2014 please try again.', 'bot'); return; }
-                for (var i = 0; i < resp.plan.stops.length; i++) {
-                    await fetch(API_BASE + '/plans/' + planId + '/venues', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
-                        body: JSON.stringify({ venue_id: resp.plan.stops[i].venueId })
-                    }).catch(function () {});
+                if (!planId) { addMessage('Couldn’t verify the new plan. Check your plans before trying again.', 'bot'); return; }
+                var present = await saveAndVerifyStops(stops, planId, generation, token);
+                if (isCurrentSession(generation, token)) reportSavedStops(stops, present, planName);
+            } catch (_) {
+                if (isCurrentSession(generation, token)) {
+                    addMessage('Couldn’t verify the new plan. Check your plans before trying again.', 'bot');
                 }
-                addMessage('<span class="slc-tip"><i class="fas fa-check-circle"></i> Saved \u201c' + escHtmlC(planName) + '\u201d to your plans.</span>', 'bot');
-                if (window.SLNotifications && typeof SLNotifications.success === 'function') {
-                    SLNotifications.success('Plan saved. View it on your Plans page.');
-                }
-            } catch (err) {
-                addMessage('Something went wrong saving that plan.', 'bot');
             }
         }
 
@@ -1187,8 +1248,11 @@
         }
 
         function closePanel() {
+            _typedPlan = null;
             if (!state.open) return;              // idempotent
             state.open = false;
+            var picker = document.getElementById('slcPlanPicker');
+            if (picker) picker.remove();
             sessionGeneration++;
             clearTimeout(focusTimer);
             clearChoice();
@@ -1247,6 +1311,7 @@
             if (draftStore) draftStore.clear();
             _convoHistory = [];
             _searchContext = null;
+            _typedPlan = null;
             _backendAvailable = null;
             _requestQueue = Promise.resolve();
             messages.textContent = '';

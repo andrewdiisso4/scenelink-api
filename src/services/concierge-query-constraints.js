@@ -4,6 +4,11 @@
 function venueTypeSQL(kind) {
     const type = "regexp_replace(lower(btrim(COALESCE(type,''))), '[_-]+', ' ', 'g')";
     const category = "regexp_replace(lower(btrim(COALESCE(category,''))), '[_-]+', ' ', 'g')";
+    // Do not infer that a restaurant with a bar serves as the separate drinks stop.
+    if (kind === 'dinner_stage') return `(${type} = 'restaurant' OR ${category} = 'restaurant')`;
+    if (kind === 'drinks_stage') return `(${type} <> 'restaurant' AND ${category} <> 'restaurant' AND
+        (${category} IN ('bar','bars','cocktail bar','cocktail lounge','cocktail','pub','lounge','speakeasy') OR
+         (${category} = '' AND ${type} IN ('bar','bars','cocktail','cocktail bar','pub','lounge'))))`;
     if (kind === 'restaurant') return `(${type} = 'restaurant' OR ${category} = 'restaurant')`;
     if (kind === 'cocktail_bar') return `(${category} IN ('cocktail_bar','cocktail bar','cocktail lounge','cocktail','speakeasy') OR (${category} IN ('','bar','bars') AND ${type} IN ('bar','cocktail','cocktail_bar','cocktail bar')))`;
     if (kind === 'bar') return `(${type} IN ('bar','bars','cocktail','cocktail_bar','cocktail bar','pub','lounge','nightlife') OR ${category} ~ '(^|[ _-])(bar|bars|pub|lounge|speakeasy)($|[ _-])')`;

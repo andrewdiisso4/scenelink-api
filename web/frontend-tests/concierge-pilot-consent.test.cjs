@@ -14,11 +14,14 @@ async function browser(t, opts = {}) {
     const w = dom.window;
     let token = opts.guest ? null : 'test-account-a';
     const calls = [];
+    const notices = [];
+    w.SLNotifications = { success: message => notices.push(message) };
     w.SLAuth = { getToken: () => token };
     w.fetch = async (url, req = {}) => {
         const body = req.body && JSON.parse(req.body);
         calls.push({ url, body, token: req.headers?.Authorization });
         if (url.endsWith('/capabilities')) return opts.capability ? opts.capability() : reply({ ai_pilot: !opts.denied });
+        if (opts.request) return opts.request(url, req, body);
         if (!body) return reply({}, false);
         if (opts.post) return opts.post(body);
         return reply({ ok: true, response: 'Test response', source: body.ai ? 'openai' : 'rule-based' });
@@ -31,7 +34,7 @@ async function browser(t, opts = {}) {
     const type = msg => { input.value = msg; input.dispatchEvent(new w.Event('input', { bubbles: true })); };
     const send = () => w.document.querySelector('.slc-send').click();
     const posts = () => calls.filter(c => c.body);
-    return { w, token: v => { token = v; }, button, click, input, type, send, posts, calls, app: w.SLConcierge };
+    return { w, token: v => { token = v; }, button, click, input, type, send, posts, calls, notices, app: w.SLConcierge };
 }
 function pause(ms = 20) { return new Promise(resolve => setTimeout(resolve, ms)); }
 async function until(fn) {
@@ -177,4 +180,138 @@ test('a quick chip still requires a choice and model failure is labeled as direc
     assert.equal(b.posts()[0].body.ai, true);
     assert.doesNotMatch(b.w.document.body.textContent, /AI-ranked SceneLink venues/);
     assert.match(b.w.document.body.textContent, /AI wasn’t used for these results/);
+});
+
+test('a typed edit needs fresh consent, and the envelope stays off directory requests and account changes', async t => {
+    const envelope = 'IN_MEMORY_FIXTURE_ENVELOPE';
+    const b = await browser(t, { post: body => reply({ ok: true,
+        response: body.ai ? 'Model fixture result' : 'Directory fixture result',
+        source: body.ai ? 'openai' : 'rule-based',
+        ...(body.ai && body.message === 'Plan dinner then drinks in Seaport' ? { typed_plan: envelope } : {})
+    }) });
+    const send = async (message, choice) => {
+        b.app.draft(message); b.send();
+        await until(() => b.button(choice));
+        const before = b.posts().length;
+        b.click(choice); await until(() => b.posts().length === before + 1);
+        return b.posts().at(-1);
+    };
+    await send('Plan dinner then drinks in Seaport', 'Use AI once');
+    const optedIn = await send('Swap the drinks stop', 'Use AI once');
+    assert.equal(optedIn.body.ai, true);
+    assert.equal(optedIn.body.context.typedPlan, envelope);
+    await send('Plan dinner then drinks in Seaport', 'Use AI once');
+    const declined = await send('Swap the drinks stop', 'Search directory');
+    assert.equal(declined.body.ai, false);
+    assert.equal(declined.body.context.typedPlan, undefined);
+    await send('Plan dinner then drinks in Seaport', 'Use AI once');
+    b.token('test-account-b');
+    b.w.dispatchEvent(new b.w.Event('sl:auth-changed'));
+    const changed = await send('Swap the drinks stop', 'Use AI once');
+    assert.equal(changed.token, 'Bearer test-account-b');
+    assert.equal(changed.body.context.typedPlan, undefined);
+    await send('Plan dinner then drinks in Seaport', 'Use AI once');
+    b.app.close(); b.app.open();
+    const reopened = await send('Swap the drinks stop', 'Use AI once');
+    assert.equal(reopened.body.context.typedPlan, undefined);
+});
+
+async function exercisePlanSave(t, options) {
+    const persisted = new Set(options.existingIds || []);
+    const failed = new Set(options.failed || []);
+    const ambiguous = new Set(options.ambiguous || []);
+    const b = await browser(t, { request: async (url, req, body) => {
+        if (url.endsWith('/concierge')) return reply({
+            ok: true, source: 'openai', response: 'Suggestion only',
+            itinerary: { title: 'Fixture Night', stops: [{ venueId: 'dinner', name: 'Fixture Dinner' }, { venueId: 'drinks', name: 'Fixture Drinks' }] },
+            venues: [{ id: 'dinner', name: 'Fixture Dinner' }, { id: 'drinks', name: 'Fixture Drinks' }]
+        });
+        if (url.endsWith('/plans') && !req.method) return reply({ plans: options.existing ? [{ id: 'test-plan', name: 'Existing plan' }] : [] });
+        if (url.endsWith('/plans') && req.method === 'POST') return reply({ plan: { id: 'test-plan' } });
+        if (url.endsWith('/test-plan/venues')) {
+            if (failed.has(body.venue_id)) return reply({}, false);
+            persisted.add(body.venue_id);
+            if (ambiguous.has(body.venue_id)) throw Error('Synthetic transport cutoff after commit');
+            return reply({ success: true });
+        }
+        if (url.endsWith('/test-plan')) return options.readFail ? reply({}, false) : reply({
+            plan: { id: 'test-plan', stops: [...persisted].map(venue_id => ({ venue_id })) }
+        });
+        return reply({}, false);
+    }});
+    b.app.open();
+    b.type('Plan dinner and drinks in Seaport');
+    b.send();
+    await until(() => b.button('Use AI once'));
+    b.click('Use AI once');
+    await until(() => b.button('Save this plan'));
+    b.click('Save this plan');
+    if (options.existing) {
+        await until(() => b.button('Existing plan'));
+        b.click('Existing plan');
+    }
+    return { ...b, persisted };
+}
+
+test('Concierge save reports partial persistence and never claims withdrawn stop was saved', async t => {
+    const b = await exercisePlanSave(t, { failed: ['drinks'] });
+    await until(() => b.w.document.body.textContent.includes('Not saved: Fixture Drinks'));
+    assert.match(b.w.document.body.textContent, /On your plan: Fixture Dinner/);
+    assert.deepEqual([...b.persisted], ['dinner']);
+    assert.deepEqual(b.notices, []);
+    assert.equal(b.posts().filter(x => x.url.endsWith('/concierge')).length, 1);
+});
+
+test('Concierge existing-plan save can confirm both stops after an ambiguous transport', async t => {
+    const b = await exercisePlanSave(t, { existing: true, existingIds: ['dinner'], ambiguous: ['drinks'] });
+    await until(() => b.w.document.body.textContent.includes('All 2 stops are on your plan.'));
+    assert.deepEqual([...b.persisted], ['dinner', 'drinks']);
+    assert.deepEqual(b.notices, ['All requested stops are on your plan.']);
+    assert.equal(b.posts().filter(x => x.url.endsWith('/concierge')).length, 1);
+});
+
+test('Concierge save without authoritative readback marks state unverified', async t => {
+    const b = await exercisePlanSave(t, { readFail: true });
+    await until(() => b.w.document.body.textContent.includes('Couldn’t verify which stops were saved.'));
+    assert.doesNotMatch(b.w.document.body.textContent, /All 2 stops are/);
+    assert.deepEqual(b.notices, []);
+});
+
+test('composed flow saves and reads back the revised two-stop plan with no extra model request', async t => {
+    const ids = [], envelope = 'SYNTHETIC_INITIAL_PLAN_ENVELOPE';
+    const b = await browser(t, { request: async (url, req, body) => {
+        if (url.endsWith('/concierge')) {
+            assert.equal(body.ai, true);
+            const swap = body.message === 'Swap the drinks stop';
+            if (swap) assert.equal(body.context.typedPlan, envelope);
+            const items = [
+                { venueId: 'dinner', role: 'dinner', name: 'Same Dinner' },
+                { venueId: swap ? 'new-drinks' : 'old-drinks', role: 'drinks', name: swap ? 'New Drinks' : 'Old Drinks' }
+            ];
+            return reply({ ok: true, source: 'openai', response: 'Suggestion only',
+                itinerary: { title: swap ? 'Revised Fixture Night' : 'Initial Fixture Night', stops: items },
+                venues: items.map(i => ({ id: i.venueId, name: i.name })),
+                typed_plan: swap ? 'SYNTHETIC_REVISED_ENVELOPE' : envelope });
+        }
+        if (url.endsWith('/plans') && !req.method) return reply({ plans: [] });
+        if (url.endsWith('/plans') && req.method === 'POST') return reply({ plan: { id: 'composed-plan' } });
+        if (url.endsWith('/composed-plan/venues')) { ids.push(body.venue_id); return reply({ success: true }); }
+        if (url.endsWith('/composed-plan')) return reply({ plan: { id: 'composed-plan', stops: ids.map(venue_id => ({ venue_id })) } });
+        return reply({}, false);
+    } });
+    async function approve(message, title) {
+        b.app.draft(message); b.send();
+        await until(() => b.button('Use AI once'));
+        b.click('Use AI once');
+        await until(() => b.w.document.body.textContent.includes(title));
+    }
+    await approve('Plan dinner then drinks in Seaport', 'Initial Fixture Night');
+    await approve('Swap the drinks stop', 'Revised Fixture Night');
+    const save = [...b.w.document.querySelectorAll('button')].filter(button => button.textContent.trim() === 'Save this plan').at(-1);
+    assert.ok(save);
+    save.click();
+    await until(() => b.w.document.body.textContent.includes('All 2 stops are on “Revised Fixture Night”.'));
+    assert.deepEqual(ids, ['dinner', 'new-drinks']);
+    assert.equal(b.posts().filter(c => c.url.endsWith('/concierge')).length, 2);
+    assert.equal(b.calls.filter(c => c.url.endsWith('/composed-plan') && !c.body).length, 1);
 });

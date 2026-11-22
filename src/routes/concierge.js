@@ -21,6 +21,7 @@ const {reviewedPriceSQL} = require('../services/venue-facts');
 const { queryConciergeEvents } = require('../services/concierge-event-search');
 const { optionalAuth } = require('../middleware/auth');
 const { runAIConcierge, isEnabled: aiEnabled } = require('./conciergeAI');
+const { modeFor } = require('../services/concierge-typed-plan');
 
 const router = express.Router();
 const { aiLimiter } = require('../middleware/rateLimits');
@@ -202,7 +203,10 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
         if (!message) return res.status(400).json({ error: 'message required' });
         if (message.length > 500) return res.status(400).json({ error: 'message too long' });
 
-        const request = await resolveConversation({ pool, message, history, context, parse: classifyIntent });
+        const planMode = modeFor(message);
+        const revising = planMode === 'swap' || planMode === 'unsupported';
+        const request = await resolveConversation({ pool, message,
+            history: revising ? [] : history, context: revising ? {} : context, parse: classifyIntent });
         const intent = request.filters;
         if (request.clarification) {
             return res.json({ ok: true, source: 'rule-based', response: request.clarification,
@@ -248,6 +252,7 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
                     venues: ai.venues,
                     events: ai.events,
                     itinerary: ai.itinerary || null,
+                    typed_plan: result.typedPlan || null,
                     actions: ai.actions,
                     intent: {
                         primary: intent.primary,
@@ -273,13 +278,18 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
 
         let venues = [];
         let events = [];
-        if (intent.primary === 'event') {
+        if (revising) {
+            // Never reuse arbitrary client filters or show irrelevant candidates on failed edits.
+        } else if (intent.primary === 'event') {
             events = await queryEvents(intent, limit);
         } else if (intent.primary === 'recommend' || intent.primary === 'search' || intent.primary === 'book') {
             venues = await queryVenues(intent, limit);
         }
 
-        const response = generateResponse(intent, venues, events);
+        const directoryResponse = generateResponse(intent, venues, events);
+        const response = !planMode ? directoryResponse : planMode === 'swap' || planMode === 'unsupported'
+            ? 'I couldn’t revise the plan. To start fresh, ask for dinner then drinks again.'
+            : 'I couldn’t verify both stops for this plan. Here are the directory results instead. ' + directoryResponse;
         const actions = generateActions(intent, venues);
 
         pool.query(
@@ -306,7 +316,7 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
                 is_booking: intent.is_booking,
                 is_event: intent.is_event
             },
-            search_context: searchContextFor(intent, intent.is_event
+            search_context: revising ? null : searchContextFor(intent, intent.is_event
                 ? events.map(event => ({ name: event.venue_name, neighborhood: event.venue_neighborhood })) : venues),
             session_id
         });

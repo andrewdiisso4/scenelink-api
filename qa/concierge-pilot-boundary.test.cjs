@@ -26,6 +26,7 @@ function fixture(env, status = 200, { withdrawn = false, plan = false } = {}) {
         '../services/concierge-intent': {},
         '../services/concierge-constraints': {},
         '../services/concierge-conversation': {},
+        '../services/concierge-typed-plan': { modeFor: () => null },
         '../services/concierge-query-constraints': {
             venueTypeSQL: () => null, exclusionSQL: () => ({ conditions: [], values: [] })
         },

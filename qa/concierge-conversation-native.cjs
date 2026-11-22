@@ -26,7 +26,7 @@ function disableMockPilot(){
   mockModelEnabled=false;
   for(const key of ['OPENAI_API_KEY','CONCIERGE_AI_PILOT_ENABLED','CONCIERGE_AI_PILOT_USER_IDS'])delete process.env[key];
 }
-let pool,server,origin,externalAttempts=0,mockModelEnabled=false;
+let pool,server,origin,externalAttempts=0,mockModelEnabled=false,forceWrongRole=false,withdrawDuringSwap=null;
 global.fetch=async(url,options)=>{
   const parsed=new URL(String(url));
   if(origin&&parsed.origin===origin)return originalFetch(url,options);
@@ -35,10 +35,16 @@ global.fetch=async(url,options)=>{
     const marker='Available venues (ONLY recommend from this list — use these exact ids):\n';
     assert.equal(body.store,false);assert.equal(body.input.length,1);
     assert(text.includes(marker),'Model transport must provide an explicit bounded candidate list');
-    const candidates=JSON.parse(text.slice(text.lastIndexOf(marker)+marker.length));
-    modelRequests.push({body,candidates});
+    const [rawList,rawGroups]=text.slice(text.lastIndexOf(marker)+marker.length).split('\nAllowed stop ids by role: ');
+    const candidates=JSON.parse(rawList),groups=rawGroups?JSON.parse(rawGroups):null;
+    modelRequests.push({body,candidates,groups});
+    if(groups?.swap && withdrawDuringSwap)await pool.query('UPDATE venues SET is_active=false WHERE id=$1',[withdrawDuringSwap]);
     const answer={reply:'Synthetic offline model: matching catalog candidates only.',intent:'find_venue',
-      recommendedPlan:null,recommendedVenues:candidates.slice(0,6).map(v=>({venueId:v.id,whyItFits:'Matches the supplied search constraints.'})),quickReplies:[]};
+      recommendedPlan:text.includes('"isPlan":true')?{stops:candidates.filter(v=>v.type==='restaurant').slice(0,2).map(v=>({venueId:v.id,bestTime:'07:00 forged',whyItFits:'Guaranteed reservation for all guests'}))}:null,recommendedVenues:candidates.slice(0,6).map(v=>({venueId:v.id,whyItFits:'Matches the supplied search constraints.'})),quickReplies:[]};
+    if(groups){
+      const ids=groups.swap?[groups.drinks[0]]:forceWrongRole?[groups.dinner[0],groups.dinner[1]]:[groups.dinner[0],groups.drinks[0]];
+      answer.recommendedPlan={stops:ids.map(venueId=>({venueId,bestTime:'07:00 forged',whyItFits:'Guaranteed reservation'}))};
+    }
     return new Response(JSON.stringify({output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(answer)}]}],usage:{total_tokens:0}}),
       {status:200,headers:{'Content-Type':'application/json'}});
   }
@@ -53,7 +59,7 @@ function expectIds(data,expected){assert.deepEqual(sortedIds(data),expected.slic
 async function api(method,route,body,token,expected=200,client='conversation'){
   // Separate fictional proxy clients retain the real production limiter while
   // allowing independent conversation, AI-transport and account cases in one run.
-  const addresses={conversation:'192.0.2.21',model:'192.0.2.22',alice:'192.0.2.23',bob:'192.0.2.24',guest:'192.0.2.25',
+  const addresses={pilot:'192.0.2.29',typedNoEgress:'192.0.2.30',conversation:'192.0.2.21',model:'192.0.2.22',alice:'192.0.2.23',bob:'192.0.2.24',guest:'192.0.2.25',
     unverified:'192.0.2.26',events:'192.0.2.27',refinements:'192.0.2.28'};
   const response=await fetch(origin+'/api'+route,{method,headers:{'Content-Type':'application/json',
     'X-Forwarded-For':addresses[client],...(token?{Authorization:'Bearer '+token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});
@@ -88,6 +94,7 @@ async function main(){
     ['dahlia','Dahlia Table','restaurant','restaurant','Italian','Seaport',1,false],
     ['elm','Elm Sushi','restaurant','restaurant','Japanese','Seaport',2,true],
     ['fir','Fir Bar','bar','cocktail_bar',null,'Seaport',2,true],
+    ['garnet','Garnet Bar','bar','cocktail_bar',null,'Seaport',2,true],
     ['grove','Grove Cafe','cafe','cafe',null,'Seaport',1,true],
     ['hazel','Hazel Music Hall','music','music_venue',null,'Seaport',2,true],
     ['iris','Iris Restaurant','restaurant','restaurant','Italian','North End',4,true],
@@ -169,7 +176,7 @@ async function main(){
     assert.equal(another.search_context.version,1);assert.equal(another.search_context.partySize,4);
   });
   const bars=await turn('explicit type switch','Show cocktail bars instead');
-  await check('cocktail-bar switch clears incompatible cuisine and retains current area/budget',async()=>expectIds(bars,[venues.fir.id]));
+  await check('cocktail-bar switch clears incompatible cuisine and retains current area/budget',async()=>expectIds(bars,[venues.fir.id,venues.garnet.id]));
   const fresh=await ask('independent named lookup resets stale filters',{message:'Tell me about "Iris Restaurant"',history:history.slice(-6),context:{search:state}});
   await check('fresh named lookup does not inherit prior area/cuisine/price',async()=>expectIds(fresh,[venues.iris.id]));
   const reset=await turn('explicit reset','start over');
@@ -287,7 +294,7 @@ async function main(){
   const modelCases=[
     ['model area follow-up',{message:'What about Seaport?',history:firstHistory},[venues.birch.id,venues.cedar.id,venues.dahlia.id]],
     ['model budget follow-up',{message:'Make it cheaper',history:areaHistory,context:{search:areaState}},[venues.birch.id]],
-    ['model type switch',{message:'Show cocktail bars instead',history:cheaperHistory,context:{search:cheaperState}},[venues.fir.id]],
+    ['model type switch',{message:'Show cocktail bars instead',history:cheaperHistory,context:{search:cheaperState}},[venues.fir.id,venues.garnet.id]],
     ['model explicit area overrides context',{message:'Find restaurants in North End',context:{neighborhood:'Back Bay'}},[venues.iris.id,venues.petunia.id]],
   ];
   for(const [label,body,expected]of modelCases){
@@ -338,6 +345,86 @@ async function main(){
     assert(!JSON.stringify(data).includes(secretMarker));
     assert.equal((await pool.query('SELECT count(*)::int n FROM users')).rows[0].n,3);
   });
+  let revisedPlanIds;
+  await check('typed pilot two-stop plan and drinks-only swap enforce role, location, budget, privacy and reread',async()=>{
+    enableMockPilot([users.alice.id,users.bob.id].join(','));
+    try{
+      const count=modelRequests.length;
+      const prompt='Plan dinner then drinks in Seaport, budget $$';
+      const first=await ask('isolated dinner and drinks',{message:prompt,ai:true},users.alice.token,'pilot');
+      assert.equal(first.source,'openai');assert.equal(modelRequests.length,count+1);
+      assert.deepEqual(first.itinerary.stops.map(v=>[v.role,v.venueId]),[['dinner',venues.birch.id],['drinks',venues.fir.id]]);
+      assert(modelRequests.at(-1).groups.drinks.includes(venues.garnet.id));
+      assert(!modelRequests.at(-1).groups.dinner.includes(venues.cedar.id));
+      assert(!modelRequests.at(-1).groups.drinks.includes(venues.birch.id));
+      assert(!modelRequests.at(-1).groups.drinks.includes(venues.juniper.id));
+      assert(first.itinerary.stops.every(v=>v.bestTime===null));
+      assert.doesNotMatch(JSON.stringify(first),/Guaranteed reservation|07:00 forged/);
+      const edit={message:'Swap the drinks stop',ai:true,context:{typedPlan:first.typed_plan},
+        history:[{role:'user',content:'DO_NOT_SEND_EARLIER_RAW_PROMPT'},{role:'assistant',content:JSON.stringify(first.itinerary)}]};
+      const follow=await ask('isolated swap request',edit,users.alice.token,'pilot');
+      assert.equal(follow.source,'openai');assert.equal(modelRequests.length,count+2);
+      assert.deepEqual(follow.itinerary.stops.map(v=>[v.role,v.venueId]),[['dinner',venues.birch.id],['drinks',venues.garnet.id]]);
+      revisedPlanIds=follow.itinerary.stops.map(v=>v.venueId);
+      const modelInput=modelRequests.at(-1).body.input[0].content[0].text;
+      assert.match(modelInput,/"priceMax":2/);assert.match(modelInput,/"neighborhoods":\["Seaport"\]/);
+      assert.deepEqual(modelRequests.at(-1).groups.drinks,[venues.garnet.id]);
+      const sent=JSON.stringify(modelRequests.at(-1).body);
+      for(const privateValue of ['DO_NOT_SEND_EARLIER_RAW_PROMPT',venues.birch.id,venues.fir.id,secretMarker])assert(!sent.includes(privateValue));
+      const noContext=await ask('swap without state',{message:edit.message,ai:true},users.alice.token,'pilot');
+      assert.equal(noContext.source,'rule-based');assert.equal(noContext.itinerary,null);assert.equal(modelRequests.length,count+2);
+      assert.match(noContext.response,/couldn’t revise the plan/);
+      const [packed,sig]=first.typed_plan.split('.');
+      const state=JSON.parse(Buffer.from(packed,'base64url').toString('utf8'));
+      const forged=Buffer.from(JSON.stringify({...state,filters:{...state.filters,priceMax:4}})).toString('base64url')+'.'+sig;
+      const longAgo=Date.now;let expired;
+      try {
+        Date.now=()=>longAgo()+11*60*1000;
+        expired=await ask('expired envelope',edit,users.alice.token,'typedNoEgress');
+      }finally{Date.now=longAgo;}
+      const cases=[expired,
+        await ask('tampered envelope',{...edit,context:{typedPlan:forged}},users.alice.token,'typedNoEgress'),
+        await ask('another allowed account cannot use envelope',{...edit,context:{...edit.context,search:{version:1,neighborhoods:['North End']}}},users.bob.token,'typedNoEgress'),
+        await ask('explicit directory choice', {...edit,ai:false},users.alice.token,'typedNoEgress')];
+      delete process.env.OPENAI_API_KEY;
+      try{cases.push(await ask('key absent',edit,users.alice.token,'typedNoEgress'));}
+      finally{process.env.OPENAI_API_KEY='synthetic-offline-transport-only';}
+      for(const result of cases){assert.equal(result.source,'rule-based');assert.equal(result.itinerary,null);expectIds(result,[]);assert.equal(result.search_context,null);}
+      assert.equal(modelRequests.length,count+2);
+      await pool.query('UPDATE venues SET is_active=false WHERE id=$1',[venues.birch.id]);
+      try {
+        const stale=await ask('swap with withdrawn retained dinner',edit,users.alice.token,'pilot');
+        assert.equal(stale.source,'rule-based');assert.equal(stale.itinerary,null);assert.equal(modelRequests.length,count+2);
+      }finally{await pool.query('UPDATE venues SET is_active=true WHERE id=$1',[venues.birch.id]);}
+      forceWrongRole=true;
+      const wrong=await ask('model cannot make dinner a second drinks stop',{message:prompt,ai:true},users.alice.token,'pilot');
+      assert.equal(wrong.source,'rule-based');assert.equal(wrong.itinerary,null);assert.equal(modelRequests.length,count+3);
+      forceWrongRole=false;
+      withdrawDuringSwap=venues.garnet.id;
+      const vanished=await ask('withdraw after swap model rank',edit,users.alice.token,'pilot');
+      assert.equal(vanished.source,'rule-based');assert.equal(vanished.itinerary,null);assert.equal(modelRequests.length,count+4);
+    }finally{
+      if(withdrawDuringSwap)await pool.query('UPDATE venues SET is_active=true WHERE id=$1',[withdrawDuringSwap]);
+      withdrawDuringSwap=null;forceWrongRole=false;disableMockPilot();
+    }
+  });
+  await check('real plan service persists two fixture stops; save/list/reopen does not call the model; withdrawn add is 404',async()=>{
+    const count=modelRequests.length;
+    assert.deepEqual(revisedPlanIds,[venues.birch.id,venues.garnet.id]);
+    const {plan}=await api('POST','/plans',{name:'Synthetic isolated rehearsal'},users.alice.token,201,'pilot');
+    try{
+      for(const id of revisedPlanIds)await api('POST','/plans/'+plan.id+'/venues',{venue_id:id},users.alice.token,200,'pilot');
+      await api('POST','/plans/'+plan.id+'/venues',{venue_id:venues.inactive.id},users.alice.token,404,'pilot');
+      const listed=await api('GET','/plans',undefined,users.alice.token,200,'pilot');
+      const reopened=await api('GET','/plans/'+plan.id,undefined,users.alice.token,200,'pilot');
+      for(const persisted of [listed.plans.find(x=>x.id===plan.id),reopened.plan]){
+        assert.deepEqual(persisted.stops.map(x=>x.venue_id),revisedPlanIds);
+        assert.equal(persisted.confirmed_is_reservation,false);assert.equal(persisted.booking_status,'not_booked');
+      }
+      await api('GET','/plans/'+plan.id,undefined,users.bob.token,404,'pilot');
+      assert.equal(modelRequests.length,count);
+    }finally{await api('DELETE','/plans/'+plan.id,undefined,users.alice.token,200,'pilot');}
+  });
   await check('invalid and revoked bearer sessions fail closed rather than becoming guests',async()=>{
     await api('POST','/concierge',{message:'Find restaurants'},'not-a-real-jwt',401,'bob');
     await api('POST','/auth/logout',{},users.alice.token,200,'alice');
@@ -358,7 +445,7 @@ async function main(){
   });
   const sourceFiles=['src/routes/concierge.js','src/routes/conciergeAI.js','src/services/concierge-conversation.js',
     'src/services/concierge-constraints.js','src/services/concierge-intent.js','src/services/concierge-query-constraints.js',
-    'src/services/concierge-event-search.js','qa/concierge-conversation-native.cjs'];
+    'src/services/concierge-event-search.js','src/services/concierge-typed-plan.js','qa/concierge-conversation-native.cjs'];
   const report={at:new Date().toISOString(),native_postgres:version,fixture_venue_count:definitions.length,fixture_event_count:eventDefinitions.length,
     real_http_transport:true,external_network_attempts:externalAttempts,in_memory_model_requests:modelRequests.length,
     production_access:false,private_baseline_unchanged:(await privateSnapshot())===baselinePrivate,
