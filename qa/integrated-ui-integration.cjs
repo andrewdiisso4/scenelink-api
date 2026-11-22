@@ -5,7 +5,7 @@ module.exports=async function({api,pool,check,crypto,req,root,base}){
  const {JSDOM,VirtualConsole}=require(path.join(root,'web/node_modules/jsdom'));
  const origin=new URL(base).origin,frontend=path.join(root,'web/frontend');
  assert.equal(new URL(origin).hostname,'127.0.0.1');
- const suffix=crypto.randomBytes(4).toString('hex'),windows=[],audit=[];
+ const suffix=crypto.randomBytes(4).toString('hex'),closePages=[],audit=[];
  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
  async function until(test,label){for(let i=0;i<160;i++){if(test())return;await sleep(25);}throw Error('DOM timeout: '+label);}
  async function make(role){const user=(await pool.query("INSERT INTO users(email,username,display_name,email_verified_at,verified_email) VALUES($1::text,$2,$3,NOW(),$1::text) RETURNING id,auth_version",['ui.'+role+'.'+suffix+'@example.invalid','ui_'+role+'_'+suffix,'UI '+role])).rows[0];return{user,token:req('./src/middleware/auth').generateToken(user)};}
@@ -14,17 +14,34 @@ module.exports=async function({api,pool,check,crypto,req,root,base}){
  const vids=[crypto.randomUUID(),crypto.randomUUID()];
  for(let i=0;i<2;i++)await pool.query("INSERT INTO venues(id,name,slug,type,is_active) VALUES($1,$2,$3,'cafe',true)",[vids[i],'DOM canonical cafe '+i+' '+suffix,'dom-'+i+'-'+suffix]);
  async function page(account,search=''){
-  const errors=[],calls=[],vc=new VirtualConsole();vc.on('jsdomError',e=>{if(!/Not implemented: (navigation|window.scrollTo|HTMLCanvasElement)/.test(e.message))errors.push(e.message);});
-  const dom=new JSDOM(fs.readFileSync(path.join(frontend,'my-lists.html'),'utf8'),{url:origin+'/my-lists'+search,runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc}),w=dom.window;windows.push(w);
+  const errors=[],calls=[],pending=new Set();let retiring=false,closed=false;
+  const vc=new VirtualConsole();vc.on('jsdomError',e=>{if(!/Not implemented: (navigation|window.scrollTo|HTMLCanvasElement)/.test(e.message))errors.push(e.message);});
+  const dom=new JSDOM(fs.readFileSync(path.join(frontend,'my-lists.html'),'utf8'),{url:origin+'/my-lists'+search,runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc}),w=dom.window;
+  const close=async()=>{
+   if(closed)return;retiring=true;
+   // A pending unread poll can otherwise resume after JSDOM destroys document.
+   Object.defineProperty(w.document,'hidden',{configurable:true,value:true});
+   w.document.dispatchEvent(new w.Event('visibilitychange'));
+   await Promise.allSettled([...pending]);
+   await new Promise(resolve=>setImmediate(resolve));
+   closed=true;w.close();
+  };
+  closePages.push(close);
   Object.assign(w,{Response,Request,Headers,AbortController,scrollTo(){},confirm:()=>true,matchMedia:()=>({matches:false,addEventListener(){},removeEventListener(){},addListener(){},removeListener(){}})});w.HTMLElement.prototype.scrollIntoView=function(){};
   w.localStorage.setItem('sl_jwt_token',account.token);w.localStorage.setItem('sl_favorites_v3',JSON.stringify([{id:'stale-previous-account',name:'Stale private favorite'}]));
-  w.fetch=async(input,opts={})=>{const u=new URL(typeof input==='string'?input:input.url,w.location.href);assert.equal(u.origin,origin,'External fetch forbidden: '+u.origin);const method=opts.method||'GET';
-   if(u.pathname.startsWith('/api/')){const row={path:u.pathname,method,body:opts.body?JSON.parse(opts.body):undefined};calls.push(row);audit.push(row);return fetch(u.href,opts);}
+  w.fetch=async(input,opts={})=>{if(retiring)return new Response('{}',{status:503});const u=new URL(typeof input==='string'?input:input.url,w.location.href);assert.equal(u.origin,origin,'External fetch forbidden: '+u.origin);const method=opts.method||'GET';
+   if(u.pathname.startsWith('/api/')){const row={path:u.pathname,method,body:opts.body?JSON.parse(opts.body):undefined};calls.push(row);audit.push(row);
+    const buffered=(async()=>{
+     const res=await fetch(u.href,opts);
+     const body=([204,205,304].includes(res.status)||method==='HEAD')?null:await res.arrayBuffer();
+     return new Response(body,{status:res.status,statusText:res.statusText,headers:res.headers});
+    })();
+    pending.add(buffered);buffered.then(()=>pending.delete(buffered),()=>pending.delete(buffered));return buffered;}
    assert.equal(method,'GET');const file=path.resolve(frontend,'.'+u.pathname);assert(file.startsWith(frontend+path.sep));return fs.existsSync(file)&&fs.statSync(file).isFile()?new Response(fs.readFileSync(file),{status:200}):new Response('{}',{status:404});
   };
   for(const script of [...w.document.scripts]){const src=script.getAttribute('src');if(src&&/^(https?:|\/\/)/.test(src))continue;if(['application/ld+json','application/json'].includes(script.type))continue;try{w.eval(src?fs.readFileSync(path.join(frontend,src.split('?')[0].replace(/^\//,'')),'utf8'):script.textContent);}catch(e){errors.push((src||'inline')+': '+e.stack);}}
   await until(()=>w.document.querySelector('#slListIndex')&&!/Loading lists/.test(w.document.querySelector('#slListIndex').textContent),'route hydration');await sleep(1150);assert.deepEqual(errors,[]);assert.deepEqual(calls.filter(x=>x.method!=='GET'),[],'Hydration must not write');assert(!w.document.body.textContent.includes('Stale private favorite'));assert.equal(w.SLState.getFavorites().length,0);
-  return{w,errors,calls,$:sel=>w.document.querySelector(sel),click(sel){const el=w.document.querySelector(sel);assert(el,sel);el.click();},submit(sel){const el=w.document.querySelector(sel);assert(el,sel);el.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));}};
+  return{w,close,errors,calls,$:sel=>w.document.querySelector(sel),click(sel){const el=w.document.querySelector(sel);assert(el,sel);el.click();},submit(sel){const el=w.document.querySelector(sel);assert(el,sel);el.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));}};
  }
  let a,b,listId,invitation;
  async function settled(p,text){await until(()=>p.$('#slListsStatus').textContent.includes(text),text);assert.deepEqual(p.errors,[]);}
@@ -33,7 +50,7 @@ module.exports=async function({api,pool,check,crypto,req,root,base}){
  try{
  await check('integrated DOM: full my-lists route hydrates real accounts without background writes or stale favorites',async()=>{a=await page(owner);b=await page(friend);assert.deepEqual(a.calls.filter(x=>x.method!=='GET'),[]);assert.deepEqual(b.calls.filter(x=>x.method!=='GET'),[]);});
  await check('integrated DOM: owner creates private list and adds canonical SQL venue through real frontend contracts',async()=>{a.$('#slListName').value='DOM private '+suffix;a.$('#slListDescription').value='Secret description '+suffix;a.submit('#slCreateList');await settled(a,'Private list saved');listId=new URL(a.w.location.href).searchParams.get('list');assert(listId);await add(a,0);const d=(await api('GET','/lists/'+listId,undefined,owner.token)).list;assert.equal(d.is_public,false);assert.equal(d.venues[0].id,vids[0]);});
- await check('integrated DOM: pending invitation discloses no contents and opens without accepting',async()=>{await invite();b.w.close();b=await page(friend,'?list='+listId);assert(b.$('[data-list-action="accept-invite"]'));assert(!b.$('#slConnectedLists').textContent.includes('Secret description'));assert(!b.$('#slConnectedLists').textContent.includes('DOM canonical cafe'));const pending=(await api('GET','/lists/invitations',undefined,friend.token)).invitations.find(x=>x.id===listId);invitation=pending.invitation_id;for(const k of ['venues','members','description'])assert.equal(pending[k],undefined);await api('GET','/lists/'+listId,undefined,friend.token,404);});
+ await check('integrated DOM: pending invitation discloses no contents and opens without accepting',async()=>{await invite();await b.close();b=await page(friend,'?list='+listId);assert(b.$('[data-list-action="accept-invite"]'));assert(!b.$('#slConnectedLists').textContent.includes('Secret description'));assert(!b.$('#slConnectedLists').textContent.includes('DOM canonical cafe'));const pending=(await api('GET','/lists/invitations',undefined,friend.token)).invitations.find(x=>x.id===listId);invitation=pending.invitation_id;for(const k of ['venues','members','description'])assert.equal(pending[k],undefined);await api('GET','/lists/'+listId,undefined,friend.token,404);});
  await check('integrated DOM: specific invitation acceptance enables collaborative add/remove without owner settings',async()=>{b.click('[data-list-action="accept-invite"]');await settled(b,'You joined');const accepted=b.calls.find(x=>x.method==='PUT'&&x.path.endsWith('/invitation'));assert.equal(accepted.body.invitation_id,invitation);assert.equal(accepted.body.response,'accepted');assert(!b.$('[data-list-action="edit"]'));assert(!b.$('#slInviteToList'));await add(b,1);b.click('[data-list-action="remove-venue"][data-venue="'+vids[0]+'"]');await settled(b,'Venue removed');const d=(await api('GET','/lists/'+listId,undefined,owner.token)).list;assert.deepEqual(d.venues.map(v=>v.id),[vids[1]]);assert.equal((await api('GET','/favorites',undefined,friend.token)).favorites.length,0);});
  await check('integrated DOM: owner revocation prevents refreshed access and old invitation replay',async()=>{a.click('[data-list-action="refresh-detail"]');await until(()=>a.$('[data-list-action="remove-member"]'),'member control');await sleep(100);a.click('[data-list-action="remove-member"]');await settled(a,'Member or invitation removed');b.click('[data-list-action="refresh-detail"]');await until(()=>b.$('#slListDetail').textContent.includes('List unavailable'),'revoked view');assert(!b.$('[data-list-action="remove-venue"]'));await api('GET','/lists/'+listId,undefined,friend.token,404);await api('PUT','/lists/'+listId+'/invitation',{response:'accepted',invitation_id:invitation},friend.token,409);});
  await check('integrated DOM: new invitation permits explicit rejoin and member can leave with durable access loss',async()=>{await invite();b.click('[data-list-action="refresh"]');await until(()=>b.$('[data-list-action="accept-invite"]'),'new invitation');b.click('[data-list-action="accept-invite"]');await settled(b,'You joined');b.click('[data-list-action="leave"]');await settled(b,'You left');assert(!b.$('#slListIndex').textContent.includes('DOM private'));await api('GET','/lists/'+listId,undefined,friend.token,404);});
@@ -41,5 +58,5 @@ module.exports=async function({api,pool,check,crypto,req,root,base}){
  const expectedWrites=[['POST','/api/lists'],['POST','/api/lists/'+listId+'/venues'],['POST','/api/lists/'+listId+'/invitations'],['PUT','/api/lists/'+listId+'/invitation'],['POST','/api/lists/'+listId+'/venues'],['DELETE','/api/lists/'+listId+'/venues/'+vids[0]],['DELETE','/api/lists/'+listId+'/members/'+friend.user.id],['POST','/api/lists/'+listId+'/invitations'],['PUT','/api/lists/'+listId+'/invitation'],['DELETE','/api/lists/'+listId+'/members/'+friend.user.id]];
  assert.deepEqual(audit.filter(x=>x.method!=='GET').map(x=>[x.method,x.path]),expectedWrites,'Only the ten explicitly exercised UI actions may write');
  console.log('INTEGRATED_DOM_EVIDENCE '+JSON.stringify({scope:'Full local my-lists.html scripts in JSDOM + real loopback Express HTTP/native PostgreSQL; not visual browser acceptance',syntheticAccounts:2,apiRequests:audit.length,mutations:audit.filter(x=>x.method!=='GET').map(({path,method})=>({path,method})),externalFetchAllowed:false,automaticBackgroundWrites:false}));
- }finally{windows.forEach(w=>w.close());}
+ }finally{await Promise.all(closePages.map(close=>close()));}
 };
