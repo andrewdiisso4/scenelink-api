@@ -14,23 +14,23 @@
  *     stale HTML even momentarily
  */
 
-const VERSION = 'sl-connected-20261122-concierge-directory';
+const VERSION = 'sl-connected-20261122-concierge-reopen';
 const SHELL_CACHE = `sl-shell-${VERSION}`;
 const RUNTIME_CACHE = `sl-runtime-${VERSION}`;
 const IMG_CACHE = `sl-img-${VERSION}`;
 
 const SHELL_URLS = [
-  '/js/ai-concierge-v5.js?v=connected-20261122-concierge-directory',
-  '/css/sl-design-system.css?v=connected-20261122-concierge-directory',
+  '/js/ai-concierge-v5.js?v=connected-20261122-concierge-reopen',
+  '/css/sl-design-system.css?v=connected-20261122-concierge-reopen',
   '/images/brand/scenelink-wordmark.png',
   '/images/brand/scenelink-full.png',
-  '/js/sl-connected-lists.js?v=connected-20261122-concierge-directory',
-  '/js/sl-social-messages.js?v=connected-20261122-concierge-directory',
-  '/js/sl-social-profile.js?v=connected-20261122-concierge-directory',
-  '/js/sl-events.js?v=connected-20261122-concierge-directory',
-  '/js/sl-connected-plans.js?v=connected-20261122-concierge-directory',
-  '/js/sl-connected-actions.js?v=connected-20261122-concierge-directory',
-  '/js/sl-connected-api.js?v=connected-20261122-concierge-directory',
+  '/js/sl-connected-lists.js?v=connected-20261122-concierge-reopen',
+  '/js/sl-social-messages.js?v=connected-20261122-concierge-reopen',
+  '/js/sl-social-profile.js?v=connected-20261122-concierge-reopen',
+  '/js/sl-events.js?v=connected-20261122-concierge-reopen',
+  '/js/sl-connected-plans.js?v=connected-20261122-concierge-reopen',
+  '/js/sl-connected-actions.js?v=connected-20261122-concierge-reopen',
+  '/js/sl-connected-api.js?v=connected-20261122-concierge-reopen',
   '/offline.html',
   '/manifest.json',
   '/icons/icon-192.png',
@@ -38,21 +38,21 @@ const SHELL_URLS = [
   '/icons/apple-touch-icon.png',
   '/icons/favicon.ico',
   // Phase 7D: precache the bundles so first-paint after install is instant
-  '/css/sl-bundle-7d.css?v=connected-20261122-concierge-directory',
-  '/js/sl-bundle-7d.js?v=connected-20261122-concierge-directory',
-  '/js/sl-nav-gate.js?v=connected-20261122-concierge-directory',
-  '/js/sl-fetch-guard.js?v=connected-20261122-concierge-directory',
-  '/js/sl-version-marker.js?v=connected-20261122-concierge-directory',
-  '/js/sl-bundle-7d-ui.js?v=connected-20261122-concierge-directory',
-  '/css/sl-phase8-launch.css?v=connected-20261122-concierge-directory',
-  '/js/sl-phase8-completion.js?v=connected-20261122-concierge-directory',
-  '/js/sl-phase8d-recovery.js?v=connected-20261122-concierge-directory',
-  '/css/sl-universal-search.css?v=connected-20261122-concierge-directory',
-  '/js/sl-universal-search.js?v=connected-20261122-concierge-directory',
-  '/js/sl-social-network.js?v=connected-20261122-concierge-directory',
-  '/js/sl-social-core.js?v=connected-20261122-concierge-directory',
-  '/js/sl-social-integration-9a.js?v=connected-20261122-concierge-directory',
-  '/js/sl-venue-activity-9a.js?v=connected-20261122-concierge-directory'
+  '/css/sl-bundle-7d.css?v=connected-20261122-concierge-reopen',
+  '/js/sl-bundle-7d.js?v=connected-20261122-concierge-reopen',
+  '/js/sl-nav-gate.js?v=connected-20261122-concierge-reopen',
+  '/js/sl-fetch-guard.js?v=connected-20261122-concierge-reopen',
+  '/js/sl-version-marker.js?v=connected-20261122-concierge-reopen',
+  '/js/sl-bundle-7d-ui.js?v=connected-20261122-concierge-reopen',
+  '/css/sl-phase8-launch.css?v=connected-20261122-concierge-reopen',
+  '/js/sl-phase8-completion.js?v=connected-20261122-concierge-reopen',
+  '/js/sl-phase8d-recovery.js?v=connected-20261122-concierge-reopen',
+  '/css/sl-universal-search.css?v=connected-20261122-concierge-reopen',
+  '/js/sl-universal-search.js?v=connected-20261122-concierge-reopen',
+  '/js/sl-social-network.js?v=connected-20261122-concierge-reopen',
+  '/js/sl-social-core.js?v=connected-20261122-concierge-reopen',
+  '/js/sl-social-integration-9a.js?v=connected-20261122-concierge-reopen',
+  '/js/sl-venue-activity-9a.js?v=connected-20261122-concierge-reopen'
 ];
 
 // ── install: nuke ALL old sl-* caches, then precache shell ──────────────

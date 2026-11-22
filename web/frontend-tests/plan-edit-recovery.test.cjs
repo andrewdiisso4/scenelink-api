@@ -56,6 +56,23 @@ test('a returning user can reopen a saved Concierge itinerary and read the revis
   assert.match(entries[1].textContent, /No stops saved yet/);
   assert.deepEqual(h.calls.slice(before).map(call => [call.method, call.path]), [['GET', '/plans']]);
 });
+test('a pending owner itinerary load cannot populate the new account after an auth change', async t => {
+  const pending = defer();
+  const h = await harness(t, { intercept: call => {
+    if (call.path === '/plans') return call.session === 'FICTIONAL_A' ? pending.promise : {plans: []};
+  } });
+  await h.click('[data-act=legacy]');
+  const oldTarget = h.el('#slLegacyPlans');
+  await h.change('FICTIONAL_B');
+  assert.equal(oldTarget.isConnected, false);
+  pending.resolve({plans: [{name: 'MUST_NOT_SHOW_OLD_OWNER_PLAN', stops: [{venue_name: 'MUST_NOT_SHOW_OLD_OWNER_VENUE'}]}]});
+  await tick();
+  await h.click('[data-act=legacy]');
+  assert.match(h.el('#slLegacyPlans').textContent, /No saved itineraries yet/);
+  assert.doesNotMatch(h.el('main').textContent, /MUST_NOT_SHOW_OLD_OWNER/);
+  assert.deepEqual(h.calls.filter(call => call.path === '/plans').map(call => [call.method, call.session]),
+    [['GET', 'FICTIONAL_A'], ['GET', 'FICTIONAL_B']]);
+});
 test('owner can edit existing plan details and server readback survives refresh',async t=>{
  const h=await harness(t);await h.click('[data-act=edit-room]');h.input('name','  Friday with friends  ');h.input('description','Dinner and catch up');h.input('event_date','2026-11-15');h.submit();await tick();
  const writes=h.calls.filter(x=>x.path.endsWith('/details'));assert.equal(writes.length,1);assert.equal(writes[0].method,'PUT');assert.deepEqual(writes[0].body,{name:'Friday with friends',description:'Dinner and catch up',event_date:'2026-11-15',revision:3});
