@@ -33,13 +33,14 @@ test('Boston event date survives UTC midnight and expires at local midnight, inc
 test('listing, new RSVPs, concierge and admin use shared calendar; historical access remains',()=>{
   const source=p=>fs.readFileSync(path.join(__dirname,'../',p),'utf8');
   const events=source('src/launch/events.js');
-  const concierge=source('src/routes/concierge.js');
+  const concierge=source('src/services/concierge-event-search.js');
   for(const text of [events,concierge,source('src/routes/adminEvents.js')]) {
     assert.match(text,/EVENT_TODAY_SQL/);assert.doesNotMatch(text,/CURRENT_DATE/);
   }
   assert.match(events,/include_past!=='true'/);
   assert.match(events,/upcoming\?`AND e.date>=\$\{EVENT_TODAY_SQL\}/);
-  assert.match(concierge,/BETWEEN \$\{EVENT_TODAY_SQL\} AND \(\$\{EVENT_TODAY_SQL\} \+ \$1::integer\)/);
+  assert.match(source('src/routes/concierge.js'),/queryConciergeEvents\(pool, intent/);
+  assert.match(concierge,/EVENT_TODAY_SQL/);
   const history=events.split("router.get('/events/rsvps/mine'")[1].split("router.get('/events/:eventId'")[0];
   assert.doesNotMatch(history,/EVENT_TODAY_SQL|DELETE FROM|UPDATE events/);
 });

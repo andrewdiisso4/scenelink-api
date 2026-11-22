@@ -195,7 +195,10 @@
     var _conciergeSession = 'sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
     var _backendAvailable = null;
     var sessionGeneration = 0;
+    var _typedPlan = null;
     var _convoHistory = []; // last few turns for multi-turn context
+    var _searchContext = null; // bounded public preferences returned by the backend
+    var _requestQueue = Promise.resolve();
 
     function getAuthToken() {
         try {
@@ -206,34 +209,66 @@
         } catch (_) { return null; }
     }
 
-    async function generateResponse(query) {
-        var generation = sessionGeneration;
+    function isCurrentSession(generation, token) {
+        return generation === sessionGeneration && token === getAuthToken();
+    }
+
+    async function getPilotAvailability(token) {
+        if (!token || _backendAvailable === false) return false;
+        var controller = new AbortController();
+        var timeout = setTimeout(function () { controller.abort(); }, 1200);
         try {
-            window.dispatchEvent(new CustomEvent('sl:concierge-ask', { detail: { query: query } }));
-        } catch(_){}
+            var res = await fetch(API_BASE + '/concierge/capabilities', {
+                headers: { 'Accept': 'application/json', 'Authorization': 'Bearer ' + token },
+                cache: 'no-store',
+                signal: controller.signal
+            });
+            return res.ok && (await res.json()).ai_pilot === true;
+        } catch (_) { return false; }
+        finally { clearTimeout(timeout); }
+    }
+
+    function generateResponse(query, optIn) {
+        var generation = sessionGeneration;
+        var token = getAuthToken();
+        var pending = _requestQueue.then(function () {
+            if (!isCurrentSession(generation, token)) return null;
+            return requestConciergeResponse(query, optIn === true && !!token, token);
+        });
+        _requestQueue = pending.catch(function () {});
+        return pending;
+    }
+
+    async function requestConciergeResponse(query, optIn, tok) {
+        var generation = sessionGeneration;
 
         if (_backendAvailable !== false) {
             try {
                 var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
-                var tok = getAuthToken();
                 if (tok) headers['Authorization'] = 'Bearer ' + tok;
 
                 // Build pageContext from current page (no PII)
                 var pageContext = { pageId: (location.pathname.split('/').pop() || 'index').replace(/\.html$/, '') };
+                if (_searchContext !== null) pageContext.search = _searchContext;
+                if (optIn && _typedPlan !== null) pageContext.typedPlan = _typedPlan;
+                _typedPlan = null;
 
                 var res = await fetch(API_BASE + '/concierge', {
                     method: 'POST',
                     headers: headers,
                     body: JSON.stringify({
                         message: query,
+                        ai: optIn,
                         session_id: _conciergeSession,
                         history: _convoHistory.slice(-6),
                         context: pageContext
                     })
                 });
+                if (!isCurrentSession(generation, tok)) return null;
                 if (res.status === 429) {
                     _backendAvailable = true;
                     var rd = await res.json().catch(function(){ return {}; });
+                    if (!isCurrentSession(generation, tok)) return null;
                     return {
                         text: rd.reply || 'Whoa — slow down for a moment. Try again in a few seconds.',
                         plan: null, venueCards: [], quickReplies: [], requiresLogin: false, isLoggedIn: !!tok, notice: null
@@ -242,8 +277,10 @@
                 if (res.ok) {
                     _backendAvailable = true;
                     var data = await res.json();
+                    if (!isCurrentSession(generation, tok)) return null;
                     if (data.ok) {
-                        if (generation !== sessionGeneration) return null;
+                        _searchContext = data.search_context || null;
+                        if (optIn && data.source === 'openai') _typedPlan = data.typed_plan || null;
                         // Track conversation for context
                         _convoHistory.push({ role: 'user', content: query });
                         var reply = typeof data.response === 'string' ? data.response : (data.reply || '');
@@ -260,13 +297,14 @@
                             notice: data.notice || null,
                             isLoggedIn: !!tok,
                             requiresLogin: !!data.requiresLogin,
-                            source: data.source,
+                            source: optIn && data.source === 'openai' ? 'openai' : data.source === 'openai' ? null : data.source,
                             intent: data.intent
                         };
                     }
                 }
                 if (res.status >= 400 && res.status < 500) {
                     var ed = await res.json().catch(function(){ return {}; });
+                    if (!isCurrentSession(generation, tok)) return null;
                     return {
                         text: ed.error || 'That message didn\u2019t work — try rephrasing?',
                         plan: null, venueCards: [], quickReplies: [], requiresLogin: false, isLoggedIn: !!tok, notice: null
@@ -274,13 +312,15 @@
                 }
                 _backendAvailable = false;
             } catch (err) {
-                console.warn('[concierge] backend unavailable, using client fallback:', err.message);
+                if (!isCurrentSession(generation, tok)) return null;
+                console.warn('[concierge] backend unavailable, using client fallback');
                 _backendAvailable = false;
             }
         }
 
         // Last-resort client-side fallback (should rarely hit — backend has its own fallback)
         var cs = await generateResponseClientSide(query);
+        if (!isCurrentSession(generation, tok)) return null;
         return {
             text: cs.text,
             plan: null,
@@ -481,11 +521,11 @@
     function buildUI() {
         var fab = document.createElement('button');
         fab.className = 'sl-concierge-fab sl-concierge-fab-v5';
-        fab.setAttribute('aria-label', 'Open AI Concierge');
+        fab.setAttribute('aria-label', 'Open SceneLink Concierge');
         fab.innerHTML =
             '<div class="slc-fab-pulse"></div>' +
             '<svg viewBox="0 0 24 24" width="26" height="26" fill="#0a0a0a"><path d="M12 2l2.4 5.4L20 9l-4.5 4 1.5 6L12 16l-5 3 1.5-6L4 9l5.6-1.6L12 2z"/></svg>' +
-            '<span class="slc-fab-tooltip">Ask AI</span>';
+            '<span class="slc-fab-tooltip">Ask Concierge</span>';
 
         var panel = document.createElement('div');
         panel.className = 'sl-concierge-panel sl-concierge-panel-v5';
@@ -496,8 +536,8 @@
                         '<svg viewBox="0 0 24 24" width="20" height="20" fill="#0a0a0a"><path d="M12 2l2.4 5.4L20 9l-4.5 4 1.5 6L12 16l-5 3 1.5-6L4 9l5.6-1.6L12 2z"/></svg>' +
                     '</div>' +
                     '<div>' +
-                        '<div class="slc-title">SceneLink <span class="slc-badge">AI</span></div>' +
-                        '<div class="slc-subtitle"><span class="slc-online-dot"></span> Online · Boston</div>' +
+                        '<div class="slc-title">SceneLink Concierge</div>' +
+                        '<div class="slc-subtitle">Boston venues &amp; events</div>' +
                     '</div>' +
                 '</div>' +
                 '<button class="slc-close" aria-label="Close">' +
@@ -521,9 +561,17 @@
         var close = panel.querySelector('.slc-close');
 
         var state = { open: false, greeted: false };
-        var focusTimer = null, askTimer = null, opener = null;
+        var focusTimer = null, opener = null;
+        var pendingChoice = null, choiceGeneration = 0;
+        var accountToken = getAuthToken();
+
+        function clearChoice() {
+            choiceGeneration++;
+            if (pendingChoice) pendingChoice.remove();
+            pendingChoice = null;
+        }
         var draftStore = window.SLConciergeDraft;
-        input.addEventListener('input',function(){if(draftStore)draftStore.save(input.value);});
+        input.addEventListener('input',function(){clearChoice();if(draftStore)draftStore.save(input.value);});
         panel.setAttribute('role','dialog');
         panel.setAttribute('aria-label','SceneLink Concierge');
 
@@ -567,6 +615,7 @@
             });
             messages.appendChild(w);
             messages.scrollTop = messages.scrollHeight;
+            return w;
         }
 
         function addVenues(venues) {
@@ -647,9 +696,57 @@
         }
 
         async function handleMessage(text) {
-            var generation = sessionGeneration;
-            text = (text || '').trim();
-            if (!text) return;
+            syncAccount();
+            text = (text || '').trim().slice(0, 500);
+            if (!state.open || !text) return;
+            clearChoice();
+            var choice = choiceGeneration, generation = sessionGeneration, token = getAuthToken();
+            var guided = /^(plan my night|build my night|dinner then drinks)$/i.test(text);
+            var eligible = !guided && token && await getPilotAvailability(token);
+            function current() {
+                return state.open && choice === choiceGeneration && isCurrentSession(generation, token);
+            }
+            if (!current()) return;
+            if (!eligible) return submitMessage(text, false);
+
+            var box = document.createElement('div');
+            box.className = 'slc-msg slc-msg-bot';
+            box.setAttribute('role', 'group');
+            box.setAttribute('aria-label', 'Choose how to answer this request');
+            var content = document.createElement('div');
+            content.className = 'slc-msg-bubble';
+            var description = document.createElement('p');
+            description.textContent = 'Use AI for this request? OpenAI will receive the message below, relevant search preferences from this chat, and public venue options. Your saved venues, profile and earlier messages aren’t sent as chat history. Don’t include personal details.';
+            var preview = document.createElement('p');
+            preview.textContent = text;
+            content.appendChild(description);
+            content.appendChild(preview);
+            function button(label, optIn) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'slc-chip';
+                b.textContent = label;
+                b.addEventListener('click', function () {
+                    if (!current()) return;
+                    clearChoice();
+                    if (optIn !== null) submitMessage(text, optIn);
+                    input.focus();
+                });
+                content.appendChild(b);
+                return b;
+            }
+            button('Use AI once', true);
+            var directory = button('Search directory', false);
+            button('Cancel', null);
+            box.appendChild(content);
+            pendingChoice = box;
+            messages.appendChild(box);
+            messages.scrollTop = messages.scrollHeight;
+            directory.focus();
+        }
+
+        async function submitMessage(text, optIn) {
+            var generation = sessionGeneration, token = getAuthToken();
             if (draftStore) draftStore.clear();
             addMessage(text, 'user');
             input.value = '';
@@ -665,22 +762,28 @@
 
             var t = addTyping();
             try {
-                var resp = await generateResponse(text);
+                var resp = await generateResponse(text, optIn);
                 setTimeout(function () {
                     t.remove();
-                    if (generation === sessionGeneration) renderConciergeResponse(resp);
+                    if (state.open && isCurrentSession(generation, token)) renderConciergeResponse(resp, optIn);
                 }, 350 + Math.random() * 250);
             } catch (e) {
                 t.remove();
-                addMessage("Hmm, something went wrong. Try again?", 'bot');
+                if (state.open && isCurrentSession(generation, token)) addMessage("Hmm, something went wrong. Try again?", 'bot');
             }
         }
 
         // ─────────────────────────────────────────────────────────────────
         // RENDER the full structured response from POST /api/concierge
         // ─────────────────────────────────────────────────────────────────
-        function renderConciergeResponse(resp) {
+        function renderConciergeResponse(resp, optIn) {
             if (!resp) { addMessage("Hmm, something went wrong. Try again?", 'bot'); return; }
+
+            if (resp.source === 'openai') {
+                addMessage('<span class="slc-notice">AI-ranked SceneLink venues</span>', 'bot');
+            } else if (optIn && resp.source) {
+                addMessage('<span class="slc-notice">AI wasn’t used for these results. Showing SceneLink directory results.</span>', 'bot');
+            }
 
             if (resp.notice) {
                 addMessage('<span class="slc-notice"><i class="fas fa-info-circle"></i> ' + escHtmlC(resp.notice) + '</span>', 'bot');
@@ -701,7 +804,7 @@
                     if (!card) return;
                     addMessage(
                         '<div class="slc-stop-label">' +
-                            '<span class="slc-stop-cat">' + escHtmlC(stop.category || 'Stop') + '</span>' +
+                            '<span class="slc-stop-cat">' + escHtmlC(stop.role === 'dinner' ? 'Dinner' : stop.role === 'drinks' ? 'Drinks' : stop.category || 'Stop') + '</span>' +
                             (stop.bestTime ? '<span class="slc-stop-time">' + escHtmlC(stop.bestTime) + '</span>' : '') +
                         '</div>' +
                         (stop.whyItFits ? '<div class="slc-stop-why">' + escHtmlC(stop.whyItFits) + '</div>' : ''),
@@ -783,26 +886,42 @@
 
         async function handleSavePlanWithPicker(resp) {
             if (!resp.isLoggedIn) return showLoginPromptMsg('save this plan');
+            var token = getAuthToken(), generation = sessionGeneration;
+            if (!token) return showLoginPromptMsg('save this plan');
+            var stops = planSaveStops(resp);
+            if (!stops.length) { addMessage('There are no venue stops to save.', 'bot'); return; }
+            var plans = [];
             try {
-                var tok = getAuthToken();
                 var listRes = await fetch(API_BASE + '/plans', {
-                    headers: { 'Authorization': 'Bearer ' + tok }
+                    headers: { 'Authorization': 'Bearer ' + token }, cache: 'no-store'
                 });
                 var listData = listRes.ok ? await listRes.json() : { plans: [] };
-                var plans = (listData && listData.plans) || [];
-                if (plans.length === 0) { return handleSavePlan(resp); }
-                showPlanPicker(resp, plans);
-            } catch (_) { return handleSavePlan(resp); }
+                plans = (listData && listData.plans) || [];
+            } catch (_) {}
+            if (!isCurrentSession(generation, token)) return;
+            if (!plans.length) return handleSavePlan(resp, stops, generation, token);
+            showPlanPicker(resp, plans, stops, generation, token);
         }
 
-        function showPlanPicker(resp, plans) {
+        function planSaveStops(resp) {
+            var seen = new Set();
+            return ((resp.plan && resp.plan.stops) || []).reduce(function (out, stop) {
+                if (!stop || !stop.venueId || seen.has(stop.venueId)) return out;
+                seen.add(stop.venueId);
+                var card = findCardInResp(resp.venueCards, stop.venueId);
+                out.push({ id: stop.venueId, label: (card && card.name) || stop.name || 'Stop ' + (out.length + 1) });
+                return out;
+            }, []);
+        }
+
+        function showPlanPicker(resp, plans, stops, generation, token) {
             var existing = document.getElementById('slcPlanPicker');
             if (existing) existing.remove();
             var picker = document.createElement('div');
             picker.id = 'slcPlanPicker';
             picker.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
             var rows = plans.slice(0, 8).map(function (p) {
-                return '<button class="slc-pp-row" data-pid="' + p.id + '" style="display:block;width:100%;text-align:left;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#fff;padding:12px 14px;border-radius:10px;margin-bottom:8px;cursor:pointer;">' +
+                return '<button class="slc-pp-row" data-pid="' + escHtmlC(p.id) + '" style="display:block;width:100%;text-align:left;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#fff;padding:12px 14px;border-radius:10px;margin-bottom:8px;cursor:pointer;">' +
                     '<strong style="display:block;">' + escHtmlC(p.name || 'Untitled') + '</strong>' +
                     (p.date ? '<small style="color:rgba(255,255,255,0.5);">' + escHtmlC(p.date) + '</small>' : '') +
                     '</button>';
@@ -820,58 +939,99 @@
                 btn.addEventListener('click', function () {
                     var pid = this.dataset.pid;
                     picker.remove();
-                    addStopsToPlan(resp, pid);
+                    addStopsToPlan(stops, pid, generation, token);
                 });
             });
-            picker.querySelector('.slc-pp-new').addEventListener('click', function () { picker.remove(); handleSavePlan(resp); });
+            picker.querySelector('.slc-pp-new').addEventListener('click', function () { picker.remove(); handleSavePlan(resp, stops, generation, token); });
             picker.querySelector('.slc-pp-cancel').addEventListener('click', function () { picker.remove(); });
-            picker.addEventListener('click', function (e) { if (e.target === picker) picker.remove(); });
+            picker.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (e.target === picker) picker.remove();
+            });
         }
 
-        async function addStopsToPlan(resp, planId) {
-            try {
-                var tok = getAuthToken();
-                var stops = (resp.plan && resp.plan.stops) || [];
-                for (var i = 0; i < stops.length; i++) {
-                    await fetch(API_BASE + '/plans/' + planId + '/venues', {
+        async function saveAndVerifyStops(stops, planId, generation, token) {
+            for (var i = 0; i < stops.length; i++) {
+                if (!isCurrentSession(generation, token)) return null;
+                try {
+                    await fetch(API_BASE + '/plans/' + encodeURIComponent(planId) + '/venues', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
-                        body: JSON.stringify({ venue_id: stops[i].venueId })
-                    }).catch(function () {});
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                        body: JSON.stringify({ venue_id: stops[i].id })
+                    });
+                } catch (_) {
+                    // A transport failure can still have committed. Read back before reporting.
                 }
-                addMessage('<span class="slc-tip"><i class="fas fa-check-circle"></i> Added ' + stops.length + ' stop' + (stops.length === 1 ? '' : 's') + ' to your plan.</span>', 'bot');
+            }
+            if (!isCurrentSession(generation, token)) return null;
+            try {
+                var read = await fetch(API_BASE + '/plans/' + encodeURIComponent(planId), {
+                    headers: { 'Authorization': 'Bearer ' + token }, cache: 'no-store'
+                });
+                if (!isCurrentSession(generation, token)) return null;
+                var data = read.ok ? await read.json() : null;
+                if (!isCurrentSession(generation, token)) return null;
+                if (data && data.plan && data.plan.id === planId && Array.isArray(data.plan.stops)) {
+                    return new Set(data.plan.stops.map(function (stop) { return stop.venue_id; }));
+                }
             } catch (_) {
-                addMessage('Couldn\u2019t add to that plan. Please try again.', 'bot');
+                if (!isCurrentSession(generation, token)) return null;
+            }
+            return { unverified: true };
+        }
+
+        function reportSavedStops(stops, present, planName) {
+            if (!present) return;
+            if (present.unverified) {
+                addMessage('Couldn’t verify which stops were saved. Reopen the plan before trying again.', 'bot');
+                return;
+            }
+            var saved = stops.filter(function (stop) { return present.has(stop.id); });
+            var missing = stops.filter(function (stop) { return !present.has(stop.id); });
+            if (missing.length) {
+                function names(list) { return list.map(function (stop) { return escHtmlC(stop.label); }).join(', '); }
+                if (saved.length) {
+                    addMessage('On your plan: ' + names(saved) + '. Not saved: ' + names(missing) + '.', 'bot');
+                } else {
+                    addMessage('None of these stops were saved: ' + names(missing) + '. The plan still exists.', 'bot');
+                }
+                return;
+            }
+            var label = planName ? ' on “' + escHtmlC(planName) + '”' : ' on your plan';
+            addMessage('<span class="slc-tip"><i class="fas fa-check-circle"></i> All ' + stops.length +
+                ' ' + (stops.length === 1 ? 'stop is' : 'stops are') + label + '.</span>', 'bot');
+            if (window.SLNotifications && typeof SLNotifications.success === 'function') {
+                SLNotifications.success('All requested stops are on your plan.');
             }
         }
 
-        async function handleSavePlan(resp) {
-            if (!resp.isLoggedIn) return showLoginPromptMsg('save this plan');
+        async function addStopsToPlan(stops, planId, generation, token) {
+            if (!isCurrentSession(generation, token)) return;
+            var present = await saveAndVerifyStops(stops, planId, generation, token);
+            if (isCurrentSession(generation, token)) reportSavedStops(stops, present);
+        }
+
+        async function handleSavePlan(resp, stops, generation, token) {
+            if (!isCurrentSession(generation, token)) return;
             try {
-                var tok = getAuthToken();
                 var planName = (resp.plan && resp.plan.title) ? resp.plan.title : 'SceneLink Night';
                 var pr = await fetch(API_BASE + '/plans', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                     body: JSON.stringify({ name: planName })
                 });
-                if (!pr.ok) { addMessage('Couldn\u2019t save that plan \u2014 please try again.', 'bot'); return; }
+                if (!isCurrentSession(generation, token)) return;
+                if (!pr.ok) { addMessage('Couldn’t create that plan. Please try again.', 'bot'); return; }
                 var pd = await pr.json();
+                if (!isCurrentSession(generation, token)) return;
                 var planId = pd.plan && pd.plan.id;
-                if (!planId) { addMessage('Couldn\u2019t save that plan \u2014 please try again.', 'bot'); return; }
-                for (var i = 0; i < resp.plan.stops.length; i++) {
-                    await fetch(API_BASE + '/plans/' + planId + '/venues', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
-                        body: JSON.stringify({ venue_id: resp.plan.stops[i].venueId })
-                    }).catch(function () {});
+                if (!planId) { addMessage('Couldn’t verify the new plan. Check your plans before trying again.', 'bot'); return; }
+                var present = await saveAndVerifyStops(stops, planId, generation, token);
+                if (isCurrentSession(generation, token)) reportSavedStops(stops, present, planName);
+            } catch (_) {
+                if (isCurrentSession(generation, token)) {
+                    addMessage('Couldn’t verify the new plan. Check your plans before trying again.', 'bot');
                 }
-                addMessage('<span class="slc-tip"><i class="fas fa-check-circle"></i> Saved \u201c' + escHtmlC(planName) + '\u201d to your plans.</span>', 'bot');
-                if (window.SLNotifications && typeof SLNotifications.success === 'function') {
-                    SLNotifications.success('Plan saved. View it on your Plans page.');
-                }
-            } catch (err) {
-                addMessage('Something went wrong saving that plan.', 'bot');
             }
         }
 
@@ -959,41 +1119,62 @@
 
         async function generateItinerary() {
             var t = addTyping();
-            var vibe = _bmnState.vibe || '';
-            var hood = _bmnState.hood || '';
-            var group = _bmnState.group || '';
+            var generation = sessionGeneration, night = _bmnState, token = getAuthToken();
+            var vibe = night.vibe || '';
+            var hood = night.hood || '';
 
             // Build 3 queries for dinner / drinks / late-night
-            var q1 = (vibe === 'upscale' ? 'upscale' : 'great') + ' dinner' + (hood ? ' in ' + hood : '');
+            var q1 = (vibe === 'upscale' ? 'upscale ' : '') + 'restaurants for dinner' + (hood ? ' in ' + hood : '');
             var q2 = (vibe === 'lowkey' ? 'cozy' : 'great') + ' cocktail bar' + (hood ? ' in ' + hood : '');
             var q3 = (vibe === 'live' ? 'live music' : 'late night') + (hood ? ' in ' + hood : '');
             try {
-                var r1 = await generateResponse(q1);
-                var r2 = await generateResponse(q2);
-                var r3 = await generateResponse(q3);
-                setTimeout(function () {
-                    t.remove();
-                    var title = 'Your itinerary';
-                    if (hood) title += ' in ' + hood;
-                    addMessage('<strong>🌙 ' + title + '</strong>', 'bot');
-                    addItineraryStop('1. Dinner', r1.venues && r1.venues[0]);
-                    addItineraryStop('2. Drinks', r2.venues && r2.venues[0]);
-                    addItineraryStop('3. Late night', r3.venues && r3.venues[0]);
-                    addMessage('<span class="slc-tip">💡 Tap <strong>Add to Plan</strong> on each stop to save this as your night plan — or ask me to swap any of them.</span>', 'bot');
-                    addQuickActions(['Swap dinner', 'Swap drinks', 'Different neighborhood', 'Start over']);
-                }, 450);
+                var queries = [q1, q2, q3], responses = [];
+                for (var i = 0; i < queries.length; i++) {
+                    var response;
+                    try { response = await generateResponse(queries[i]); } catch (_) { response = null; }
+                    if (!state.open || !isCurrentSession(generation, token) || night !== _bmnState) return;
+                    responses.push(response);
+                }
+                var seen = new Set();
+                var stops = responses.map(function (response) {
+                    // Broad directory fallback does not establish a match for a plan segment.
+                    var unavailable = !response || response.source === 'client-fallback';
+                    var cards = !unavailable && Array.isArray(response.venueCards) ? response.venueCards : [];
+                    var valid = cards.filter(function (card) {
+                        return card && typeof card.id === 'string' && card.id.trim() &&
+                            typeof card.name === 'string' && card.name.trim();
+                    });
+                    var selected = valid.find(function (card) { return !seen.has(card.id.trim().toLowerCase()); });
+                    if (selected) seen.add(selected.id.trim().toLowerCase());
+                    return { venue: selected, empty: unavailable
+                        ? 'Could not check this part of the plan. Try again.'
+                        : valid.length ? 'No different venue found for this part of the plan.'
+                        : 'No venue match found for this part of the plan.' };
+                });
+                var count = stops.filter(function (stop) { return !!stop.venue; }).length;
+                var title = count === 3 ? 'Venue options for your night' : count ? 'Partial venue options for your night' : 'No venue options found for this plan';
+                if (hood) title += ' in ' + hood;
+                addMessage('<strong>' + escHtmlC(title) + '</strong>', 'bot');
+                ['1. Dinner option', '2. Drinks option', '3. Later option'].forEach(function (label, i) {
+                    addItineraryStop(label, stops[i].venue, stops[i].empty);
+                });
+                if (count) {
+                    addMessage('<span class="slc-tip">Opening hours, menus and space for your group need confirmation with each venue. No reservation has been made. Use <strong>Add to Plan</strong> to save an option.</span>', 'bot');
+                }
+                addQuickActions(['Plan my night', 'Explore venues']);
             } catch (e) {
+                if (state.open && isCurrentSession(generation, token) && night === _bmnState) addMessage('I couldn\'t build that plan. Try again?', 'bot');
+            } finally {
                 t.remove();
-                addMessage('Hmm — couldn\'t build that itinerary. Try again?', 'bot');
             }
         }
 
-        function addItineraryStop(label, venue) {
+        function addItineraryStop(label, venue, empty) {
             if (!venue) {
-                addMessage('<div class="slc-stop-label">' + label + '</div><div class="slc-msg-empty">No match found — try a different vibe/neighborhood.</div>', 'bot');
+                addMessage('<div class="slc-stop-label">' + escHtmlC(label) + '</div><div class="slc-msg-empty">' + escHtmlC(empty || 'No venue match found. Try different preferences.') + '</div>', 'bot');
                 return;
             }
-            addMessage('<div class="slc-stop-label">' + label + '</div>', 'bot');
+            addMessage('<div class="slc-stop-label">' + escHtmlC(label) + '</div>', 'bot');
             addVenues([venue]);
         }
 
@@ -1032,21 +1213,24 @@
                 getGreeting() + '! I can help you explore venues listed on SceneLink. Tell me what you\'re in the mood for, and I\'ll help you plan your night.',
                 'bot'
             );
+            var generation = sessionGeneration, token = getAuthToken();
             var fallback = getQuickActions(ctx);
-            addQuickActions(fallback);
+            var fallbackChips = addQuickActions(fallback);
             // Try backend suggestions (time-of-day aware)
             try {
                 fetch(API_BASE + '/concierge/suggestions').then(function(r){return r.ok?r.json():null;}).then(function(d){
-                    if (d && d.suggestions && d.suggestions.length) {
-                        var host = body.querySelector('.slc-quick-actions:last-child');
-                        if (host) host.remove();
-                        addQuickActions(d.suggestions);
+                    if (state.open && isCurrentSession(generation, token) && d && d.suggestions && d.suggestions.length) {
+                        if (fallbackChips && fallbackChips.parentNode === messages && messages.lastElementChild === fallbackChips) {
+                            fallbackChips.remove();
+                            addQuickActions(d.suggestions);
+                        }
                     }
                 }).catch(function(){});
             } catch(_){}
         }
 
         function openPanel() {
+            syncAccount();
             if (state.open) return;               // idempotent
             opener = document.activeElement;
             state.open = true;
@@ -1064,10 +1248,14 @@
         }
 
         function closePanel() {
+            _typedPlan = null;
             if (!state.open) return;              // idempotent
             state.open = false;
+            var picker = document.getElementById('slcPlanPicker');
+            if (picker) picker.remove();
+            sessionGeneration++;
             clearTimeout(focusTimer);
-            clearTimeout(askTimer);
+            clearChoice();
             if (draftStore) draftStore.clear();
             if (opener && opener.isConnected) { try { opener.focus(); } catch(_){} }
             panel.classList.remove('slc-panel-visible');
@@ -1113,13 +1301,45 @@
             if (e.key === 'Enter') { e.preventDefault(); handleMessage(input.value); }
         });
 
-        // Expose
+        function resetSession() {
+            sessionGeneration++;
+            accountToken = getAuthToken();
+            clearChoice();
+            _bmnState = null;
+            _conciergeSession = 'sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+            input.value = '';
+            if (draftStore) draftStore.clear();
+            _convoHistory = [];
+            _searchContext = null;
+            _typedPlan = null;
+            _backendAvailable = null;
+            _requestQueue = Promise.resolve();
+            messages.textContent = '';
+            state.greeted = false;
+            closePanel();
+        }
+
+        function syncAccount() {
+            if (accountToken !== getAuthToken()) resetSession();
+        }
+
+        window.addEventListener('sl:auth-changed', syncAccount);
+        window.addEventListener('storage', syncAccount);
+
+        function setDraft(q) {
+            clearChoice();
+            openPanel();
+            input.value = String(q || '').slice(0, 500);
+            if (draftStore) draftStore.save(input.value);
+        }
+
+        // Cross-page actions can draft a prompt, never submit or opt in.
         window.SLConcierge = {
-            resetSession: function(){sessionGeneration++;_conciergeSession='sess_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);clearTimeout(askTimer);input.value='';_convoHistory=[];messages.textContent='';state.greeted=false;closePanel();},
-            draft: function (q) { clearTimeout(askTimer); openPanel(); input.value = String(q || "").slice(0,500); if (draftStore) draftStore.save(input.value); },
+            resetSession: resetSession,
+            draft: setDraft,
             open: openPanel,
             close: closePanel,
-            ask: function (q) { openPanel(); clearTimeout(askTimer); askTimer = setTimeout(function () { if (state.open) handleMessage(String(q || '').slice(0,500)); }, 300); }
+            ask: setDraft
         };
 
         // Global delegated click handler — works regardless of inline onclick failures
@@ -1153,10 +1373,10 @@
                 openPanel();
                 input.value = String(askParam).slice(0,500);
                 // Remove potentially personal draft text before later navigation.
-                if (!draftStore || !draftStore.save(input.value)) return;
                 params.delete('ask');
                 var remaining = params.toString();
                 history.replaceState(history.state, '', location.pathname + (remaining ? '?' + remaining : '') + location.hash);
+                if (draftStore) draftStore.save(input.value);
             }
         } catch (_) {}
     }

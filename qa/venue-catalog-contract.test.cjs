@@ -124,8 +124,8 @@ test('rule-based concierge shares venue booking semantics and reviewed-event sou
     assert.equal(events.events[0].title,event.title);assert.equal(events.events[0].rsvp_is_reservation,false);
     assert.equal(events.events[0].booking_status,'not_booked');
     const query=calls.find(call=>call.sql.includes('FROM events e'));
-    assert(query.sql.includes("source_review_status='reviewed'"));assert(query.sql.includes("e.date BETWEEN (CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')::date"));
-    assert.deepEqual(query.params,[1,5]);assert(!query.sql.includes('event_date'));
+    assert(query.sql.includes("source_review_status='reviewed'"));assert(query.sql.includes("e.date = (CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')::date"));
+    assert.deepEqual(query.params,[['concert','concerts','music','live music'],5]);assert(!query.sql.includes('event_date'));
   });
 });
 
@@ -147,15 +147,15 @@ test('known unavailable bare name returns no related catalog rows or hidden stat
     const candidate=calls.find(x=>x.sql.includes('SELECT id, slug, name'));
     assert(candidate.sql.includes('lower(name) = lower($1)'));
     assert.equal(candidate.params[0],secretName);
-    const result=await ai.runAIConcierge({message:secretName});
-    assert.equal(result.source,'empty');
-    assert.deepEqual(result.candidates,[]);
+    await assert.rejects(ai.runAIConcierge({message:secretName}),/pilot is not available/);
     const oldKey=process.env.OPENAI_API_KEY,oldFetch=global.fetch;
     try {
       process.env.OPENAI_API_KEY='test-only-no-provider-call';
       global.fetch=async()=>{throw Error('Provider calls forbidden in this test');};
       await handler({body:{message:secretName}}, {setHeader(){},status(code){assert.equal(code,200);return this;},json(body){output=body;return body;}});
-      assert.equal(output.source,'empty');
+      assert.equal(output.source,'rule-based');
+      assert.deepEqual(output.venues,[]);
+      assert.deepEqual(output.events,[]);
       assert(!JSON.stringify(output).includes(secretName));
       assert(!/business_status|duplicate_of|duplicate_review|CLOSED|inactive/.test(JSON.stringify(output)));
     } finally {
