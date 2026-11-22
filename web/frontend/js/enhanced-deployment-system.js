@@ -14,14 +14,14 @@ class EnhancedDeploymentSystem {
         ];
         
         this.requiredCSS = [
-            'css/universal-enhanced-header.css?v=connected-20261119-been-with-friends',
-            'css/page-header-consistent.css?v=connected-20261119-been-with-friends',
-            'css/openstreet-map-integration.css?v=connected-20261119-been-with-friends'
+            'css/universal-enhanced-header.css?v=connected-20261122-concierge-directory',
+            'css/page-header-consistent.css?v=connected-20261122-concierge-directory',
+            'css/openstreet-map-integration.css?v=connected-20261122-concierge-directory'
         ];
         
         this.requiredJS = [
-            'js/universal-header-consistency.js?v=connected-20261119-been-with-friends',
-            'js/openstreet-map-integration.js?v=connected-20261119-been-with-friends'
+            'js/universal-header-consistency.js?v=connected-20261122-concierge-directory',
+            'js/openstreet-map-integration.js?v=connected-20261122-concierge-directory'
         ];
         
         this.init();
@@ -45,10 +45,10 @@ class EnhancedDeploymentSystem {
 
     applyUniversalEnhancements() {
         // Apply universal header CSS if not already present
-        this.ensureCSSLoaded('css/universal-enhanced-header.css?v=connected-20261119-been-with-friends');
+        this.ensureCSSLoaded('css/universal-enhanced-header.css?v=connected-20261122-concierge-directory');
         
         // Apply universal header JavaScript
-        this.ensureJSLoaded('js/universal-header-consistency.js?v=connected-20261119-been-with-friends');
+        this.ensureJSLoaded('js/universal-header-consistency.js?v=connected-20261122-concierge-directory');
         
         // Apply consistent footer
         this.updateFooterBrand();
@@ -153,8 +153,8 @@ class EnhancedDeploymentSystem {
 
     setupExplorePageFeatures() {
         // Add map integration to explore page
-        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261119-been-with-friends');
-        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261119-been-with-friends');
+        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261122-concierge-directory');
+        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261122-concierge-directory');
         
         // Add map container if not present
         if (!document.querySelector('.map-container')) {
@@ -167,8 +167,8 @@ class EnhancedDeploymentSystem {
 
     setupEventsPageFeatures() {
         // Add map integration to events page
-        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261119-been-with-friends');
-        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261119-been-with-friends');
+        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261122-concierge-directory');
+        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261122-concierge-directory');
         
         // Add map container if not present
         if (!document.querySelector('.map-container')) {
@@ -178,8 +178,8 @@ class EnhancedDeploymentSystem {
 
     setupNightlifePageFeatures() {
         // Add map integration to nightlife page
-        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261119-been-with-friends');
-        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261119-been-with-friends');
+        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261122-concierge-directory');
+        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261122-concierge-directory');
         
         // Add map container if not present
         if (!document.querySelector('.map-container')) {
@@ -257,8 +257,8 @@ class EnhancedDeploymentSystem {
                 console.log('Enhanced filters added');
                 
                 // Load enhanced filters CSS and JS
-                this.ensureCSSLoaded('css/tonights-picks-enhanced-filters.css?v=connected-20261119-been-with-friends');
-                this.ensureJSLoaded('js/enhanced-filters-interactive.js?v=connected-20261119-been-with-friends');
+                this.ensureCSSLoaded('css/tonights-picks-enhanced-filters.css?v=connected-20261122-concierge-directory');
+                this.ensureJSLoaded('js/enhanced-filters-interactive.js?v=connected-20261122-concierge-directory');
             }
         }
     }
@@ -297,8 +297,8 @@ class EnhancedDeploymentSystem {
             
             heroSection.insertAdjacentHTML('afterend', mapPreviewHTML);
             
-            this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261119-been-with-friends');
-            this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261119-been-with-friends');
+            this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261122-concierge-directory');
+            this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261122-concierge-directory');
             
             console.log('Home page map integration added');
         }

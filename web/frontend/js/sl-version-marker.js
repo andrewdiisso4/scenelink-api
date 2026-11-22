@@ -17,11 +17,11 @@
 (function(){
   'use strict';
   var V = {
-    phase: 'been-with-friends',
-    sw_version: 'sl-connected-20261119-been-with-friends',
-    deploy: 'connected-20261119-been-with-friends',
-    built: '2026-11-19T00:47:46.061546+00:00',
-    backend_change: 'none'
+    phase: 'concierge-directory',
+    sw_version: 'sl-connected-20261122-concierge-directory',
+    deploy: 'connected-20261122-concierge-directory',
+    built: '2026-11-22T01:10:00+00:00',
+    backend_change: 'compatible-concierge'
   };
   // Always-available global
   try { window.SCENELINK_VERSION = V; } catch(_){}

@@ -148,6 +148,15 @@ test('guests and non-pilot accounts use only the directory', async t => {
     }
 });
 
+test('an older backend without the capabilities route never opts in and still serves directory results', async t => {
+    const b = await browser(t, { capability: () => reply({}, false) });
+    b.app.draft('Find restaurants in Seaport');
+    b.send();
+    await until(() => b.w.document.body.textContent.includes('Test response'));
+    assert.equal(b.button('Use AI once'), undefined);
+    assert.deepEqual(b.posts().map(p => p.body.ai), [false]);
+});
+
 test('a previously confirmed reply finishing after close and reopen cannot change the reopened conversation', async t => {
     let oldResolve;
     const b = await browser(t, { post: () => new Promise(r => { oldResolve = r; }) });

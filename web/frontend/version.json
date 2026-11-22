@@ -1,10 +1,10 @@
 {
-  "phase": "been-with-friends",
-  "sw_version": "sl-connected-20261119-been-with-friends",
-  "timestamp": "2026-11-19T00:47:46.061546+00:00",
+  "phase": "concierge-directory",
+  "sw_version": "sl-connected-20261122-concierge-directory",
+  "timestamp": "2026-11-22T01:10:00+00:00",
   "status": "versioned_build",
   "requires_paired_backend": false,
   "required_migration": "016_private_list_invitations.sql",
-  "rollout_order": "compatible_frontend_then_backend",
-  "summary": "Track Want to Try and Been separately, log private visits or explicitly share with friends, and show real friend-scoped activity. Uses existing backend; no venue imports or provider changes."
+  "rollout_order": "compatible_backend_then_frontend",
+  "summary": "Concierge directory improvements and an AI pilot that stays off by default. No new database migrations, provider activation or venue imports."
 }
