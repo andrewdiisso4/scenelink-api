@@ -14,9 +14,18 @@ if(fs.existsSync(path.join(root,'.env')))throw Error('Use a prepared checkout wi
 process.chdir(root);process.env.DATABASE_URL=connection;process.env.NODE_ENV='test';
 process.env.JWT_SECRET=crypto.randomBytes(48).toString('hex');process.env.ADMIN_SECRET=crypto.randomBytes(32).toString('hex');
 process.env.ALLOW_DEMO_SEED='false';process.env.FORCE_RESEED='false';process.env.EMAIL_PROVIDER='disabled';
-for(const key of ['OPENAI_API_KEY','SMTP_HOST','SMTP_USER','SMTP_PASS','SENTRY_DSN','CLOUDINARY_URL','CLOUDINARY_UPLOAD_PRESET'])delete process.env[key];
+for(const key of ['OPENAI_API_KEY','CONCIERGE_AI_PILOT_ENABLED','CONCIERGE_AI_PILOT_USER_IDS','SMTP_HOST','SMTP_USER','SMTP_PASS','SENTRY_DSN','CLOUDINARY_URL','CLOUDINARY_UPLOAD_PRESET'])delete process.env[key];
 const digest=value=>crypto.createHash('sha256').update(value).digest('hex');
 const originalFetch=global.fetch,checks=[],observations=[],modelRequests=[];
+const pilotHistoryCanary='UNSHARED_TRANSCRIPT_CANARY_FOR_NATIVE_ACCEPTANCE';
+function enableMockPilot(userId){
+  mockModelEnabled=true;process.env.OPENAI_API_KEY='synthetic-offline-transport-only';
+  process.env.CONCIERGE_AI_PILOT_ENABLED='true';process.env.CONCIERGE_AI_PILOT_USER_IDS=userId;
+}
+function disableMockPilot(){
+  mockModelEnabled=false;
+  for(const key of ['OPENAI_API_KEY','CONCIERGE_AI_PILOT_ENABLED','CONCIERGE_AI_PILOT_USER_IDS'])delete process.env[key];
+}
 let pool,server,origin,externalAttempts=0,mockModelEnabled=false;
 global.fetch=async(url,options)=>{
   const parsed=new URL(String(url));
@@ -24,6 +33,7 @@ global.fetch=async(url,options)=>{
   if(mockModelEnabled&&String(url)==='https://api.openai.com/v1/responses'){
     const body=JSON.parse(options.body),text=body.input.at(-1).content[0].text;
     const marker='Available venues (ONLY recommend from this list — use these exact ids):\n';
+    assert.equal(body.store,false);assert.equal(body.input.length,1);
     assert(text.includes(marker),'Model transport must provide an explicit bounded candidate list');
     const candidates=JSON.parse(text.slice(text.lastIndexOf(marker)+marker.length));
     modelRequests.push({body,candidates});
@@ -49,7 +59,7 @@ async function api(method,route,body,token,expected=200,client='conversation'){
     'X-Forwarded-For':addresses[client],...(token?{Authorization:'Bearer '+token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});
   const data=await response.json();
   assert.equal(response.status,expected,method+' '+route+': '+JSON.stringify(data));
-  if(route==='/concierge')assert.match(response.headers.get('cache-control')||'',/private.*no-store/);
+  if(route==='/concierge'||route==='/concierge/capabilities')assert.match(response.headers.get('cache-control')||'',/private.*no-store/);
   return data;
 }
 async function ask(label,body,token,client='conversation'){
@@ -247,13 +257,31 @@ async function main(){
     assert.deepEqual(noEvents.events,[]);expectIds(noEvents,[]);
   });
   await check('unsupported relative event date asks for clarification without model or unrelated results',async()=>{
-    mockModelEnabled=true;process.env.OPENAI_API_KEY='synthetic-offline-transport-only';
+    enableMockPilot(users.alice.id);
     try{
       const before=modelRequests.length,data=await ask('unsupported next weekday',{
-        message:'concerts in Cambridge next Tuesday',ai:true},null,'events');
+        message:'concerts in Cambridge next Tuesday',ai:true},users.alice.token,'events');
       assert.deepEqual(data.events,[]);expectIds(data,[]);assert.equal(modelRequests.length,before);
       assert.match(data.response,/date|YYYY-MM-DD|supported|clarif/i);
-    }finally{mockModelEnabled=false;delete process.env.OPENAI_API_KEY;}
+    }finally{disableMockPilot();}
+  });
+
+  await check('pilot capability and explicit consent use authenticated server identity',async()=>{
+    const query={message:'Find Italian restaurants in Back Bay'};
+    assert.deepEqual(await api('GET','/concierge/capabilities',undefined,users.alice.token,200,'model'),{ai_pilot:false});
+    enableMockPilot(users.alice.id);
+    try {
+      assert.deepEqual(await api('GET','/concierge/capabilities',undefined,users.alice.token,200,'model'),{ai_pilot:true});
+      assert.deepEqual(await api('GET','/concierge/capabilities',undefined,users.bob.token,200,'model'),{ai_pilot:false});
+      assert.deepEqual(await api('GET','/concierge/capabilities',undefined,null,200,'model'),{ai_pilot:false});
+      const before=modelRequests.length;
+      for(const [extra,token] of [[{},users.alice.token],[{ai:false},users.alice.token],
+        [{ai:'true'},users.alice.token],[{ai:true,userId:users.alice.id},users.bob.token],[{ai:true},null]]){
+        const data=await api('POST','/concierge',{...query,...extra},token,200,'model');
+        assert.notEqual(data.source,'openai');expectIds(data,[venues.aster.id]);
+      }
+      assert.equal(modelRequests.length,before,'Directory requests must not contact the model');
+    }finally{disableMockPilot();}
   });
 
   const modelCases=[
@@ -264,12 +292,14 @@ async function main(){
   ];
   for(const [label,body,expected]of modelCases){
     await check(label+' uses the same constrained native candidates as fallback',async()=>{
-      mockModelEnabled=true;process.env.OPENAI_API_KEY='synthetic-offline-transport-only';
+      enableMockPilot(users.alice.id);
       try{
-        const before=modelRequests.length,data=await ask(label,{...body,ai:true},null,'model');
+        const before=modelRequests.length,data=await ask(label,{...body,ai:true},users.alice.token,'model');
+        assert.equal(data.source,'openai');
+        assert(!data.response.includes('Synthetic offline model:'),'Model prose is not user-visible');
         assert.equal(modelRequests.length,before+1,'The AI transport stub was actually reached');
         expectIds(data,expected);assert.deepEqual(modelRequests.at(-1).candidates.map(v=>v.id).sort(),expected.slice().sort());
-      }finally{mockModelEnabled=false;delete process.env.OPENAI_API_KEY;}
+      }finally{disableMockPilot();}
     });
   }
 
@@ -283,15 +313,17 @@ async function main(){
       const text=JSON.stringify(data);assert(!text.includes(secretMarker));assert(!text.includes('PRIVATE_PROFILE_'));
       assert((data.venues||[]).some(v=>v.id===venues.iris.id),'No server-side inheritance of Alice Back Bay request');
     }
-    mockModelEnabled=true;process.env.OPENAI_API_KEY='synthetic-offline-transport-only';
+    enableMockPilot(users.bob.id);
     try{
       const before=modelRequests.length;
       await ask('authenticated model input excludes account data',{message:'Find Italian restaurants in Back Bay',ai:true,
-        session_id:session,userId:users.alice.id,context:{user_id:users.alice.id}},users.bob.token,'model');
+        session_id:session,userId:users.alice.id,history:[{role:'user',content:pilotHistoryCanary}],
+        context:{user_id:users.alice.id}},users.bob.token,'model');
       assert.equal(modelRequests.length,before+1);
       assert(!JSON.stringify(modelRequests.at(-1).body).includes(secretMarker));
       assert(!JSON.stringify(modelRequests.at(-1).body).includes('PRIVATE_PROFILE_'));
-    }finally{mockModelEnabled=false;delete process.env.OPENAI_API_KEY;}
+      assert(!JSON.stringify(modelRequests.at(-1).body).includes(pilotHistoryCanary));
+    }finally{disableMockPilot();}
     const analytics=(await pool.query('SELECT user_id,anon,properties FROM analytics_events WHERE session_id=$1 ORDER BY id',[session])).rows;
     assert(analytics.some(row=>row.user_id===users.bob.id&&row.anon===false));
     assert(analytics.some(row=>row.user_id===null&&row.anon===true));
@@ -338,6 +370,6 @@ async function main(){
   assert(checks.every(row=>row.passed),'Native concierge conversation acceptance failed');
 }
 main().catch(error=>{console.error(error.stack);process.exitCode=1;}).finally(async()=>{
-  global.fetch=originalFetch;delete process.env.OPENAI_API_KEY;
+  global.fetch=originalFetch;disableMockPilot();
   if(server)await new Promise(resolve=>server.close(resolve));if(pool)await pool.end();
 });

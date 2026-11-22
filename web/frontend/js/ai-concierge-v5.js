@@ -208,26 +208,42 @@
         } catch (_) { return null; }
     }
 
-    function generateResponse(query) {
+    function isCurrentSession(generation, token) {
+        return generation === sessionGeneration && token === getAuthToken();
+    }
+
+    async function getPilotAvailability(token) {
+        if (!token || _backendAvailable === false) return false;
+        var controller = new AbortController();
+        var timeout = setTimeout(function () { controller.abort(); }, 1200);
+        try {
+            var res = await fetch(API_BASE + '/concierge/capabilities', {
+                headers: { 'Accept': 'application/json', 'Authorization': 'Bearer ' + token },
+                cache: 'no-store',
+                signal: controller.signal
+            });
+            return res.ok && (await res.json()).ai_pilot === true;
+        } catch (_) { return false; }
+        finally { clearTimeout(timeout); }
+    }
+
+    function generateResponse(query, optIn) {
         var generation = sessionGeneration;
+        var token = getAuthToken();
         var pending = _requestQueue.then(function () {
-            if (generation !== sessionGeneration) return null;
-            return requestConciergeResponse(query);
+            if (!isCurrentSession(generation, token)) return null;
+            return requestConciergeResponse(query, optIn === true && !!token, token);
         });
         _requestQueue = pending.catch(function () {});
         return pending;
     }
 
-    async function requestConciergeResponse(query) {
+    async function requestConciergeResponse(query, optIn, tok) {
         var generation = sessionGeneration;
-        try {
-            window.dispatchEvent(new CustomEvent('sl:concierge-ask', { detail: { query: query } }));
-        } catch(_){}
 
         if (_backendAvailable !== false) {
             try {
                 var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
-                var tok = getAuthToken();
                 if (tok) headers['Authorization'] = 'Bearer ' + tok;
 
                 // Build pageContext from current page (no PII)
@@ -239,16 +255,17 @@
                     headers: headers,
                     body: JSON.stringify({
                         message: query,
+                        ai: optIn,
                         session_id: _conciergeSession,
                         history: _convoHistory.slice(-6),
                         context: pageContext
                     })
                 });
-                if (generation !== sessionGeneration) return null;
+                if (!isCurrentSession(generation, tok)) return null;
                 if (res.status === 429) {
                     _backendAvailable = true;
                     var rd = await res.json().catch(function(){ return {}; });
-                    if (generation !== sessionGeneration) return null;
+                    if (!isCurrentSession(generation, tok)) return null;
                     return {
                         text: rd.reply || 'Whoa — slow down for a moment. Try again in a few seconds.',
                         plan: null, venueCards: [], quickReplies: [], requiresLogin: false, isLoggedIn: !!tok, notice: null
@@ -257,7 +274,7 @@
                 if (res.ok) {
                     _backendAvailable = true;
                     var data = await res.json();
-                    if (generation !== sessionGeneration) return null;
+                    if (!isCurrentSession(generation, tok)) return null;
                     if (data.ok) {
                         _searchContext = data.search_context || null;
                         // Track conversation for context
@@ -276,14 +293,14 @@
                             notice: data.notice || null,
                             isLoggedIn: !!tok,
                             requiresLogin: !!data.requiresLogin,
-                            source: data.source,
+                            source: optIn && data.source === 'openai' ? 'openai' : data.source === 'openai' ? null : data.source,
                             intent: data.intent
                         };
                     }
                 }
                 if (res.status >= 400 && res.status < 500) {
                     var ed = await res.json().catch(function(){ return {}; });
-                    if (generation !== sessionGeneration) return null;
+                    if (!isCurrentSession(generation, tok)) return null;
                     return {
                         text: ed.error || 'That message didn\u2019t work — try rephrasing?',
                         plan: null, venueCards: [], quickReplies: [], requiresLogin: false, isLoggedIn: !!tok, notice: null
@@ -291,15 +308,15 @@
                 }
                 _backendAvailable = false;
             } catch (err) {
-                if (generation !== sessionGeneration) return null;
-                console.warn('[concierge] backend unavailable, using client fallback:', err.message);
+                if (!isCurrentSession(generation, tok)) return null;
+                console.warn('[concierge] backend unavailable, using client fallback');
                 _backendAvailable = false;
             }
         }
 
         // Last-resort client-side fallback (should rarely hit — backend has its own fallback)
         var cs = await generateResponseClientSide(query);
-        if (generation !== sessionGeneration) return null;
+        if (!isCurrentSession(generation, tok)) return null;
         return {
             text: cs.text,
             plan: null,
@@ -500,11 +517,11 @@
     function buildUI() {
         var fab = document.createElement('button');
         fab.className = 'sl-concierge-fab sl-concierge-fab-v5';
-        fab.setAttribute('aria-label', 'Open AI Concierge');
+        fab.setAttribute('aria-label', 'Open SceneLink Concierge');
         fab.innerHTML =
             '<div class="slc-fab-pulse"></div>' +
             '<svg viewBox="0 0 24 24" width="26" height="26" fill="#0a0a0a"><path d="M12 2l2.4 5.4L20 9l-4.5 4 1.5 6L12 16l-5 3 1.5-6L4 9l5.6-1.6L12 2z"/></svg>' +
-            '<span class="slc-fab-tooltip">Ask AI</span>';
+            '<span class="slc-fab-tooltip">Ask Concierge</span>';
 
         var panel = document.createElement('div');
         panel.className = 'sl-concierge-panel sl-concierge-panel-v5';
@@ -515,8 +532,8 @@
                         '<svg viewBox="0 0 24 24" width="20" height="20" fill="#0a0a0a"><path d="M12 2l2.4 5.4L20 9l-4.5 4 1.5 6L12 16l-5 3 1.5-6L4 9l5.6-1.6L12 2z"/></svg>' +
                     '</div>' +
                     '<div>' +
-                        '<div class="slc-title">SceneLink <span class="slc-badge">AI</span></div>' +
-                        '<div class="slc-subtitle"><span class="slc-online-dot"></span> Online · Boston</div>' +
+                        '<div class="slc-title">SceneLink Concierge</div>' +
+                        '<div class="slc-subtitle">Boston venues &amp; events</div>' +
                     '</div>' +
                 '</div>' +
                 '<button class="slc-close" aria-label="Close">' +
@@ -540,9 +557,17 @@
         var close = panel.querySelector('.slc-close');
 
         var state = { open: false, greeted: false };
-        var focusTimer = null, askTimer = null, opener = null;
+        var focusTimer = null, opener = null;
+        var pendingChoice = null, choiceGeneration = 0;
+        var accountToken = getAuthToken();
+
+        function clearChoice() {
+            choiceGeneration++;
+            if (pendingChoice) pendingChoice.remove();
+            pendingChoice = null;
+        }
         var draftStore = window.SLConciergeDraft;
-        input.addEventListener('input',function(){if(draftStore)draftStore.save(input.value);});
+        input.addEventListener('input',function(){clearChoice();if(draftStore)draftStore.save(input.value);});
         panel.setAttribute('role','dialog');
         panel.setAttribute('aria-label','SceneLink Concierge');
 
@@ -586,6 +611,7 @@
             });
             messages.appendChild(w);
             messages.scrollTop = messages.scrollHeight;
+            return w;
         }
 
         function addVenues(venues) {
@@ -666,9 +692,57 @@
         }
 
         async function handleMessage(text) {
-            var generation = sessionGeneration;
-            text = (text || '').trim();
-            if (!text) return;
+            syncAccount();
+            text = (text || '').trim().slice(0, 500);
+            if (!state.open || !text) return;
+            clearChoice();
+            var choice = choiceGeneration, generation = sessionGeneration, token = getAuthToken();
+            var guided = /^(plan my night|build my night|dinner then drinks)$/i.test(text);
+            var eligible = !guided && token && await getPilotAvailability(token);
+            function current() {
+                return state.open && choice === choiceGeneration && isCurrentSession(generation, token);
+            }
+            if (!current()) return;
+            if (!eligible) return submitMessage(text, false);
+
+            var box = document.createElement('div');
+            box.className = 'slc-msg slc-msg-bot';
+            box.setAttribute('role', 'group');
+            box.setAttribute('aria-label', 'Choose how to answer this request');
+            var content = document.createElement('div');
+            content.className = 'slc-msg-bubble';
+            var description = document.createElement('p');
+            description.textContent = 'Use AI for this request? OpenAI will receive the message below, relevant search preferences from this chat, and public venue options. Your saved venues, profile and earlier messages aren’t sent as chat history. Don’t include personal details.';
+            var preview = document.createElement('p');
+            preview.textContent = text;
+            content.appendChild(description);
+            content.appendChild(preview);
+            function button(label, optIn) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'slc-chip';
+                b.textContent = label;
+                b.addEventListener('click', function () {
+                    if (!current()) return;
+                    clearChoice();
+                    if (optIn !== null) submitMessage(text, optIn);
+                    input.focus();
+                });
+                content.appendChild(b);
+                return b;
+            }
+            button('Use AI once', true);
+            var directory = button('Search directory', false);
+            button('Cancel', null);
+            box.appendChild(content);
+            pendingChoice = box;
+            messages.appendChild(box);
+            messages.scrollTop = messages.scrollHeight;
+            directory.focus();
+        }
+
+        async function submitMessage(text, optIn) {
+            var generation = sessionGeneration, token = getAuthToken();
             if (draftStore) draftStore.clear();
             addMessage(text, 'user');
             input.value = '';
@@ -684,22 +758,28 @@
 
             var t = addTyping();
             try {
-                var resp = await generateResponse(text);
+                var resp = await generateResponse(text, optIn);
                 setTimeout(function () {
                     t.remove();
-                    if (generation === sessionGeneration) renderConciergeResponse(resp);
+                    if (state.open && isCurrentSession(generation, token)) renderConciergeResponse(resp, optIn);
                 }, 350 + Math.random() * 250);
             } catch (e) {
                 t.remove();
-                if (generation === sessionGeneration) addMessage("Hmm, something went wrong. Try again?", 'bot');
+                if (state.open && isCurrentSession(generation, token)) addMessage("Hmm, something went wrong. Try again?", 'bot');
             }
         }
 
         // ─────────────────────────────────────────────────────────────────
         // RENDER the full structured response from POST /api/concierge
         // ─────────────────────────────────────────────────────────────────
-        function renderConciergeResponse(resp) {
+        function renderConciergeResponse(resp, optIn) {
             if (!resp) { addMessage("Hmm, something went wrong. Try again?", 'bot'); return; }
+
+            if (resp.source === 'openai') {
+                addMessage('<span class="slc-notice">AI-ranked SceneLink venues</span>', 'bot');
+            } else if (optIn && resp.source) {
+                addMessage('<span class="slc-notice">AI wasn’t used for these results. Showing SceneLink directory results.</span>', 'bot');
+            }
 
             if (resp.notice) {
                 addMessage('<span class="slc-notice"><i class="fas fa-info-circle"></i> ' + escHtmlC(resp.notice) + '</span>', 'bot');
@@ -978,7 +1058,7 @@
 
         async function generateItinerary() {
             var t = addTyping();
-            var generation = sessionGeneration, night = _bmnState;
+            var generation = sessionGeneration, night = _bmnState, token = getAuthToken();
             var vibe = night.vibe || '';
             var hood = night.hood || '';
 
@@ -991,7 +1071,7 @@
                 for (var i = 0; i < queries.length; i++) {
                     var response;
                     try { response = await generateResponse(queries[i]); } catch (_) { response = null; }
-                    if (generation !== sessionGeneration || night !== _bmnState) return;
+                    if (!state.open || !isCurrentSession(generation, token) || night !== _bmnState) return;
                     responses.push(response);
                 }
                 var seen = new Set();
@@ -1022,7 +1102,7 @@
                 }
                 addQuickActions(['Plan my night', 'Explore venues']);
             } catch (e) {
-                if (generation === sessionGeneration && night === _bmnState) addMessage('I couldn\'t build that plan. Try again?', 'bot');
+                if (state.open && isCurrentSession(generation, token) && night === _bmnState) addMessage('I couldn\'t build that plan. Try again?', 'bot');
             } finally {
                 t.remove();
             }
@@ -1072,21 +1152,24 @@
                 getGreeting() + '! I can help you explore venues listed on SceneLink. Tell me what you\'re in the mood for, and I\'ll help you plan your night.',
                 'bot'
             );
+            var generation = sessionGeneration, token = getAuthToken();
             var fallback = getQuickActions(ctx);
-            addQuickActions(fallback);
+            var fallbackChips = addQuickActions(fallback);
             // Try backend suggestions (time-of-day aware)
             try {
                 fetch(API_BASE + '/concierge/suggestions').then(function(r){return r.ok?r.json():null;}).then(function(d){
-                    if (d && d.suggestions && d.suggestions.length) {
-                        var host = body.querySelector('.slc-quick-actions:last-child');
-                        if (host) host.remove();
-                        addQuickActions(d.suggestions);
+                    if (state.open && isCurrentSession(generation, token) && d && d.suggestions && d.suggestions.length) {
+                        if (fallbackChips && fallbackChips.parentNode === messages && messages.lastElementChild === fallbackChips) {
+                            fallbackChips.remove();
+                            addQuickActions(d.suggestions);
+                        }
                     }
                 }).catch(function(){});
             } catch(_){}
         }
 
         function openPanel() {
+            syncAccount();
             if (state.open) return;               // idempotent
             opener = document.activeElement;
             state.open = true;
@@ -1106,8 +1189,9 @@
         function closePanel() {
             if (!state.open) return;              // idempotent
             state.open = false;
+            sessionGeneration++;
             clearTimeout(focusTimer);
-            clearTimeout(askTimer);
+            clearChoice();
             if (draftStore) draftStore.clear();
             if (opener && opener.isConnected) { try { opener.focus(); } catch(_){} }
             panel.classList.remove('slc-panel-visible');
@@ -1153,13 +1237,44 @@
             if (e.key === 'Enter') { e.preventDefault(); handleMessage(input.value); }
         });
 
-        // Expose
+        function resetSession() {
+            sessionGeneration++;
+            accountToken = getAuthToken();
+            clearChoice();
+            _bmnState = null;
+            _conciergeSession = 'sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+            input.value = '';
+            if (draftStore) draftStore.clear();
+            _convoHistory = [];
+            _searchContext = null;
+            _backendAvailable = null;
+            _requestQueue = Promise.resolve();
+            messages.textContent = '';
+            state.greeted = false;
+            closePanel();
+        }
+
+        function syncAccount() {
+            if (accountToken !== getAuthToken()) resetSession();
+        }
+
+        window.addEventListener('sl:auth-changed', syncAccount);
+        window.addEventListener('storage', syncAccount);
+
+        function setDraft(q) {
+            clearChoice();
+            openPanel();
+            input.value = String(q || '').slice(0, 500);
+            if (draftStore) draftStore.save(input.value);
+        }
+
+        // Cross-page actions can draft a prompt, never submit or opt in.
         window.SLConcierge = {
-            resetSession: function(){sessionGeneration++;_conciergeSession='sess_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);clearTimeout(askTimer);input.value='';_convoHistory=[];_searchContext=null;_backendAvailable=null;_requestQueue=Promise.resolve();messages.textContent='';state.greeted=false;closePanel();},
-            draft: function (q) { clearTimeout(askTimer); openPanel(); input.value = String(q || "").slice(0,500); if (draftStore) draftStore.save(input.value); },
+            resetSession: resetSession,
+            draft: setDraft,
             open: openPanel,
             close: closePanel,
-            ask: function (q) { openPanel(); clearTimeout(askTimer); askTimer = setTimeout(function () { if (state.open) handleMessage(String(q || '').slice(0,500)); }, 300); }
+            ask: setDraft
         };
 
         // Global delegated click handler — works regardless of inline onclick failures
@@ -1193,10 +1308,10 @@
                 openPanel();
                 input.value = String(askParam).slice(0,500);
                 // Remove potentially personal draft text before later navigation.
-                if (!draftStore || !draftStore.save(input.value)) return;
                 params.delete('ask');
                 var remaining = params.toString();
                 history.replaceState(history.state, '', location.pathname + (remaining ? '?' + remaining : '') + location.hash);
+                if (draftStore) draftStore.save(input.value);
             }
         } catch (_) {}
     }

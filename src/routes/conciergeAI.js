@@ -32,7 +32,20 @@ const DEFAULT_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const MAX_OUTPUT_TOKENS = parseInt(process.env.OPENAI_MAX_OUTPUT_TOKENS || '700', 10);
 const REQUEST_TIMEOUT_MS = parseInt(process.env.OPENAI_TIMEOUT_MS || '15000', 10);
 const MAX_CANDIDATE_VENUES = 20;
-const MAX_CONTEXT_HISTORY = 6;
+const MAX_PILOT_ACCOUNTS = 20;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isEnabled({ userId, optedIn } = {}) {
+    if (optedIn !== true || process.env.CONCIERGE_AI_PILOT_ENABLED !== 'true'
+        || !process.env.OPENAI_API_KEY?.trim() || typeof userId !== 'string' || !UUID.test(userId)) {
+        return false;
+    }
+    const config = process.env.CONCIERGE_AI_PILOT_USER_IDS || '';
+    if (config.length > 2048) return false;
+    const allowed = config.split(',').map(id => id.trim().toLowerCase());
+    if (allowed.length > MAX_PILOT_ACCOUNTS || allowed.some(id => !UUID.test(id))) return false;
+    return allowed.includes(userId.toLowerCase());
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SYSTEM PROMPT
@@ -149,7 +162,7 @@ const VENUE_SELECT = `
     NULL::boolean AS trending, NULL::boolean AS featured, NULL::boolean AS is_open_now, hours_display
 `;
 
-async function fetchCandidateVenues(filters, limit = MAX_CANDIDATE_VENUES) {
+async function fetchCandidateVenues(filters, limit = MAX_CANDIDATE_VENUES, recheckIds = null) {
     const where = [availableVenueSQL(''), visibleDiscoveryVenueSQL('venues')];
     const params = [];
     let i = 1;
@@ -181,6 +194,12 @@ async function fetchCandidateVenues(filters, limit = MAX_CANDIDATE_VENUES) {
     const excluded = exclusionSQL(filters, i);
     where.push(...excluded.conditions);
     params.push(...excluded.values);
+    if (recheckIds !== null) {
+        const ids = recheckIds.filter(id => typeof id === 'string' && UUID.test(id));
+        if (!ids.length) return [];
+        params.push(ids);
+        where.push(`id = ANY($${params.length}::uuid[])`);
+    }
 
     // Search constraints come from facts; seed popularity, random order and
     // unreviewed marketing copy never become a recommendation score.
@@ -270,7 +289,7 @@ function summarizeVenueForLLM(v) {
     };
 }
 
-async function callOpenAI({ message, history, filters, candidates, userContext }) {
+async function callOpenAI({ message, filters, candidates }) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('OPENAI_API_KEY not set');
 
@@ -294,43 +313,17 @@ async function callOpenAI({ message, history, filters, candidates, userContext }
             excludedVenueNames: filters.excludedVenueNames
         })}`,
         ``,
-        userContext
-            ? `User profile: ${JSON.stringify({
-                  name: userContext.displayName,
-                  home: userContext.homeNeighborhood,
-                  savedVenuesCount: userContext.savedVenues.length,
-                  recentlySaved: userContext.savedVenues.slice(0, 5)
-              })}`
-            : `User: not logged in (general recommendations only, no personalization).`,
-        ``,
         `Available venues (ONLY recommend from this list — use these exact ids):`,
         JSON.stringify(candidateSummaries)
     ].join('\n');
 
-    const input = [];
-    if (Array.isArray(history)) {
-        for (const turn of history.slice(-MAX_CONTEXT_HISTORY)) {
-            if (!turn || !turn.role || !turn.content) continue;
-            if (turn.role === 'user') {
-                input.push({
-                    role: 'user',
-                    content: [{ type: 'input_text', text: String(turn.content).slice(0, 500) }]
-                });
-            } else if (turn.role === 'assistant') {
-                input.push({
-                    role: 'assistant',
-                    content: [{ type: 'output_text', text: String(turn.content).slice(0, 500) }]
-                });
-            }
-        }
-    }
-    input.push({
-        role: 'user',
-        content: [{ type: 'input_text', text: userInput }]
-    });
+    // Consent covers the current prompt and parsed public search preferences,
+    // not the raw transcript or private account data.
+    const input = [{ role: 'user', content: [{ type: 'input_text', text: userInput }] }];
 
     const body = {
         model: DEFAULT_MODEL,
+        store: false,
         instructions: SYSTEM_PROMPT,
         input,
         max_output_tokens: MAX_OUTPUT_TOKENS,
@@ -363,12 +356,9 @@ async function callOpenAI({ message, history, filters, candidates, userContext }
     }
 
     if (!resp.ok) {
-        const errText = await resp.text().catch(() => '');
-        // Never log the key; strip any sk-* token from the snippet before throwing
-        const snippet = errText.slice(0, 300).replace(/sk-[A-Za-z0-9_-]+/g, 'sk-***');
+        // Provider errors may include prompt text. Keep only the status.
         const err = new Error(`OpenAI ${resp.status}`);
         err.status = resp.status;
-        err.snippet = snippet;
         throw err;
     }
 
@@ -397,7 +387,8 @@ function extractStructured(resp) {
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN ENTRY
 // ═══════════════════════════════════════════════════════════════════════════
-async function runAIConcierge({ message, history = [], context = {}, resolvedRequest = null }) {
+async function runAIConcierge({ message, history = [], context = {}, resolvedRequest = null, access }) {
+    if (!isEnabled(access)) throw new Error('Concierge model pilot is not available');
     const startedAt = Date.now();
     const request = resolvedRequest || await resolveConversation({ pool, message, history, context, parse: parseFilters });
     const filters = request.filters;
@@ -406,10 +397,7 @@ async function runAIConcierge({ message, history = [], context = {}, resolvedReq
             recommendedPlan: null, recommendedVenues: [], quickReplies: [], candidates: [], filters, tokensUsed: 0, ms: Date.now() - startedAt };
     }
 
-    const [candidates, userContext] = await Promise.all([
-        fetchCandidateVenues(filters),
-        null // No saved profile/favorites are sent to an external model without a separate opt-in.
-    ]);
+    const candidates = await fetchCandidateVenues(filters);
 
     if (!candidates.length) {
         return {
@@ -427,23 +415,27 @@ async function runAIConcierge({ message, history = [], context = {}, resolvedReq
         };
     }
 
-    const raw = await callOpenAI({ message, history, filters, candidates, userContext });
+    const raw = await callOpenAI({ message, filters, candidates });
     const structured = extractStructured(raw);
 
-    const allowedIds = new Set(candidates.map(c => String(c.id)));
+    // The model can rank IDs. It cannot publish facts or add venues to the result.
+    const proposed = new Set(candidates.map(v => String(v.id)));
+    const selectIds = (items, cap) => [...new Set(
+        (Array.isArray(items) ? items : []).map(item => item?.venueId)
+            .filter(id => typeof id === 'string' && UUID.test(id) && proposed.has(id))
+    )].slice(0, cap);
+    const stopIds = filters.isPlan ? selectIds(structured?.recommendedPlan?.stops, 3) : [];
+    const venueIds = selectIds(structured?.recommendedVenues, 6);
+    const chosen = [...new Set([...stopIds, ...venueIds])];
+    if (!chosen.length) throw new Error('No grounded model selections');
 
-    if (structured.recommendedPlan && Array.isArray(structured.recommendedPlan.stops)) {
-        structured.recommendedPlan.stops = structured.recommendedPlan.stops.filter(
-            s => s && s.venueId && allowedIds.has(String(s.venueId))
-        );
-        if (!structured.recommendedPlan.stops.length) {
-            structured.recommendedPlan = null;
-        }
-    }
-    if (Array.isArray(structured.recommendedVenues)) {
-        structured.recommendedVenues = structured.recommendedVenues.filter(
-            v => v && v.venueId && allowedIds.has(String(v.venueId))
-        );
+    // Recheck the same filters and public visibility after the model returns.
+    const current = await fetchCandidateVenues(filters, MAX_CANDIDATE_VENUES, chosen);
+    const byId = new Map(current.map(v => [String(v.id), v]));
+    const stops = stopIds.filter(id => byId.has(id)).map(venueId => ({ venueId }));
+    const ranked = venueIds.filter(id => byId.has(id)).map(venueId => ({ venueId }));
+    if (stops.length !== stopIds.length || !stops.length && !ranked.length) {
+        throw new Error('Model selections changed before display');
     }
 
     const tokensUsed =
@@ -452,12 +444,13 @@ async function runAIConcierge({ message, history = [], context = {}, resolvedReq
     return {
         ok: true,
         source: 'openai',
-        reply: String(structured.reply || '').slice(0, 600),
-        intent: structured.intent || 'other',
-        recommendedPlan: structured.recommendedPlan || null,
-        recommendedVenues: structured.recommendedVenues || [],
-        quickReplies: (structured.quickReplies || []).slice(0, 5),
-        candidates,
+        reply: stops.length ? 'Here’s a suggested plan. Confirm hours and availability with each venue.'
+            : 'Here are matching places to consider. Confirm hours and availability with each venue.',
+        intent: stops.length ? 'plan_night' : 'find_venue',
+        recommendedPlan: stops.length ? { title: 'Your suggested plan', summary: '', stops } : null,
+        recommendedVenues: ranked,
+        quickReplies: [],
+        candidates: current,
         filters,
         tokensUsed,
         ms: Date.now() - startedAt
@@ -470,5 +463,5 @@ module.exports = {
     fetchVenuesByIds,
     parseFilters,
     summarizeVenueForLLM,
-    isEnabled: () => !!process.env.OPENAI_API_KEY
+    isEnabled
 };

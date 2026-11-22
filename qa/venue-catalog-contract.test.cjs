@@ -147,15 +147,15 @@ test('known unavailable bare name returns no related catalog rows or hidden stat
     const candidate=calls.find(x=>x.sql.includes('SELECT id, slug, name'));
     assert(candidate.sql.includes('lower(name) = lower($1)'));
     assert.equal(candidate.params[0],secretName);
-    const result=await ai.runAIConcierge({message:secretName});
-    assert.equal(result.source,'empty');
-    assert.deepEqual(result.candidates,[]);
+    await assert.rejects(ai.runAIConcierge({message:secretName}),/pilot is not available/);
     const oldKey=process.env.OPENAI_API_KEY,oldFetch=global.fetch;
     try {
       process.env.OPENAI_API_KEY='test-only-no-provider-call';
       global.fetch=async()=>{throw Error('Provider calls forbidden in this test');};
       await handler({body:{message:secretName}}, {setHeader(){},status(code){assert.equal(code,200);return this;},json(body){output=body;return body;}});
-      assert.equal(output.source,'empty');
+      assert.equal(output.source,'rule-based');
+      assert.deepEqual(output.venues,[]);
+      assert.deepEqual(output.events,[]);
       assert(!JSON.stringify(output).includes(secretName));
       assert(!/business_status|duplicate_of|duplicate_review|CLOSED|inactive/.test(JSON.stringify(output)));
     } finally {

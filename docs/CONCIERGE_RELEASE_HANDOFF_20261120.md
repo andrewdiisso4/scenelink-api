@@ -62,3 +62,11 @@ Run the ordinary gates with `npm run check`, `npm test`, `npm test --prefix web`
 4. Evaluate live model narrative and mixed multi-stop planning using the agreed provider configuration before calling Concierge release-complete. Keep unknown menu, timing, capacity and booking facts explicit.
 
 The GitHub handoff is a repository delivery. It is not evidence that Veylo has read a private message or approved either draft.
+
+## Follow-up: explicit AI pilot consent
+
+The earlier provider and validation descriptions above apply to the original draft commit, not this follow-up. The Concierge model is now off by default. Server-side pilot eligibility requires the exact opt-in flag, a configured key, authenticated verified participation, and inclusion in the configured test-account allowlist. The browser checks eligibility without caching and presents the choice again for each request. Declining or an unavailable pilot uses the directory. Cross-page actions draft rather than submit, and guided Build My Night remains directory-only.
+
+Only the current prompt, parsed search preferences and public venue candidates go to OpenAI; raw previous turns and signed-in profile/saved venues are not included as provider context. The application displays only rechecked catalog IDs and controlled copy, never model-written hours, availability or reservation claims. Source labels distinguish AI ranking from directory results.
+
+All provider validation in this draft uses a mock. Before enabling a pilot, require a separate exact-commit checkout and synthetic local PostgreSQL fixture, a restricted pilot-only credential, a hard request cap, redacted diagnostics and no retry or production routing. The standard Netlify preview is not isolated. A bounded real-model test and signed-in iPhone save/reopen test are still pending. No changes here authorize production enablement or venue intake.

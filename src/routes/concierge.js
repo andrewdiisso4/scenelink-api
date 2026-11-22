@@ -210,10 +210,11 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
                 intent: { primary: 'clarify' }, search_context: null, session_id });
         }
 
-        // ─── Try OpenAI first if enabled ───────────────────────────
-        if (aiEnabled() && req.body.ai !== false && !intent.is_event && !intent.is_help && !intent.is_greeting && !request.reset) {
+        // Opt-in is per request; caller-supplied context cannot establish identity.
+        const access = { userId: req.user?.id, optedIn: req.body.ai === true };
+        if (aiEnabled(access) && !intent.is_event && !intent.is_help && !intent.is_greeting && !request.reset) {
             try {
-                const result = await runAIConcierge({ message, history, context, resolvedRequest: request });
+                const result = await runAIConcierge({ message, history, context, resolvedRequest: request, access });
                 const byId = new Map(result.candidates.map(v => [String(v.id),v]));
                 const stops = result.recommendedPlan?.stops || [];
                 const ids = [...new Set([...result.recommendedVenues.map(v=>String(v.venueId)), ...stops.map(v=>String(v.venueId))])];
@@ -317,6 +318,13 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
             response: "Sorry, I had trouble with that. Try browsing Explore or Tonight for picks!"
         });
     }
+});
+
+// UI discovery only; POST independently verifies auth, allowlist and request consent.
+router.get('/capabilities', optionalAuth, (req, res) => {
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.vary('Authorization');
+    res.json({ ai_pilot: aiEnabled({ userId: req.user?.id, optedIn: true }) });
 });
 
 // ═════════════════════════════════════════════════════════════
