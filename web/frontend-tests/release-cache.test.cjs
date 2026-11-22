@@ -10,7 +10,7 @@ const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '../frontend');
-const tag = 'connected-20261122-concierge-directory';
+const tag = 'connected-20261122-concierge-reopen';
 const version = 'sl-' + tag;
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 
@@ -36,7 +36,7 @@ test('release marker, service-worker shell and every published asset hash agree'
   assert(read('js/sl-version-marker.js').includes("sw_version: '" + version + "'"));
   assert(read('js/sl-version-marker.js').includes("deploy: '" + tag + "'"));
   assert(read('js/sl-version-marker.js').includes("built: '" + metadata.timestamp + "'"));
-  const priorTag = 'connected-20261119-been-with-friends';
+  const priorTag = 'connected-20261122-concierge-directory';
   for (const file of ['index.html', 'explore.html', 'tonight.html', 'events.html', 'plan-with-friends.html']) {
     assert(!read(file).includes(priorTag), file);
     assert(read(file).includes('js/sl-phase8d-recovery.js?v=' + tag), file);
@@ -44,6 +44,7 @@ test('release marker, service-worker shell and every published asset hash agree'
   const loader = read('js/sl-phase8d-recovery.js');
   assert(loader.includes('js/ai-concierge-v5.js?v=' + tag));
   assert(!loader.includes(priorTag));
+  assert(read('plan-with-friends.html').includes('/js/sl-connected-plans.js?v=' + tag));
   const worker = read('sw.js');
   assert(worker.includes("const VERSION = '" + version + "'"));
   const shell = worker.match(/const SHELL_URLS = \[([\s\S]*?)\];/)[1];
@@ -64,7 +65,7 @@ test('release marker, service-worker shell and every published asset hash agree'
 test('service-worker install and activation evict the previous release without removing unrelated caches', async () => {
   const listeners = {}, deleted = [], fetched = [], cached = [], messages = [];
   const current = 'sl-shell-' + version;
-  const previous = 'sl-shell-sl-connected-20261119-been-with-friends';
+  const previous = 'sl-shell-sl-connected-20261122-concierge-directory';
   const names = new Set([current, previous, 'unrelated-app-cache']);
   let claimed = 0, skipped = 0;
   const context = {
@@ -97,7 +98,7 @@ test('service-worker install and activation evict the previous release without r
   assert(fetched.includes('/js/sl-connected-plans.js?v=' + tag));
   assert(fetched.includes('/js/ai-concierge-v5.js?v=' + tag));
   // An old tab may create an old-version runtime cache before activation.
-  names.add('sl-runtime-sl-connected-20261119-been-with-friends');
+  names.add('sl-runtime-sl-connected-20261122-concierge-directory');
   listeners.activate({ waitUntil: promise => { completion = promise; } });
   await completion;
   assert.equal(claimed, 1);

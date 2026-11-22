@@ -1,10 +1,10 @@
 {
   "phase": "concierge-directory",
-  "sw_version": "sl-connected-20261122-concierge-directory",
-  "timestamp": "2026-11-22T01:10:00+00:00",
+  "sw_version": "sl-connected-20261122-concierge-reopen",
+  "timestamp": "2026-11-22T06:54:17+00:00",
   "status": "versioned_build",
   "requires_paired_backend": false,
   "required_migration": "016_private_list_invitations.sql",
   "rollout_order": "compatible_backend_then_frontend",
-  "summary": "Concierge directory improvements and an AI pilot that stays off by default. No new database migrations, provider activation or venue imports."
+  "summary": "Concierge directory improvements and saved itinerary reopening. The AI pilot stays off by default. No new database migrations, provider activation or venue imports."
 }

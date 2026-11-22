@@ -18,9 +18,9 @@
   'use strict';
   var V = {
     phase: 'concierge-directory',
-    sw_version: 'sl-connected-20261122-concierge-directory',
-    deploy: 'connected-20261122-concierge-directory',
-    built: '2026-11-22T01:10:00+00:00',
+    sw_version: 'sl-connected-20261122-concierge-reopen',
+    deploy: 'connected-20261122-concierge-reopen',
+    built: '2026-11-22T06:54:17+00:00',
     backend_change: 'compatible-concierge'
   };
   // Always-available global
