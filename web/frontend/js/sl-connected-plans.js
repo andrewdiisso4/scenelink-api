@@ -11,6 +11,23 @@
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedRoom||''))requestedRoom=null;else requestedRoom=requestedRoom.toLowerCase();
   function auth() { if(C.token())return true; if(window.SLAuthUI)window.SLAuthUI.open('login'); return false; }
   const button=(act,text,attrs,secondary)=>'<button type="button" data-act="'+act+'" '+(attrs||'')+' class="'+(secondary?'sl-secondary':'')+'">'+E(text)+'</button>';
+  function savedItineraryMarkup(plan) {
+    const stops = Array.isArray(plan.stops) ? plan.stops : [];
+    const olderVenues = Array.isArray(plan.legacy_venues) ? plan.legacy_venues : [];
+    function venueRow(venue) {
+      const label = venue.venue_name || venue.name || 'Unnamed venue';
+      const unavailable = venue.venue_available === false ? ' · Currently unavailable' : '';
+      return '<li>' + E(label) + unavailable + '</li>';
+    }
+    const date = plan.date || plan.plan_date;
+    const savedDate = date ? '<p>' + E(String(date).slice(0, 10)) + '</p>' : '';
+    const ordered = stops.length ? '<h4>Stops</h4><ol>' + stops.map(venueRow).join('') + '</ol>' : '';
+    const unordered = olderVenues.length ? '<h4>Other saved venues</h4><ul>' + olderVenues.map(venueRow).join('') + '</ul>' : '';
+    const empty = Array.isArray(plan.stops) ? 'No stops saved yet.' : 'Stop details unavailable.';
+    return '<details class="sl-item"><summary>' + E(plan.name || plan.title || 'Untitled itinerary') +
+      '</summary>' + savedDate + (ordered + unordered || '<p>' + empty + '</p>') +
+      '<p>Saving an itinerary does not reserve a table.</p></details>';
+  }
   function skeleton() {
     host.innerHTML='<h1>Plan with friends</h1><p class="sl-muted">Private plans, real invitations and shared venue votes.</p><div class="sl-notice">A group decision or SceneLink RSVP is <strong>not a reservation</strong>. In-site reservations are not connected yet. Choosing a venue does not submit a booking request.</div><p id="slPlanStatus" role="status" tabindex="-1"></p><div id="slPlanContent"></div>';
   }
@@ -126,7 +143,7 @@
       if(!Array.isArray(r.rooms)||!Array.isArray(f.friends)||!Array.isArray(inv.invitations))throw new Error('The planning service returned an incomplete response.');
       rooms=append?rooms.concat(r.rooms.filter(x=>!rooms.some(old=>old.id===x.id))):r.rooms; friends=f.friends;friendsOffset=f.friends.length;friendsMore=f.has_more===true; loadMore=!!r.has_more;
       const content=document.getElementById('slPlanContent');
-      content.innerHTML='<div class="sl-columns"><div><section class="sl-panel"><h2>Your plans</h2>'+rooms.map(x=>'<p>'+button('open-room',x.name,'data-room="'+E(x.id)+'"',x.id!==selected)+' <small>'+E(x.state==='confirmed'?'Venue selected':x.state)+'</small></p>').join('')+(!rooms.length?'<p>No private plans yet.</p>':'')+(loadMore?button('more-rooms','Load more plans','',true):'')+'</section><section class="sl-panel"><h2>Create a private plan</h2><form id="slCreateRoom"><label for="slRoomName">Plan name</label><input id="slRoomName" required maxlength="100" placeholder="Friday dinner"><label for="slRoomDate">Date (optional)</label><input id="slRoomDate" type="date"><label for="slRoomDescription">Notes (optional)</label><textarea id="slRoomDescription" maxlength="1000"></textarea><p><button type="submit">Create plan</button></p></form></section><section class="sl-panel"><h2>Plan invitations</h2>'+(inv.invitations.length?inv.invitations.map(x=>'<article class="sl-item"><strong>'+E(x.name)+'</strong><p>From '+E(x.owner_name)+'</p><div class="sl-row">'+button('accept-invite','Accept','data-room="'+E(x.id)+'"')+button('decline-invite','Decline','data-room="'+E(x.id)+'"',true)+'</div></article>').join(''):'<p>No pending invitations.</p>')+'</section></div><div><div id="slRoomDetail"><section class="sl-panel"><h2>Choose a plan</h2><p>Create or open a plan to invite friends, shortlist venues and vote together.</p></section></div><section class="sl-panel"><h2>Friends</h2><form id="slFriendSearchForm"><label for="slFriendSearch">Find a person by name or username</label><input type="search" id="slFriendSearch" minlength="2" maxlength="80" required autocomplete="off"><p><button type="submit">Find people</button></p></form><div id="slFriendResults" aria-live="polite"></div><h3>Friend requests</h3>'+renderRequests(requests)+'<h3>Accepted friends</h3>'+(friends.length?'<ul id="slAcceptedFriends">'+friends.map(x=>'<li><a href="/profile?user='+enc(x.username||x.id)+'">'+E(x.display_name||x.username)+'</a> (@'+E(x.username)+')</li>').join('')+'</ul>':'<ul id="slAcceptedFriends"></ul><p>No accepted friends yet. Search above and choose the person before sending a request.</p>')+(friendsMore?button('more-friends','Load more friends','',true):'')+'</section><section class="sl-panel"><h2>Previous itineraries</h2><p>Existing saved itineraries have not been deleted. They are separate from these new private group plans.</p>'+button('legacy','Load saved itineraries','',true)+'<div id="slLegacyPlans"></div></section></div></div>';
+      content.innerHTML='<div class="sl-columns"><div><section class="sl-panel"><h2>Your plans</h2>'+rooms.map(x=>'<p>'+button('open-room',x.name,'data-room="'+E(x.id)+'"',x.id!==selected)+' <small>'+E(x.state==='confirmed'?'Venue selected':x.state)+'</small></p>').join('')+(!rooms.length?'<p>No private plans yet.</p>':'')+(loadMore?button('more-rooms','Load more plans','',true):'')+'</section><section class="sl-panel"><h2>Create a private plan</h2><form id="slCreateRoom"><label for="slRoomName">Plan name</label><input id="slRoomName" required maxlength="100" placeholder="Friday dinner"><label for="slRoomDate">Date (optional)</label><input id="slRoomDate" type="date"><label for="slRoomDescription">Notes (optional)</label><textarea id="slRoomDescription" maxlength="1000"></textarea><p><button type="submit">Create plan</button></p></form></section><section class="sl-panel"><h2>Plan invitations</h2>'+(inv.invitations.length?inv.invitations.map(x=>'<article class="sl-item"><strong>'+E(x.name)+'</strong><p>From '+E(x.owner_name)+'</p><div class="sl-row">'+button('accept-invite','Accept','data-room="'+E(x.id)+'"')+button('decline-invite','Decline','data-room="'+E(x.id)+'"',true)+'</div></article>').join(''):'<p>No pending invitations.</p>')+'</section></div><div><div id="slRoomDetail"><section class="sl-panel"><h2>Choose a plan</h2><p>Create or open a plan to invite friends, shortlist venues and vote together.</p></section></div><section class="sl-panel"><h2>Friends</h2><form id="slFriendSearchForm"><label for="slFriendSearch">Find a person by name or username</label><input type="search" id="slFriendSearch" minlength="2" maxlength="80" required autocomplete="off"><p><button type="submit">Find people</button></p></form><div id="slFriendResults" aria-live="polite"></div><h3>Friend requests</h3>'+renderRequests(requests)+'<h3>Accepted friends</h3>'+(friends.length?'<ul id="slAcceptedFriends">'+friends.map(x=>'<li><a href="/profile?user='+enc(x.username||x.id)+'">'+E(x.display_name||x.username)+'</a> (@'+E(x.username)+')</li>').join('')+'</ul>':'<ul id="slAcceptedFriends"></ul><p>No accepted friends yet. Search above and choose the person before sending a request.</p>')+(friendsMore?button('more-friends','Load more friends','',true):'')+'</section><section class="sl-panel"><h2>Saved itineraries</h2><p>Open a saved itinerary to see its stops.</p>'+button('legacy','Load saved itineraries','',true)+'<div id="slLegacyPlans"></div></section></div></div>';
       const create=document.getElementById('slCreateRoom');create.querySelector('#slRoomName').value=createDraft.name;create.querySelector('#slRoomDescription').value=createDraft.description;create.querySelector('#slRoomDate').value=createDraft.date;status(notice);
       const invitation=inv.invitations.find(x=>x.id===selected);
       if(invitation){document.getElementById('slRoomDetail').innerHTML='<section class="sl-panel"><h2>Private plan invitation</h2><p>'+E(invitation.name)+'</p><p>From '+E(invitation.owner_name)+'</p><p>Accept to join and view this private plan. Opening this link does not join automatically.</p><div class="sl-row">'+button('accept-invite','Accept','data-room="'+E(invitation.id)+'"')+button('decline-invite','Decline','data-room="'+E(invitation.id)+'"',true)+'</div></section>';}
@@ -165,7 +182,23 @@
       const d=drafts.get(rid);if(d&&!d.saving&&detail&&detail.id===rid&&detail.is_owner===true&&Number.isInteger(detail.revision)){d.revision=detail.revision;d.needsReview=false;d.message='Your draft is kept against the saved version shown above. Save when ready.';redrawRoom(rid,'#slEditName');}return;
     }
     if(act==='venue-detail'){window.SLVenueDetail.open(vid);return;}
-    if(act==='legacy'){const target=document.getElementById('slLegacyPlans');b.disabled=true;try{const d=await C.request('/plans');if(!currentAccount(session)||!target?.isConnected)return;const list=d.plans||[];target.innerHTML=list.length?list.map(p=>'<article class="sl-item"><strong>'+E(p.name||p.title)+'</strong><p>'+E(p.plan_date||'Date not provided')+' · Saved itinerary, not a reservation.</p></article>').join(''):'<p>No previous itineraries.</p>';}catch(err){if(currentAccount(session)&&target?.isConnected)status(err.message);}finally{if(b.isConnected)b.disabled=false;}return;}
+    if (act === 'legacy') {
+      const target = document.getElementById('slLegacyPlans');
+      b.disabled = true;
+      try {
+        const data = await C.request('/plans');
+        if (!currentAccount(session) || !target?.isConnected) return;
+        if (!Array.isArray(data?.plans)) throw new Error('Couldn’t load your saved itineraries. Please try again.');
+        target.innerHTML = data.plans.length
+          ? data.plans.map(savedItineraryMarkup).join('')
+          : '<p>No saved itineraries yet.</p>';
+      } catch (err) {
+        if (currentAccount(session) && target?.isConnected) status(err.message);
+      } finally {
+        if (b.isConnected) b.disabled = false;
+      }
+      return;
+    }
     if(!auth())return;
     if(act==='request-friend'){await perform(b,async()=>{const d=await C.request('/friends/request',{method:'POST',body:{user_id:b.dataset.user}});if(!['pending','accepted'].includes(d.status))throw new Error('Friend request not confirmed');},'Friend relationship saved. Pending requests require the other person to accept.');return;}
     if(act==='accept-friend'||act==='decline-friend'){await perform(b,async()=>{const d=await C.request('/friends/'+(act==='accept-friend'?'accept':'decline'),{method:'POST',body:{friendship_id:b.dataset.friendship}});if(d.status!==(act==='accept-friend'?'accepted':'declined'))throw new Error('Response not confirmed');},act==='accept-friend'?'Friend request accepted. You can now invite this friend.':'Friend request declined.');return;}
