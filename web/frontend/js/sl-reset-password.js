@@ -1,6 +1,8 @@
 /* Dedicated reset entry point. Token stays in this closure only. */
 (function () {
   'use strict';
+  var business = /^\/business-reset-password(?:\.html)?\/?$/.test(window.location.pathname);
+  var endpoint = business ? '/api/business/reset-password' : '/api/auth/reset-password';
   var token = '';
   var safeUrl = false;
   try {
@@ -43,7 +45,7 @@
       disabled(true);
       message('Resetting your password…');
       try {
-        var response = await fetch('/api/auth/reset-password', {
+        var response = await fetch(endpoint, {
           method: 'POST', mode: 'same-origin', credentials: 'omit', redirect: 'error',
           cache: 'no-store', referrerPolicy: 'no-referrer',
           headers: { 'Content-Type': 'application/json' },
@@ -53,6 +55,10 @@
           if (response.status === 400) message('The reset link is invalid, expired, or currently unavailable. Request a new reset link from SceneLink.', 'error');
           else if (response.status === 429) message('Too many attempts. Please wait before trying again.', 'error');
           else message('Password reset is temporarily unavailable. Please try again later.', 'error');
+          return;
+        }
+        if (business && (await response.json().catch(function(){ return null; }))?.ok !== true) {
+          message('The password change could not be confirmed. Try signing in or request a fresh link.', 'error');
           return;
         }
         token = '';

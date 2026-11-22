@@ -13,9 +13,12 @@ for name in ['sl-bundle-7d.js','sl-bundle-7d-ui.js']:
  p.write_text(header+'\n\n'.join('/* === '+m[1]+' === */\n'+(root/m[1]).read_text().strip() for m in matches)+'\n')
 # Every JS/CSS execution URL gets the release tag because exported originals have immutable caching.
 pattern=re.compile(r'((?:/?(?:js|css)/)[A-Za-z0-9_./-]+\.(?:js|css))(?:\?v=[A-Za-z0-9_.-]+)?(?=[\x27\x22])')
+def asset_tag(match):
+ asset=Path(match[1]).name
+ return match[1]+'?v='+('owner-20261122' if asset in {'sl-reset-password.js','sl-business-app.js'} else tag)
 for p in root.rglob('*'):
  if p.suffix not in ['.html','.js']:continue
- s=p.read_text();s=pattern.sub(lambda m:m[1]+'?v='+tag,s);p.write_text(s)
+ s=p.read_text();s=pattern.sub(asset_tag,s);p.write_text(s)
 p=root/'sw.js';s=p.read_text();s=re.sub(r"const VERSION = '[^']+';", "const VERSION = 'sl-"+tag+"';",s)
 for asset in ['sl-connected-api','sl-connected-actions','sl-connected-lists','sl-connected-plans','sl-events','sl-social-profile','sl-social-messages']:
  path="  '/js/"+asset+".js?v="+tag+"',"

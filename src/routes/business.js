@@ -115,7 +115,7 @@ router.post('/claim', authLimiter, async (req, res) => {
     try {
         const body = req.body || {};
         const venue_name = body.venue_name || body.venueName;
-        const email = body.email;
+        const email = identity.email(body.email);
         const password = body.password;
         const tier = body.tier;
         const phone = body.phone;
@@ -124,7 +124,6 @@ router.post('/claim', authLimiter, async (req, res) => {
             return res.status(400).json({ error: 'venue_name, email, and password are required' });
         }
         identity.password(password);
-        identity.email(email);
         H.text(venue_name, 'venue name', 255, {required:true});
 
         const existing = await pool.query('SELECT id FROM business_users WHERE LOWER(email)=LOWER($1)', [email]);
@@ -191,19 +190,20 @@ router.post('/login', authLimiter, async (req, res) => {
 
         const result = await pool.query(
             `SELECT id, email, password_hash, venue_name, venue_id, tier, status, auth_version FROM business_users WHERE LOWER(email)=LOWER($1)`,
-            [email]
+            [String(email).trim()]
         );
         if (!result.rows.length) {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
         const user = result.rows[0];
-        if (user.status !== 'active') return res.status(403).json({error:'Venue access requires an approved, active account'});
         if (typeof password !== 'string' || Buffer.byteLength(password) > 72) return res.status(401).json({error:'Invalid email or password'});
         const ok = await bcrypt.compare(password, user.password_hash);
         if (!ok) {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
+
+        if (user.status !== 'active') return res.status(403).json({error:'Venue access requires an approved, active account'});
 
         pool.query('UPDATE business_users SET last_login=NOW() WHERE id=$1', [user.id]).catch(()=>{});
 
@@ -504,7 +504,7 @@ router.get('/reviews', requireAuth, requireBusiness, async (req, res) => {
              ORDER BY r.created_at DESC
              LIMIT $2`,
             [venue_id, limit]
-        ).catch(()=>({ rows: [] }));
+        );
         res.json({ reviews: result.rows, linked: true });
     } catch (err) {
         if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
@@ -657,29 +657,21 @@ router.post('/venues/switch', requireAuth, requireBusiness, async (req, res) => 
         const { venue_id } = req.body || {};
         if (!venue_id) return res.status(400).json({ error: 'venue_id required' });
 
-        // Must own this venue
-        const owned = await pool.query(
-            `SELECT 1 FROM business_users WHERE id=$1 AND venue_id=$2
-             UNION
-             SELECT 1 FROM business_venues WHERE business_user_id=$1 AND venue_id=$2`,
-            [req.user.id, venue_id]
-        );
-        if (!owned.rows.length) return res.status(403).json({ error: 'You do not own this venue' });
-
-        // Set as primary on business_users (for /me, /venue, /analytics defaults)
-        const v = await pool.query('SELECT name FROM venues WHERE id=$1', [venue_id]);
-        await pool.query(
-            'UPDATE business_users SET venue_id=$1, venue_name=$2 WHERE id=$3',
-            [venue_id, v.rows[0]?.name || 'Venue', req.user.id]
-        );
-        // Update is_primary flags
-        await pool.query('UPDATE business_venues SET is_primary=false WHERE business_user_id=$1', [req.user.id]);
-        await pool.query(
-            `INSERT INTO business_venues (business_user_id, venue_id, is_primary)
-             VALUES ($1, $2, true)
-             ON CONFLICT (business_user_id, venue_id) DO UPDATE SET is_primary=true`,
-            [req.user.id, venue_id]
-        );
+        await H.transaction(pool, async db => {
+            const current = await db.query('SELECT venue_id FROM business_users WHERE id=$1 FOR UPDATE',[req.user.id]);
+            const previous = current.rows[0]?.venue_id;
+            if (previous !== venue_id) {
+                const owned = await db.query('SELECT 1 FROM business_venues WHERE business_user_id=$1 AND venue_id=$2',[req.user.id,venue_id]);
+                if (!owned.rows.length) throw new H.HttpError(403,'You do not own this venue');
+            }
+            // Older accounts can have their only ownership record on business_users.
+            if (previous && previous !== venue_id) {
+                await db.query('INSERT INTO business_venues(business_user_id,venue_id,is_primary) VALUES($1,$2,false) ON CONFLICT(business_user_id,venue_id) DO NOTHING',[req.user.id,previous]);
+            }
+            await db.query('UPDATE business_venues SET is_primary=false WHERE business_user_id=$1 AND is_primary',[req.user.id]);
+            await db.query('INSERT INTO business_venues(business_user_id,venue_id,is_primary) VALUES($1,$2,true) ON CONFLICT(business_user_id,venue_id) DO UPDATE SET is_primary=true',[req.user.id,venue_id]);
+            await db.query('UPDATE business_users SET venue_id=v.id,venue_name=v.name FROM venues v WHERE business_users.id=$1 AND v.id=$2',[req.user.id,venue_id]);
+        });
 
         res.json({ ok: true, active_venue_id: venue_id });
     } catch (err) {
@@ -1029,17 +1021,15 @@ router.post('/upgrade-interest', contactLimiter, async (req, res) => {
 // Returns real event counts from analytics_events table for owned listing.
 // Uses honest empty state when no events recorded yet.
 // ══════════════════════════════════════════════════════════════════════════
-router.get('/listings/:id/analytics', requireAuth, requireBusiness, async (req, res) => {
+router.get('/listings/:id/analytics', requireAuth, requireBusiness, H.noStore, async (req, res) => {
     try {
         // Verify ownership FIRST (before any analytics work)
         const venueId = req.params.id;
-        const ownership = await pool.query(
-            'SELECT 1 FROM business_users WHERE id=$1 AND venue_id=$2 AND status=\'active\'',
+        const owned = await pool.query(
+            'SELECT 1 FROM business_users WHERE id=$1 AND venue_id=$2 UNION SELECT 1 FROM business_venues WHERE business_user_id=$1 AND venue_id=$2',
             [req.user.id, venueId]
         );
-        if (!ownership.rows.length) {
-            return res.status(403).json({ error: 'You do not own this listing' });
-        }
+        if (!owned.rows.length) return res.status(403).json({error:'You do not own this listing'});
 
         const days = Math.min(90, Math.max(1, parseInt(req.query.days) || 30));
 
@@ -1047,7 +1037,7 @@ router.get('/listings/:id/analytics', requireAuth, requireBusiness, async (req, 
         // We support two known shapes:
         //   (a) (venue_id, event_type, created_at)
         //   (b) (venue_id, action, created_at)  — older shape
-        // If the table doesn't exist, we create the (a) shape and continue with empty results.
+        // Unavailable tracking is a distinct state from a measured zero.
         const colCheck = await pool.query(`
             SELECT column_name
               FROM information_schema.columns
@@ -1055,51 +1045,41 @@ router.get('/listings/:id/analytics', requireAuth, requireBusiness, async (req, 
         `);
         const cols = new Set(colCheck.rows.map(r => r.column_name));
 
-        if (cols.size === 0) {
-            // Table missing — create canonical shape and return empty
-            await pool.query(`
-                CREATE TABLE IF NOT EXISTS analytics_events (
-                    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-                    user_id UUID,
-                    venue_id UUID,
-                    event_type VARCHAR(64) NOT NULL,
-                    metadata JSONB,
-                    created_at TIMESTAMPTZ DEFAULT NOW()
-                )
-            `).catch(() => {});
-            await pool.query('CREATE INDEX IF NOT EXISTS idx_analytics_venue_type ON analytics_events(venue_id, event_type)').catch(()=>{});
-        }
-
-        const eventCol = cols.has('event_type') ? 'event_type'
-                       : cols.has('action')     ? 'action'
-                       : null;
-
-        let counts = { view: 0, save: 0, call_click: 0, website_click: 0, direction_click: 0, plan_add: 0 };
-        let total = 0;
-
-        if (eventCol && cols.has('venue_id') && cols.has('created_at')) {
-            try {
-                const result = await pool.query(
-                    `SELECT ${eventCol} AS event_type, COUNT(*)::int AS count
-                       FROM analytics_events
-                      WHERE venue_id=$1 AND created_at >= NOW() - ($2 || ' days')::interval
-                      GROUP BY ${eventCol}`,
-                    [venueId, String(days)]
-                );
-                for (const row of result.rows) {
-                    if (counts.hasOwnProperty(row.event_type)) counts[row.event_type] = row.count;
-                }
-                total = Object.values(counts).reduce((a, b) => a + b, 0);
-            } catch (e) {
-                // Schema drift — fall back to empty without 500
-                console.warn('[business/analytics] query failed, returning empty:', e.message);
+        const counts = {view:0, save:0, call_click:0, website_click:0, direction_click:0, plan_add:0};
+        let metrics = ['view','save','plan_add','website_click'];
+        const windowSQL = "created_at >= NOW() - ($2 || ' days')::interval";
+        const args = [venueId, String(days)];
+        let result;
+        if (cols.has('event') && cols.has('properties') && cols.has('created_at')) {
+            // The current collector records these venue-specific events with a venue_id in JSON.
+            // Page views and generic plan creations do not identify a venue reliably.
+            const names = {venue_save:'save',checkin:'checkin',review_post:'review_post',booking_click:'booking_click'};
+            metrics = Object.values(names);
+            for (const key of metrics) counts[key] = 0;
+            result = await pool.query(
+                `SELECT event, COUNT(*)::int AS count FROM analytics_events
+                 WHERE properties->>'venue_id'=$1 AND ${windowSQL} AND event=ANY($3::text[])
+                 GROUP BY event`, [...args,Object.keys(names)]);
+            for (const row of result.rows) counts[names[row.event]] = row.count;
+        } else {
+            const eventCol = cols.has('event_type') ? 'event_type' : cols.has('action') ? 'action' : null;
+            if (!eventCol || !cols.has('venue_id') || !cols.has('created_at')) {
+                return res.status(503).json({error:'Venue activity tracking is unavailable'});
+            }
+            result = await pool.query(
+                `SELECT ${eventCol} AS event_type, COUNT(*)::int AS count FROM analytics_events
+                 WHERE venue_id=$1 AND ${windowSQL} GROUP BY ${eventCol}`, args);
+            for (const row of result.rows) {
+                if (Object.hasOwn(counts,row.event_type)) counts[row.event_type] = row.count;
             }
         }
+        const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
         res.json({
             ok: true,
             venue_id: venueId,
             window_days: days,
+            metrics,
             counts,
             total,
             empty_state: total === 0
