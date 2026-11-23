@@ -59,74 +59,137 @@
     setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(120%)'; setTimeout(() => t.remove(), 300); }, ttl);
   }
 
+  // A successful response belongs only to the session that started it.
+  let accessEpoch = 0, authorized = null, loginPending = false;
+  function authToken() {
+    try {
+      const value = typeof window.SLAuth?.token === 'function'
+        ? window.SLAuth.token() : localStorage.getItem('sl_jwt_token');
+      return typeof value === 'string' ? value : '';
+    } catch (_) { return ''; }
+  }
+  let observedToken = authToken();
+  function sessionChanged() {
+    const err = new Error('Your admin session changed. Sign in again to continue.');
+    err.code = 'ADMIN_SESSION_CHANGED';
+    return err;
+  }
+  function clearAccess() {
+    ++accessEpoch;
+    authorized = null;
+    state.me = null;
+    state.section = 'overview';
+    state.venues.request++;
+    state.venues.page = 1;
+    state.venues.total = 0;
+    _usersState.request++;
+    _usersState.page = 1;
+    _usersState.pages = 0;
+    _usersState.search = '';
+    qualityRead++;
+    venueDraft = null;
+    venueSavePending = false;
+    _evState.list = [];
+    $('#sl-admin-app').style.display = 'none';
+    $('#venueModal').classList.remove('open');
+    $('#venueModalBody').textContent = '';
+    $('#venueModalSave').disabled = false;
+    closeEventModal();
+    $$('#eventModal input, #eventModal textarea').forEach(e => { e.value = ''; e.checked = false; });
+    $$('[data-admin-stat]').forEach(e => e.remove());
+    $$('#sl-admin-app tbody, #sl-admin-app .stat-value, #sl-admin-app .stat-sub').forEach(e => { e.textContent = ''; });
+    ['venuesCount', 'usersCount', 'contactsCount', 'businessCount', 'eventsCount', 'sb-users-count', 'sb-contacts-count', 'sbUsername', 'sbAvatar', 'apiStatusBody', 'evVenueResults', 'toastStack'].forEach(id => {
+      const e = document.getElementById(id); if (e) e.textContent = '';
+    });
+    $('#usersSearch').value = '';
+    updateUserSearch(false);
+    $('#usersPrev').disabled = $('#usersNext').disabled = $('#venuesPrev').disabled = $('#venuesNext').disabled = true;
+  }
+  function currentRequest(epoch, token, secret) {
+    return epoch === accessEpoch && token === authToken() && secret === ADMIN_SECRET;
+  }
+
   // ── API wrapper ──────────────────────────────
   async function api(path, opts = {}) {
+    const epoch = accessEpoch, token = authToken(), secret = ADMIN_SECRET;
+    if (!opts.authProbe && (!state.me || !authorized)) throw sessionChanged();
+    if (!opts.authProbe && (authorized.token !== token || authorized.secret !== secret)) { clearAccess(); showGate(); throw sessionChanged(); }
     const url = path.startsWith('http') ? path : `${API}${path}`;
     const headers = Object.assign({}, opts.headers || {});
     if (opts.body && !(opts.body instanceof FormData) && !headers['Content-Type']) {
       headers['Content-Type'] = 'application/json';
     }
-
-    // Prefer JWT if present
-    const token = (window.SLAuth && window.SLAuth.token) || localStorage.getItem('sl_jwt_token') || '';
     if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    // Fallback: admin secret header
-    if (ADMIN_SECRET) headers['x-admin-secret'] = ADMIN_SECRET;
-
-    const resp = await fetch(url, {
-      method: opts.method || 'GET',
-      headers,
-      body: opts.body && !(opts.body instanceof FormData) && typeof opts.body !== 'string'
-        ? JSON.stringify(opts.body)
-        : opts.body,
-      credentials: 'same-origin'
-    });
+    if (secret) headers['x-admin-secret'] = secret;
+    let resp;
+    try {
+      resp = await fetch(url, {
+        method: opts.method || 'GET', headers,
+        body: opts.body && !(opts.body instanceof FormData) && typeof opts.body !== 'string'
+          ? JSON.stringify(opts.body) : opts.body,
+        credentials: 'same-origin', cache: 'no-store'
+      });
+    } catch (err) {
+      if (!currentRequest(epoch, token, secret)) throw sessionChanged();
+      throw err;
+    }
     let data = null;
-    const text = await resp.text();
+    let text;
+    try { text = await resp.text(); }
+    catch (err) { if (!currentRequest(epoch, token, secret)) throw sessionChanged(); throw err; }
+    if (!currentRequest(epoch, token, secret)) throw sessionChanged();
     try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
     if (!resp.ok || data?.ok === false) {
       const err = new Error((data && (data.error || data.message)) || `HTTP ${resp.status}`);
       err.status = resp.status;
       err.data = data;
+      if (!opts.authProbe && (resp.status === 401 || resp.status === 403) && data?.code !== 'EMAIL_VERIFICATION_REQUIRED') {
+        clearAccess();
+        if (resp.status === 401) {
+          ADMIN_SECRET = ''; localStorage.removeItem(LS_SECRET);
+          if (typeof window.SLAuth?.logout === 'function') window.SLAuth.logout({reload:false}).catch(() => {});
+          else { localStorage.removeItem('sl_jwt_token'); localStorage.removeItem('sl_user_cache'); }
+          showGate();
+          $('#gateError').textContent = 'Your admin session expired. Sign in again.';
+        } else showDeny();
+        throw sessionChanged();
+      }
       throw err;
     }
     return data;
   }
 
   // ── Auth gate ────────────────────────────────
-  async function ensureAdmin() {
-    // Wait for SLAuth
-    await new Promise(r => {
-      if (window.SLAuth && window.SLAuth.refresh) return r();
-      const iv = setInterval(() => { if (window.SLAuth && window.SLAuth.refresh) { clearInterval(iv); r(); } }, 50);
-      setTimeout(() => { clearInterval(iv); r(); }, 3000);
-    });
-
-    try { if (window.SLAuth && window.SLAuth.refresh) await window.SLAuth.refresh(); } catch {}
-
-    // Check JWT role
-    const user = (window.SLAuth && window.SLAuth.user) || null;
-    if (user && user.role === 'admin') {
-      state.me = user;
-      return true;
-    }
-
-    // Try admin secret path
-    if (ADMIN_SECRET) {
+  async function ensureAdmin(epoch) {
+    const token = authToken(), secret = ADMIN_SECRET;
+    let user = null;
+    if (token) {
       try {
-        await api('/admin/venues/summary');
-        state.me = { username: 'admin (secret)', role: 'admin', via: 'secret' };
-        return true;
+        // refresh() deliberately returns null on an outage while preserving the
+        // consumer cache. Only its confirmed result can unlock this portal.
+        user = typeof window.SLAuth?.refresh === 'function'
+          ? await window.SLAuth.refresh()
+          : (await api('/auth/me', {authProbe:true}))?.user;
       } catch (err) {
-        localStorage.removeItem(LS_SECRET);
-        ADMIN_SECRET = '';
+        if (err.code === 'ADMIN_SESSION_CHANGED') throw err;
+      }
+      if (!currentRequest(epoch, token, secret)) throw sessionChanged();
+      if (user && user.role === 'admin') return {user, token, secret};
+    }
+    if (secret) {
+      try {
+        await api('/admin/venues/summary', {authProbe:true});
+        return {user:{username:'admin (secret)', role:'admin', via:'secret'}, token, secret};
+      } catch (err) {
+        if (err.code === 'ADMIN_SESSION_CHANGED') throw err;
+        if (err.status === 401 || err.status === 403) {
+          ADMIN_SECRET = ''; localStorage.removeItem(LS_SECRET);
+          $('#gateError').textContent = 'The admin secret was not accepted.';
+        } else $('#gateError').textContent = 'Admin access could not be verified. Please retry.';
       }
     }
-
-    // If user is logged in but not admin → deny screen
     if (user) return 'deny';
-
+    if (token) $('#gateError').textContent = 'Admin access could not be verified. Sign in again or retry when the service is available.';
     return false;
   }
 
@@ -156,35 +219,50 @@
   }
 
   async function handleLogin() {
+    if (loginPending) return;
     const email = $('#adminEmail').value.trim();
     const pwd = $('#adminPassword').value;
     const errEl = $('#gateError');
     errEl.textContent = '';
     if (!email || !pwd) { errEl.textContent = 'Email and password required.'; return; }
+    loginPending = true;
+    $('#adminLoginBtn').disabled = true;
     try {
-      if (window.SLAuth && window.SLAuth.login) {
-        await window.SLAuth.login(email, pwd);
-      } else {
-        const r = await api('/auth/login', { method: 'POST', body: { email, password: pwd } });
-        if (r && r.token) localStorage.setItem('sl_jwt_token', r.token);
-        if (r && r.user) localStorage.setItem('sl_user_cache', JSON.stringify(r.user));
-      }
+      if (typeof window.SLAuth?.login !== 'function') throw new Error('Sign-in is still loading. Refresh this page and try again.');
+      await window.SLAuth.login(email, pwd);
+      $('#adminPassword').value = '';
       await bootstrap();
     } catch (err) {
-      errEl.textContent = err.message || 'Login failed.';
+      if (err.code !== 'ADMIN_SESSION_CHANGED' && err.code !== 'AUTH_SUPERSEDED') errEl.textContent = err.message || 'Login failed.';
+    } finally {
+      loginPending = false;
+      $('#adminLoginBtn').disabled = false;
     }
   }
 
   function handleUseSecret() {
+    if (loginPending) return;
     const secret = $('#adminSecret').value.trim();
     if (!secret) { $('#gateError').textContent = 'Enter admin secret.'; return; }
     ADMIN_SECRET = secret;
     localStorage.setItem(LS_SECRET, secret);
+    $('#adminSecret').value = '';
     bootstrap();
+  }
+
+  async function logout() {
+    ADMIN_SECRET = '';
+    localStorage.removeItem(LS_SECRET);
+    clearAccess();
+    showGate();
+    $('#gateError').textContent = '';
+    if (typeof window.SLAuth?.logout === 'function') await window.SLAuth.logout({reload:false});
+    else { localStorage.removeItem('sl_jwt_token'); localStorage.removeItem('sl_user_cache'); }
   }
 
   // ── Router ───────────────────────────────────
   function goto(section) {
+    if (!state.me || !authorized) return;
     state.section = section;
     $$('.admin-section').forEach(s => s.classList.toggle('active', s.id === `section-${section}`));
     $$('.sidebar-nav a').forEach(a => a.classList.toggle('active', a.getAttribute('data-section') === section));
@@ -235,6 +313,7 @@
 
       $('#sourcesTbody').innerHTML = '<tr><td colspan="5" class="loading-state">Source breakdown unavailable in the current API.</td></tr>';
     } catch (err) {
+      if (err.code === 'ADMIN_SESSION_CHANGED') return;
       toast('Failed to load overview: ' + err.message, 'error');
       $('#sourcesTbody').innerHTML = `<tr><td colspan="5" class="loading-state">Error: ${esc(err.message)}</td></tr>`;
     }
@@ -268,6 +347,7 @@
       $('#venuesPrev').disabled = page <= 1;
       $('#venuesNext').disabled = !venues.length || end >= s.total;
     } catch (err) {
+      if (err.code === 'ADMIN_SESSION_CHANGED') return;
       if (request !== s.request) return;
       $('#venuesCount').textContent = 'Venue list unavailable';
       tbody.innerHTML = `<tr><td colspan="6" class="loading-state">Error: ${esc(err.message)}. Use Refresh to try again.</td></tr>`;
@@ -295,7 +375,7 @@
 
   async function saveVenueModal() {
     if (!state.me || !venueDraft || venueSavePending) return;
-    const entry = venueDraft, data = {}, controls = [];
+    const epoch = accessEpoch, entry = venueDraft, data = {}, controls = [];
     for (const field of ['featured','trending']) {
       const el = $(`#venueModalBody [data-venue-flag="${field}"]`);
       if (!el) return;
@@ -314,9 +394,10 @@
       $('#venueModal').classList.remove('open');
       loadVenues();
     } catch (err) {
+      if (err.code === 'ADMIN_SESSION_CHANGED') return;
       toast('Save not confirmed: ' + err.message, 'error');
     } finally {
-      venueSavePending = false; save.disabled = false; controls.forEach(el => el.disabled = false);
+      if (epoch === accessEpoch) { venueSavePending = false; save.disabled = false; controls.forEach(el => el.disabled = false); }
     }
   }
 
@@ -333,6 +414,7 @@
       fields.forEach(([id,key]) => { document.getElementById(id).textContent = fmtNum(summary?.[key]); });
       $('#dq-status').textContent = 'Catalog totals reported by the current API. Quality scores, detailed issue filters and source review are unavailable here.';
     } catch (err) {
+      if (err.code === 'ADMIN_SESSION_CHANGED') return;
       if (read === qualityRead) $('#dq-status').textContent = 'Catalog summary unavailable: ' + err.message;
     }
   }
@@ -375,6 +457,7 @@
       $('#usersNext').disabled = !r.users.length || page >= r.pages;
       const badge = $('#sb-users-count'); if (badge && !search) badge.textContent = fmtNum(r.total);
     } catch (err) {
+      if (err.code === 'ADMIN_SESSION_CHANGED') return;
       if (request !== s.request) return;
       if (search) {
         // A backend rollback can reject filtered requests. A verified, unfiltered
@@ -429,6 +512,7 @@
           </td>
         </tr>`).join('');
     } catch (err) {
+      if (err.code === 'ADMIN_SESSION_CHANGED') return;
       tbody.innerHTML = `<tr><td colspan="7" class="loading-state">Error: ${esc(err.message)}</td></tr>`;
     }
   }
@@ -463,18 +547,21 @@
         </tr>`;
       }).join('');
     } catch (err) {
+      if (err.code === 'ADMIN_SESSION_CHANGED') return;
       tbody.innerHTML = `<tr><td colspan="7" class="loading-state">Error: ${esc(err.message)}</td></tr>`;
     }
   }
 
   // ── API Status ───────────────────────────────
   async function loadApiStatus() {
+    const epoch = accessEpoch;
     const body = $('#apiStatusBody');
     body.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div></div>';
     try {
       const r = await fetch(`${API.replace(/\/api$/, '')}/health`).then(x => x.json()).catch(() => ({}));
       const h = await fetch(`${API}/health`).then(x => x.json()).catch(() => null);
       const s = await api('/admin/venues/summary').catch(() => null);
+      if (epoch !== accessEpoch) return;
       body.innerHTML = `
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">API</div><div class="stat-value" style="color:var(--green);font-size:18px">${h ? 'ONLINE' : 'UNKNOWN'}</div><div class="stat-sub">${esc(API)}</div></div>
@@ -486,6 +573,7 @@
           <pre class="mono" style="background:var(--bg3);padding:12px;border-radius:8px;overflow-x:auto;font-size:11px;margin-top:8px">${esc(JSON.stringify(h || {}, null, 2))}</pre>
         </div>`;
     } catch (err) {
+      if (err.code === 'ADMIN_SESSION_CHANGED') return;
       body.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i> ${esc(err.message)}</div>`;
     }
   }
@@ -545,16 +633,8 @@
     $('#adminSecret').addEventListener('keydown', e => { if (e.key === 'Enter') handleUseSecret(); });
 
     // Deny / Logout
-    $('#denyLogout').addEventListener('click', async () => {
-      if (window.SLAuth && window.SLAuth.logout) await window.SLAuth.logout();
-      localStorage.removeItem(LS_SECRET);
-      window.location.reload();
-    });
-    $('#sbLogout').addEventListener('click', async () => {
-      if (window.SLAuth && window.SLAuth.logout) await window.SLAuth.logout();
-      localStorage.removeItem(LS_SECRET);
-      window.location.reload();
-    });
+    $('#denyLogout').addEventListener('click', logout);
+    $('#sbLogout').addEventListener('click', logout);
 
     $('#venuesPrev').addEventListener('click', () => { if (state.venues.page > 1) loadVenues(state.venues.page - 1); });
     $('#venuesNext').addEventListener('click', () => { if (state.venues.page * state.venues.perPage < state.venues.total) loadVenues(state.venues.page + 1); });
@@ -602,11 +682,13 @@
         </tr>`;
       }).join('');
     } catch (err) {
+      if (err.code === 'ADMIN_SESSION_CHANGED') return;
       tbody.innerHTML = `<tr><td colspan="6" class="loading-state">Error: ${esc(err.message)}</td></tr>`;
     }
   }
 
   function openEventModal(ev) {
+    if (!state.me || !authorized) return;
     const m = $('#eventModal');
     if (!m) return;
     const fill = (id, v) => { const el = document.getElementById(id); if (el) el.value = v == null ? '' : v; };
@@ -674,6 +756,7 @@
       closeEventModal();
       loadEvents();
     } catch (err) {
+      if (err.code === 'ADMIN_SESSION_CHANGED') return;
       toast('Failed: ' + err.message, 'error');
     }
   }
@@ -682,17 +765,50 @@
   let wired = false;
   async function bootstrap() {
     if (!wired) { wireEvents(); wired = true; }
+    clearAccess();
+    const epoch = accessEpoch;
+    $('#gateError').textContent = '';
     $('#sl-admin-loading').style.display = 'flex';
-    const status = await ensureAdmin();
-    if (status === true) {
+    $('#sl-admin-gate').style.display = $('#sl-admin-deny').style.display = 'none';
+    let result;
+    try { result = await ensureAdmin(epoch); }
+    catch (err) {
+      if (err.code === 'ADMIN_SESSION_CHANGED') return;
+      if (epoch === accessEpoch) { showGate(); $('#gateError').textContent = 'Admin access could not be verified. Please retry.'; }
+      return;
+    }
+    if (epoch !== accessEpoch) return;
+    if (result && typeof result === 'object') {
+      authorized = result;
+      state.me = result.user;
       showApp();
       goto('overview');
-    } else if (status === 'deny') {
-      showDeny();
-    } else {
-      showGate();
-    }
+    } else if (result === 'deny') showDeny();
+    else showGate();
   }
+
+  // Refresh emits this event too: only a changed session or lost role should
+  // invalidate access. Re-running refresh on its own event would recurse.
+  window.addEventListener('sl-auth-changed', event => {
+    const token = authToken(), user = event.detail?.user;
+    const changed = token !== observedToken;
+    const lostRole = authorized && authorized.user.via !== 'secret' && (!user || user.role !== 'admin' || user.id !== authorized.user.id);
+    observedToken = token;
+    if (!changed && !lostRole) return;
+    clearAccess();
+    showGate();
+    if (!loginPending && (token || ADMIN_SECRET)) bootstrap();
+  });
+  window.addEventListener('storage', event => {
+    // Every cross-tab token transition invalidates outstanding reads, even if
+    // several storage events arrive after the token changed A → B → A.
+    if (event.key === 'sl_jwt_token') { observedToken = authToken(); bootstrap(); return; }
+    if (event.key !== LS_SECRET && event.key !== null) return;
+    const secret = localStorage.getItem(LS_SECRET) || '';
+    if (secret === ADMIN_SECRET && event.key !== null) return;
+    ADMIN_SECRET = secret;
+    bootstrap();
+  });
 
   // ── Expose global helpers (called from inline onclick) ──────────────────
   window.SLAdmin = {
@@ -703,6 +819,7 @@
         const filter = document.getElementById('contactsFilter');
         loadContacts(filter ? filter.value : '');
       } catch (err) {
+        if (err.code === 'ADMIN_SESSION_CHANGED') return;
         toast('Failed: ' + err.message, 'error');
       }
     },
@@ -712,6 +829,7 @@
         toast('Business account ' + status, 'success');
         loadBusiness();
       } catch (err) {
+        if (err.code === 'ADMIN_SESSION_CHANGED') return;
         toast('Failed: ' + err.message, 'error');
       }
     },
@@ -725,6 +843,7 @@
         toast(makeFeatured ? 'Featured' : 'Unfeatured', 'success');
         loadEvents();
       } catch (err) {
+        if (err.code === 'ADMIN_SESSION_CHANGED') return;
         toast('Failed: ' + err.message, 'error');
       }
     },
@@ -735,6 +854,7 @@
         toast('Event deleted', 'success');
         loadEvents();
       } catch (err) {
+        if (err.code === 'ADMIN_SESSION_CHANGED') return;
         toast('Failed: ' + err.message, 'error');
       }
     },
@@ -764,27 +884,27 @@
       const sg = document.getElementById('statsGrid');
       if (sg && !document.getElementById('stat-users-card')) {
         const userCard = `
-          <div class="stat-card" id="stat-users-card">
+          <div class="stat-card" data-admin-stat id="stat-users-card">
             <div class="stat-label">Total Users</div>
             <div class="stat-value">${fmtNum(r.users && r.users.total)}</div>
             <div class="stat-sub">${fmtNum(r.users && r.users.this_week)} this week · ${fmtNum(r.users && r.users.today)} today</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card" data-admin-stat>
             <div class="stat-label">Plans</div>
             <div class="stat-value">${fmtNum(r.plans)}</div>
             <div class="stat-sub">night plans created</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card" data-admin-stat>
             <div class="stat-label">Check-ins</div>
             <div class="stat-value">${fmtNum(r.checkins)}</div>
             <div class="stat-sub">venue check-ins</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card" data-admin-stat>
             <div class="stat-label">Reviews</div>
             <div class="stat-value">${fmtNum(r.reviews)}</div>
             <div class="stat-sub">user reviews</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card" data-admin-stat>
             <div class="stat-label">Favorites</div>
             <div class="stat-value">${fmtNum(r.favorites)}</div>
             <div class="stat-sub">saved venues</div>
@@ -796,7 +916,7 @@
         const cr = await api('/admin/contacts?limit=1&status=new');
         const badge = document.getElementById('sb-contacts-count');
         if (badge) { badge.textContent = cr.total || ''; badge.style.display = cr.total ? '' : 'none'; }
-      } catch (_) {}
+      } catch (err) { if (err.code === 'ADMIN_SESSION_CHANGED') return; }
       // Load user count for sidebar badge
       const sbBadge = document.getElementById('sb-users-count');
       if (sbBadge && r.users) { sbBadge.textContent = fmtNum(r.users.total); }

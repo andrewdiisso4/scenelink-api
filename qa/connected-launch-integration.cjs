@@ -660,6 +660,7 @@ async function main(){
  await req('./qa/integrated-ui-integration.cjs')({api,pool,check,crypto,req,root,base});
  await req('./qa/social-profile-integration.cjs')({api,pool,check,crypto,req,root});
  await req('./qa/event-ingestion-api-integration.cjs')({api,pool,check,crypto,req,root});
+ await req('./qa/admin-portal-dom-integration.cjs')({api,pool,check,crypto,req,root,base});
  console.log(JSON.stringify({scope:process.env.SCENELINK_TEST_ENGINE==='pglite'?'Real localhost HTTP/JWT/bcrypt and embedded PostgreSQL WASM; not native concurrency proof':'Real localhost HTTP and native PostgreSQL, fictional test data only',checks},null,2));
 }
 main().catch(e=>{console.error('INTEGRATION FAILED:',e.message);console.error(e.stack?.split('\n').slice(1).join('\n'));process.exitCode=1;}).finally(async()=>{if(server)await new Promise(r=>server.close(r));if(pool)await pool.end();});

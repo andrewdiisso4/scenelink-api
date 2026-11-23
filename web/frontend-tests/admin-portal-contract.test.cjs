@@ -14,7 +14,8 @@ async function setup(t, opts={}) {
   const d=new JSDOM(html,{url:'https://scenelink.test/admin.html',runScripts:'outside-only'});
   const w=d.window, $=sel=>w.document.querySelector(sel), click=sel=>$(sel).click();
   t.after(()=>w.close());
-  w.SLAuth={user:opts.user===undefined?{role:'admin',username:'admin-fixture'}:opts.user,async refresh(){}, async login(email,password){logins.push([email,password]);this.user={role:'admin',username:'admin-fixture'};}};
+  let currentUser=opts.user===undefined?{role:'admin',username:'admin-fixture'}:opts.user;
+  w.SLAuth={user:()=>currentUser,token:()=>currentUser?'fixture-token':'',async refresh(){return currentUser;}, async login(email,password){logins.push([email,password]);currentUser={role:'admin',username:'admin-fixture'};}};
   w.fetch=async (url, request={})=>{
     const u = new URL(url,w.location.origin), method=request.method||'GET', body=request.body?JSON.parse(request.body):null;
     const call={path:u.pathname,query:Object.fromEntries(u.searchParams),method,body}; calls.push(call);

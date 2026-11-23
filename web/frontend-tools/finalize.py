@@ -19,7 +19,7 @@ for p in root.rglob('*'):
  def asset_tag(asset):
   if (tag == 'connected-20261119-been-with-friends' and p == root/'admin.html'
       and asset.lstrip('/') == 'js/sl-admin-portal.js'):
-   return 'admin-20261120-contract-repair'
+   return 'admin-20261123-auth-acceptance'
   return tag
  s=p.read_text();s=pattern.sub(lambda m:m[1]+'?v='+asset_tag(m[1]),s);p.write_text(s)
 p=root/'sw.js';s=p.read_text();s=re.sub(r"const VERSION = '[^']+';", "const VERSION = 'sl-"+tag+"';",s)
