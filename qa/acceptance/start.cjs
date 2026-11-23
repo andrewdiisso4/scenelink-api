@@ -17,6 +17,8 @@ const ALIASES = {social:'social-feed',feed:'social-feed',saved:'my-lists',favori
 function installFrontend(app, config) {
   app.get('/__acceptance/', (req, res) => {
     const rows = [...USERS.map(user => [user.role,user.email]), ...OWNERS.map(owner => ['business: '+owner.status,owner.email])];
+    // The overview contains a native POST form for locking the gate.
+    res.set('Referrer-Policy','strict-origin');
     res.type('html').send(shell('SceneLink isolated acceptance', '<p class="note">All venues and accounts are fictional. The real API and frontend share this origin. Model calls, outbound mail, OAuth, uploads, third-party maps, imports and service-worker caching are disabled. These capabilities have not been accepted here.</p><p>Source commit: <code>' + escape(config.sourceCommit) + '</code></p><p><a href="/">Open SceneLink</a> · <a href="/admin.html">Admin</a> · <a href="/business.html">Business portal</a> · <a href="/plan-with-friends.html">Saved plans</a></p><table><thead><tr><th>Fixture role</th><th>Sign-in email</th></tr></thead><tbody>' + rows.map(row => '<tr><td>' + escape(row[0]) + '</td><td>' + escape(row[1]) + '</td></tr>').join('') + '</tbody></table><p>Use the separately supplied generated fixture password. The pending owner must remain unable to sign in. The approved owner can switch between QA Harbor Table and QA Nightcap.</p><p>Restarts preserve edits and do not reset passwords or recreate deleted fixtures.</p><form method="post" action="/__acceptance/lock"><button>Lock this environment</button></form>'));
   });
   app.get('/__acceptance/status', (req, res) => res.json({environment:config.environmentId,sourceCommit:config.sourceCommit,

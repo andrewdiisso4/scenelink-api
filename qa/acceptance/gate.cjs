@@ -32,6 +32,11 @@ function shell(title, body) {
 function unlockPage(next, message = '') {
   return shell('SceneLink isolated acceptance', '<p>Private test environment. All accounts and venues are fictional.</p><p>' + escape(message) + '</p><form action="/__acceptance/unlock" method="post"><label for="access-secret">Acceptance access secret</label><input id="access-secret" name="secret" type="password" autocomplete="current-password" required><input name="next" type="hidden" value="' + escape(destination(next)) + '"><button type="submit">Unlock test environment</button></form>');
 }
+function sendUnlock(res, next, status = 200, message = '') {
+  // Native form POSTs under no-referrer serialize Origin as null. Preserve the
+  // HTTPS origin without putting a locked deep link's path/query in Referer.
+  return res.status(status).set('Referrer-Policy','strict-origin').type('html').send(unlockPage(next, message));
+}
 function installGate(app, config, {health = async () => true} = {}) {
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
@@ -48,17 +53,17 @@ function installGate(app, config, {health = async () => true} = {}) {
         || (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && origin !== config.origin)) return res.status(403).json({error:'Same-origin acceptance request required'});
     next();
   });
-  app.get('/__acceptance/unlock', (req, res) => res.type('html').send(unlockPage(req.query.next)));
+  app.get('/__acceptance/unlock', (req, res) => sendUnlock(res, req.query.next));
   app.post('/__acceptance/unlock', rateLimit({windowMs:15*60*1000,max:15,standardHeaders:true,legacyHeaders:false}),
     express.urlencoded({extended:false,limit:'2kb'}), (req, res) => {
-      if (typeof req.body.secret !== 'string' || !equal(req.body.secret, config.accessSecret)) return res.status(401).type('html').send(unlockPage(req.body.next, 'The access secret was not accepted.'));
+      if (typeof req.body.secret !== 'string' || !equal(req.body.secret, config.accessSecret)) return sendUnlock(res, req.body.next, 401, 'The access secret was not accepted.');
       res.setHeader('Set-Cookie', COOKIE + '=' + issueCookie(config) + '; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=' + TTL);
       res.redirect(303, destination(req.body.next));
     });
   app.use((req, res, next) => {
     if (validCookie(config, req.headers.cookie)) return next();
     if (req.path.startsWith('/api/') || !['GET','HEAD'].includes(req.method)) return res.status(401).json({error:'Unlock the isolated acceptance environment first',code:'ACCEPTANCE_LOCKED'});
-    res.status(401).type('html').send(unlockPage(req.originalUrl));
+    sendUnlock(res, req.originalUrl, 401);
   });
   app.post('/__acceptance/lock', (req, res) => {
     res.setHeader('Set-Cookie', COOKIE + '=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0');

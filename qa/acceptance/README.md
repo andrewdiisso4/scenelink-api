@@ -2,7 +2,7 @@
 
 This launcher serves the combined repository's frontend and real Express API from one gated origin. It is an acceptance environment with a separate PostgreSQL database and fictional fixtures. It does not deploy, import, activate or modify production.
 
-Start with `node qa/acceptance/start.cjs`. The accompanying `render.yaml` and `DEPLOYMENT_PROPOSAL.md` describe the proposed hosted resources; creating those resources remains a separate action.
+Start with `node qa/acceptance/start.cjs`. The accompanying `render.yaml` and `DEPLOYMENT_PROPOSAL.md` describe the hosted resources and approval boundary. The original candidate was approved and deployed on November 23, 2026; the deployed identities and first hosted browser result are recorded in `evidence/release-qa-deployment-20261123.json`. Later code changes require their own exact deployment decision.
 
 ## Required configuration
 
@@ -31,6 +31,8 @@ An unauthenticated `GET /__acceptance/health` returns only `{status:"ok"}` after
 
 Open `/__acceptance/unlock` and enter the generated acceptance access secret. This sets a signed, four-hour `__Host-sl_acceptance` cookie with `HttpOnly`, `Secure`, `SameSite=Strict` and root scope. The cookie is separate from normal consumer/business bearer authentication: unlocking the environment does not grant an application role. `/__acceptance/` lists the fixture roles and paths without disclosing passwords. Locking clears the browser's gate cookie; rotating the access secret invalidates all outstanding gate cookies.
 
+Only the HTML responses that render the synthetic unlock form and the overview's lock form use `Referrer-Policy: strict-origin`. This lets normal same-origin HTTPS form navigation retain its `Origin` header while limiting any `Referer` to the origin, without a path or query. The original blanket `no-referrer` policy conflicts with strict Origin validation for navigation POSTs and is consistent with the first hosted unlock rejection. Missing, literal `null`, foreign and cross-site request origins are still rejected; the submitted secret must still match. A successful hosted browser retry is required before calling this repair accepted. See the [Fetch Origin-header algorithm](https://fetch.spec.whatwg.org/#append-a-request-origin-header) and [strict-origin policy definition](https://www.w3.org/TR/referrer-policy/#referrer-policy-strict-origin).
+
 | Role | Email | Expected behavior |
 | --- | --- | --- |
 | Admin | `qa.admin@example.invalid` | May enter the admin portal after normal account sign-in |
@@ -39,6 +41,8 @@ Open `/__acceptance/unlock` and enter the generated acceptance access secret. Th
 | Pending owner | `qa.pending@example.invalid` | Business sign-in must remain forbidden pending review |
 
 All four accounts initially use `ACCEPTANCE_FIXTURE_PASSWORD`. Four explicitly fictional venue rows support dinner/drinks planning and owner controls. Three are eligible for this private fixture directory; QA Pending Cafe remains inactive. No real venue record is imported or activated.
+
+The browser can create and reopen private group plans under **Your plans**. The separate **Saved itineraries** store starts empty; these fixtures seed no itineraries, and disabled-model Concierge responses contain no itinerary to save. Its empty-state check does not establish positive itinerary save/reopen acceptance.
 
 ## Database initialization and restarts
 
@@ -52,7 +56,7 @@ The startup process is not claimed to be atomic across every application migrati
 
 The launcher forces outbound mail, model/provider calls, seed jobs, imports, upload credentials, push-provider credentials and telemetry off. No welcome-mail worker or scheduled importer is started. Outbound server HTTP is fenced. Password-email and unsupported external/import operations return an explicit unavailable response rather than claiming delivery or completion. Real-model quality, real inbox delivery, OAuth, third-party maps, direct device uploads, production backup restoration and venue import/activation remain separate gates.
 
-The outer CSP limits connections, assets and forms to this origin, disallows frames and workers, and sets pages to `no-store` with no referrer. Netlify `_redirects`, `_headers` and `netlify.toml` files are not executed or served. `/api` goes directly to this process's real Express app with its full path preserved.
+The outer CSP limits connections, assets and forms to this origin and disallows frames and workers. All responses are `no-store`. Ordinary frontend files, wrapper-generated API denials and password-reset/email-verification pages retain `Referrer-Policy: no-referrer`; only the synthetic gate/overview form pages use the origin-only policy described above. Admitted API responses retain the real application's existing Helmet headers, which can override the wrapper's default referrer policy. Netlify `_redirects`, `_headers` and `netlify.toml` files are not executed or served. `/api` goes directly to this process's real Express app with its full path preserved.
 
 Two deliberate **acceptance-only browser overlays** are served without editing canonical frontend files:
 

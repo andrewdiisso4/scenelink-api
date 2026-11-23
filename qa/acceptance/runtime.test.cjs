@@ -9,6 +9,7 @@ const express = require('express');
 const {validateEnvironment, disableExternalServices, ENVIRONMENT_ID} = require('./guard.cjs');
 const {installGate, issueCookie, validCookie, COOKIE, TTL, CSP, destination} = require('./gate.cjs');
 const {script:browserScript} = require('./browser-bootstrap.cjs');
+const {installFrontend} = require('./start.cjs');
 const root = path.resolve(__dirname,'../..');
 function environment() {
   return {NODE_ENV:'test',ACCEPTANCE_MODE:'isolated-synthetic',ACCEPTANCE_ENVIRONMENT_ID:ENVIRONMENT_ID,
@@ -16,6 +17,15 @@ function environment() {
     DATABASE_URL:'postgresql://qa:synthetic-test-only@127.0.0.1:5432/scenelink_release_qa_20261123',
     ACCEPTANCE_PUBLIC_ORIGIN:'http://127.0.0.1:4000',PORT:'4000',JWT_SECRET:crypto.randomBytes(32).toString('hex'),
     ACCEPTANCE_ACCESS_SECRET:crypto.randomBytes(32).toString('hex'),ACCEPTANCE_FIXTURE_PASSWORD:crypto.randomBytes(24).toString('hex')};
+}
+
+async function listen(t, app, config) {
+  const server = await new Promise(resolve => {
+    const running = app.listen(0, '127.0.0.1', () => resolve(running));
+  });
+  t.after(() => new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }));
+  config.origin = 'http://127.0.0.1:' + server.address().port;
+  return config.origin;
 }
 
 test('startup permits only the bound QA host, database, mode and origin', () => {
@@ -103,19 +113,18 @@ test('browser overlay survives bundled configuration and keeps real connected re
 
 test('real HTTP gate protects files and API, preserves bearer auth and enforces same-origin writes', async t => {
   const config=validateEnvironment(environment(),root), app=express();
-  let healthy=true;
+  let healthy=true, writes=0;
   installGate(app,config,{health:async()=>healthy});
   app.get('/private.html',(req,res)=>res.send('private fixture'));
-  app.all('/api/probe',(req,res)=>res.json({authorization:req.get('authorization')||null}));
-  const server=await new Promise(resolve=>{const running=app.listen(0,'127.0.0.1',()=>resolve(running));});
-  t.after(()=>new Promise(resolve=>{server.closeAllConnections();server.close(resolve);}));
-  const base='http://127.0.0.1:'+server.address().port;
+  app.all('/api/probe',(req,res)=>{ if(req.method==='POST') writes++; res.json({authorization:req.get('authorization')||null}); });
+  const base=await listen(t,app,config);
   let result=await fetch(base+'/__acceptance/health');assert.equal(result.status,200);assert.deepEqual(await result.json(),{status:'ok'});
   healthy=false;result=await fetch(base+'/__acceptance/health');assert.equal(result.status,503);assert.deepEqual(await result.json(),{status:'unavailable'});healthy=true;
   result=await fetch(base+'/private.html');assert.equal(result.status,401);assert(!((await result.text()).includes('private fixture')));
   result=await fetch(base+'/api/probe',{headers:{Authorization:'Bearer synthetic-account'}});assert.equal(result.status,401);
+  assert.equal(result.headers.get('referrer-policy'),'no-referrer');
   result=await fetch(base+'/__acceptance/unlock',{method:'POST',headers:{Origin:config.origin,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({secret:'incorrect'})});assert.equal(result.status,401);
-  result=await fetch(base+'/__acceptance/unlock',{method:'POST',headers:{Origin:config.origin,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({secret:config.accessSecret,next:'/private.html'}),redirect:'manual'});
+  result=await fetch(base+'/__acceptance/unlock',{method:'POST',headers:{Origin:base,'Sec-Fetch-Site':'same-origin','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({secret:config.accessSecret,next:'/private.html'}),redirect:'manual'});
   assert.equal(result.status,303);assert.equal(result.headers.get('location'),'/private.html');
   const setCookie=result.headers.get('set-cookie');for(const flag of ['HttpOnly','Secure','SameSite=Strict','Path=/'])assert(setCookie.includes(flag));
   const cookie=setCookie.split(';')[0];
@@ -123,8 +132,68 @@ test('real HTTP gate protects files and API, preserves bearer auth and enforces 
   assert.equal(result.status,200);assert.deepEqual(await result.json(),{authorization:'Bearer synthetic-account'});
   assert.equal(result.headers.get('content-security-policy'),CSP);assert.match(CSP,/connect-src 'self'/);assert.match(CSP,/worker-src 'none'/);
   assert.match(result.headers.get('cache-control'),/no-store/);
-  result=await fetch(base+'/api/probe',{method:'POST',headers:{Cookie:cookie,Origin:'https://scenelink.app'}});assert.equal(result.status,403);
-  result=await fetch(base+'/api/probe',{method:'POST',headers:{Cookie:cookie}});assert.equal(result.status,403);
-  result=await fetch(base+'/__acceptance/lock',{method:'POST',headers:{Cookie:cookie,Origin:config.origin},redirect:'manual'});
+  assert.equal(result.headers.get('referrer-policy'),'no-referrer');
+  const rejectedOrigins = [
+    ['missing', {Referer:base+'/__acceptance/', 'Sec-Fetch-Site':'same-origin'}],
+    ['null', {Origin:'null', 'Sec-Fetch-Site':'same-origin'}],
+    ['foreign', {Origin:'https://other.example.invalid', 'Sec-Fetch-Site':'same-origin'}],
+    ['cross-site', {Origin:base, 'Sec-Fetch-Site':'cross-site'}]
+  ];
+  for (const route of ['/__acceptance/unlock', '/__acceptance/lock', '/api/probe']) {
+    for (const [name, headers] of rejectedOrigins) {
+      result=await fetch(base+route,{method:'POST',redirect:'manual',
+        headers:{Cookie:cookie,Authorization:'Bearer synthetic-account','Content-Type':'application/x-www-form-urlencoded',...headers},
+        body:new URLSearchParams({secret:config.accessSecret})});
+      assert.equal(result.status,403,route+' rejects '+name+' origin');
+      assert.equal(result.headers.has('set-cookie'),false,route+' must not issue or clear a cookie');
+      assert.deepEqual(await result.json(),{error:'Same-origin acceptance request required'});
+    }
+  }
+  assert.equal(writes,1,'Rejected API writes must not reach the protected handler');
+  result=await fetch(base+'/private.html',{headers:{Cookie:cookie}});assert.equal(result.status,200);
+  result=await fetch(base+'/__acceptance/lock',{method:'POST',headers:{Cookie:cookie,Origin:base,'Sec-Fetch-Site':'same-origin'},redirect:'manual'});
   assert.equal(result.status,303);assert.match(result.headers.get('set-cookie'),/Max-Age=0/);
+});
+
+test('gate form responses use strict-origin while recovery documents keep no-referrer', async t => {
+  const config=validateEnvironment(environment(),root), app=express();
+  installGate(app,config);
+  installFrontend(app,config);
+  const base=await listen(t,app,config);
+  const request=(route,options={})=>fetch(base+route,{...options,redirect:'manual'});
+  async function formResponse(response,status,action) {
+    assert.equal(response.status,status);
+    assert.equal(response.headers.get('referrer-policy'),'strict-origin',response.url+' form policy');
+    const html=await response.text();
+    const form=html.match(/<form\b[^>]*>/i)?.[0];
+    assert(form&&form.includes('action="'+action+'"'),'Expected the real '+action+' form');
+    assert.match(form,/method="post"/i);
+    assert.doesNotMatch(html,/<meta\b[^>]*name=["']referrer["']/i,'No meta policy may override the form response policy');
+  }
+  // A locked recovery URL serves the unlock form, not the private recovery document.
+  for (const [route,status] of [
+    ['/__acceptance/unlock?next=%2Fadmin.html',200],
+    ['/admin.html',401],
+    ['/reset-password.html?token=synthetic-test-token',401]
+  ]) await formResponse(await request(route),status,'/__acceptance/unlock');
+  const unlock=secret=>request('/__acceptance/unlock',{method:'POST',
+    headers:{Origin:base,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({secret})});
+  const retry=await unlock('incorrect');
+  assert.equal(retry.headers.has('set-cookie'),false);
+  await formResponse(retry,401,'/__acceptance/unlock');
+  const unlocked=await unlock(config.accessSecret);
+  assert.equal(unlocked.status,303);
+  const cookie=unlocked.headers.get('set-cookie').split(';')[0];
+  await formResponse(await request('/__acceptance/',{headers:{Cookie:cookie}}),200,'/__acceptance/lock');
+  for (const page of ['reset-password','business-reset-password','verify-email']) {
+    for (const suffix of ['.html','']) {
+      const response=await request('/'+page+suffix+'?token=synthetic-test-token',{headers:{Cookie:cookie}});
+      assert.equal(response.status,200,page+suffix);
+      assert.equal(response.headers.get('referrer-policy'),'no-referrer',page+suffix);
+      assert.match(await response.text(),/<meta\s+name="referrer"\s+content="no-referrer"\s*\/?\s*>/i);
+    }
+  }
+  const staticPage=await request('/admin.html',{headers:{Cookie:cookie}});
+  assert.equal(staticPage.status,200);
+  assert.equal(staticPage.headers.get('referrer-policy'),'no-referrer');
 });

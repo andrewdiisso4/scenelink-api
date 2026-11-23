@@ -43,16 +43,59 @@ async function main(){
   console.log('PASS foreign nonempty schema refused before initialization');
   await launch();
   const request=(url,options={})=>fetch(origin+url,{...options,redirect:'manual'});
-  let r=await request('/admin.html');assert.equal(r.status,401);
+  async function formResponse(response,status,action) {
+    assert.equal(response.status,status);
+    assert.equal(response.headers.get('referrer-policy'),'strict-origin',response.url+' form policy');
+    const form=(await response.text()).match(/<form\b[^>]*>/i)?.[0];
+    assert(form&&form.includes('action="'+action+'"'),'Expected the real '+action+' form');
+    assert.match(form,/method="post"/i);
+  }
+  for(const [route,status] of [
+    ['/__acceptance/unlock?next=%2Fadmin.html',200],
+    ['/admin.html',401],
+    ['/reset-password.html?token=synthetic-test-token',401]
+  ]) await formResponse(await request(route),status,'/__acceptance/unlock');
+  let r;
   r=await request('/api/auth/login',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({email:'qa.admin@example.invalid',password})});assert.equal(r.status,401);
+  assert.equal(r.headers.get('referrer-policy'),'no-referrer');
+  r=await request('/__acceptance/unlock',{method:'POST',headers:{Origin:origin,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({secret:'incorrect'})});
+  assert.equal(r.headers.has('set-cookie'),false);
+  await formResponse(r,401,'/__acceptance/unlock');
   const unlock=()=>request('/__acceptance/unlock',{method:'POST',headers:{Origin:origin,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({secret:access})});
   r=await unlock();assert.equal(r.status,303);let cookie=r.headers.get('set-cookie').split(';')[0];
+  await formResponse(await request('/__acceptance/',{headers:{Cookie:cookie}}),200,'/__acceptance/lock');
+  const rejectedOrigins=[
+    ['missing',{Referer:origin+'/__acceptance/','Sec-Fetch-Site':'same-origin'}],
+    ['null',{Origin:'null','Sec-Fetch-Site':'same-origin'}],
+    ['foreign',{Origin:'https://other.example.invalid','Sec-Fetch-Site':'same-origin'}],
+    ['cross-site',{Origin:origin,'Sec-Fetch-Site':'cross-site'}]
+  ];
+  for(const route of ['/__acceptance/unlock','/__acceptance/lock','/api/auth/login']) {
+    for(const [name,headers] of rejectedOrigins) {
+      const isAPI=route.startsWith('/api/');
+      r=await request(route,{method:'POST',headers:{Cookie:cookie,
+        'Content-Type':isAPI?'application/json':'application/x-www-form-urlencoded',...headers},
+        body:isAPI?JSON.stringify({email:'qa.admin@example.invalid',password}):new URLSearchParams({secret:access})});
+      assert.equal(r.status,403,route+' rejects '+name+' origin');
+      assert.equal(r.headers.has('set-cookie'),false,route+' must not issue or clear a cookie');
+      assert.deepEqual(await r.json(),{error:'Same-origin acceptance request required'});
+    }
+  }
   const api=async(route,method='GET',body,token)=>{const response=await request('/api'+route,{method,headers:{Cookie:cookie,Origin:origin,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body===undefined?undefined:JSON.stringify(body)});return{status:response.status,data:await response.json()};};
   r=await request('/admin.html',{headers:{Cookie:cookie}});assert.equal(r.status,200);assert((await r.text()).includes('sl-admin-portal.js'));
+  assert.equal(r.headers.get('referrer-policy'),'no-referrer');
   assert.match(r.headers.get('content-security-policy'),/connect-src 'self'/);
   for(const file of ['/_redirects','/%5fredirects','/%6eetlify.toml']){r=await request(file,{headers:{Cookie:cookie}});assert.equal(r.status,404);}
-  r=await request('/business-reset-password.html',{headers:{Cookie:cookie}});assert.equal(r.status,200);assert.equal(r.headers.get('referrer-policy'),'no-referrer');
+  for(const page of ['reset-password','business-reset-password','verify-email']) {
+    for(const suffix of ['.html','']) {
+      r=await request('/'+page+suffix+'?token=synthetic-test-token',{headers:{Cookie:cookie}});
+      assert.equal(r.status,200,page+suffix);
+      assert.equal(r.headers.get('referrer-policy'),'no-referrer',page+suffix);
+      assert.match(await r.text(),/<meta\s+name="referrer"\s+content="no-referrer"\s*\/?\s*>/i);
+    }
+  }
   r=await request('/env.js',{headers:{Cookie:cookie}});assert.equal(r.status,200);assert((await r.text()).includes("credentials:'same-origin'"));
+  assert.equal(r.headers.get('referrer-policy'),'no-referrer');
   console.log('PASS outer gate protects both static frontend and same-origin API');
   const admin=await api('/auth/login','POST',{email:'qa.admin@example.invalid',password});assert.equal(admin.status,200);assert.equal(admin.data.user.role,'admin');
   assert.equal((await api('/admin/stats','GET',undefined,admin.data.token)).status,200);
