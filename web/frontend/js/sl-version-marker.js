@@ -17,11 +17,11 @@
 (function(){
   'use strict';
   var V = {
-    phase: 'been-with-friends',
-    sw_version: 'sl-connected-20261119-been-with-friends',
-    deploy: 'connected-20261119-been-with-friends',
-    built: '2026-11-19T00:47:46.061546+00:00',
-    backend_change: 'none'
+    phase: 'release-acceptance',
+    sw_version: 'sl-connected-20261123-release-acceptance',
+    deploy: 'connected-20261123-release-acceptance',
+    built: '2026-11-23T21:10:16+00:00',
+    backend_change: 'paired-release-candidate'
   };
   // Always-available global
   try { window.SCENELINK_VERSION = V; } catch(_){}

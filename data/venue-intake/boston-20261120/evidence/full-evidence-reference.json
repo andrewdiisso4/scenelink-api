@@ -1,0 +1,24 @@
+{
+  "full_city_record_count": 3355,
+  "full_packet_manifest_sha256": "efb5fa137b6df6c524fe129bc7c2c14cd674de0879d83029a894e23000d07f99",
+  "notice": "Source references, metadata and hashes are not a production backup or independent proof of current operation.",
+  "omitted_from_compact_packet": [
+    {
+      "available_in": "scenelink-venue-intake-20261120.zip",
+      "kind": "city",
+      "path": "evidence/active-food-business-only.jsonl",
+      "sha256": "c6d8c3896b3b1a9f3cd4799ef4aeb46fbfd78d2a44ce2bfe2ba6bc9f341f7562"
+    },
+    {
+      "available_in": "scenelink-venue-intake-20261120.zip",
+      "kind": "city",
+      "path": "evidence/saved-Boston-boundary.geojson",
+      "sha256": "c1379480ddfa76a9251d6b73b7f5fdc1a72def377efc59ba05fafb631783e0d8"
+    }
+  ],
+  "purpose": "Compact execution packet with unchanged candidate and provenance bytes; full regional and municipal evidence is retained separately.",
+  "review_archive": "scenelink-venue-intake-20261120.zip",
+  "selected_city_record_count": 20,
+  "source_archive": "scenelink-source-evidence-20261120.zip",
+  "source_archive_sha256": "c96b987f5ce65da99ba67af9dd284326623c0f4daba0e84d74ba464e3ab31cd7"
+}

@@ -11,15 +11,17 @@
  */
 
 const express = require('express');
-const { EVENT_TODAY_SQL } = require('../services/event-calendar');
 const pool = require('../config/database');
-const { resolveNamedVenue } = require('../services/concierge-named-venue');
+const { classifyIntent } = require('../services/concierge-intent');
+const { resolveConversation, searchContextFor } = require('../services/concierge-conversation');
+const { venueTypeSQL, exclusionSQL } = require('../services/concierge-query-constraints');
 const {publicVenue,availableVenueSQL} = require('../services/venue-helpers');
 const {visibleDiscoveryVenueSQL} = require('../services/venue-duplicate-discovery');
 const {reviewedPriceSQL} = require('../services/venue-facts');
-const {PUBLIC_EVENT,EVENT_COLUMNS,publicEvent} = require('../launch/events');
+const { queryConciergeEvents } = require('../services/concierge-event-search');
 const { optionalAuth } = require('../middleware/auth');
 const { runAIConcierge, isEnabled: aiEnabled } = require('./conciergeAI');
+const { modeFor } = require('../services/concierge-typed-plan');
 
 const router = express.Router();
 const { aiLimiter } = require('../middleware/rateLimits');
@@ -27,125 +29,6 @@ const { aiLimiter } = require('../middleware/rateLimits');
 // ═════════════════════════════════════════════════════════════
 // INTENT CLASSIFIER
 // ═════════════════════════════════════════════════════════════
-const CUISINES = {
-    italian: ['italian','pasta','pizza','trattoria','osteria'],
-    japanese: ['japanese','sushi','ramen','izakaya'],
-    mexican: ['mexican','taco','burrito','taqueria'],
-    chinese: ['chinese','dim sum','szechuan'],
-    thai: ['thai','pad thai'],
-    indian: ['indian','curry','tandoor'],
-    french: ['french','brasserie','bistro'],
-    mediterranean: ['mediterranean','greek','lebanese','hummus'],
-    seafood: ['seafood','oyster','lobster','fish','raw bar'],
-    steakhouse: ['steak','steakhouse','chophouse'],
-    american: ['american','burger','diner','grill'],
-    cafe: ['cafe','coffee','espresso','café']
-};
-
-const VIBES = {
-    romantic: ['date','romantic','anniversary','intimate','date night','dating'],
-    rooftop: ['rooftop','view','skyline','terrace'],
-    cocktail: ['cocktail','speakeasy','mixology','craft drinks'],
-    nightclub: ['club','nightclub','dance','dancing','dj'],
-    livemusic: ['live music','band','concert','jazz','acoustic'],
-    casual: ['casual','chill','relaxed','laid back'],
-    fine: ['fine dining','upscale','fancy','special occasion','tasting menu'],
-    brunch: ['brunch','breakfast','mimosa','eggs benedict'],
-    sports: ['sports bar','sports','game','watch the game'],
-    lgbtq: ['lgbtq','gay','queer','pride'],
-    hiddengem: ['hidden gem','off the beaten','secret','under the radar']
-};
-
-const NEIGHBORHOODS = [
-    'back bay','south end','north end','seaport','downtown','cambridge','beacon hill',
-    'fort point','fenway','somerville','allston','brookline','jamaica plain','charlestown',
-    'south boston','chinatown','west end','east boston','dorchester','roslindale','brighton','hyde park',
-    'mission hill','roxbury','mattapan'
-];
-
-const TIME_HINTS = {
-    tonight: ['tonight','this evening','right now'],
-    weekend: ['weekend','saturday night','friday night','this weekend'],
-    lunch: ['lunch','midday','noon'],
-    brunch: ['brunch','saturday morning','sunday morning'],
-    latenight: ['late night','after midnight','2am','closing time']
-};
-
-function classifyIntent(message) {
-    const m = (message || '').toLowerCase().trim().replace(/\bsouthie\b/g,'south boston');
-    const intent = {
-        primary: 'search',
-        cuisines: [],
-        vibes: [],
-        neighborhoods: [],
-        times: [],
-        group_size: null,
-        budget: null,
-        is_booking: false,
-        is_event: false,
-        is_help: false,
-        is_greeting: false,
-        original: message
-    };
-
-    // Greeting/help
-    if (/^(hi|hey|hello|what's up|yo|sup)\b/i.test(message)) intent.is_greeting = true;
-    if (/\b(help|how does|what can|who are|what is scenelink)\b/i.test(m)) intent.is_help = true;
-
-    // Cuisine detection
-    Object.keys(CUISINES).forEach(function(key){
-        CUISINES[key].forEach(function(kw){
-            if (m.indexOf(kw) !== -1 && intent.cuisines.indexOf(key) === -1) intent.cuisines.push(key);
-        });
-    });
-
-    // Vibe detection
-    Object.keys(VIBES).forEach(function(key){
-        VIBES[key].forEach(function(kw){
-            if (m.indexOf(kw) !== -1 && intent.vibes.indexOf(key) === -1) intent.vibes.push(key);
-        });
-    });
-
-    // Neighborhood detection
-    NEIGHBORHOODS.forEach(function(n){
-        if (m.indexOf(n) !== -1 && intent.neighborhoods.indexOf(n) === -1) intent.neighborhoods.push(n);
-    });
-
-    // Time detection
-    Object.keys(TIME_HINTS).forEach(function(key){
-        TIME_HINTS[key].forEach(function(kw){
-            if (m.indexOf(kw) !== -1 && intent.times.indexOf(key) === -1) intent.times.push(key);
-        });
-    });
-
-    // Group size - matches "for 4", "table for 6", "party of 8", "4 people", etc.
-    const groupMatch = m.match(/\b(?:for|party of|table for|group of)\s+(\d+)\b/) ||
-                       m.match(/\b(\d+)\s*(people|person|friends?|guys|ppl|of us|top)\b/);
-    if (groupMatch) intent.group_size = parseInt(groupMatch[1]);
-    if (/\bdate\b|\btwo of us\b|\bmy (partner|girlfriend|boyfriend|wife|husband)\b/.test(m)) intent.group_size = intent.group_size || 2;
-
-    // Budget
-    if (/\$\$\$\$|splurge|expensive|upscale/.test(m)) intent.budget = 4;
-    else if (/\$\$\$/.test(m)) intent.budget = 3;
-    else if (/cheap|budget|affordable|\$\$/.test(m)) intent.budget = 2;
-
-    // Event intent
-    if (/\b(event|concert|show|live music|tonight's event|what's happening)\b/.test(m)) intent.is_event = true;
-
-    // Booking intent
-    if (/\b(book|reserve|reservation|table for|make a reservation)\b/.test(m)) intent.is_booking = true;
-
-    // Primary intent
-    if (intent.is_booking) intent.primary = 'book';
-    else if (intent.is_event) intent.primary = 'event';
-    else if (intent.is_help) intent.primary = 'help';
-    else if (intent.is_greeting) intent.primary = 'greet';
-    else if (intent.cuisines.length || intent.vibes.length || intent.neighborhoods.length) intent.primary = 'recommend';
-    else intent.primary = 'search';
-
-    return intent;
-}
-
 // ═════════════════════════════════════════════════════════════
 // VENUE QUERY BUILDER
 // ═════════════════════════════════════════════════════════════
@@ -168,10 +51,14 @@ async function queryVenues(intent, limit) {
         i++;
     }
 
+    const placeType = intent.venueName == null ? intent.venueType : null;
+    const placeConstraint = venueTypeSQL(placeType);
+    if (placeConstraint) conditions.push(placeConstraint);
+
     // Vibe → type mapping
     const typeFilters = [];
     if (intent.vibes.indexOf('rooftop') !== -1) typeFilters.push('rooftop');
-    if (intent.vibes.indexOf('cocktail') !== -1) typeFilters.push('cocktail','bar','lounge');
+    if (intent.vibes.indexOf('cocktail') !== -1 && placeType !== 'cocktail_bar') typeFilters.push('cocktail','bar','lounge');
     if (intent.vibes.indexOf('nightclub') !== -1) typeFilters.push('nightclub','club');
     if (intent.vibes.indexOf('livemusic') !== -1) typeFilters.push('live music','music','jazz');
     if (intent.vibes.indexOf('brunch') !== -1) typeFilters.push('cafe','restaurant');
@@ -199,6 +86,11 @@ async function queryVenues(intent, limit) {
         i++;
     }
 
+    const excluded = exclusionSQL(intent, i);
+    conditions.push(...excluded.conditions);
+    values.push(...excluded.values);
+    i = excluded.nextIndex;
+
     const whereClause = conditions.length ? ('WHERE ' + conditions.join(' AND ')) : '';
     const sql = `
         SELECT id, slug, name, type, cuisine, category, neighborhood, city, address,
@@ -221,15 +113,7 @@ async function queryVenues(intent, limit) {
 // EVENT QUERY
 // ═════════════════════════════════════════════════════════════
 async function queryEvents(intent, limit) {
-    const days = intent.times.includes('weekend') ? 7 : 1;
-    const result = await pool.query(
-        `SELECT ${EVENT_COLUMNS}
-         FROM events e LEFT JOIN venues v ON v.id=e.venue_id
-         WHERE ${PUBLIC_EVENT()} AND e.date BETWEEN ${EVENT_TODAY_SQL} AND (${EVENT_TODAY_SQL} + $1::integer)
-         ORDER BY e.date,e.start_time,e.id LIMIT $2`,
-        [days,limit || 5]
-    );
-    return result.rows.map(publicEvent);
+    return queryConciergeEvents(pool, intent, limit || 5);
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -246,7 +130,6 @@ function generateResponse(intent, venues, events) {
     // Build descriptive intro based on detected intent
     const parts = [];
     if (intent.cuisines.length) parts.push(intent.cuisines.map(cap).join('/'));
-    if (intent.vibes.length) parts.push(intent.vibes.map(cap).join('/'));
     const location = intent.neighborhoods.length
         ? 'in ' + intent.neighborhoods.map(capWords).join('/')
         : 'in Boston';
@@ -255,9 +138,12 @@ function generateResponse(intent, venues, events) {
         : '';
 
     if (intent.primary === 'event') {
-        if (!events.length) return `I don't see any events ${timing || 'coming up'} that match. Try browsing the events page or check back soon!`;
+        const when = intent.eventWindow?.kind === 'date' ? 'on ' + intent.eventWindow.date
+            : intent.eventWindow?.kind === 'today' ? 'today'
+            : intent.eventWindow?.kind === 'weekend' ? 'this weekend' : 'in the next seven days';
+        if (!events.length) return `I don't see any reviewed events ${when} that match those filters. Try another date, area or event type.`;
         const s = events.length === 1 ? 'event' : 'events';
-        return `Here ${events.length === 1 ? "'s an" : "are"} ${events.length} ${s} ${timing || 'coming up'}:`;
+        return `${events.length} matching ${s} ${location} ${when}. Check the event's source for tickets and current details.`;
     }
 
     if (!venues.length) {
@@ -273,7 +159,10 @@ function generateResponse(intent, venues, events) {
     } else {
         leadIn = `Here's what I found:`;
     }
-    return leadIn;
+    if (intent.venueName == null && intent.venueType === 'cocktail_bar') {
+        return `${venues.length} bar ${venues.length === 1 ? 'match' : 'matches'} ${location}. Cocktail menus aren't verified; check with the venue.`;
+    }
+    return timing || intent.group_size ? leadIn + ' Opening hours and space for your group need confirmation with the venue.' : leadIn;
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -281,6 +170,7 @@ function generateResponse(intent, venues, events) {
 // ═════════════════════════════════════════════════════════════
 function generateActions(intent, venues) {
     const actions = [];
+    if (intent.is_event) return [{ label: 'Browse events', type: 'link', href: 'events.html' }];
     if (!venues.length) {
         actions.push({ label: 'Browse all venues', type: 'link', href: 'explore.html' });
         actions.push({ label: "Tonight's Picks", type: 'link', href: 'tonight.html' });
@@ -306,17 +196,29 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
         if(typeof req.body?.message!=='string')return res.status(400).json({error:'message must be text'});
         const message = req.body.message.trim();
         res.setHeader('Cache-Control','private, no-store');
-        const context = req.body.context || {};
+        const context = req.body.context && typeof req.body.context === 'object' && !Array.isArray(req.body.context) ? req.body.context : {};
         const history = Array.isArray(req.body.history) ? req.body.history : [];
         const session_id = req.body.session_id || ('sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6));
 
         if (!message) return res.status(400).json({ error: 'message required' });
         if (message.length > 500) return res.status(400).json({ error: 'message too long' });
 
-        // ─── Try OpenAI first if enabled ───────────────────────────
-        if (aiEnabled() && req.body.ai !== false) {
+        const planMode = modeFor(message);
+        const revising = planMode === 'swap' || planMode === 'unsupported';
+        const request = await resolveConversation({ pool, message,
+            history: revising ? [] : history, context: revising ? {} : context, parse: classifyIntent });
+        const intent = request.filters;
+        if (request.clarification) {
+            return res.json({ ok: true, source: 'rule-based', response: request.clarification,
+                venues: [], events: [], itinerary: null, actions: [], tools_used: [],
+                intent: { primary: 'clarify' }, search_context: null, session_id });
+        }
+
+        // Opt-in is per request; caller-supplied context cannot establish identity.
+        const access = { userId: req.user?.id, optedIn: req.body.ai === true };
+        if (aiEnabled(access) && !intent.is_event && !intent.is_help && !intent.is_greeting && !request.reset) {
             try {
-                const result = await runAIConcierge({ message, history, context });
+                const result = await runAIConcierge({ message, history, context, resolvedRequest: request, access });
                 const byId = new Map(result.candidates.map(v => [String(v.id),v]));
                 const stops = result.recommendedPlan?.stops || [];
                 const ids = [...new Set([...result.recommendedVenues.map(v=>String(v.venueId)), ...stops.map(v=>String(v.venueId))])];
@@ -330,7 +232,6 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
                     })} : null,
                     actions: [], tools_used: ['venue_database']
                 };
-                const intent = classifyIntent(message); // keep for analytics + client hints
                 pool.query(
                     `INSERT INTO analytics_events (event, user_id, anon, session_id, properties)
                      VALUES ($1, $2, $3, $4, $5)`,
@@ -351,6 +252,7 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
                     venues: ai.venues,
                     events: ai.events,
                     itinerary: ai.itinerary || null,
+                    typed_plan: result.typedPlan || null,
                     actions: ai.actions,
                     intent: {
                         primary: intent.primary,
@@ -362,6 +264,7 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
                         is_event: intent.is_event
                     },
                     tools_used: ai.tools_used,
+                    search_context: searchContextFor(intent, ai.venues),
                     session_id
                 });
             } catch (aiErr) {
@@ -371,21 +274,22 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
         }
 
         // ─── Fallback: rule-based classifier ───────────────────────
-        const named = await resolveNamedVenue(pool, message);
-        const intent = classifyIntent(named ? named.filterText : message);
-        if (named) { intent.venueName = named.name; intent.original = message; intent.primary = 'search'; }
         const limit = Math.max(1, Math.min(parseInt(req.body.limit) || 5, 10));
 
         let venues = [];
         let events = [];
-        if (intent.primary === 'event') {
+        if (revising) {
+            // Never reuse arbitrary client filters or show irrelevant candidates on failed edits.
+        } else if (intent.primary === 'event') {
             events = await queryEvents(intent, limit);
-            if (!events.length) venues = await queryVenues(intent, limit);
         } else if (intent.primary === 'recommend' || intent.primary === 'search' || intent.primary === 'book') {
             venues = await queryVenues(intent, limit);
         }
 
-        const response = generateResponse(intent, venues, events);
+        const directoryResponse = generateResponse(intent, venues, events);
+        const response = !planMode ? directoryResponse : planMode === 'swap' || planMode === 'unsupported'
+            ? 'I couldn’t revise the plan. To start fresh, ask for dinner then drinks again.'
+            : 'I couldn’t verify both stops for this plan. Here are the directory results instead. ' + directoryResponse;
         const actions = generateActions(intent, venues);
 
         pool.query(
@@ -412,6 +316,8 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
                 is_booking: intent.is_booking,
                 is_event: intent.is_event
             },
+            search_context: revising ? null : searchContextFor(intent, intent.is_event
+                ? events.map(event => ({ name: event.venue_name, neighborhood: event.venue_neighborhood })) : venues),
             session_id
         });
     } catch (err) {
@@ -422,6 +328,13 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
             response: "Sorry, I had trouble with that. Try browsing Explore or Tonight for picks!"
         });
     }
+});
+
+// UI discovery only; POST independently verifies auth, allowlist and request consent.
+router.get('/capabilities', optionalAuth, (req, res) => {
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.vary('Authorization');
+    res.json({ ai_pilot: aiEnabled({ userId: req.user?.id, optedIn: true }) });
 });
 
 // ═════════════════════════════════════════════════════════════

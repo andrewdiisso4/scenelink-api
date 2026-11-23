@@ -1,28 +1,28 @@
 <!DOCTYPE html>
 <html lang="en" data-sl-design="unified">
 <head>
-<script src="/js/sl-connected-api.js?v=connected-20261119-been-with-friends" defer></script>
-<script src="/js/sl-connected-actions.js?v=connected-20261119-been-with-friends" defer></script>
-<link rel="stylesheet" href="/css/sl-connected.css?v=connected-20261119-been-with-friends">
+<script src="/js/sl-connected-api.js?v=connected-20261123-release-acceptance" defer></script>
+<script src="/js/sl-connected-actions.js?v=connected-20261123-release-acceptance" defer></script>
+<link rel="stylesheet" href="/css/sl-connected.css?v=connected-20261123-release-acceptance">
   <!-- sl-observability:v1 -->
   <script src="/env.js"></script>
-  <script src="/js/sl-avatar.js?v=connected-20261119-been-with-friends"></script>
-  <script src="/js/sl-social-core.js?v=connected-20261119-been-with-friends" defer></script>
+  <script src="/js/sl-avatar.js?v=connected-20261123-release-acceptance"></script>
+  <script src="/js/sl-social-core.js?v=connected-20261123-release-acceptance" defer></script>
   <!-- Phase 7A perf -->
-  <script src="/js/sl-fetch-guard.js?v=connected-20261119-been-with-friends" defer></script>
-  <script src="/js/sl-perf-loader.js?v=connected-20261119-been-with-friends" defer></script>
-  <script src="/js/sl-observability.js?v=connected-20261119-been-with-friends" defer></script>
-  <script src="/js/sl-version-marker.js?v=connected-20261119-been-with-friends" defer></script>
-  <script src="/js/sl-stale-version-detector.js?v=connected-20261119-been-with-friends" defer></script>
+  <script src="/js/sl-fetch-guard.js?v=connected-20261123-release-acceptance" defer></script>
+  <script src="/js/sl-perf-loader.js?v=connected-20261123-release-acceptance" defer></script>
+  <script src="/js/sl-observability.js?v=connected-20261123-release-acceptance" defer></script>
+  <script src="/js/sl-version-marker.js?v=connected-20261123-release-acceptance" defer></script>
+  <script src="/js/sl-stale-version-detector.js?v=connected-20261123-release-acceptance" defer></script>
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
     <title>For Business - Manage Your Venue | SceneLink</title>
     <meta name="description" content="Claim your venue on SceneLink. Manage your listing, view analytics, and connect with customers.">
-    <link rel="stylesheet" href="css/sl-bundle-7d.css?v=connected-20261119-been-with-friends">
-        <link rel="stylesheet" href="css/sl-phase8-launch.css?v=connected-20261119-been-with-friends">
-<link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261119-been-with-friends"><noscript><link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261119-been-with-friends"></noscript>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css?v=connected-20261119-been-with-friends" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="css/sl-bundle-7d.css?v=connected-20261123-release-acceptance">
+        <link rel="stylesheet" href="css/sl-phase8-launch.css?v=connected-20261123-release-acceptance">
+<link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261123-release-acceptance"><noscript><link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=connected-20261123-release-acceptance"></noscript>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css?v=connected-20261123-release-acceptance" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -400,6 +400,23 @@
             .bd-venue { flex-direction:column; align-items:center; text-align:center; }
             .bd-form-row { grid-template-columns:1fr; }
         }
+        .bz-login-m :is(input, select) { font-size:16px }
+        .bz-login-m button, .bd-tabs button { min-height:44px }
+        .bz-login-ov { overflow-y:auto }
+        #bizRetry[hidden], .bz-dash [hidden] { display:none }
+        #bdPhotoForm { max-width:32rem; margin-top:1rem }
+        #bdPhotoForm label { display:block; margin:.8rem 0 .35rem; font-weight:600 }
+        #bdPhotoForm button { margin-top:1rem; min-height:44px }
+        @media(max-width:600px) {
+            .bz-login-m .sl-auth-input-wrap input, .bz-login-m .bd-form-select, .bz-dash :is(input,textarea,select) { font-size:16px }
+            .bd-grid { grid-template-columns:repeat(2,minmax(0,1fr)) }
+            .bd-form-row { grid-template-columns:1fr }
+            .bd-tabs { overflow-x:auto; flex-wrap:nowrap }
+            .bd-tab { flex:none }
+        }
+        @media(prefers-reduced-motion:reduce) { .bz-login-ov.active,.bz-login-m { animation:none } }
+        #bizAccessStatus:empty { display:none }
+        .bz-login-m :focus-visible { outline:2px solid var(--gold); outline-offset:3px }
     </style>
 <meta name="theme-color" content="#0a0a0a">
 <meta name="color-scheme" content="dark">
@@ -438,7 +455,7 @@
   <!-- SceneLink unified auth bundle -->
 
   <!-- SceneLink unified auth bundle -->
-    <script src="js/sl-bundle-7d.js?v=connected-20261119-been-with-friends" defer></script>
+    <script src="js/sl-bundle-7d.js?v=connected-20261123-release-acceptance" defer></script>
 
 
 
@@ -451,12 +468,12 @@
 
 
 
-  <link rel="stylesheet" href="css/sl-phase8-home.css?v=connected-20261119-been-with-friends">
-  <link rel="stylesheet" href="css/sl-universal-search.css?v=connected-20261119-been-with-friends">
-  <link rel="stylesheet" href="css/sl-phase8d-hotfix.css?v=connected-20261119-been-with-friends">
-  <link rel="stylesheet" href="css/sl-phase8f-polish.css?v=connected-20261119-been-with-friends">
-  <link rel="stylesheet" href="/css/sl-recovery-truthfulness.css?v=connected-20261119-been-with-friends">
-  <link rel="stylesheet" href="/css/sl-design-system.css?v=connected-20261119-been-with-friends">
+  <link rel="stylesheet" href="css/sl-phase8-home.css?v=connected-20261123-release-acceptance">
+  <link rel="stylesheet" href="css/sl-universal-search.css?v=connected-20261123-release-acceptance">
+  <link rel="stylesheet" href="css/sl-phase8d-hotfix.css?v=connected-20261123-release-acceptance">
+  <link rel="stylesheet" href="css/sl-phase8f-polish.css?v=connected-20261123-release-acceptance">
+  <link rel="stylesheet" href="/css/sl-recovery-truthfulness.css?v=connected-20261123-release-acceptance">
+  <link rel="stylesheet" href="/css/sl-design-system.css?v=connected-20261123-release-acceptance">
 </head>
 <body>
     <header class="header-enhanced" id="mainHeader">
@@ -488,6 +505,8 @@
             <div class="bz-badge"><i class="fas fa-building"></i> SceneLink for Business</div>
             <h1>Grow Your Venue.<br><span>Own Your Night.</span></h1>
             <p class="bz-hero-p">Claim your venue, keep your listing accurate, track engagement, and reach local diners and nightlife-goers as SceneLink grows across Boston.</p>
+            <p id="bizAccessStatus" role="status" aria-live="polite"></p>
+            <button class="bz-btn bz-btn-out" id="bizRetry" hidden>Retry session check</button>
             <div class="bz-hero-btns">
                 <button class="bz-btn bz-btn-gold" id="bizClaimBtn"><i class="fas fa-store"></i> Claim Your Venue</button>
                 <button class="bz-btn bz-btn-out" id="bizLoginBtn"><i class="fas fa-sign-in-alt"></i> Business Login</button>
@@ -495,9 +514,9 @@
         </div>
 
         <div class="bz-features">
-            <div class="bz-feat"><div class="bz-feat-ic"><i class="fas fa-edit"></i></div><h3>Manage Your Listing</h3><p>Update venue details, hours, photos, tags, and descriptions anytime. Keep your listing fresh and accurate.</p></div>
+            <div class="bz-feat"><div class="bz-feat-ic"><i class="fas fa-edit"></i></div><h3>Manage Your Listing</h3><p>Update venue details, hours, contact links, and descriptions. Keep your listing fresh and accurate.</p></div>
             <div class="bz-feat"><div class="bz-feat-ic"><i class="fas fa-flask"></i></div><h3>Owner Insights <span style="font-size:11px;font-weight:700;letter-spacing:1px;color:#D4AF37;background:rgba(212,175,55,0.12);padding:2px 8px;border-radius:6px;margin-left:6px;vertical-align:middle;">PRIVATE BETA</span></h3><p>Owner reporting tools are being piloted with approved venue partners during private beta. Join the Business Beta to get early access.</p></div>
-            <div class="bz-feat"><div class="bz-feat-ic"><i class="fas fa-images"></i></div><h3>Venue Gallery <span style="font-size:11px;font-weight:700;letter-spacing:1px;color:#D4AF37;background:rgba(212,175,55,0.12);padding:2px 8px;border-radius:6px;margin-left:6px;vertical-align:middle;">PRIVATE BETA</span></h3><p>Self-serve photo upload and gallery management is in private beta. During beta we&rsquo;ll set up your gallery directly &mdash; just send photos to <a href="mailto:info@scenelink.app" style="color:#D4AF37;">info@scenelink.app</a>.</p></div>
+            <div class="bz-feat"><div class="bz-feat-ic"><i class="fas fa-images"></i></div><h3>Venue Gallery <span style="font-size:11px;font-weight:700;letter-spacing:1px;color:#D4AF37;background:rgba(212,175,55,0.12);padding:2px 8px;border-radius:6px;margin-left:6px;vertical-align:middle;">PRIVATE BETA</span></h3><p>Approved owners can add a photo by HTTPS link. For help with image files, email <a href="mailto:info@scenelink.app" style="color:#D4AF37;">info@scenelink.app</a>.</p></div>
             <div class="bz-feat"><div class="bz-feat-ic"><i class="fas fa-star"></i></div><h3>Featured Placement</h3><p>Get featured in Tonight's Picks, spotlight sections, and curated lists for maximum exposure.</p></div>
             <div class="bz-feat"><div class="bz-feat-ic"><i class="fas fa-bullhorn"></i></div><h3>Events &amp; Promos <span style="font-size:11px;font-weight:700;letter-spacing:1px;color:#D4AF37;background:rgba(212,175,55,0.12);padding:2px 8px;border-radius:6px;margin-left:6px;vertical-align:middle;">PRIVATE BETA</span></h3><p>Tools for posting happy hours, special events, and promotions are being piloted with select partners. Join the beta to participate.</p></div>
             <div class="bz-feat"><div class="bz-feat-ic"><i class="fas fa-comments"></i></div><h3>Reviews &amp; Replies <span style="font-size:11px;font-weight:700;letter-spacing:1px;color:#D4AF37;background:rgba(212,175,55,0.12);padding:2px 8px;border-radius:6px;margin-left:6px;vertical-align:middle;">PRIVATE BETA</span></h3><p>Verified-owner review responses are in private beta. Contact <a href="mailto:info@scenelink.app" style="color:#D4AF37;">info@scenelink.app</a> if you&rsquo;d like to participate.</p></div>
@@ -557,7 +576,7 @@
                         <li style="color:var(--dim)"><i class="fas fa-clock" style="color:var(--dim)"></i> Developer API &mdash; <em>private beta</em></li>
                         <li><i class="fas fa-check"></i> Dedicated point of contact</li>
                     </ul>
-                    <button class="bz-plan-btn out bz-open-login" data-tier="enterprise">Contact Sales</button>
+                    <button class="bz-plan-btn out" onclick="openUpgradeInterestModal()">Contact Sales</button>
                 </div>
             </div>
         </div>
@@ -583,7 +602,7 @@
             <div id="bdVenueSwitcher" style="display:none;margin-bottom:12px;align-items:center;gap:12px;padding:10px 14px;background:rgba(212,175,55,0.07);border:1.5px solid rgba(212,175,55,0.2);border-radius:10px;">
                 <i class="fas fa-building" style="color:var(--gold)"></i>
                 <span style="font-size:12px;color:var(--dim)">Viewing:</span>
-                <select class="bd-form-select" id="bdVenueSelect" style="width:auto;padding:6px 12px;font-size:13px;font-weight:600;" onchange="switchVenue(this.value)">
+                <select class="bd-form-select" id="bdVenueSelect" style="width:auto;padding:6px 12px;font-size:13px;font-weight:600;">
                     <option value="">Loading venues…</option>
                 </select>
                 <span style="font-size:11px;color:var(--dim);margin-left:auto">Group Dashboard</span>
@@ -608,21 +627,21 @@
                         <div class="bd-venue-r" id="bdVRating" style="color:rgba(255,255,255,0.5);font-size:13px;"><i class="fas fa-info-circle"></i> Sign in with your business account to see live stats</div>
                         <div class="bd-venue-tier" id="bdVTier"><i class="fas fa-crown"></i> <span id="bdTierName">Free</span></div>
                         <div style="display:flex;gap:8px;margin-top:12px;">
-                            <a class='bd-b bd-b-g' href='/explore' style='font-size:12px;padding:7px 14px;text-decoration:none;border-radius:8px;'><i class="fas fa-eye"></i> View Listing</a>
+                            <a class='bd-b bd-b-g' id='bdViewListing' hidden href='/explore' style='font-size:12px;padding:7px 14px;text-decoration:none;border-radius:8px;'><i class="fas fa-eye"></i> View Listing</a>
                             <button class="bd-b" style="font-size:12px;padding:7px 14px;background:rgba(212,175,55,0.1);border:1.5px solid rgba(212,175,55,0.3);color:var(--gold);" onclick="document.querySelector('[data-panel=listing]').click()"><i class="fas fa-edit"></i> Edit Listing</button>
                         </div>
                     </div>
                 </div>
-                <div class="bd-grid">
-                    <div class="bd-card"><div class="bd-card-t">Profile Views</div><div class="bd-card-v" id="bdStatViews">—</div><div class="bd-card-ch" style="color:rgba(255,255,255,0.4);">Available after sign-in</div></div>
-                    <div class="bd-card"><div class="bd-card-t">Saves & Favorites</div><div class="bd-card-v" id="bdStatSaves">—</div><div class="bd-card-ch" style="color:rgba(255,255,255,0.4);">Available after sign-in</div></div>
-                    <div class="bd-card"><div class="bd-card-t">Check-ins Today</div><div class="bd-card-v" id="bdStatCheckins">—</div><div class="bd-card-ch" style="color:rgba(255,255,255,0.4);">Available after sign-in</div></div>
-                    <div class="bd-card"><div class="bd-card-t">Engagement Rate</div><div class="bd-card-v" id="bdStatEngagement">—</div><div class="bd-card-ch" style="color:rgba(255,255,255,0.4);">Available after sign-in</div></div>
-                </div>
-                <div class="bd-chart">
-                    <div class="bd-chart-h"><h3>Weekly Performance</h3><select class="bd-form-select" style="width:auto;padding:6px 12px;font-size:12px;"><option>This Week</option><option>Last Week</option><option>This Month</option></select></div>
-                    <div class="bd-bars" id="bdChartBars"></div>
-                </div>
+                <section class="bd-card" aria-labelledby="bdStatTitle">
+                    <h3 id="bdStatTitle">Listing activity · last 30 days</h3>
+                    <div class="bd-grid">
+                        <div><span>Listing views</span><p class="bd-card-v" id="bdStatViews">—</p></div>
+                        <div><span>Saves</span><p class="bd-card-v" id="bdStatSaves">—</p></div>
+                        <div><span>Plan adds</span><p class="bd-card-v" id="bdStatPlans">—</p></div>
+                        <div><span>Website clicks</span><p class="bd-card-v" id="bdStatClicks">—</p></div>
+                    </div>
+                    <p id="bdStatsStatus" role="status"></p><button class="bd-b bd-b-o" type="button" id="bdStatsRetry">Refresh activity</button>
+                </section>
             </div>
 
             <!-- LISTING EDITOR PANEL -->
@@ -630,34 +649,34 @@
                 <div class="bd-card" style="margin-bottom:20px">
                     <div class="bd-card-t">Venue Information</div>
                     <div class="bd-form-row">
-                        <div class="bd-form-group"><label class="bd-form-label">Venue Name</label><input class="bd-form-input" id="bdEditName" value=""></div>
-                        <div class="bd-form-group"><label class="bd-form-label">Category</label><select class="bd-form-select" id="bdEditCat"><option>Restaurant</option><option>Bar</option><option>Nightclub</option><option>Lounge</option><option>Rooftop</option><option>Live Music</option><option>Cafe</option></select></div>
+                        <div class="bd-form-group"><label class="bd-form-label" for="bdEditName">Venue Name</label><input class="bd-form-input" id="bdEditName" value=""></div>
+                        <div class="bd-form-group"><label class="bd-form-label" for="bdEditCat">Category</label><select class="bd-form-select" id="bdEditCat"><option value="">Not specified</option><option>Restaurant</option><option>Bar</option><option>Nightclub</option><option>Lounge</option><option>Rooftop</option><option>Live Music</option><option>Cafe</option></select></div>
                     </div>
-                    <div class="bd-form-group"><label class="bd-form-label">Description</label><textarea class="bd-form-textarea" id="bdEditDesc" placeholder="Describe your venue..."></textarea></div>
+                    <div class="bd-form-group"><label class="bd-form-label" for="bdEditDesc">Description</label><textarea class="bd-form-textarea" id="bdEditDesc" placeholder="Describe your venue..."></textarea></div>
                     <div class="bd-form-row">
-                        <div class="bd-form-group"><label class="bd-form-label">Address</label><input class="bd-form-input" id="bdEditAddr" value=""></div>
-                        <div class="bd-form-group"><label class="bd-form-label">Neighborhood</label><input class="bd-form-input" id="bdEditNhood" value=""></div>
-                    </div>
-                    <div class="bd-form-row">
-                        <div class="bd-form-group"><label class="bd-form-label">Phone</label><input class="bd-form-input" id="bdEditPhone" placeholder="(617) 555-0000" aria-label="(617) 555-0000"></div>
-                        <div class="bd-form-group"><label class="bd-form-label">Website</label><input class="bd-form-input" id="bdEditWeb" placeholder="https://" aria-label="https://"></div>
+                        <div class="bd-form-group"><label class="bd-form-label" for="bdEditAddr">Address</label><input class="bd-form-input" id="bdEditAddr" value=""></div>
+                        <div class="bd-form-group"><label class="bd-form-label" for="bdEditNhood">Neighborhood</label><input class="bd-form-input" id="bdEditNhood" value=""></div>
                     </div>
                     <div class="bd-form-row">
-                        <div class="bd-form-group"><label class="bd-form-label">Price Range</label><select class="bd-form-select" id="bdEditPrice"><option>$</option><option>$$</option><option selected>$$$</option><option>$$$$</option></select></div>
-                        <div class="bd-form-group"><label class="bd-form-label">Dress Code</label><select class="bd-form-select" id="bdEditDress"><option>Casual</option><option>Smart Casual</option><option>Business Casual</option><option>Upscale</option></select></div>
+                        <div class="bd-form-group"><label class="bd-form-label" for="bdEditPhone">Phone</label><input class="bd-form-input" id="bdEditPhone" placeholder="(617) 555-0000"></div>
+                        <div class="bd-form-group"><label class="bd-form-label" for="bdEditWeb">Website</label><input class="bd-form-input" id="bdEditWeb" placeholder="https://"></div>
+                    </div>
+                    <div class="bd-form-row">
+                        <div class="bd-form-group"><label class="bd-form-label" for="bdEditPrice">Price Range</label><select class="bd-form-select" id="bdEditPrice"><option value="">Not specified</option><option>$</option><option>$$</option><option>$$$</option><option>$$$$</option></select></div>
+                        <div class="bd-form-group"><label class="bd-form-label" for="bdEditDress">Dress Code</label><select class="bd-form-select" id="bdEditDress"><option value="">Not specified</option><option>Casual</option><option>Smart Casual</option><option>Business Casual</option><option>Upscale</option></select></div>
                     </div>
                 </div>
                 <div class="bd-card" style="margin-bottom:20px">
                     <div class="bd-card-t">Reservations <span style="font-size:11px;color:var(--dim);font-weight:500;margin-left:8px">Optional &mdash; only use venue-specific URLs (we hide search pages)</span></div>
                     <div class="bd-form-row">
-                        <div class="bd-form-group"><label class="bd-form-label">Resy URL</label><input class="bd-form-input" id="bdEditResy" placeholder="https://resy.com/cities/bos/your-venue" aria-label="https://resy.com/cities/bos/your-venue"></div>
-                        <div class="bd-form-group"><label class="bd-form-label">OpenTable URL</label><input class="bd-form-input" id="bdEditOpentable" placeholder="https://www.opentable.com/r/your-venue" aria-label="https://www.opentable.com/r/your-venue"></div>
+                        <div class="bd-form-group"><label class="bd-form-label" for="bdEditResy">Resy URL</label><input class="bd-form-input" id="bdEditResy" placeholder="https://resy.com/cities/bos/your-venue"></div>
+                        <div class="bd-form-group"><label class="bd-form-label" for="bdEditOpentable">OpenTable URL</label><input class="bd-form-input" id="bdEditOpentable" placeholder="https://www.opentable.com/r/your-venue"></div>
                     </div>
                     <div class="bd-form-group"><label class="bd-form-label">Other Reservation URL <span style="font-size:11px;color:var(--dim)">(Tock, SevenRooms, direct booking)</span></label><input class="bd-form-input" id="bdEditReservation" placeholder="https://www.exploretock.com/your-venue or similar" aria-label="https://www.exploretock.com/your-venue or similar"></div>
                 </div>
                 <div class="bd-card" style="margin-bottom:20px">
                     <div class="bd-card-t">Hours of Operation</div>
-                    <div id="bdHoursGrid" style="display:grid;grid-template-columns:100px 1fr 1fr;gap:8px;align-items:center;font-size:13px;color:var(--dim)"></div>
+                    <div class="bd-form-group"><label for="bdEditHours">Published hours</label><textarea id="bdEditHours" class="bd-form-textarea" maxlength="2000"></textarea></div>
                 </div>
                 <button class="bz-btn bz-btn-gold" id="bdSaveListing" style="margin-top:8px"><i class="fas fa-save"></i> Save Changes</button>
             </div>
@@ -667,6 +686,15 @@
                 <div class="bd-card">
                     <div class="bd-card-t">Venue Gallery <span id="bdPhotoCount" style="color:var(--gold)"></span></div>
                     <div class="bd-photos" id="bdPhotosGrid"></div>
+                    <form id="bdPhotoForm" hidden>
+                        <label for="bdPhotoURL">Photo URL (HTTPS)</label>
+                        <input class="bd-form-input" id="bdPhotoURL" type="url" inputmode="url" maxlength="2000" required>
+                        <label for="bdPhotoCaption">Caption (optional)</label>
+                        <input class="bd-form-input" id="bdPhotoCaption" maxlength="300">
+                        <button class="bd-b bd-b-g" type="submit">Save photo</button>
+                        <button class="bd-b bd-b-o" id="bdPhotoCancel" type="button">Cancel</button>
+                        <p role="status" id="bdPhotoStatus"></p>
+                    </form>
                 </div>
             </div>
 
@@ -676,29 +704,21 @@
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
                     <h3 style="margin:0;font-size:15px;color:var(--gold)">Performance Analytics</h3>
                     <div style="display:flex;gap:6px;">
-                        <button class="bd-range-btn active" onclick="setAnalyticsRange(this,'today')">Today</button>
+                        <button class="bd-range-btn active" onclick="setAnalyticsRange(this,'today')">24 hours</button>
                         <button class="bd-range-btn" onclick="setAnalyticsRange(this,'week')">Week</button>
                         <button class="bd-range-btn" onclick="setAnalyticsRange(this,'month')">Month</button>
-                        <button class="bd-range-btn" onclick="setAnalyticsRange(this,'year')">Year</button>
+                        <button class="bd-range-btn" onclick="setAnalyticsRange(this,'quarter')">90 days</button>
                     </div>
                 </div>
                 <div class="bd-grid" id="bdAnalGrid">
                     <div class="bd-card"><div class="bd-card-t" id="bdAnalTitle">Performance</div></div>
-                    <div class="bd-card"><div class="bd-card-t">Views</div><div class="bd-card-v" id="bdAnalViews">—</div><div class="bd-card-ch" id="bdAnalViewsCh" style="color:rgba(255,255,255,0.4);">No data yet</div></div>
-                    <div class="bd-card"><div class="bd-card-t">Saves</div><div class="bd-card-v" id="bdAnalSaves">—</div><div class="bd-card-ch" id="bdAnalSavesCh" style="color:rgba(255,255,255,0.4);">No data yet</div></div>
-                    <div class="bd-card"><div class="bd-card-t">Plan Adds</div><div class="bd-card-v" id="bdAnalCheckins">—</div><div class="bd-card-ch" id="bdAnalCheckinsCh" style="color:rgba(255,255,255,0.4);">No data yet</div></div>
-                    <div class="bd-card"><div class="bd-card-t">Avg. Rating</div><div class="bd-card-v" id="bdAnalRating" style="color:var(--gold)">—</div></div>
+                    <div class="bd-card"><div class="bd-card-t">Views</div><div class="bd-card-v" id="bdAnalViews">—</div><div class="bd-card-ch" id="bdAnalViewsCh" style="color:rgba(255,255,255,0.4);"></div></div>
+                    <div class="bd-card"><div class="bd-card-t">Saves</div><div class="bd-card-v" id="bdAnalSaves">—</div><div class="bd-card-ch" id="bdAnalSavesCh" style="color:rgba(255,255,255,0.4);"></div></div>
+                    <div class="bd-card"><div class="bd-card-t">Plan Adds</div><div class="bd-card-v" id="bdAnalCheckins">—</div><div class="bd-card-ch" id="bdAnalCheckinsCh" style="color:rgba(255,255,255,0.4);"></div></div>
+                    <div class="bd-card"><div class="bd-card-t">Website clicks</div><div class="bd-card-v" id="bdAnalRating" style="color:var(--gold)">—</div></div>
                 </div>
                 <div id="bdAnalEmpty" style="display:none;margin-top:16px;padding:16px;background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.10);border-radius:10px;color:var(--dim);font-size:13px;text-align:center;">
                     Analytics begin once your listing is approved and viewed.
-                </div>
-                <div class="bd-chart" style="margin-top:16px;">
-                    <div class="bd-chart-h"><h3 id="bdAnalChartTitle">Hourly Trend</h3></div>
-                    <div class="bd-bars" id="bdAnalBars"></div>
-                </div>
-                <div class="bd-card" style="margin-top:20px">
-                    <div class="bd-card-t">Traffic Sources</div>
-                    <div id="bdSources" style="margin-top:12px"></div>
                 </div>
             </div>
 
@@ -707,7 +727,7 @@
                 <div class="bd-card">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
                         <div class="bd-card-t" style="margin:0" id="bdReviewsHeader">Recent Reviews</div>
-                        <select class="bd-form-select" style="width:auto;padding:6px 12px;font-size:12px;"><option>Newest First</option><option>Highest Rated</option><option>Lowest Rated</option></select>
+                        <select id="bdReviewSort" aria-label="Sort reviews" class="bd-form-select" style="width:auto;padding:6px 12px;font-size:12px;"><option>Newest First</option><option>Highest Rated</option><option>Lowest Rated</option></select>
                     </div>
                     <div id="bdReviewsList"></div>
                 </div>
@@ -722,12 +742,12 @@
                 <div id="bdPromoList"></div>
                 <div class="bd-card" style="margin-top:20px;display:none" id="bdPromoForm">
                     <div class="bd-card-t">Create Promotion</div>
-                    <div class="bd-form-group"><label class="bd-form-label">Promotion Title</label><input class="bd-form-input" id="bdPromoTitle" placeholder="e.g. Happy Hour Special" aria-label="e.g. Happy Hour Special"></div>
+                    <div class="bd-form-group"><label class="bd-form-label" for="bdPromoTitle">Promotion Title</label><input class="bd-form-input" id="bdPromoTitle" placeholder="e.g. Happy Hour Special"></div>
                     <div class="bd-form-row">
-                        <div class="bd-form-group"><label class="bd-form-label">Start Date</label><input class="bd-form-input" type="date" id="bdPromoStart"></div>
-                        <div class="bd-form-group"><label class="bd-form-label">End Date</label><input class="bd-form-input" type="date" id="bdPromoEnd"></div>
+                        <div class="bd-form-group"><label class="bd-form-label" for="bdPromoStart">Start Date</label><input class="bd-form-input" type="date" aria-label="Start date, Boston time" id="bdPromoStart"></div>
+                        <div class="bd-form-group"><label class="bd-form-label" for="bdPromoEnd">End Date</label><input class="bd-form-input" type="date" aria-label="End date, Boston time" id="bdPromoEnd"></div>
                     </div>
-                    <div class="bd-form-group"><label class="bd-form-label">Description</label><textarea class="bd-form-textarea" id="bdPromoDesc" placeholder="Describe your promotion..." style="min-height:80px"></textarea></div>
+                    <div class="bd-form-group"><label class="bd-form-label" for="bdPromoDesc">Description</label><textarea class="bd-form-textarea" id="bdPromoDesc" placeholder="Describe your promotion..." style="min-height:80px"></textarea></div>
                     <div style="display:flex;gap:10px;margin-top:8px">
                         <button class="bz-btn bz-btn-gold" id="bdPromoSave" style="padding:10px 24px;font-size:13px"><i class="fas fa-check"></i> Create</button>
                         <button class="bz-btn bz-btn-out" id="bdPromoCancel" style="padding:10px 24px;font-size:13px">Cancel</button>
@@ -750,11 +770,9 @@
                     <i class="fas fa-store" style="font-size:32px;color:var(--gold);opacity:0.6;margin-bottom:12px;"></i>
                     <div style="font-weight:700;color:#fff;font-size:15px;margin-bottom:6px;">No venues yet</div>
                     <div style="color:var(--dim);font-size:13px;max-width:440px;margin:0 auto 18px;">
-                        Claim your venue to manage your listing, respond to reviews, and see real analytics. Search Boston venues and submit a claim — we approve every claim manually.
+                        Contact SceneLink for an ownership review before managing an additional existing venue.
                     </div>
-                    <button class="bz-btn bz-btn-gold" id="mvClaimVenueBtn" style="padding:10px 20px;font-size:13px;">
-                        <i class="fas fa-search"></i> Find & Claim Your Venue
-                    </button>
+                    <a class="bd-b bd-b-o" href="mailto:info@scenelink.app?subject=Additional%20venue%20ownership%20review">Request ownership review</a>
                 </div>
 
                 <!-- Real venues table — rendered by loadEnterpriseVenues() -->
@@ -791,13 +809,13 @@
             </div>
     <!-- BUSINESS AUTH MODAL — modernized -->
     <div class="bz-login-ov" id="bizLoginOverlay">
-        <div class="bz-login-m">
+        <div class="bz-login-m" role="dialog" aria-modal="true" aria-labelledby="businessLoginTitle">
             <button class="bz-login-close" id="bizLoginClose" aria-label="Close">&times;</button>
 
             <!-- Header -->
             <div class="bz-login-head">
                 <div class="bz-login-logo"><i class="fas fa-store"></i></div>
-                <div class="bz-login-title">SceneLink for Business</div>
+                <div class="bz-login-title" id="businessLoginTitle">SceneLink for Business</div>
                 <div class="bz-login-sub">Manage your listing, track engagement, and grow your venue.</div>
             </div>
 
@@ -808,120 +826,93 @@
             </div>
 
             <!-- Login form -->
-            <div id="bzFormLogin">
-                <div class="sl-auth-error" id="bzLoginError"></div>
+            <form id="bzFormLogin">
+                <div class="sl-auth-error" role="alert" id="bzLoginError"></div>
                 <div class="sl-auth-field">
-                    <label>Business Email</label>
+                    <label for="bzEmail">Business Email</label>
                     <div class="sl-auth-input-wrap">
                         <i class="fas fa-envelope"></i>
-                        <input type="email" id="bzEmail" placeholder="you@yourvenue.com" autocomplete="email" required aria-label="you@yourvenue.com">
+                        <input type="email" id="bzEmail" placeholder="you@yourvenue.com" autocomplete="email" required>
                     </div>
                 </div>
                 <div class="sl-auth-field">
-                    <label>Password</label>
+                    <label for="bzPass">Password</label>
                     <div class="sl-auth-input-wrap">
                         <i class="fas fa-lock"></i>
-                        <input type="password" id="bzPass" placeholder="Enter password" autocomplete="current-password" required aria-label="Enter password">
+                        <input type="password" id="bzPass" placeholder="Enter password" autocomplete="current-password" required>
                     </div>
                 </div>
-                <a class="bz-forgot-link" id="bzForgotLink">Forgot password?</a>
-                <button class="sl-auth-submit" id="bzLoginSubmit">Sign In</button>
+                <a href="#business-access" class="bz-forgot-link" id="bzForgotLink">Forgot password?</a>
+                <button type="submit" class="sl-auth-submit" id="bzLoginSubmit">Sign In</button>
                 <div class="bz-login-foot">
                     Don't have an account yet?
-                    <a data-form-switch="claim">Claim your venue</a>
+                    <a href="#business-access" data-form-switch="claim">Claim your venue</a>
                 </div>
-            </div>
+            </form>
 
             <!-- Claim form -->
-            <div id="bzFormClaim" style="display:none">
-                <div class="sl-auth-error" id="bzClaimError"></div>
+            <form id="bzFormClaim" style="display:none">
+                <div class="sl-auth-error" role="alert" id="bzClaimError"></div>
                 <div class="bz-form-title">
                     <span class="bz-plan-pill"><i class="fas fa-crown"></i> <span id="bzClaimTierLabel">Free plan</span></span><br>
-                    Create your business account below. You can upgrade anytime.
+                    Submit your venue for ownership review. Approved owners can sign in here.
                 </div>
                 <div class="sl-auth-field">
-                    <label>Venue Name</label>
+                    <label for="bzClaimName">Venue Name</label>
                     <div class="sl-auth-input-wrap">
                         <i class="fas fa-store"></i>
-                        <input type="text" id="bzClaimName" placeholder="Your venue name" required aria-label="Your venue name">
+                        <input type="text" id="bzClaimName" placeholder="Your venue name" required>
                     </div>
                 </div>
                 <div class="sl-auth-field">
-                    <label>Business Email</label>
+                    <label for="bzClaimEmail">Business Email</label>
                     <div class="sl-auth-input-wrap">
                         <i class="fas fa-envelope"></i>
-                        <input type="email" id="bzClaimEmail" placeholder="you@yourvenue.com" autocomplete="email" required aria-label="you@yourvenue.com">
+                        <input type="email" id="bzClaimEmail" placeholder="you@yourvenue.com" autocomplete="email" required>
                     </div>
                 </div>
                 <div class="sl-auth-field">
-                    <label>Password</label>
+                    <label for="bzClaimPass">Password</label>
                     <div class="sl-auth-input-wrap">
                         <i class="fas fa-lock"></i>
-                        <input type="password" id="bzClaimPass" placeholder="Create password (min 6 chars)" autocomplete="new-password" required aria-label="Create password (min 6 chars)">
+                        <input type="password" id="bzClaimPass" placeholder="At least 8 characters" minlength="8" autocomplete="new-password" required>
                     </div>
                 </div>
                 <div class="sl-auth-field">
-                    <label>Plan</label>
+                    <label for="bzClaimTier">Plan</label>
                     <select class="bd-form-select" id="bzClaimTier">
                         <option value="starter">Free — Single venue</option>
                         <option value="professional">Business Beta — Talk to us · Single venue</option>
                         <option value="enterprise">Hospitality Group — Custom · Multi-venue</option>
                     </select>
                 </div>
-                <button class="sl-auth-submit" id="bzClaimSubmit">Create Account</button>
+                <button type="submit" class="sl-auth-submit" id="bzClaimSubmit">Submit claim</button>
                 <div class="bz-login-foot">
                     Already have a business account?
-                    <a data-form-switch="login">Sign in</a>
+                    <a href="#business-access" data-form-switch="login">Sign in</a>
                 </div>
-            </div>
-
-            <!-- Reset password form (shown when ?reset_token= is present) -->
-            <div id="bzFormReset" style="display:none">
-                <div class="sl-auth-error" id="bzResetError"></div>
-                <div class="bz-forgot-success" id="bzResetSuccess"></div>
-                <div class="bz-form-title">
-                    Choose a new password for your business account.
-                </div>
-                <div class="sl-auth-field">
-                    <label>New Password</label>
-                    <div class="sl-auth-input-wrap">
-                        <i class="fas fa-lock"></i>
-                        <input type="password" id="bzResetPassword" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required aria-label="At least 8 characters">
-                    </div>
-                </div>
-                <div class="sl-auth-field">
-                    <label>Confirm Password</label>
-                    <div class="sl-auth-input-wrap">
-                        <i class="fas fa-lock"></i>
-                        <input type="password" id="bzResetPasswordConfirm" placeholder="Re-enter password" autocomplete="new-password" minlength="8" required aria-label="Re-enter password">
-                    </div>
-                </div>
-                <button class="sl-auth-submit" id="bzResetSubmit">Update Password</button>
-                <div class="bz-login-foot">
-                    <a data-form-switch="login">Back to sign in</a>
-                </div>
-            </div>
+            </form>
 
             <!-- Forgot password form -->
-            <div id="bzFormForgot" style="display:none">
-                <div class="sl-auth-error" id="bzForgotError"></div>
-                <div class="bz-forgot-success" id="bzForgotSuccess"></div>
+            <form id="bzFormForgot" style="display:none">
+                <div class="sl-auth-error" role="alert" id="bzForgotError"></div>
+                <div class="bz-forgot-success" id="bzForgotSuccess" role="status"></div>
                 <div class="bz-form-title">
                     Enter your business email and we'll send you instructions to reset your password.
                 </div>
                 <div class="sl-auth-field">
-                    <label>Business Email</label>
+                    <label for="bzForgotEmail">Business Email</label>
                     <div class="sl-auth-input-wrap">
                         <i class="fas fa-envelope"></i>
-                        <input type="email" id="bzForgotEmail" placeholder="you@yourvenue.com" autocomplete="email" required aria-label="you@yourvenue.com">
+                        <input type="email" id="bzForgotEmail" placeholder="you@yourvenue.com" autocomplete="email" required>
                     </div>
                 </div>
-                <button class="sl-auth-submit" id="bzForgotSubmit">Send Reset Instructions</button>
+                <button type="submit" class="sl-auth-submit" id="bzForgotSubmit">Send Reset Instructions</button>
                 <div class="bz-login-foot">
                     Remembered it?
-                    <a data-form-switch="login">Back to sign in</a>
+                    <a href="#business-access" data-form-switch="login">Back to sign in</a>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 
@@ -1019,23 +1010,13 @@
     <script>
     (function(){
         'use strict';
-        var BK='sl_biz_user', loginOv=document.getElementById('bizLoginOverlay');
-
-        function getBiz(){ try{return JSON.parse(localStorage.getItem(BK));}catch(e){return null;} }
-        function tierLabel(t){ return {starter:'Free',professional:'Business',enterprise:'Hospitality Group'}[t]||'Free'; }
-        function tierFeatures(t){
-            var base=['Edit listing details','Basic listing visibility','Hours management'];
-            if(t==='professional') base=base.concat(['Featured placement eligibility','Direct support from SceneLink team','Owner Insights (private beta)','Expanded gallery (private beta)','Events & promos (private beta)']);
-            if(t==='enterprise') base=base.concat(['Featured placement eligibility','Dedicated point of contact','Owner Insights (private beta)','Multi-venue (private beta)','Group reporting (private beta)','Role-based access (private beta)','API access (private beta)']);
-            return base;
-        }
-
+        function tierLabel(t){ return {starter:'Free',pro:'Business',professional:'Business',enterprise:'Hospitality Group'}[t]||'Free'; }
         function showDash(u){
             document.getElementById('bizLanding').classList.add('hidden');
             var dash=document.getElementById('bizDashboard');
             dash.classList.add('active');
             document.getElementById('bdVName').textContent=u.venueName||'Your Venue';
-            document.getElementById('bdVMeta').textContent=(u.venueType||'Restaurant')+' · '+(u.location||'Boston');
+            document.getElementById('bdVMeta').textContent=[u.venueType, u.location].filter(Boolean).join(' · ');
             document.getElementById('bdTierName').textContent=tierLabel(u.tier);
             // Fill editor
             var nameInput=document.getElementById('bdEditName'); if(nameInput) nameInput.value=u.venueName||'';
@@ -1047,78 +1028,11 @@
             var resyInput=document.getElementById('bdEditResy'); if(resyInput) resyInput.value=u.resy_url||'';
             var otInput=document.getElementById('bdEditOpentable'); if(otInput) otInput.value=u.opentable_url||'';
             var resInput=document.getElementById('bdEditReservation'); if(resInput) resInput.value=u.reservation_url||'';
-            renderChart(); renderMonthly(); renderPhotos(u); renderReviews(); renderPromos(u); renderHours(); renderSources();
+            document.getElementById('bdPhotosGrid').textContent = 'Loading gallery…';
+            document.getElementById('bdReviewsList').textContent = 'Loading reviews…';
+            document.getElementById('bdPromoList').textContent = 'Loading promotions…';
             // Show enterprise features if applicable (function defined in separate script tag)
             if(typeof showEnterpriseFeatures === 'function') showEnterpriseFeatures(u.tier);
-            else setTimeout(function(){ if(typeof showEnterpriseFeatures === 'function') showEnterpriseFeatures(u.tier); }, 100);
-            // Disable pro features for starter
-            if(u.tier==='starter'){
-                ['panel-promotions','panel-analytics'].forEach(function(id){
-                    var p=document.getElementById(id);
-                    if(p){
-                        var notice=document.createElement('div');
-                        notice.style.cssText='background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.2);border-radius:12px;padding:20px;text-align:center;margin-bottom:20px;';
-                        notice.innerHTML='<i class="fas fa-crown" style="color:var(--gold);font-size:20px;margin-bottom:8px;display:block"></i><div style="color:#fff;font-weight:700;margin-bottom:4px">Upgrade to Business</div><div style="color:var(--dim);font-size:13px;margin-bottom:12px">Unlock '+id.replace('panel-','')+ ' features with the Business Beta plan.</div><button class="bz-btn bz-btn-gold" style="padding:10px 24px;font-size:13px" onclick="document.getElementById(\'bizLoginOverlay\').classList.add(\'active\')"><i class="fas fa-arrow-up"></i> Upgrade Now</button>';
-                        p.insertBefore(notice,p.firstChild);
-                    }
-                });
-            }
-        }
-
-        function renderChart(){
-            var c=document.getElementById('bdChartBars'); if(!c) return;
-            var days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], vals=[340,420,380,510,680,890,720], mx=Math.max.apply(null,vals);
-            c.innerHTML=vals.map(function(v,i){ var h=Math.round(v/mx*160); return '<div class="bd-bar" style="height:'+h+'px;background:linear-gradient(180deg,var(--gold),rgba(212,175,55,0.2));"><span class="bd-bar-v">'+v+'</span><span class="bd-bar-l">'+days[i]+'</span></div>'; }).join('');
-            c.style.paddingBottom='28px';
-        }
-        function renderMonthly(){
-            var c=document.getElementById('bdMonthlyBars'); if(!c) return;
-            var months=['Jan','Feb','Mar','Apr','May','Jun'], vals=[8200,9100,10400,11800,13200,14892], mx=Math.max.apply(null,vals);
-            c.innerHTML=vals.map(function(v,i){ var h=Math.round(v/mx*160); return '<div class="bd-bar" style="height:'+h+'px;background:linear-gradient(180deg,#00b894,rgba(0,184,148,0.2));"><span class="bd-bar-v">'+Math.round(v/1000)+'k</span><span class="bd-bar-l">'+months[i]+'</span></div>'; }).join('');
-            c.style.paddingBottom='28px';
-        }
-        function renderSources(){
-            var c=document.getElementById('bdSources'); if(!c) return;
-            var sources=[{name:'Search (Explore)',pct:42},{name:'Tonight\'s Picks',pct:28},{name:'Direct Link',pct:18},{name:'Social Shares',pct:12}];
-            c.innerHTML=sources.map(function(s){ return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;"><div style="flex:1;font-size:13px;color:var(--dim)">'+s.name+'</div><div style="width:200px;height:8px;background:var(--surface);border-radius:4px;overflow:hidden"><div style="width:'+s.pct+'%;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-l));border-radius:4px"></div></div><div style="font-size:12px;font-weight:700;color:var(--gold);width:36px;text-align:right">'+s.pct+'%</div></div>'; }).join('');
-        }
-        function renderPhotos(u){
-            var c=document.getElementById('bdPhotosGrid'); if(!c) return;
-            var photos=u.photos||[];
-            var max=u.tier==='starter'?10:99;
-            document.getElementById('bdPhotoCount').textContent='('+photos.length+'/'+max+')';
-            var urls = (u && Array.isArray(u.photos)) ? u.photos : [];
-            c.innerHTML=urls.map(function(url,i){return '<div class="bd-photo"><img loading="lazy" src="'+url+'" alt="Photo '+(i+1)+'"><button class="bd-photo-del" data-idx="'+i+'"><i class="fas fa-times"></i></button></div>';}).join('')+'<div class="bd-photo add" id="bdAddPhoto"><i class="fas fa-plus"></i></div>';
-        }
-        function renderReviews(){
-            var c=document.getElementById('bdReviewsList'); if(!c) return;
-            // Phase 6A: no demo review data. Show honest empty state until
-            // real reviews are posted against this business's venue.
-            c.innerHTML = '<div style="padding:40px 20px;text-align:center;color:var(--dim);font-size:13px;line-height:1.6">'+
-                '<i class="fas fa-star" style="font-size:28px;color:var(--gold);opacity:0.4;display:block;margin-bottom:10px"></i>'+
-                '<div style="color:var(--text);font-weight:600;margin-bottom:6px">No reviews yet</div>'+
-                'Once SceneLink members review your venue, you\'ll be able to read and respond to them here.'+
-                '</div>';
-        }
-        function renderPromos(u){
-            var c=document.getElementById('bdPromoList'); if(!c) return;
-            // Phase 6A: no fake promotion demo data. Show honest empty state.
-            var promos = (u && u.promotions) ? u.promotions : [];
-            if (!promos.length) {
-                c.innerHTML = '<div style="padding:40px 20px;text-align:center;color:var(--dim);font-size:13px;line-height:1.6">'+
-                    '<i class="fas fa-tag" style="font-size:26px;color:var(--gold);opacity:0.4;display:block;margin-bottom:10px"></i>'+
-                    '<div style="color:var(--text);font-weight:600;margin-bottom:6px">No promotions yet</div>'+
-                    'Promotions you create will appear here. <span style="color:var(--gold)">Beta feature</span> &mdash; contact <a href="mailto:info@scenelink.app" style="color:var(--gold);text-decoration:underline">info@scenelink.app</a> to set one up.'+
-                    '</div>';
-                return;
-            }
-            c.innerHTML=promos.map(function(p){ return '<div class="bd-promo"><div class="bd-promo-info"><h4>'+p.title+'</h4><p>'+p.desc+' · '+p.dates+'</p></div><span class="bd-promo-status '+p.status+'">'+p.status.charAt(0).toUpperCase()+p.status.slice(1)+'</span></div>'; }).join('');
-        }
-        function renderHours(){
-            var c=document.getElementById('bdHoursGrid'); if(!c) return;
-            var days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-            var defaults=[{o:'11:00',c:'22:00'},{o:'11:00',c:'22:00'},{o:'11:00',c:'22:00'},{o:'11:00',c:'23:00'},{o:'11:00',c:'00:00'},{o:'10:00',c:'01:00'},{o:'10:00',c:'22:00'}];
-            c.innerHTML=days.map(function(d,i){ return '<div style="font-weight:600;color:#fff">'+d+'</div><input class="bd-form-input" type="time" value="'+defaults[i].o+'" style="padding:8px 10px"><input class="bd-form-input" type="time" value="'+defaults[i].c+'" style="padding:8px 10px">'; }).join('');
         }
 
         // Tab switching
@@ -1132,384 +1046,15 @@
             });
         });
 
-        // Helper: show one of the three forms (login/claim/forgot)
-        function bzShowForm(which){
-            var forms = { login: 'bzFormLogin', claim: 'bzFormClaim', forgot: 'bzFormForgot', reset: 'bzFormReset' };
-            Object.keys(forms).forEach(function(k){
-                var el = document.getElementById(forms[k]);
-                if (el) el.style.display = (k === which ? 'block' : 'none');
+        window.SLBizDashboard = function (user) {
+            var venue = user.venue || {};
+            showDash({
+                venueName: venue.name || user.venue_name,
+                venueType: venue.type || 'Venue',
+                location: [venue.neighborhood, venue.city].filter(Boolean).join(', '),
+                tier: user.tier, photos: []
             });
-            // Update tab state (only for login/claim; forgot has no tab)
-            document.querySelectorAll('.bz-ltab').forEach(function(t){
-                t.classList.toggle('active', t.dataset.form === which);
-            });
-            // Hide any stale errors/success
-            ['bzLoginError','bzClaimError','bzForgotError','bzResetError'].forEach(function(id){
-                var el=document.getElementById(id); if(el){el.textContent='';el.style.display='none';}
-            });
-            ['bzForgotSuccess','bzResetSuccess'].forEach(function(id){
-                var suc=document.getElementById(id);
-                if (suc){ suc.textContent=''; suc.style.display='none'; }
-            });
-            // Hide tabs entirely for forgot/reset (they're not tabbed flows)
-            var tabsEl = document.querySelector('.bz-ltabs');
-            if (tabsEl) tabsEl.style.display = (which === 'forgot' || which === 'reset') ? 'none' : '';
-        }
-
-        // Update the plan pill text when the select changes
-        function bzUpdatePlanPill(){
-            var sel = document.getElementById('bzClaimTier');
-            var label = document.getElementById('bzClaimTierLabel');
-            if (!sel || !label) return;
-            var txt = { starter: 'Free plan', professional: 'Business Beta · Talk to us', enterprise: 'Hospitality Group · Custom' }[sel.value] || 'Free plan';
-            label.textContent = txt;
-        }
-        (function(){ var s=document.getElementById('bzClaimTier'); if(s){ s.addEventListener('change', bzUpdatePlanPill); bzUpdatePlanPill(); } })();
-
-        // Open modal (hero buttons, pricing CTA, nav)
-        document.querySelectorAll('#bizLoginBtn,#bizClaimBtn,.bz-open-login').forEach(function(btn){
-            btn.addEventListener('click',function(){
-                var tier=this.dataset.tier||'starter';
-                var sel=document.getElementById('bzClaimTier');
-                if(sel){ sel.value=tier; bzUpdatePlanPill(); }
-                if(this.id==='bizClaimBtn' || (this.classList.contains('bz-open-login') && tier !== 'login')){
-                    bzShowForm('claim');
-                } else {
-                    bzShowForm('login');
-                }
-                loginOv.classList.add('active');
-                setTimeout(function(){
-                    var focusId = document.getElementById('bzFormLogin').style.display !== 'none' ? 'bzEmail' : 'bzClaimName';
-                    var el = document.getElementById(focusId);
-                    if (el) el.focus();
-                }, 300);
-            });
-        });
-        document.getElementById('bizLoginClose').addEventListener('click',function(){loginOv.classList.remove('active');});
-        loginOv.addEventListener('click',function(e){if(e.target===loginOv)loginOv.classList.remove('active');});
-        document.addEventListener('keydown', function(e){
-            if (e.key === 'Escape' && loginOv.classList.contains('active')) loginOv.classList.remove('active');
-        });
-
-        // Login / Claim tabs
-        document.querySelectorAll('.bz-ltab').forEach(function(tab){
-            tab.addEventListener('click',function(){ bzShowForm(this.dataset.form); });
-        });
-
-        // Inline "form switch" links inside footers
-        document.querySelectorAll('[data-form-switch]').forEach(function(a){
-            a.addEventListener('click', function(e){ e.preventDefault(); bzShowForm(this.dataset.formSwitch); });
-        });
-
-        // Auto-open claim/login/reset form based on URL params
-        (function(){
-            try {
-                var params = new URLSearchParams(window.location.search);
-                var claimName = params.get('claim');
-                var loginFlag = params.get('login');
-                var resetToken = params.get('reset_token');
-
-                if (resetToken) {
-                    // Hide tabs (reset doesn't belong to login/claim)
-                    bzShowForm('reset');
-                    loginOv.classList.add('active');
-                    setTimeout(function(){
-                        var p = document.getElementById('bzResetPassword');
-                        if (p) p.focus();
-                    }, 400);
-                    // Stash token on form for submit handler
-                    var formReset = document.getElementById('bzFormReset');
-                    if (formReset) formReset.dataset.token = resetToken;
-                } else if (claimName) {
-                    var nameInput = document.getElementById('bzClaimName');
-                    if (nameInput) nameInput.value = decodeURIComponent(claimName);
-                    bzShowForm('claim');
-                    loginOv.classList.add('active');
-                    setTimeout(function(){
-                        var emailInput = document.getElementById('bzClaimEmail');
-                        if (emailInput) emailInput.focus();
-                    }, 400);
-                } else if (loginFlag === '1') {
-                    bzShowForm('login');
-                    loginOv.classList.add('active');
-                }
-            } catch(_) {}
-        })();
-
-        // Reset password submit
-        var resetSubmit = document.getElementById('bzResetSubmit');
-        if (resetSubmit) resetSubmit.addEventListener('click', function(e){
-            e.preventDefault();
-            var pwd = document.getElementById('bzResetPassword').value;
-            var confirm = document.getElementById('bzResetPasswordConfirm').value;
-            var errEl = document.getElementById('bzResetError');
-            var sucEl = document.getElementById('bzResetSuccess');
-            errEl.style.display='none'; sucEl.style.display='none';
-            if (!pwd || pwd.length < 8) { errEl.textContent='Password must be at least 8 characters'; errEl.style.display='block'; return; }
-            if (pwd !== confirm) { errEl.textContent='Passwords do not match'; errEl.style.display='block'; return; }
-            var token = (document.getElementById('bzFormReset').dataset.token) || new URLSearchParams(window.location.search).get('reset_token');
-            if (!token) { errEl.textContent='Missing reset token. Please request a new reset link.'; errEl.style.display='block'; return; }
-            var btn = this; btn.disabled = true; var orig = btn.textContent; btn.textContent = 'Updating…';
-            fetch('/api/business/reset-password', {
-                method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ token: token, password: pwd })
-            }).then(function(r){ return r.json().then(function(d){ return { ok: r.ok, data: d }; }); })
-              .then(function(res){
-                if (!res.ok) {
-                    errEl.textContent = (res.data && res.data.error) || 'Reset failed. The link may have expired.';
-                    errEl.style.display = 'block';
-                    btn.disabled = false; btn.textContent = orig;
-                    return;
-                }
-                sucEl.innerHTML = '<i class="fas fa-check-circle"></i> Password updated successfully. You can now sign in with your new password.';
-                sucEl.style.display = 'block';
-                btn.disabled = true; btn.textContent = 'Done';
-                setTimeout(function(){
-                    // Clean URL and switch to login
-                    try { window.history.replaceState({}, '', 'business.html'); } catch(_){}
-                    bzShowForm('login');
-                }, 2200);
-              })
-              .catch(function(){
-                errEl.textContent = 'Network error. Please try again.';
-                errEl.style.display = 'block';
-                btn.disabled = false; btn.textContent = orig;
-              });
-        });
-
-        // Forgot password link
-        var forgotLink = document.getElementById('bzForgotLink');
-        if (forgotLink) forgotLink.addEventListener('click', function(e){ e.preventDefault(); bzShowForm('forgot'); });
-
-        // Forgot password submit
-        var forgotSubmit = document.getElementById('bzForgotSubmit');
-        if (forgotSubmit) forgotSubmit.addEventListener('click', function(e){
-            e.preventDefault();
-            var email = (document.getElementById('bzForgotEmail').value || '').trim();
-            var errEl = document.getElementById('bzForgotError');
-            var sucEl = document.getElementById('bzForgotSuccess');
-            errEl.style.display='none'; sucEl.style.display='none';
-            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                errEl.textContent = 'Please enter a valid email';
-                errEl.style.display = 'block'; return;
-            }
-            var btn = this; btn.disabled = true;
-            var orig = btn.textContent; btn.textContent = 'Sending…';
-            // Generic endpoint — if backend supports it, great; if not, show neutral success.
-            fetch('/api/business/forgot-password', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ email: email })
-            }).then(function(r){ return r.json().catch(function(){return {};}); })
-              .then(function(d){
-                // Always show success (don't leak whether email exists)
-                sucEl.innerHTML = '<i class="fas fa-check-circle"></i> If an account exists for <strong>' +
-                  email.replace(/[<>&]/g, '') +
-                  '</strong>, we\'ve sent reset instructions. Check your inbox.';
-                sucEl.style.display = 'block';
-                btn.disabled = false; btn.textContent = orig;
-              })
-              .catch(function(){
-                sucEl.innerHTML = '<i class="fas fa-check-circle"></i> If an account exists for <strong>' +
-                  email.replace(/[<>&]/g, '') +
-                  '</strong>, we\'ve sent reset instructions. Check your inbox.';
-                sucEl.style.display = 'block';
-                btn.disabled = false; btn.textContent = orig;
-              });
-        });
-
-        // Login submit
-        document.getElementById('bzLoginSubmit').addEventListener('click',function(e){
-            e.preventDefault();
-            var email=document.getElementById('bzEmail').value.trim();
-            var pass=document.getElementById('bzPass').value.trim();
-            var errEl=document.getElementById('bzLoginError');
-            var btn=this;
-            errEl.style.display='none';
-            if(!email||!pass){errEl.textContent='Please fill in all fields';errEl.style.display='block';return;}
-            btn.disabled=true; var origText=btn.textContent; btn.textContent='Signing in…';
-            fetch('/api/business/login',{
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({email:email,password:pass})
-            }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
-            .then(function(res){
-                if(!res.ok){
-                    errEl.textContent=res.data.error||'Login failed';errEl.style.display='block';
-                    btn.disabled=false;btn.textContent=origText;return;
-                }
-                // Store JWT + user
-                localStorage.setItem('sl_biz_token',res.data.token);
-                localStorage.setItem('sl_business_user',JSON.stringify(res.data.user));
-                var v=res.data.user.venue||{};
-                var u={
-                    email:res.data.user.email,
-                    venueName:res.data.user.venue_name,
-                    venueType:v.type||'Venue',
-                    location:(v.neighborhood||'Boston')+(v.city?', '+v.city:''),
-                    tier:res.data.user.tier||'starter',
-                    venue_id:res.data.user.venue_id,
-                    photos:[],
-                    loginTime:Date.now()
-                };
-                localStorage.setItem(BK,JSON.stringify(u));
-                loginOv.classList.remove('active');
-                showDash(u);
-                loadRealAnalytics();
-                if(window.SLBizApp && SLBizApp.reload) SLBizApp.reload();
-                btn.disabled=false;btn.textContent=origText;
-            }).catch(function(err){
-                errEl.textContent='Network error. Please try again.';errEl.style.display='block';
-                btn.disabled=false;btn.textContent=origText;
-            });
-        });
-
-        // Claim submit
-        document.getElementById('bzClaimSubmit').addEventListener('click',function(e){
-            e.preventDefault();
-            var name=document.getElementById('bzClaimName').value.trim();
-            var email=document.getElementById('bzClaimEmail').value.trim();
-            var pass=document.getElementById('bzClaimPass').value.trim();
-            var tier=document.getElementById('bzClaimTier').value;
-            var errEl=document.getElementById('bzClaimError');
-            var btn=this;
-            errEl.style.display='none';
-            if(!name){errEl.textContent='Please enter your venue name';errEl.style.display='block';return;}
-            if(!email){errEl.textContent='Please enter your email';errEl.style.display='block';return;}
-            if(pass.length<6){errEl.textContent='Password must be at least 6 characters';errEl.style.display='block';return;}
-            btn.disabled=true; var origText=btn.textContent; btn.textContent='Claiming…';
-            fetch('/api/business/claim',{
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({venue_name:name,email:email,password:pass,tier:tier})
-            }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
-            .then(function(res){
-                if(!res.ok){
-                    errEl.textContent=res.data.error||'Failed to claim venue';errEl.style.display='block';
-                    btn.disabled=false;btn.textContent=origText;return;
-                }
-                localStorage.setItem('sl_biz_token',res.data.token);
-                localStorage.setItem('sl_business_user',JSON.stringify(res.data.user));
-                var mv=res.data.user.matched_venue;
-                var u={
-                    email:res.data.user.email,
-                    venueName:res.data.user.venue_name,
-                    venueType:mv?(mv.type||'Venue'):'Venue',
-                    location:mv?(mv.neighborhood||'Boston'):'Boston',
-                    tier:res.data.user.tier,
-                    venue_id:res.data.user.venue_id,
-                    photos:[],
-                    loginTime:Date.now()
-                };
-                localStorage.setItem(BK,JSON.stringify(u));
-                loginOv.classList.remove('active');
-                showDash(u);
-                if(mv){
-                    if(window.SLLists)SLLists.showToast('Venue claimed and linked to "'+mv.name+'"');
-                } else {
-                    if(window.SLLists)SLLists.showToast('Account created. Fill in your listing below to go live.');
-                }
-                loadRealAnalytics();
-                if(window.SLBizApp && SLBizApp.reload) SLBizApp.reload();
-                btn.disabled=false;btn.textContent=origText;
-            }).catch(function(err){
-                errEl.textContent='Network error. Please try again.';errEl.style.display='block';
-                btn.disabled=false;btn.textContent=origText;
-            });
-        });
-
-        // ── Load real analytics from backend ──
-        function loadRealAnalytics(){
-            var token=localStorage.getItem('sl_biz_token');
-            if(!token)return;
-            fetch('/api/business/analytics',{ headers:{'Authorization':'Bearer '+token} })
-                .then(function(r){ return r.ok?r.json():null; })
-                .then(function(d){
-                    if(!d)return;
-                    var mk=function(id,val){ var el=document.getElementById(id); if(el)el.textContent=val; };
-                    mk('bdStatViews', d.views!=null?d.views.toLocaleString():'—');
-                    mk('bdStatSaves', d.saves!=null?d.saves.toLocaleString():'—');
-                    mk('bdStatCheckins', d.checkins!=null?d.checkins.toLocaleString():'—');
-                    mk('bdStatEngagement', d.engagement!=null?(d.engagement+'%'):'—');
-                    if(!d.linked){
-                        var r=document.getElementById('bdVRating');
-                        if(r)r.innerHTML='<i class="fas fa-info-circle"></i> Venue not yet linked. Contact info@scenelink.app to verify.';
-                    }
-                })
-                .catch(function(){/* silent */});
-        }
-
-        // Logout — clear all business auth state
-        document.getElementById('bdLogout').addEventListener('click',function(){
-            localStorage.removeItem(BK);
-            localStorage.removeItem('sl_biz_token');
-            localStorage.removeItem('sl_business_user');
-            document.getElementById('bizDashboard').classList.remove('active');
-            document.getElementById('bizLanding').classList.remove('hidden');
-            slBizToast('Signed out successfully');
-        });
-
-        // ── Toast helper ──────────────────────────────────────────
-        function slBizToast(msg, type){
-            type = type || 'success';
-            var el=document.createElement('div');
-            el.style.cssText='position:fixed;bottom:24px;right:24px;z-index:9999;background:'+(type==='error'?'#2b0d0d':'#0d2b1a')+';border:1px solid '+(type==='error'?'#e17055':'#00b894')+';border-radius:10px;padding:14px 20px;color:#fff;font-family:sans-serif;font-size:14px;box-shadow:0 8px 32px rgba(0,0,0,0.5);max-width:320px;animation:sl-slide-in 0.3s ease;';
-            el.textContent=msg;
-            document.body.appendChild(el);
-            setTimeout(function(){el.remove();},4000);
-        }
-
-        // Save listing — writes to real backend + localStorage
-        document.getElementById('bdSaveListing').addEventListener('click',function(){
-            var u=getBiz(); if(!u) return;
-            var btn=this; btn.disabled=true; var orig=btn.textContent; btn.textContent='Saving…';
-            u.venueName=document.getElementById('bdEditName').value||u.venueName;
-            u.description=document.getElementById('bdEditDesc').value||'';
-            u.address=document.getElementById('bdEditAddr').value||'';
-            u.neighborhood=document.getElementById('bdEditNhood').value||'';
-            var phoneEl=document.getElementById('bdEditPhone');
-            var webEl=document.getElementById('bdEditWeb');
-            var resyEl=document.getElementById('bdEditResy');
-            var otEl=document.getElementById('bdEditOpentable');
-            var resEl=document.getElementById('bdEditReservation');
-            u.phone=phoneEl?phoneEl.value.trim():'';
-            u.website=webEl?webEl.value.trim():'';
-            u.resy_url=resyEl?resyEl.value.trim():'';
-            u.opentable_url=otEl?otEl.value.trim():'';
-            u.reservation_url=resEl?resEl.value.trim():'';
-            localStorage.setItem(BK,JSON.stringify(u));
-            document.getElementById('bdVName').textContent=u.venueName;
-            // Push to backend if linked
-            var token=localStorage.getItem('sl_biz_token');
-            if(token && u.venue_id){
-                fetch('/api/business/venue',{
-                    method:'PATCH',
-                    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-                    body:JSON.stringify({
-                        name:u.venueName,
-                        description:u.description,
-                        address:u.address,
-                        neighborhood:u.neighborhood,
-                        phone:u.phone,
-                        website:u.website,
-                        resy_url:u.resy_url||null,
-                        opentable_url:u.opentable_url||null,
-                        reservation_url:u.reservation_url||null
-                    })
-                }).then(function(r){return r.json();})
-                .then(function(d){
-                    btn.disabled=false; btn.textContent=orig;
-                    if(d.ok||d.venue){
-                        slBizToast('Listing saved & synced to SceneLink ✓');
-                    } else {
-                        slBizToast('Saved locally. Backend: '+(d.error||'unknown'));
-                    }
-                }).catch(function(err){
-                    btn.disabled=false; btn.textContent=orig;
-                    slBizToast('Saved locally (network error)');
-                });
-            } else {
-                btn.disabled=false; btn.textContent=orig;
-                slBizToast('Listing saved locally ✓');
-            }
-        });
+        };
 
         // New promo
         document.getElementById('bdNewPromo').addEventListener('click',function(){
@@ -1518,54 +1063,6 @@
         document.getElementById('bdPromoCancel').addEventListener('click',function(){
             document.getElementById('bdPromoForm').style.display='none';
         });
-        document.getElementById('bdPromoSave').addEventListener('click',function(){
-            var title=document.getElementById('bdPromoTitle').value;
-            if(!title){if(window.SLLists)SLLists.showToast('Please enter a title');return;}
-            document.getElementById('bdPromoForm').style.display='none';
-            if(window.SLLists)SLLists.showToast('Promotion created successfully');
-            var u=getBiz();if(u){renderPromos(u);}
-        });
-
-        // Load real reviews from backend
-        function loadRealReviews(){
-            var u=getBiz(); if(!u||!u.venue_id) return;
-            var token=localStorage.getItem('sl_biz_token');
-            var headers={'Content-Type':'application/json'};
-            if(token) headers['Authorization']='Bearer '+token;
-            fetch('/api/reviews?venue_id='+encodeURIComponent(u.venue_id),{headers:headers})
-                .then(function(r){return r.ok?r.json():null;})
-                .then(function(d){
-                    if(!d) return;
-                    var reviews=(d.reviews||d||[]).slice(0,10);
-                    if(!reviews.length) return; // keep mock if no real reviews yet
-                    var c=document.getElementById('bdReviewsList'); if(!c) return;
-                    c.innerHTML=reviews.map(function(r){
-                        var stars=''; for(var i=0;i<5;i++) stars+='<i class="fas fa-star" style="color:'+(i<Math.round(r.rating||0)?'var(--gold)':'rgba(255,255,255,0.1)')+';font-size:11px"></i>';
-                        var ago=timeAgo(r.created_at);
-                        return '<div class="bd-review"><div class="bd-review-top"><div><span class="bd-review-u">'+(r.user_display_name||r.username||'Guest')+'</span> '+stars+'</div><div class="bd-review-t">'+ago+'</div></div><div class="bd-review-txt">'+(r.content||r.text||'')+'</div></div>';
-                    }).join('');
-                }).catch(function(){/* keep mock */});
-        }
-
-        function timeAgo(ts){
-            if(!ts) return '';
-            var d=new Date(ts), now=Date.now(), diff=Math.round((now-d.getTime())/1000);
-            if(diff<60) return 'just now';
-            if(diff<3600) return Math.round(diff/60)+'m ago';
-            if(diff<86400) return Math.round(diff/3600)+'h ago';
-            return Math.round(diff/86400)+'d ago';
-        }
-
-        // Init
-        var biz=getBiz();
-        if(biz){
-            showDash(biz);
-            loadRealAnalytics();
-            setTimeout(loadRealReviews, 600);
-        }
-
-        // Analytics functions in separate script tag below
-
     })();
     </script>
 
@@ -1574,101 +1071,10 @@
 // Calls /api/business/listings/:id/analytics?days=N for the active venue.
 // Honest empty state when there are no events yet.
 
-var slAnalyticsRangeMap = { today: 1, week: 7, month: 30, year: 365 };
-var slAnalyticsTitleMap = {
-    today: "Today's Performance",
-    week:  'Last 7 days',
-    month: 'Last 30 days',
-    year:  'Last 12 months'
-};
-
-function bzAuthHeadersAnalytics() {
-    var t = localStorage.getItem('sl_jwt_token') || '';
-    return t ? { 'Authorization': 'Bearer ' + t } : {};
-}
-
-function _bdAnalEl(id) { return document.getElementById(id); }
-
-function _bdAnalShowEmpty(message) {
-    ['bdAnalViews','bdAnalSaves','bdAnalCheckins','bdAnalRating'].forEach(function(id){
-        var el = _bdAnalEl(id); if (el) el.textContent = '—';
-    });
-    ['bdAnalViewsCh','bdAnalSavesCh','bdAnalCheckinsCh'].forEach(function(id){
-        var el = _bdAnalEl(id); if (el) { el.innerHTML = ''; el.style.color = 'rgba(255,255,255,0.4)'; }
-    });
-    var bars = _bdAnalEl('bdAnalBars'); if (bars) bars.innerHTML = '';
-    var empty = _bdAnalEl('bdAnalEmpty');
-    if (empty) {
-        empty.style.display = 'block';
-        empty.textContent = message || 'Analytics begin once your listing is approved and viewed.';
-    }
-}
-
-function _bdAnalHideEmpty() {
-    var empty = _bdAnalEl('bdAnalEmpty'); if (empty) empty.style.display = 'none';
-}
-
-function setAnalyticsRange(btn, range) {
-    var btns = document.querySelectorAll('.bd-range-btn');
-    btns.forEach(function(b){ b.classList.remove('active'); });
-    if (btn && btn.classList) btn.classList.add('active');
-    if (!btn) {
-        var monthBtn = Array.from(btns).find(function(b){ return b.textContent.trim() === 'Month'; });
-        if (monthBtn) monthBtn.classList.add('active');
-    }
-    var days = slAnalyticsRangeMap[range] || 30;
-    var title = slAnalyticsTitleMap[range] || 'Performance';
-    if (_bdAnalEl('bdAnalTitle')) _bdAnalEl('bdAnalTitle').textContent = title;
-    if (_bdAnalEl('bdAnalChartTitle')) _bdAnalEl('bdAnalChartTitle').textContent = (range === 'today' ? 'Hourly Trend' : 'Daily Trend');
-
-    // Find the active venue id (set by overview/multi-venue loaders)
-    var venueId = window.__bzActiveVenueId || (window.__bzVenueCache && window.__bzVenueCache[0] && window.__bzVenueCache[0].id) || null;
-    if (!venueId) {
-        _bdAnalShowEmpty('Sign in with your business account and select a venue to see analytics.');
-        return;
-    }
-
-    var url = '/api/business/listings/' + encodeURIComponent(venueId) + '/analytics?days=' + days;
-    fetch(url, { headers: Object.assign({'Content-Type':'application/json'}, bzAuthHeadersAnalytics()) })
-        .then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); })
-        .then(function(d){
-            if (!d || !d.ok) { _bdAnalShowEmpty(); return; }
-            if (d.empty_state || (d.total === 0)) {
-                _bdAnalShowEmpty(d.empty_state || 'Analytics begin once your listing is approved and viewed.');
-                return;
-            }
-            _bdAnalHideEmpty();
-            var c = d.counts || {};
-            if (_bdAnalEl('bdAnalViews'))    _bdAnalEl('bdAnalViews').textContent    = (c.view || 0).toLocaleString();
-            if (_bdAnalEl('bdAnalSaves'))    _bdAnalEl('bdAnalSaves').textContent    = (c.save || 0).toLocaleString();
-            if (_bdAnalEl('bdAnalCheckins')) _bdAnalEl('bdAnalCheckins').textContent = (c.plan_add || c.checkin || 0).toLocaleString();
-            if (_bdAnalEl('bdAnalRating'))   _bdAnalEl('bdAnalRating').textContent   = d.avg_rating || '—';
-            // Daily/hourly bars come from d.timeseries (array of {day, count})
-            var bars = _bdAnalEl('bdAnalBars');
-            if (bars && Array.isArray(d.timeseries) && d.timeseries.length) {
-                var maxVal = Math.max.apply(null, d.timeseries.map(function(p){ return p.count || 0; })) || 1;
-                bars.innerHTML = d.timeseries.map(function(p){
-                    var pct = Math.round((p.count / maxVal) * 100);
-                    var label = (p.day || '').slice(5) || (p.hour || '');
-                    return '<div style="display:inline-flex;flex-direction:column;align-items:center;margin:0 3px;min-width:32px">' +
-                           '<span style="font-size:10px;color:#aaa;margin-bottom:4px">' + (p.count || 0) + '</span>' +
-                           '<div style="width:24px;height:' + (pct * 1.2) + 'px;background:linear-gradient(180deg,#D4AF37,#a88520);border-radius:4px 4px 0 0"></div>' +
-                           '<span style="font-size:9px;color:#aaa;margin-top:4px">' + label + '</span>' +
-                           '</div>';
-                }).join('');
-            } else if (bars) {
-                bars.innerHTML = '';
-            }
-        })
-        .catch(function(){ _bdAnalShowEmpty(); });
-}
-// ════════════════════════════════════════════════════════════════════════
-// Multi-venue switcher — uses live DB data for enterprise (Hospitality Group) accounts
-// ═══════════════════════════════════════════════════════════════════════════
 window.__bzVenueCache = [];
 
 function bzAuthHeaders() {
-    var t = localStorage.getItem('sl_jwt_token') || '';
+    var t = window.SLBizAccess.token() || '';
     return t ? { 'Authorization': 'Bearer ' + t } : {};
 }
 
@@ -1708,9 +1114,9 @@ function loadEnterpriseVenues() {
             // Render the tbody and lazy-fetch per-venue 30d analytics
             if (mvTbody) {
                 mvTbody.innerHTML = venues.map(function(v){
-                    var status = (v.is_published === false || v.status === 'pending') ? 'Pending' : 'Active';
-                    var statusColor = status === 'Pending' ? '#f59e0b' : '#22c55e';
-                    var statusBg    = status === 'Pending' ? '245,158,11' : '34,197,94';
+                    var status = v.is_active === true ? 'Active' : 'Inactive';
+                    var statusColor = status === 'Inactive' ? '#f59e0b' : '#22c55e';
+                    var statusBg    = status === 'Inactive' ? '245,158,11' : '34,197,94';
                     var safe = function(t){ return String(t||'').replace(/[<>&]/g, function(c){return {'<':'<','>':'>','&':'&'}[c];}); };
                     return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">' +
                            '<td style="padding:8px;font-weight:600;">' + safe(v.name) + '</td>' +
@@ -1726,14 +1132,15 @@ function loadEnterpriseVenues() {
                         headers: Object.assign({'Content-Type':'application/json'}, bzAuthHeaders())
                     }).then(function(r){ return r.ok ? r.json() : null; })
                       .then(function(a){
-                          if (!a || !a.ok) return;
+                          if (!a || !a.ok || a.venue_id !== v.id || !Array.isArray(a.metrics)) return;
                           var c = a.counts || {};
+                          const tracked = key => !a.metrics || a.metrics.includes(key);
                           var tdv = document.querySelector('[data-anal-views="' + v.id + '"]');
                           var tds = document.querySelector('[data-anal-saves="' + v.id + '"]');
                           var tdp = document.querySelector('[data-anal-plans="' + v.id + '"]');
-                          if (tdv) tdv.textContent = (c.view || 0).toLocaleString();
+                          if (tdv && tracked('view')) tdv.textContent = (c.view || 0).toLocaleString();
                           if (tds) tds.textContent = (c.save || 0).toLocaleString();
-                          if (tdp) tdp.textContent = (c.plan_add || 0).toLocaleString();
+                          if (tdp && tracked('plan_add')) tdp.textContent = (c.plan_add || 0).toLocaleString();
                       }).catch(function(){});
                 });
             }
@@ -1766,26 +1173,6 @@ function applyVenueToDashboardHeader(v) {
     if (editNameEl) editNameEl.value = v.name || '';
 }
 
-// Switch venue — persists on backend AND refreshes dashboard data
-function switchVenue(venueId) {
-    if (!venueId) return;
-    var v = (window.__bzVenueCache || []).find(function(x){ return x.id === venueId; });
-    if (v) applyVenueToDashboardHeader(v);
-
-    fetch('/api/business/venues/switch', {
-        method: 'POST',
-        headers: Object.assign({'Content-Type':'application/json'}, bzAuthHeaders()),
-        body: JSON.stringify({ venue_id: venueId })
-    }).then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(){
-          // Give the backend a moment, then refresh any live dashboard panels
-          if (typeof window.bzRefreshDashboard === 'function') {
-              try { window.bzRefreshDashboard(); } catch(_){}
-          }
-      })
-      .catch(function(){ /* UI already updated optimistically */ });
-}
-
 // Show multi-venue features for all tiers
 function showEnterpriseFeatures(tier) {
     var entTab = document.getElementById('bdEnterpriseTab');
@@ -1806,7 +1193,7 @@ function showEnterpriseFeatures(tier) {
         if(switcher) switcher.style.display = 'none';
         var upBtn1 = notice ? notice.querySelector('.bz-open-login') : null;
         if(upBtn1) { upBtn1.dataset.tier = 'enterprise'; upBtn1.textContent = 'Contact Sales'; }
-    } else if(tier === 'professional') {
+    } else if(tier === 'professional' || tier === 'pro') {
         if(notice) notice.style.display = '';
         if(msg) msg.textContent = 'Multi-venue management is a Hospitality Group feature.';
         if(sub) sub.textContent = 'Upgrade to Hospitality Group to manage unlimited venues with group analytics and team access.';
@@ -1835,22 +1222,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     if(analyticsTab) {
         analyticsTab.addEventListener('click', function(){
-            setTimeout(function(){ setAnalyticsRange(null, 'month'); }, 50);
-        });
-    }
-
-    // Phase 5D-C3 — Claim Venue button (multi-venue panel)
-    var claimBtn = document.getElementById('mvClaimVenueBtn');
-    if (claimBtn) {
-        claimBtn.addEventListener('click', function(){
-            if (typeof openClaimVenueModal === 'function') {
-                openClaimVenueModal();
-            } else {
-                window.location.href = '#claim';
-                // Fallback: open the auth modal so they can sign in first
-                var loginBtn = document.querySelector('.bz-open-login');
-                if (loginBtn) loginBtn.click();
-            }
+            setAnalyticsRange(null, 'month');
         });
     }
 
@@ -1881,7 +1253,7 @@ function openUpgradeInterestModal() {
                 '<p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0 0 18px;line-height:1.5;">Tell us a bit about your venue and what you need. A SceneLink team member will reach out from <strong>info@scenelink.app</strong>.</p>' +
                 '<div style="display:flex;flex-direction:column;gap:12px;">' +
                     '<input id="uiEmail" type="email" placeholder="Your business email" style="padding:11px 14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:8px;color:#fff;font-size:14px;" / aria-label="Your business email">' +
-                    '<input id="uiVenueName" type="text" placeholder="Venue name" value="' + defaultVenue.replace(/"/g,'&quot;') + '" style="padding:11px 14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:8px;color:#fff;font-size:14px;" / aria-label="Venue name">' +
+                    '<input id="uiVenueName" type="text" placeholder="Venue name" value="' + String(defaultVenue).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;') + '" style="padding:11px 14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:8px;color:#fff;font-size:14px;" / aria-label="Venue name">' +
                     '<select id="uiTier" style="padding:11px 14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:8px;color:#fff;font-size:14px;">' +
                         '<option value="">Plan you\'re interested in…</option>' +
                         '<option value="professional">Professional</option>' +
@@ -1912,7 +1284,7 @@ function openUpgradeInterestModal() {
         statusEl.textContent = 'Sending…'; statusEl.style.color = 'rgba(255,255,255,0.5)';
         fetch('/api/business/upgrade-interest', {
             method: 'POST',
-            headers: Object.assign({'Content-Type':'application/json'}, bzAuthHeaders()),
+            headers: {'Content-Type':'application/json'},
             body: JSON.stringify({
                 email: email,
                 venue_name: nameEl.value || '',
@@ -1940,111 +1312,22 @@ function openUpgradeInterestModal() {
 // ════════════════════════════════════════════════════════════════════════
 // Phase 5D-C3 — Claim Venue modal (search + submit claim)
 // ════════════════════════════════════════════════════════════════════════
-function openClaimVenueModal() {
-    var existing = document.getElementById('cvModal');
-    if (existing) { existing.style.display = 'flex'; return; }
-    var html = '' +
-        '<div id="cvModal" style="position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px;">' +
-            '<div style="background:#1a1a1a;border:1px solid rgba(212,175,55,0.3);border-radius:14px;max-width:560px;width:100%;padding:28px;color:#fff;max-height:88vh;overflow-y:auto;">' +
-                '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
-                    '<h3 style="margin:0;color:var(--gold);font-size:18px;"><i class="fas fa-search"></i> Claim Your Venue</h3>' +
-                    '<button id="cvClose" style="background:none;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1;">&times;</button>' +
-                '</div>' +
-                '<p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0 0 14px;line-height:1.5;">Search for your venue. We approve every claim manually to verify ownership.</p>' +
-                '<input id="cvQuery" type="text" placeholder="Search Boston venues…" autocomplete="off" style="width:100%;padding:11px 14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:8px;color:#fff;font-size:14px;margin-bottom:12px;" / aria-label="Search Boston venues…">' +
-                '<div id="cvResults" style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;"></div>' +
-                '<div id="cvStatus" style="margin-top:10px;font-size:12px;color:rgba(255,255,255,0.5);min-height:18px;"></div>' +
-            '</div>' +
-        '</div>';
-    var wrap = document.createElement('div');
-    wrap.innerHTML = html;
-    document.body.appendChild(wrap.firstChild);
-    document.getElementById('cvClose').onclick = function(){ document.getElementById('cvModal').remove(); };
-
-    var qEl = document.getElementById('cvQuery');
-    var resEl = document.getElementById('cvResults');
-    var statusEl = document.getElementById('cvStatus');
-    var debounceT = null;
-
-    qEl.addEventListener('input', function(){
-        clearTimeout(debounceT);
-        var q = (qEl.value || '').trim();
-        if (q.length < 2) { resEl.innerHTML = ''; statusEl.textContent = ''; return; }
-        statusEl.textContent = 'Searching…';
-        debounceT = setTimeout(function(){
-            fetch('/api/business/venues/search?q=' + encodeURIComponent(q) + '&limit=10')
-                .then(function(r){ return r.ok ? r.json() : { venues: [] }; })
-                .then(function(d){
-                    var vs = (d && d.venues) || [];
-                    statusEl.textContent = vs.length ? '' : 'No matches.';
-                    resEl.innerHTML = vs.map(function(v){
-                        var meta = [v.type, v.neighborhood, v.address].filter(Boolean).join(' · ');
-                        var safe = function(t){ return String(t||'').replace(/[<>&]/g, function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c];}); };
-                        return '<div style="padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;display:flex;align-items:center;gap:12px;">' +
-                                   '<div style="flex:1;min-width:0;">' +
-                                       '<div style="font-weight:600;color:#fff;font-size:13px;">' + safe(v.name) + '</div>' +
-                                       '<div style="color:rgba(255,255,255,0.5);font-size:11px;margin-top:2px;">' + safe(meta) + '</div>' +
-                                   '</div>' +
-                                   (v.claimed ?
-                                       '<span style="font-size:11px;color:rgba(255,255,255,0.4);">Already claimed</span>' :
-                                       '<button data-claim-id="' + v.id + '" data-claim-name="' + safe(v.name) + '" style="background:var(--gold);color:#000;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;">Claim</button>'
-                                   ) +
-                               '</div>';
-                    }).join('');
-                    resEl.querySelectorAll('[data-claim-id]').forEach(function(btn){
-                        btn.addEventListener('click', function(){
-                            submitClaim(btn.getAttribute('data-claim-id'), btn.getAttribute('data-claim-name'), statusEl);
-                        });
-                    });
-                })
-                .catch(function(){ statusEl.textContent = 'Search failed — try again.'; });
-        }, 280);
-    });
-    setTimeout(function(){ qEl.focus(); }, 100);
-}
-
-function submitClaim(venueId, venueName, statusEl) {
-    var token = localStorage.getItem('sl_jwt_token');
-    if (!token) {
-        if (statusEl) statusEl.textContent = 'Sign in with your business account first.';
-        var loginBtn = document.querySelector('.bz-open-login');
-        if (loginBtn) loginBtn.click();
-        return;
-    }
-    if (statusEl) { statusEl.textContent = 'Submitting claim for ' + venueName + '…'; statusEl.style.color = 'rgba(255,255,255,0.5)'; }
-    fetch('/api/business/claim', {
-        method: 'POST',
-        headers: Object.assign({'Content-Type':'application/json'}, bzAuthHeaders()),
-        body: JSON.stringify({ venue_id: venueId })
-    }).then(function(r){ return r.json().then(function(j){ return { ok: r.ok, json: j }; }); })
-      .then(function(out){
-          if (out.ok) {
-              if (statusEl) { statusEl.textContent = '✓ Claim submitted — we\'ll review and email you.'; statusEl.style.color = '#22c55e'; }
-              setTimeout(function(){
-                  var m = document.getElementById('cvModal'); if (m) m.remove();
-                  if (typeof loadEnterpriseVenues === 'function') loadEnterpriseVenues();
-              }, 2000);
-          } else {
-              if (statusEl) { statusEl.textContent = (out.json && out.json.error) || 'Claim failed.'; statusEl.style.color = '#ef4444'; }
-          }
-      })
-      .catch(function(){ if (statusEl) { statusEl.textContent = 'Network error.'; statusEl.style.color = '#ef4444'; } });
-}
 </script>
 
 
 
 
     <!-- AI concierge script removed from business page — not appropriate for venue owner dashboard -->
-<script src="/js/sl-business-app.js?v=connected-20261119-been-with-friends" defer></script>
+<script src="/js/sl-business-access.js?v=connected-20261123-release-acceptance" defer></script>
+<script src="/js/sl-business-app.js?v=connected-20261123-release-acceptance" defer></script>
 
-    <script src="js/sl-bundle-7d-ui.js?v=connected-20261119-been-with-friends" defer></script>
-  <script src="js/sl-phase8-launch.js?v=connected-20261119-been-with-friends" defer></script>
-<script src="js/sl-phase8-completion.js?v=connected-20261119-been-with-friends" defer></script>
-  <script src="js/sl-universal-search.js?v=connected-20261119-been-with-friends" defer></script>
-  <script src="js/sl-social-network.js?v=connected-20261119-been-with-friends" defer></script>
-  <script src="js/sl-phase8d-recovery.js?v=connected-20261119-been-with-friends" defer></script>
-  <script src="/js/sl-social-integration-9a.js?v=connected-20261119-been-with-friends" defer></script>
-<script src="/js/sl-verification-banner.js?v=connected-20261119-been-with-friends" defer></script>
+    <script src="js/sl-bundle-7d-ui.js?v=connected-20261123-release-acceptance" defer></script>
+  <script src="js/sl-phase8-launch.js?v=connected-20261123-release-acceptance" defer></script>
+<script src="js/sl-phase8-completion.js?v=connected-20261123-release-acceptance" defer></script>
+  <script src="js/sl-universal-search.js?v=connected-20261123-release-acceptance" defer></script>
+  <script src="js/sl-social-network.js?v=connected-20261123-release-acceptance" defer></script>
+  <script src="js/sl-phase8d-recovery.js?v=connected-20261123-release-acceptance" defer></script>
+  <script src="/js/sl-social-integration-9a.js?v=connected-20261123-release-acceptance" defer></script>
+<script src="/js/sl-verification-banner.js?v=connected-20261123-release-acceptance" defer></script>
 </body>
 </html>

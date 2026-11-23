@@ -1,10 +1,10 @@
 {
-  "phase": "been-with-friends",
-  "sw_version": "sl-connected-20261119-been-with-friends",
-  "timestamp": "2026-11-19T00:47:46.061546+00:00",
+  "phase": "release-acceptance",
+  "sw_version": "sl-connected-20261123-release-acceptance",
+  "timestamp": "2026-11-23T21:10:16+00:00",
   "status": "versioned_build",
-  "requires_paired_backend": false,
+  "requires_paired_backend": true,
   "required_migration": "016_private_list_invitations.sql",
-  "rollout_order": "compatible_frontend_then_backend",
-  "summary": "Track Want to Try and Been separately, log private visits or explicitly share with friends, and show real friend-scoped activity. Uses existing backend; no venue imports or provider changes."
+  "rollout_order": "paired_backend_then_frontend",
+  "summary": "Integrated admin access, business owner management, Concierge saved plans and inactive venue intake tooling. Requires the paired API candidate. AI and provider pilots remain off; this build performs no venue import or activation."
 }
