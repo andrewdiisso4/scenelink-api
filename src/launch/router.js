@@ -29,6 +29,7 @@ router.post('/auth/logout-all',auth.requireAuth,H.noStore,write,H.wrap(async(req
 require('./verification').install({router,pool,auth,resetLimit,mailer:require('../services/mailer')});
 require('./identity').install({router,pool,auth,write,authLimit,resetLimit,bcrypt:require('bcryptjs'),mailer:require('../services/mailer')});
 for(const name of ['people','posts','messages','discovery','notifications','rooms','events'])require('./'+name).install({router,pool,auth,write});
+require('./event-ingestion-review').install({router,pool,auth,write});
 require('./media').install({router,pool,auth,write:upload});
 // Do not silently fall through to older handlers with weaker permissions.
 for(const prefix of ['/users','/posts','/checkins','/friends','/conversations','/media','/rooms','/venues','/events','/search','/social','/notifications','/reports'])router.use(prefix,H.noStore,(req,res)=>res.status(404).json({error:'Endpoint not found'}));
