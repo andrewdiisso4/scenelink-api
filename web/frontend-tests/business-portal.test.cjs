@@ -154,3 +154,74 @@ test('current collector metrics supply their own labels and a legacy response ca
     assert.equal(h.el('bdStatViews').textContent,'0');older=true;h.el('bdStatsRetry').click();await tick();
     assert.equal(h.el('bdStatViews').textContent,'—');assert.match(h.el('bdStatsStatus').textContent,/unavailable/);
 });
+
+test('a new listing is confirmed as pending, stays editable and has no public listing link',async t=>{
+    let user={...owner,venue_id:null,venue:null};
+    const pending={...owner.venue,id:'pending-fixture',name:'Pending fixture',is_active:false,needs_manual_review:true};
+    const h=await mount(t,{storage:{sl_biz_token:'fixture'},handle:c=>{
+        if(c.path==='/api/business/me')return reply({user});
+        if(c.path==='/api/business/venues')return reply({venues:user.venue?[{...user.venue,is_primary:true}]:[]});
+        if(c.path==='/api/business/venue' && c.method==='POST') {
+            user={...user,venue_id:pending.id,venue_name:pending.name,venue:pending};
+            return reply({ok:true,pending_review:true,venue:pending},202);
+        }
+        if(c.method==='PATCH') {user.venue={...pending,...c.body};return reply({ok:true,venue:user.venue});}
+    }});
+    assert.match(h.el('bdCreateListingBtn').textContent,/submit listing for review/i);
+    h.el('bdEditName').value=pending.name;h.el('bdCreateListingBtn').click();await tick();await tick();
+    assert.equal(h.el('bdCreateListingBtn'),null);
+    assert.match(h.el('bdVRating').textContent,/Pending review.*Not publicly visible/);
+    assert(h.el('bdViewListing').hidden);assert.equal(h.el('bdSaveListing').disabled,false);
+    h.el('bdEditHours').value='Monday 4–9';h.el('bdSaveListing').click();await tick();
+    assert.equal(h.calls.find(c=>c.method==='PATCH').path,'/api/business/venue?venue_id=pending-fixture');
+    assert.match(h.el('bdVRating').textContent,/Pending review/);assert(h.el('bdViewListing').hidden);
+});
+
+test('an older publish-on-create response cannot be presented as a pending-review success',async t=>{
+    const h=await mount(t,{storage:{sl_biz_token:'fixture'},handle:c=>{
+        if(c.path==='/api/business/me')return reply({user:{...owner,venue_id:null,venue:null}});
+        if(c.path==='/api/business/venues')return reply({venues:[]});
+        if(c.path==='/api/business/venue' && c.method==='POST')return reply({ok:true,venue:owner.venue});
+    }});
+    h.el('bdEditName').value='Draft fixture';h.el('bdCreateListingBtn').click();await tick();
+    assert.match(h.w.document.body.textContent,/review status was not confirmed/i);
+    assert(h.el('bdCreateListingBtn'));assert.equal(h.el('bdEditName').value,'Draft fixture');
+    assert(h.el('bdViewListing').hidden);
+});
+
+test('adding the first venue refreshes the owner account so its pending listing can be edited immediately',async t=>{
+    let user={...owner,tier:'enterprise',venue_id:null,venue:null};
+    const pending={...owner.venue,id:'add-first-fixture',name:'Pending first addition',is_active:false,needs_manual_review:true};
+    const h=await mount(t,{storage:{sl_biz_token:'fixture'},handle:c=>{
+        if(c.path==='/api/business/me')return reply({user});
+        if(c.path==='/api/business/venues')return reply({venues:user.venue?[{...user.venue,is_primary:true}]:[]});
+        if(c.path==='/api/business/venues/add' && c.method==='POST') {
+            user={...user,venue_id:pending.id,venue_name:pending.name,venue:pending};
+            return reply({ok:true,pending_review:true,venue:pending},202);
+        }
+    }});
+    const answers=[pending.name,'','Boston','restaurant'];
+    h.w.prompt=()=>answers.shift();
+    h.el('bdAddVenueBtn').click();await tick();await tick();
+    assert(h.calls.filter(c=>c.path==='/api/business/me').length>=2);
+    assert.equal(h.el('bdCreateListingBtn'),null);
+    assert.equal(h.el('bdSaveListing').disabled,false);
+    assert.equal(h.el('bdEditName').value,pending.name);
+    assert.match(h.el('bdVRating').textContent,/Pending review/);
+    assert(h.el('bdViewListing').hidden);
+});
+
+test('the multi-venue table shows pending status and treats submitted venue names as text',async t=>{
+    const name='<img src=x onerror="window.ownerNameExecuted=true"> & Fictional';
+    const pending={...owner.venue,name,is_active:false,needs_manual_review:true,is_primary:true};
+    const h=await mount(t,{storage:{sl_biz_token:'fixture'},handle:c=>{
+        if(c.path==='/api/business/me')return reply({user:{...owner,tier:'enterprise',venue:pending}});
+        if(c.path==='/api/business/venues')return reply({venues:[pending]});
+    }});
+    await h.w.loadEnterpriseVenues();
+    assert.match(h.el('mvVenuesTbody').textContent,/Pending review/);
+    assert(h.el('mvVenuesTbody').textContent.includes(name));
+    assert.equal(h.el('mvVenuesTbody').querySelector('img'),null);
+    assert.equal(h.w.ownerNameExecuted,undefined);
+    assert(h.el('bdVenueSelect').options[0].textContent.includes(name));
+});

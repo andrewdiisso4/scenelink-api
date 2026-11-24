@@ -15,5 +15,6 @@
     "pull_request": 40,
     "scope": "administrator authentication and session handling"
   },
-  "admin_controller_cache_key": "connected-20261124-admin-reconciled"
+  "admin_controller_cache_key": "connected-20261124-release-audit",
+  "business_controller_cache_key": "connected-20261124-release-audit"
 }

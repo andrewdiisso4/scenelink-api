@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const frontend = path.join(__dirname, '../frontend');
 const read = file => fs.readFileSync(path.join(frontend, file), 'utf8');
 const origin = 'https://scenelink.test';
-const marker = 'connected-20261124-admin-reconciled';
+const marker = 'connected-20261124-release-audit';
 const controller = read('admin.html').match(/src="([^"]*js\/sl-admin-portal\.js[^"]*)"/)[1];
 
 test('the reconciled admin asset keeps a unique cache key, hotfix provenance and the paired release contract', () => {
@@ -28,7 +28,7 @@ test('the reconciled admin asset keeps a unique cache key, hotfix provenance and
 
 test('the candidate service worker fetches the new admin URL despite prior production and candidate controllers being cached', async () => {
   const listeners = {};
-  const priorMarkers = ['connected-20261119-been-with-friends', 'connected-20261124-admin-access', 'connected-20261123-release-acceptance'];
+  const priorMarkers = ['connected-20261124-admin-reconciled', 'connected-20261119-been-with-friends', 'connected-20261124-admin-access', 'connected-20261123-release-acceptance'];
   const oldURLs = priorMarkers.map(value => origin + '/js/sl-admin-portal.js?v=' + value);
   const newURL = new URL(controller, origin + '/admin.html').href;
   const cached = new Map(oldURLs.map(url => [url, new Response('old-controller')]));

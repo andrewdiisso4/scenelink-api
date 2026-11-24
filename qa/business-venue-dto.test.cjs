@@ -26,8 +26,9 @@ test('every business venue response sanitizes a sentinel driver row, including c
  let mode='';const queries=[];const restores=[];
  function mock(path,exports){const id=require.resolve(path);restores.push([id,require.cache[id]]);require.cache[id]={id,filename:id,loaded:true,exports};}
  const owner={id:ownerId,email:'owner@example.invalid',password_hash:'local-test-hash',venue_name:venue.name,venue_id:venue.id,tier:'enterprise',status:'active'};
- mock('../src/config/database',{query:async(sql,values)=>{
+ const fixturePool={query:async(sql,values)=>{
   queries.push({sql,values});
+  if(/^(?:BEGIN|COMMIT|ROLLBACK|SET LOCAL)/.test(sql))return{rows:[]};
   if(/SELECT id FROM business_users WHERE LOWER\(email\)/.test(sql))return{rows:[]};
   if(/COUNT\(\*\)::int AS n/.test(sql))return{rows:[{n:0}]};
   if(/WITH all_ids|FROM venues|(?:INSERT INTO|UPDATE) venues[\s\S]*RETURNING \*/.test(sql))return{rows:[structuredClone(venue)]};
@@ -35,7 +36,9 @@ test('every business venue response sanitizes a sentinel driver row, including c
   if(/FROM business_users/.test(sql))return{rows:[{...owner,venue_id:mode==='create'?null:venue.id}]};
   if(/UPDATE business_users|INSERT INTO business_venues|UPDATE venues/.test(sql))return{rows:[]};
   throw Error('Unexpected fixture query: '+sql);
- }});
+ }};
+ fixturePool.connect=async()=>({query:fixturePool.query,release(){}});
+ mock('../src/config/database',fixturePool);
  mock('../src/middleware/auth',{generateBusinessToken:()=> 'local-fixture-token',requireBusinessAuth:(req,res,next)=>{req.user={id:ownerId,role:'business'};next();}});
  mock('bcryptjs',{hash:async()=> 'local-test-hash',compare:async()=>true});
  mock('../src/middleware/rateLimits',{authLimiter:(req,res,next)=>next(),passwordResetLimiter:(req,res,next)=>next(),contactLimiter:(req,res,next)=>next()});

@@ -95,7 +95,9 @@
         if (meta) setText('bdVMeta', meta);
         var rEl = $('bdVRating');
         if (rEl) {
-            if (v.rating && Number(v.rating) > 0) {
+            if (v.is_active !== true && v.needs_manual_review === true) {
+                rEl.textContent = 'Pending review · Not publicly visible';
+            } else if (v.rating && Number(v.rating) > 0) {
                 rEl.innerHTML = '<i class="fas fa-star" style="color:var(--gold)"></i> ' +
                     Number(v.rating).toFixed(1) + ' · ' + (v.review_count || 0) + ' reviews';
             } else {
@@ -110,6 +112,7 @@
         originalFields = null;
         if (user.venue) prefillFromVenue(user.venue);
         if (!user.venue_id) injectCreateListingUI();
+        else $('bdCreateListingBtn')?.parentElement.remove();
         $('bdSaveListing').disabled = !user.venue;
         const view = $('bdViewListing');
         view.hidden = !user.venue_id || user.venue?.is_active !== true;
@@ -173,10 +176,10 @@
             '<div style="color:var(--gold);font-weight:700;margin-bottom:6px;font-size:13px;">' +
             '<i class="fas fa-magic-wand-sparkles"></i> No listing linked yet</div>' +
             '<div style="color:var(--dim);font-size:12px;margin-bottom:10px;">' +
-            'Fill the form above and click below to create your live SceneLink listing. ' +
-            'Once created, you\'ll use "Save Changes" to edit it.</div>' +
+            'Fill the form above to submit your listing for review. It stays private until approved. ' +
+            'You can keep editing it with "Save Changes" while it is pending.</div>' +
             '<button class="bz-btn bz-btn-gold" id="bdCreateListingBtn" type="button">' +
-            '<i class="fas fa-plus-circle"></i> Create Listing</button>';
+            '<i class="fas fa-plus-circle"></i> Submit listing for review</button>';
         saveBtn.parentNode.insertBefore(wrap, saveBtn.nextSibling);
 
         $('bdCreateListingBtn').addEventListener('click', createListing);
@@ -234,11 +237,16 @@
             .then(function (res) {
                 if (!res.ok) {
                     toast(res.data.error || 'Failed to create listing', true);
-                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-plus-circle"></i> Create Listing'; }
+                    if (btn) { btn.disabled = false; btn.textContent = 'Submit listing for review'; }
                     return;
                 }
-                if (!res.data.ok || !res.data.venue?.id) { toast('Creation was not confirmed.', true); if (btn) { btn.disabled=false; btn.textContent='Create listing'; } return; }
-                toast('Listing created.');
+                if (!res.data.ok || res.data.pending_review !== true || !res.data.venue?.id ||
+                    res.data.venue.is_active !== false || res.data.venue.needs_manual_review !== true) {
+                    toast('Listing review status was not confirmed. Reload to check before retrying.', true);
+                    if (btn) { btn.disabled=false; btn.textContent='Submit listing for review'; }
+                    return;
+                }
+                toast('Listing saved for review. You can keep editing it.');
                 // Sync local state
                 var u = getLocalUser() || {};
                 u.venue_id = res.data.venue.id;
@@ -252,7 +260,7 @@
             })
             .catch(function () {
                 toast('Network error. Please try again.', true);
-                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-plus-circle"></i> Create Listing'; }
+                if (btn) { btn.disabled = false; btn.textContent = 'Submit listing for review'; }
             });
     }
 
@@ -693,11 +701,13 @@
                 })
             }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
               .then(function (res) {
-                  if (res.ok) {
-                      toast('Venue added ✓');
-                      loadVenueList();
+                  if (res.ok && res.data.ok && res.data.pending_review === true && res.data.venue?.id &&
+                      res.data.venue.is_active === false && res.data.venue.needs_manual_review === true) {
+                      toast('Venue saved for review. It is not publicly visible.');
+                      if (!operator.venue_id) access.restore();
+                      else loadVenueList();
                   } else {
-                      toast(res.data.error || 'Failed to add venue', true);
+                      toast(res.data.error || 'Venue review status was not confirmed. Reload to check before retrying.', true);
                   }
               });
         });

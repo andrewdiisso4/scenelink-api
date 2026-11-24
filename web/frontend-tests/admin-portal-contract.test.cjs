@@ -28,7 +28,7 @@ async function setup(t, opts={}) {
       if (u.pathname==='/api/admin/venues/list') return {venues:[venue],total:1,limit:25,offset:0};
       return {};
     })();
-    return {ok:status<400,status,async text(){return JSON.stringify(data);}};
+    return {ok:status>=200&&status<300,status,async text(){return JSON.stringify(data);},async json(){if(route?.invalidJson)throw new SyntaxError('Invalid JSON');return data;}};
   };
   w.eval(source);
   await tick();
@@ -122,3 +122,32 @@ test('user search after a backend rollback clearly falls back to the full list',
  assert.match(h.$('#usersTbody').textContent,/All users fixture/);
  assert.equal(h.calls.filter(c=>c.path==='/api/admin/users').at(-1).query.search,undefined);
 });
+
+for (const scenario of [
+ {name:'confirmed healthy response',health:{data:{status:'ok',database:'connected'}},expected:['ONLINE','CONNECTED'],colors:['var(--green)','var(--green)']},
+ {name:'HTTP 500 and failed DB query',health:{status:500,data:{status:'error',database:'disconnected'}},summary:{status:503,data:{error:'Database unavailable'}},expected:['ERROR','ERROR'],colors:['var(--red)','var(--red)']},
+ {name:'error payload returned with HTTP 200',health:{data:{status:'error',database:'disconnected'}},expected:['ERROR','ERROR'],colors:['var(--red)','var(--red)']},
+ {name:'malformed JSON',health:{invalidJson:true},expected:['UNKNOWN','UNKNOWN'],colors:['var(--text2)','var(--text2)']},
+ {name:'unexpected payload',health:{data:{message:'maintenance'}},expected:['UNKNOWN','UNKNOWN'],colors:['var(--text2)','var(--text2)']},
+ {name:'network failure',networkError:true,expected:['UNKNOWN','UNKNOWN'],colors:['var(--text2)','var(--text2)']},
+ {name:'summary unavailable with healthy public check',health:{data:{status:'ok',database:'connected'}},summary:{status:503,data:{error:'Summary unavailable'}},expected:['ONLINE','UNKNOWN'],colors:['var(--green)','var(--text2)']},
+ {name:'unconfirmed summary data',health:{data:{status:'ok',database:'connected'}},summary:{data:{}},expected:['ONLINE','UNKNOWN'],colors:['var(--green)','var(--text2)']}
+]) {
+ test('API Status reports '+scenario.name+' accurately',async t=>{
+  let checking=false;
+  const h=await setup(t,{fetch:call=>{
+   if(call.path==='/api/health'){
+    if(scenario.networkError)throw new Error('Network unavailable');
+    return scenario.health;
+   }
+   if(checking&&call.path==='/api/admin/venues/summary')return scenario.summary;
+  }});
+  checking=true;h.click('[data-section=api-status]');await tick();
+  const values=[...h.w.document.querySelectorAll('#apiStatusBody .stat-value')];
+  assert.deepEqual(values.slice(0,2).map(el=>el.textContent),scenario.expected);
+  assert.deepEqual(values.slice(0,2).map(el=>el.style.color),scenario.colors);
+  assert.equal(h.calls.filter(call=>call.path==='/api/health').length,1);
+  assert.equal(h.calls.some(call=>call.path==='/health'),false,'Only the configured API health route should be probed');
+  if(scenario.summary)assert.equal(values[2].textContent,'—');
+ });
+}
