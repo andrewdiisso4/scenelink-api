@@ -6404,8 +6404,8 @@ if (typeof module !== 'undefined' && module.exports) {
 
 /* === js/sl-account-settings.js === */
 /**
- * SL Account Settings — auto-injects "Danger Zone" section with Delete My Account
- * on profile.html. Required for App Store compliance (Guideline 5.1.1(v)).
+ * SL Account Settings — mounts account controls in the owner's Privacy & settings
+ * panel, with a main-content fallback for legacy profile pages.
  *
  * Confirmation uses password re-entry or a recent verified provider sign-in,
  * as required by the server for the current account.
@@ -6430,6 +6430,7 @@ if (typeof module !== 'undefined' && module.exports) {
     s.id = 'sl-account-settings-style';
     s.textContent = [
       '.sl-acct-settings{margin:32px auto 48px;max-width:960px;padding:0 20px;}',
+      '#slspPanelSettings>.sl-acct-settings{margin:16px 0 0;max-width:none;padding:0;}',
       '.sl-acct-card{background:var(--sl-ui-surface,#191e23);border:1px solid var(--sl-ui-border,#49535e);',
       ' border-radius:var(--sl-ui-radius,12px);padding:22px;}',
       '.sl-acct-card h3{margin:0 0 6px 0;font-size:16px;color:var(--sl-ui-text,#f5f6f7);}',
@@ -6442,6 +6443,10 @@ if (typeof module !== 'undefined' && module.exports) {
       '.sl-acct-btn:hover{background:rgba(229,57,53,0.1);border-color:#e53935;color:#fff;}',
       '.sl-acct-btn.neutral{color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.2);}',
       '.sl-acct-btn.neutral:hover{color:#fff;border-color:#D4AF37;}',
+      '#slspPanelSettings .sl-acct-btn{background:transparent;color:#ff8a80;border-color:rgba(229,57,53,0.4);}',
+      '#slspPanelSettings .sl-acct-btn:hover{background:rgba(229,57,53,0.1);color:#fff;border-color:#e53935;}',
+      '#slspPanelSettings .sl-acct-btn.neutral{color:var(--sl-ui-text,#f5f6f7);border-color:var(--sl-ui-border,#49535e);}',
+      '#slspPanelSettings .sl-acct-btn.neutral:hover{background:var(--sl-ui-raised,#252b31);border-color:var(--sl-ui-gold,#e3bc54);}',
       '.sl-acct-ov{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;',
       ' display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;overflow:auto;backdrop-filter:blur(6px);}',
       '.sl-acct-m{background:var(--sl-ui-surface,#191e23);border:1px solid var(--sl-ui-border,#49535e);border-radius:var(--sl-ui-radius,12px);',
@@ -6547,6 +6552,10 @@ if (typeof module !== 'undefined' && module.exports) {
       try { ov.remove(); } catch(_){}
       document.body.style.overflow = oldOverflow;
       if (returnFocus && returnFocus.isConnected && !returnFocus.disabled) returnFocus.focus();
+      else if (ownsSession()) {
+        var replacement = document.getElementById('slAcctDeleteBtn');
+        if (replacement && !replacement.disabled && !replacement.closest('[hidden]')) replacement.focus();
+      }
       document.removeEventListener('keydown', onKey);
     }
     closeDialog = close;
@@ -6773,10 +6782,12 @@ if (typeof module !== 'undefined' && module.exports) {
     try { token = localStorage.getItem('sl_jwt_token'); } catch(_){}
     if (!token) return;
 
+    // The canonical controller replaces its host after asynchronous profile loads
+    // and saves. Only its own-profile settings panel is an account-controls mount.
+    var profile = document.getElementById('slSocialProfile');
+    var main = profile ? profile.querySelector('#slspPanelSettings') : document.querySelector('main') || document.body;
+    if (!main) return;
     injectStyle();
-
-    // Find main content container
-    var main = document.querySelector('main') || document.body;
     var section = document.createElement('section');
     section.className = 'sl-acct-settings';
     section.id = 'slAcctSettings';
@@ -6816,12 +6827,19 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   function refreshAccount(){
     var current = sessionKey();
-    if (current !== observedSession) { sessionGeneration++; observedSession = current; }
-    if (closeDialog) closeDialog();
-    var section = document.getElementById('slAcctSettings');
-    if (section) section.remove();
+    if (current !== observedSession) {
+      sessionGeneration++; observedSession = current;
+      if (closeDialog) closeDialog();
+      var section = document.getElementById('slAcctSettings');
+      if (section) section.remove();
+      // Wait for the new account's profile, independent of auth-listener order.
+      if (document.getElementById('slSocialProfile')) return;
+    }
     injectSection();
   }
+  window.addEventListener('sl:profile-rendered', function(e){
+    if (e.target === document.getElementById('slSocialProfile')) injectSection();
+  });
   window.addEventListener('sl:explicit-modal', function(){ if (closeDialog) closeDialog(); });
   window.addEventListener('sl-auth-ready', refreshAccount);
   window.addEventListener('sl-auth-changed', refreshAccount);

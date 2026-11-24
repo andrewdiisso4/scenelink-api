@@ -53,10 +53,16 @@ async function login(p,email) {
   await p.locator('.sl-auth-overlay.open').waitFor({state:'hidden'});
   await p.locator('#slSocialProfile .slsp-hero h1').waitFor();
 }
-async function shot(p,name) {
-  await p.screenshot({path:path.join(OUT,name+'.png'),fullPage:false,animations:'disabled'});
+async function shot(p,name,fullPage=false) {
+  await p.screenshot({path:path.join(OUT,name+'.png'),fullPage,animations:'disabled'});
   const dimensions=await p.evaluate(()=>({width:innerWidth,body:document.documentElement.scrollWidth}));
   assert(dimensions.body<=dimensions.width+1,'No horizontal overflow: '+name+' '+JSON.stringify(dimensions));
+}
+async function verifyBannerClearance(p) {
+  await p.locator('#slVerificationBanner').waitFor();
+  await p.evaluate(()=>new Promise(requestAnimationFrame));
+  const bounds=await p.evaluate(()=>({header:document.getElementById('mainHeader').getBoundingClientRect().bottom,banner:document.getElementById('slVerificationBanner').getBoundingClientRect().top}));
+  assert(bounds.banner>=bounds.header-1,'Verification prompt clears the shared header: '+JSON.stringify(bounds));
 }
 async function search(p,query) {
   await p.locator('#slspTabFriends').click();await p.locator('#slspSearchInput').fill(query);
@@ -161,6 +167,7 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
   await stage('Cross-tab logout clears private state and revokes the session',async()=>{
     const second=await member.ctx.newPage();await second.goto(origin+'/profile');await second.locator('#slSocialProfile .slsp-hero h1').waitFor();
     const before=await page.evaluate(()=>window.SLAuth.token()); // Never recorded in logs/artifacts.
+    await page.locator('#slspTabSettings').click();
     await page.locator('#slAcctLogout').click();await second.waitForFunction(()=>!window.SLAuth?.token());
     await second.waitForFunction(()=>!document.querySelector('#slAcctSettings'));
     const hash=crypto.createHash('sha256').update(before).digest('hex');
@@ -175,7 +182,10 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
     assert.equal(await page.locator('#slSignupForm [name=display_name]').inputValue(),'Morgan · QA signup','Signup focus preserves the display name');
     assert.equal(await page.locator('#slSignupForm [name=username]').inputValue(),'qa_new_member','Signup focus preserves the username');
     await page.locator('#slSignupForm .sl-auth-submit').click();await page.waitForFunction(()=>window.SLAuth?.isAuthed()===true);
-    await page.locator('.sl-auth-overlay.open').waitFor({state:'hidden'});await page.locator('#slAcctDeleteBtn').waitFor();
+    await page.locator('.sl-auth-overlay.open').waitFor({state:'hidden'});await page.locator('#slSocialProfile .slsp-hero h1').waitFor();
+    await verifyBannerClearance(page);await shot(page,'new-account-desktop');await page.setViewportSize({width:390,height:844});await verifyBannerClearance(page);await shot(page,'new-account-mobile');
+    await page.locator('#slspTabSettings').click();await page.locator('#slAcctDeleteBtn').waitFor();
+    await page.locator('#slAcctSettings').evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));await shot(page,'account-settings-mobile');
     newUser=(await db("SELECT id FROM users WHERE email='qa.signup@example.invalid'"))[0];assert(newUser);
     const queued=await db('SELECT status FROM signup_welcome_emails WHERE user_id=$1',[newUser.id]);assert.deepEqual(queued,[{status:'pending'}]);
   });
@@ -206,13 +216,13 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
     });
     for(const variant of ['unverified','verified']){
       await emailPage.goto(origin+'/__welcome-preview/'+variant);await emailPage.locator('img').first().waitFor();await emailPage.waitForFunction(()=>[...document.images].every(i=>i.complete&&i.naturalWidth>0));
-      await emailPage.setViewportSize({width:900,height:1150});await shot(emailPage,'welcome-'+variant+'-desktop');
-      await emailPage.setViewportSize({width:390,height:1100});await shot(emailPage,'welcome-'+variant+'-mobile');
+      await emailPage.setViewportSize({width:900,height:1150});await shot(emailPage,'welcome-'+variant+'-desktop',true);
+      await emailPage.setViewportSize({width:390,height:1100});await shot(emailPage,'welcome-'+variant+'-mobile',true);
     }
     await emailCtx.close();
   });
   assert.deepEqual(errors,[],'No uncaught JavaScript errors in tested real pages');
-  const sourceFiles=['src/launch/identity.js','src/launch/people.js','src/launch/media.js','src/launch/messages.js','src/launch/session.js','src/routes/oauth.js','src/services/mailer.js','web/frontend/js/sl-auth-core.js','web/frontend/js/sl-auth-ui.js','web/frontend/js/sl-bundle-7d.js','web/frontend/js/sl-social-profile.js','web/frontend/js/sl-social-messages.js','web/frontend/js/sl-account-settings.js','web/frontend/js/sl-reset-password.js','web/frontend/js/sl-email-verification.js','web/frontend/css/sl-social-profile.css','web/frontend/css/sl-auth-ui.css','web/frontend/css/sl-account-entry.css','web/frontend/css/sl-bundle-7d.css','web/frontend/css/sl-design-system.css'];
+  const sourceFiles=['src/launch/identity.js','src/launch/people.js','src/launch/media.js','src/launch/messages.js','src/launch/session.js','src/routes/oauth.js','src/services/mailer.js','web/frontend/js/sl-auth-core.js','web/frontend/js/sl-auth-ui.js','web/frontend/js/sl-bundle-7d.js','web/frontend/js/sl-social-profile.js','web/frontend/js/sl-social-messages.js','web/frontend/js/sl-account-settings.js','web/frontend/js/sl-reset-password.js','web/frontend/js/sl-email-verification.js','web/frontend/js/sl-verification-banner.js','web/frontend/css/sl-social-profile.css','web/frontend/css/sl-auth-ui.css','web/frontend/css/sl-account-entry.css','web/frontend/css/sl-bundle-7d.css','web/frontend/css/sl-design-system.css'];
   const receipt={scope:'isolated fictional browser acceptance; no real-provider or iOS certification',native_postgres:nativeVersion,browser:await browser.version(),tested_commit:sourceCommit,workflow_run_id:process.env.GITHUB_RUN_ID||null,
     source_sha256:Object.fromEntries(sourceFiles.map(file=>[file,crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT,file))).digest('hex')])),steps,api_responses:requests,uncaught_errors:errors,
     limitations:['SMTP inbox delivery not tested','Real Apple/Google OAuth not tested','Cloudinary upload and external cleanup not tested','Physical iOS, native accessibility and signed App Store build not tested','Recovery token validation uses separate route/DOM tests; these screenshots do not certify email delivery']};
