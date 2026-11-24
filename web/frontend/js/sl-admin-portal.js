@@ -560,14 +560,23 @@
     const body = $('#apiStatusBody');
     body.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div></div>';
     try {
-      const r = await fetch(`${API.replace(/\/api$/, '')}/health`).then(x => x.json()).catch(() => ({}));
-      const h = await fetch(`${API}/health`).then(x => x.json()).catch(() => null);
+      let healthResponse = null, h = null;
+      try {
+        healthResponse = await fetch(`${API}/health`, {cache:'no-store'});
+        h = await healthResponse.json();
+      } catch (_) { /* Unconfirmed health is unknown, never a successful check. */ }
       const s = await api('/admin/venues/summary').catch(() => null);
       if (epoch !== accessEpoch) return;
+      const apiStatus = (healthResponse && !healthResponse.ok) || h?.status === 'error' ? 'ERROR'
+        : healthResponse?.ok && h?.status === 'ok' ? 'ONLINE' : 'UNKNOWN';
+      const dbStatus = h?.database === 'disconnected' ? 'ERROR'
+        : apiStatus === 'ONLINE' && h?.database === 'connected' && isCount(s?.total) ? 'CONNECTED' : 'UNKNOWN';
+      const statusColor = status => status === 'ONLINE' || status === 'CONNECTED' ? 'var(--green)'
+        : status === 'ERROR' ? 'var(--red)' : 'var(--text2)';
       body.innerHTML = `
         <div class="stats-grid">
-          <div class="stat-card"><div class="stat-label">API</div><div class="stat-value" style="color:var(--green);font-size:18px">${h ? 'ONLINE' : 'UNKNOWN'}</div><div class="stat-sub">${esc(API)}</div></div>
-          <div class="stat-card"><div class="stat-label">DB</div><div class="stat-value" style="color:var(--green);font-size:18px">${s ? 'CONNECTED' : 'ERROR'}</div><div class="stat-sub">PostgreSQL</div></div>
+          <div class="stat-card"><div class="stat-label">API</div><div class="stat-value" style="color:${statusColor(apiStatus)};font-size:18px">${apiStatus}</div><div class="stat-sub">${esc(API)}</div></div>
+          <div class="stat-card"><div class="stat-label">DB</div><div class="stat-value" style="color:${statusColor(dbStatus)};font-size:18px">${dbStatus}</div><div class="stat-sub">PostgreSQL</div></div>
           <div class="stat-card"><div class="stat-label">Venues</div><div class="stat-value">${s ? fmtNum(s.total) : '—'}</div><div class="stat-sub">in database</div></div>
         </div>
         <div class="panel" style="margin-top:16px">

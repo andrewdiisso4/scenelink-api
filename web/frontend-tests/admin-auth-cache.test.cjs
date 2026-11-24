@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const frontend = path.join(__dirname, '../frontend');
 const read = file => fs.readFileSync(path.join(frontend, file), 'utf8');
 const origin = 'https://scenelink.test';
-const marker = 'connected-20261124-admin-reconciled';
+const marker = 'connected-20261124-account-social';
 const controller = read('admin.html').match(/src="([^"]*js\/sl-admin-portal\.js[^"]*)"/)[1];
 
 test('the reconciled admin asset keeps a unique cache key, hotfix provenance and the paired release contract', () => {
@@ -21,14 +21,14 @@ test('the reconciled admin asset keeps a unique cache key, hotfix provenance and
   assert.equal(metadata.admin_auth_hotfix.pull_request, 40);
   assert.equal(metadata.requires_paired_backend, true);
   assert.equal(metadata.rollout_order, 'paired_backend_then_frontend');
-  assert.equal(metadata.required_migration, '016_private_list_invitations.sql');
-  // The shared shell is unchanged; only the updated admin controller gets a new key.
-  assert.equal(metadata.sw_version, 'sl-connected-20261123-release-acceptance');
+  assert.equal(metadata.required_migration, '018_account_deletion_receipts.sql');
+  // Account changes issue a new shared shell while retaining the admin hotfix provenance.
+  assert.equal(metadata.sw_version, 'sl-' + marker);
 });
 
 test('the candidate service worker fetches the new admin URL despite prior production and candidate controllers being cached', async () => {
   const listeners = {};
-  const priorMarkers = ['connected-20261119-been-with-friends', 'connected-20261124-admin-access', 'connected-20261123-release-acceptance'];
+  const priorMarkers = ['connected-20261124-release-audit', 'connected-20261124-admin-reconciled', 'connected-20261119-been-with-friends', 'connected-20261124-admin-access', 'connected-20261123-release-acceptance'];
   const oldURLs = priorMarkers.map(value => origin + '/js/sl-admin-portal.js?v=' + value);
   const newURL = new URL(controller, origin + '/admin.html').href;
   const cached = new Map(oldURLs.map(url => [url, new Response('old-controller')]));

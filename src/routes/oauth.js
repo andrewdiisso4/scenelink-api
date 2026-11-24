@@ -50,7 +50,7 @@ router.post('/google', async (req, res) => {
             oauth_id: googleId,
         });
 
-        const slToken = generateToken(user);
+        const slToken = generateToken(user, { provider: 'google', subject: googleId });
         delete user.auth_version; delete user.is_active; delete user.is_suspended;
         res.json({ token: slToken, user, is_new: user._is_new });
     } catch (err) {
@@ -119,7 +119,7 @@ router.post('/apple', async (req, res) => {
             oauth_id: appleId,
         });
 
-        const slToken = generateToken(user);
+        const slToken = generateToken(user, { provider: 'apple', subject: appleId });
         delete user.auth_version; delete user.is_active; delete user.is_suspended;
         res.json({ token: slToken, user, is_new: user._is_new });
     } catch (err) {
@@ -156,11 +156,8 @@ async function upsertOAuthUser({ email, display_name, avatar_url, oauth_provider
         await pool.query('UPDATE users SET email_verified_at=NOW(),verified_email=lower(email) WHERE id=$1',[user.id]);
         user.email_verified=true;
         user._is_new = false;
-        // Update avatar if changed
-        if (avatar_url) {
-            await pool.query('UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2', [avatar_url, user.id]);
-            user.avatar_url = avatar_url;
-        }
+        // Returning sign-in must preserve a chosen or intentionally removed
+        // SceneLink photo. Provider photos only initialize a brand-new account.
         return user;
     }
 
@@ -178,8 +175,8 @@ async function upsertOAuthUser({ email, display_name, avatar_url, oauth_provider
         user.email_verified=true;
         // Link OAuth to existing account
         await pool.query(
-            'UPDATE users SET oauth_provider = $1, oauth_id = $2, avatar_url = COALESCE($3, avatar_url), updated_at = NOW() WHERE id = $4',
-            [oauth_provider, oauth_id, avatar_url, user.id]
+            'UPDATE users SET oauth_provider = $1, oauth_id = $2, updated_at = NOW() WHERE id = $3',
+            [oauth_provider, oauth_id, user.id]
         );
         user.oauth_provider = oauth_provider;
         user._is_new = false;

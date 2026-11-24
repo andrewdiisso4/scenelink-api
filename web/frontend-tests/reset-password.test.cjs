@@ -4,7 +4,7 @@ const TOKEN='a'.repeat(64);
 function load({hash='#token='+TOKEN,search='',result={ok:true,status:200},reject=false}={}){
  const el={};for(const id of ['resetForm','newPassword','confirmPassword','resetSubmit','resetStatus'])el[id]={value:'',disabled:true,hidden:false,attrs:{},setAttribute(k,v){this.attrs[k]=v},addEventListener(e,cb){this[e]=cb},focus(){this.focused=true}};
  const calls=[],urls=[];
- const ctx={URLSearchParams,TextEncoder,window:{location:{search,hash,pathname:'/reset-password.html'},history:{replaceState(...args){urls.push(args)}}},document:{readyState:'complete',getElementById:id=>el[id]},fetch:async(...args)=>{calls.push(args);if(reject)throw Error('offline');return result}};
+ const ctx={URLSearchParams,TextEncoder,setTimeout,clearTimeout,AbortController,window:{location:{search,hash,pathname:'/reset-password.html'},history:{replaceState(...args){urls.push(args)}}},document:{readyState:'complete',getElementById:id=>el[id]},fetch:async(...args)=>{calls.push(args);if(reject)throw Error('offline');return Object.assign({json:async()=>({ok:true})},result)}};
  vm.runInNewContext(source,ctx);
  return {el,calls,urls,async submit(pass='a password',confirm=pass){el.newPassword.value=pass;el.confirmPassword.value=confirm;if(el.resetForm.submit)await el.resetForm.submit({preventDefault(){}})}};
 }

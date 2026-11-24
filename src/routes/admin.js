@@ -257,11 +257,17 @@ router.get('/plans', requireAdmin, async (req, res) => {
     }
 });
 
-// PATCH /api/admin/venues/:id — toggle featured/trending/active
+// PATCH /api/admin/venues/:id — edit flags or withdraw; publication requires separate review
 router.patch('/venues/:id', requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { featured, trending, spotlight, is_active } = req.body;
+        if (is_active !== undefined && typeof is_active !== 'boolean') {
+            return res.status(400).json({ error: 'is_active must be a boolean', code: 'invalid_venue_activation' });
+        }
+        if (is_active === true) {
+            return res.status(409).json({ error: 'Venue publication requires a reviewed activation workflow', code: 'venue_publication_requires_review' });
+        }
         const updates = [];
         const params = [];
         let idx = 1;
@@ -297,18 +303,18 @@ router.get('/contacts', requireAdmin, async (req, res) => {
     try {
         const limit = Math.min(200, parseInt(req.query.limit) || 50);
         const status = req.query.status || null;
-        const where = status ? `WHERE status = $2` : '';
+        const where = parameter => status ? `WHERE status = ${parameter}` : '';
         const params = status ? [limit, status] : [limit];
         const result = await pool.query(
             `SELECT id, name, email, subject, LEFT(message,300) as preview, source, status, created_at
-             FROM contact_messages ${where}
+             FROM contact_messages ${where('$2')}
              ORDER BY created_at DESC LIMIT $1`,
             params
-        ).catch(() => ({ rows: [] }));
+        );
         const cnt = await pool.query(
-            `SELECT COUNT(*) as total FROM contact_messages ${where}`,
+            `SELECT COUNT(*) as total FROM contact_messages ${where('$1')}`,
             status ? [status] : []
-        ).catch(() => ({ rows: [{ total: 0 }] }));
+        );
         res.json({ messages: result.rows, total: parseInt(cnt.rows[0].total) });
     } catch (err) {
         res.status(500).json({ error: err.message });
