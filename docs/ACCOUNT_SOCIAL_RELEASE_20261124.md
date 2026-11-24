@@ -1,6 +1,6 @@
 # Account and social release handoff for Veylo
 
-Prepared 2026-11-24 for [release candidate PR #43](https://github.com/andrewdiisso4/scenelink-api/pull/43), stacked on the earlier release audit in PR #42. **Integrated CI verification is still pending.** This describes reviewed source changes. The verification record below separates code/browser evidence from the remaining deployed-provider and signed-device gates. No production accounts, provider credentials, real email delivery, or signed iPhone build were exercised by this document.
+Prepared 2026-11-24 for [release candidate PR #43](https://github.com/andrewdiisso4/scenelink-api/pull/43), stacked on the earlier release audit in PR #42. **All 10 integrated CI jobs passed for the code candidate.** The [archived browser receipt, screenshots, and results](../evidence/account-social/README.md) make the changes reviewable. The verification record below separates code/browser evidence from the remaining deployed-provider and signed-device gates. No production accounts, provider credentials, real email delivery, or signed iPhone build were exercised by this document.
 
 ## What changed
 
@@ -50,7 +50,7 @@ Use controlled fault fixtures for deletion rollback, missing receipt migration, 
 
 | Gate | Evidence still required |
 | --- | --- |
-| Integrated release checks | Passing CI and native browser/analytics receipts for the final commit, including the conversation-deletion companion fix. Fill the verification record below; individual component results are insufficient. |
+| Hosted release acceptance | The integrated code candidate passed all 10 CI jobs, including the conversation-deletion regressions, native analytics races, and eight-stage Chromium journey. Repeat the controlled acceptance sequence against the deployed build and record matching backend/frontend identifiers; isolated CI does not establish hosted readiness. Any later runtime changes require a new integrated run. |
 | Real Google and Apple | Correct client/bundle identifiers, redirect URLs, signed build callbacks, cancellation, returning login, verified linking, and provider-only deletion on controlled accounts. Check the equivalent private-email login requirement in [App Review 4.8](https://developer.apple.com/app-store/review/guidelines/#login-services). Provider buttons and offline token fixtures do not prove configuration. |
 | Provider cleanup | Implement and verify trusted Cloudinary ownership receipts and durable destruction/reconciliation, including uploads that complete after deletion. Resolve legacy ownership, cache invalidation, and backup policy. Complete Apple code exchange, protected revocable-token storage, durable revocation, and historical identity handling described in the [cleanup design](account-deletion-provider-cleanup.md). Manual instructions are an explicit fallback, not proof of automated cleanup. |
 | Email delivery | Real welcome, verification, and recovery inbox checks; correct sender/reply-to configuration and working links. Record SMTP acceptance separately from inbox arrival and uncertain delivery. No production mail was sent by the offline preview/tests. |
@@ -61,13 +61,14 @@ Use controlled fault fixtures for deletion rollback, missing receipt migration, 
 
 Apple sources checked 2026-11-24; recheck at submission. The outstanding provider and device work is not covered by a visual polish claim.
 
-## Final verification record — release owner to complete
+## Final verification record
 
 | Record | Status / evidence |
 | --- | --- |
-| Integrated application source | PR #43 code candidate `792c973ff489f640f70fcf21fe9eec1278dcb2f2`; runtime tree `f13f97d5729acd1469fc2978ef1bdab1a726ee31`. Current branch checks are linked on the PR. |
-| Exact-commit backend/frontend regression results and counts | [CI run 45349601044](https://github.com/andrewdiisso4/scenelink-api/actions/runs/45349601044): 285 backend tests passed, 1 opt-in native restore-fixture guard skipped; 759 frontend tests passed; isolated host guards passed 9/9; social regression passed. |
-| Native schema upgrade, analytics concurrency, and browser receipt/artifact | Pending |
+| Integrated application source | PR #43 code candidate `9eca790fc4abc85c9076ca9b4e01df0726c3bc95`, tree `30fa692dedfeadb157d979a555e7a0448f4b3559`; CI tested GitHub's PR merge commit `9e7b19d2eed4a5fcddd497954ed7f84054a8a8e1`. The follow-up evidence commit changes documentation and archived artifacts only. Current branch checks are linked on the PR. |
+| Exact-commit backend/frontend regression results and counts | [CI run 45351331962](https://github.com/andrewdiisso4/scenelink-api/actions/runs/45351331962): **all 10 jobs passed**; 285 backend tests passed, 1 opt-in native restore-fixture guard skipped; **766 frontend tests passed**; isolated host guards passed 9/9; social regression passed 40/40. Zero failures in these suites. The skipped fixture does not replace the deployment backup/restore gate. |
+| Native schema upgrade and analytics concurrency | The same run passed 26 synthetic existing-schema upgrade checks and 14 native PostgreSQL analytics/deletion checks, covering both transaction orderings and insert/commit failure rollback. The API, welcome queue, Concierge, ingestion, venue-intake, and isolated host jobs also passed. See the [structured result](../evidence/account-social/verification-summary.json). |
+| Browser receipt and visual evidence | All eight stages passed using PostgreSQL 18.3 and Chromium 151.0.7922.34, with zero uncaught browser errors. The 21 source SHA-256 entries in the [unaltered receipt](../evidence/account-social/browser-receipt.json) match the archived candidate's runtime files. All 20 screenshots are preserved in the [evidence index](../evidence/account-social/README.md). Login, profile/settings, deletion, verification/recovery, and complete welcome-email layouts were visually reviewed. Browser email rendering does not certify inbox arrival or actual mail-client rendering. |
 | Conversation-deletion fix and direct/group acceptance | Actual-route tests and complete message DOM suite pass; independent current/legacy error and retry review cleared. Hosted physical-device observation remains required. |
 | Backend migration 018 / deployed backend and frontend identifiers | Pending authorized rollout |
 | Real Google / Apple / SMTP / Cloudinary receipts | Pending |
