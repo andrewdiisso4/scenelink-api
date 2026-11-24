@@ -6,5 +6,11 @@
   "requires_paired_backend": false,
   "required_migration": "016_private_list_invitations.sql",
   "rollout_order": "compatible_frontend_then_backend",
+  "admin_auth_hotfix": {
+    "id": "connected-20261124-admin-access",
+    "frontend_base": "db579dbca96d57edcca5a36cb3d009c1724f2262",
+    "compatible_backend": "7b11bc0cd4edd0b1f7ebb8b6af3f3df096b79b7a",
+    "requires_paired_backend": false
+  },
   "summary": "Track Want to Try and Been separately, log private visits or explicitly share with friends, and show real friend-scoped activity. Uses existing backend; no venue imports or provider changes."
 }

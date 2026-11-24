@@ -4,7 +4,7 @@
   "_headers": "ee1b77f609c71dd33d97c4b210e8a11fdf2bc53ad87aa8deff42e9c8e477ed1e",
   "_redirects": "fea179ca26ae79874e2c59d1454e47ee0924611bbd57962ac47e9439d7036156",
   "about.html": "3c0ff57a2ab2712b5a013b881a0fe34165de5c7d770546eecc1166924bb8f295",
-  "admin.html": "bb13c3f96a0b894c04a325a73e0c8e38baf1c26eb8c5073c548af07c60729012",
+  "admin.html": "9e462fe63bdeb03f9e80197d8266c09e59e6a3186ed96d91dcb0247bf036c474",
   "assets/img/category-bar.svg": "b1b552dc952e72b6e1f673ff2ecdfb84f0adabe6b917ebbf3c334a483a771fa6",
   "assets/img/category-cafe.svg": "db9c9e038ba49b65ee88dd181c62976982004addede307abaa749bf9bad20fb2",
   "assets/img/category-pub.svg": "4e40a27669cd453d18a52d17449a324f7a346fbc27100d4d1a357b2ed1863ec1",
@@ -333,7 +333,7 @@
   "js/round9-updates.js": "a0757f9d58ebda64d46a178c05182cc3a458a4009a27adc0ca62e76b07c6dba6",
   "js/scroll-animations.js": "5facbc412757f9c5e00dd53c8aee673892e97dede8eaf0171bf32c8746323637",
   "js/sl-account-settings.js": "c31a4cb9db48258455c4a5f5263577b638ac518c4c9b2eb7ff10c66fa3a9da0c",
-  "js/sl-admin-portal.js": "8cc436b64e0c734862087ba7777fb6b8c7b7c45998bf02222e782c59b64e5dbe",
+  "js/sl-admin-portal.js": "a82ca83940bb57e739acbaa2c6db90a5387c542e84749e6f416974d30db1be03",
   "js/sl-analytics.js": "5522bdc60ed3dda3b2a0cda6a847d710140805d67eaa6f712bd75d030e0c1588",
   "js/sl-api.js": "76955645f94b6d9c16c7e73ef6397ca12d156d7ccc5a2222a4f21f6f53b3a5e6",
   "js/sl-app-waitlist.js": "9993bdec8f170f1ce0d83cd4fc508e53d3d1f5db0e618acbadc247711ed81b49",
@@ -465,7 +465,7 @@
   "vendor/fontawesome/webfonts/fa-v4compatibility.ttf": "09663a36fc05e7190af8324b855105c5bb511ad94f94b81b34afee503279eca2",
   "vendor/fontawesome/webfonts/fa-v4compatibility.woff2": "4d4a2d7fd1c6684845cb174fdd7fc073bd64cb741286fb247f8b76c2b7b852c4",
   "verify-email.html": "fcc19590d87797b19975025569abe635342d752931171d8a38c994ffd80990af",
-  "version.json": "7d24432ada5cc8cd4353f2e5b48a64a07f953b6b385cacea0e1c0768b8e29f01",
+  "version.json": "94accf3faf0c34a3c9d635ba9e91ee33b31567877cd5d4ee11d0538cce5b04d6",
   "well-known-public/apple-app-site-association": "138006743408eaf7dc978ade07b7fce28acaaf489fe90ec40803418cab7022a1",
   "well-known-public/assetlinks.json": "3f072b8cdbd64d485f61b86b5931fe12dab74ba9d4d7aa132e8af27aa5d9b06d"
 }
