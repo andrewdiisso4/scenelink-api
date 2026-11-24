@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-11-24T03:02:58.805Z",
+  "subject": "SceneLink hosted release-candidate acceptance",
+  "status": "partial",
+  "environment": {
+    "classification": "isolated QA; fictional fixtures",
+    "origin": "https://scenelink-release-qa-20261123-smn6.onrender.com",
+    "service_id": "srv-dc2b7nifngtc73bbu81g",
+    "deploy_id": "dep-dc2eukbncjis73cp5odg",
+    "commit": "fe39d8bebf662f7d1a1d038e402dc67f4dbcbc0d",
+    "source_confirmation": "The QA overview displayed this exact commit in the browser.",
+    "ci_run": "https://github.com/andrewdiisso4/scenelink-api/actions/runs/45308731450"
+  },
+  "method": {
+    "browser": "Hosted Chrome browser through visible UI and accessibility observations",
+    "credentials": "Entered by the user through the secure browser authentication form; values not inspected or recorded.",
+    "production_writes": false,
+    "note": "This evidence applies to fe39d8b only. Production auth hotfix PR40 has separate exact-tree evidence."
+  },
+  "passed": [
+    {
+      "id": "admin_login",
+      "observed": "Secure sign-in opened the dashboard as qa_admin with four venues and two consumer users."
+    },
+    {
+      "id": "admin_repeat_login",
+      "observed": "A later secure sign-in opened qa_admin again."
+    },
+    {
+      "id": "admin_reload",
+      "observed": "Reload preserved the signed-in admin session and loaded Users."
+    },
+    {
+      "id": "users_email_search",
+      "query": "qa.member@example.invalid",
+      "observed": "Only QA Member (role user), Showing 1–1 of 1."
+    },
+    {
+      "id": "users_display_name_search",
+      "query": "QA Member",
+      "observed": "Only QA Member, Showing 1–1 of 1."
+    },
+    {
+      "id": "users_username_search",
+      "query": "qa_admin",
+      "observed": "Only QA Admin (role admin), Showing 1–1 of 1."
+    },
+    {
+      "id": "featured_independent_persistence",
+      "fixture": "QA Harbor Table",
+      "observed": "Featured Yes / Trending No persisted after save, modal close, reload and reopening the venue list."
+    },
+    {
+      "id": "trending_independent_persistence",
+      "fixture": "QA Harbor Table",
+      "observed": "Featured No / Trending Yes persisted after save and reload."
+    },
+    {
+      "id": "venue_flags_restored",
+      "fixture": "QA Harbor Table",
+      "observed": "Original Featured No / Trending No values restored and verified after reload."
+    },
+    {
+      "id": "supported_section_navigation",
+      "observed": "Overview, Browse Venues, Data Quality, Users, Contact Messages, Business Accounts, Events and API Status opened without Access Denied."
+    },
+    {
+      "id": "empty_and_status_views",
+      "observed": "Events and contacts showed empty lists; Business Accounts showed two fictional accounts; API Status showed API online and PostgreSQL connected."
+    },
+    {
+      "id": "unavailable_capability_disclosure",
+      "observed": "CSV/OSM import and import history showed explicit unavailable states; quality recomputation was disabled. These are not implemented-feature passes."
+    },
+    {
+      "id": "private_plan_create_add_edit_reopen",
+      "observed": "Created a fictional private plan, added QA Harbor Table and QA Nightcap, updated its title and notes, reloaded, and reopened it with both options and edited details intact."
+    },
+    {
+      "id": "saved_itineraries_empty_state",
+      "observed": "The separate Saved itineraries view showed No saved itineraries yet. No positive legacy-itinerary save/reopen was exercised."
+    },
+    {
+      "id": "logout_admin_clear",
+      "observed": "Sign out returned the admin page to its sign-in gate and cleared protected content."
+    },
+    {
+      "id": "logout_cross_tab_clear",
+      "observed": "The private-plan tab cleared its private content and displayed the sign-in call to action."
+    },
+    {
+      "id": "logout_reload",
+      "observed": "Reload remained at the admin sign-in gate."
+    }
+  ],
+  "retained_qa_data": {
+    "private_plan": {
+      "title": "QA release acceptance — updated dinner and drinks",
+      "date": "2026-11-24",
+      "notes": "Fictional QA plan. Updated details must persist with both venue options after reload.",
+      "owner": "QA Admin",
+      "accepted_members": 0,
+      "venue_options": [
+        "QA Harbor Table",
+        "QA Nightcap"
+      ],
+      "retained": true,
+      "reason": "Retained for continued QA; no invitations or messages sent."
+    },
+    "venue_flags": "Restored to their original values."
+  },
+  "incomplete": [
+    {
+      "id": "hosted_member_denial",
+      "reason": "The requested member-account sign-in visibly opened qa_admin again. This proves repeat admin login only; actual member denial was not observed in this hosted browser."
+    },
+    {
+      "id": "hosted_multi_page_users",
+      "reason": "There were only two consumer fixtures; pagination beyond one page was not exercised."
+    },
+    {
+      "id": "business_portal_acceptance",
+      "reason": "Pending-owner denial, approved-owner login, linked-venue switching and hours editing remain to be tested in the hosted browser."
+    },
+    {
+      "id": "admin_mutation_acceptance",
+      "reason": "No event create/update/delete, contact-status mutation, business approval/disable, or full venue-facts editing was performed."
+    },
+    {
+      "id": "qa_gate_relock",
+      "reason": "Lock and renewed unlock were not exercised during these cases."
+    },
+    {
+      "id": "positive_saved_itinerary",
+      "reason": "The legacy Saved itineraries positive save/reopen path remains open."
+    },
+    {
+      "id": "expiry_and_revocation_hosted",
+      "reason": "No direct manipulation of hosted session expiry or revocation was performed."
+    },
+    {
+      "id": "physical_device_and_network_policy",
+      "reason": "Physical-device behavior and actual browser network/CSP enforcement require separate evidence."
+    }
+  ],
+  "browser_interactions": {
+    "recovered_automation_interruptions": [
+      "Browse Venues role locator timed out; fresh accessibility-target click succeeded.",
+      "The first QA Nightcap search submission did not produce a result; inspected native UI retry succeeded."
+    ],
+    "interpretation": "Neither recovered interruption alone establishes an application defect."
+  },
+  "boundaries": {
+    "no_role_grants": true,
+    "no_real_mail_or_invites": true,
+    "no_provider_activation": true,
+    "no_import_execution": true,
+    "no_production_data_change": true,
+    "no_production_deployment_claim": true,
+    "no_full_portal_functionality_claim": true
+  }
+}
