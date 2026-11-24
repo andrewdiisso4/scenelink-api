@@ -4,6 +4,7 @@
 // Requires an empty, explicitly opted-in literal-loopback database. Provider
 // traffic is disabled; the AI transport cases use a wholly in-memory response.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto');
+const {observeConciergeAnalytics}=require('./helpers/concierge-analytics-observer.cjs');
 const root=path.resolve(__dirname,'..'),connection=process.env.TEST_DATABASE_URL;
 const refused='REFUSED: use a fresh literal-loopback scenelink_test_concierge_context or scenelink_test_ci database with explicit port and no URL overrides';
 let target;try{target=new URL(connection);}catch(_){throw Error(refused);}
@@ -26,7 +27,7 @@ function disableMockPilot(){
   mockModelEnabled=false;
   for(const key of ['OPENAI_API_KEY','CONCIERGE_AI_PILOT_ENABLED','CONCIERGE_AI_PILOT_USER_IDS'])delete process.env[key];
 }
-let pool,server,origin,externalAttempts=0,mockModelEnabled=false,forceWrongRole=false,withdrawDuringSwap=null;
+let pool,analyticsWrites,server,origin,externalAttempts=0,mockModelEnabled=false,forceWrongRole=false,withdrawDuringSwap=null;
 global.fetch=async(url,options)=>{
   const parsed=new URL(String(url));
   if(origin&&parsed.origin===origin)return originalFetch(url,options);
@@ -80,6 +81,7 @@ async function ask(label,body,token,client='conversation'){
 }
 async function main(){
   pool=require('../src/config/database');
+  analyticsWrites=observeConciergeAnalytics(pool);
   assert.equal((await pool.query("SELECT count(*)::int n FROM information_schema.tables WHERE table_schema='public'")).rows[0].n,0,'Refuse nonempty schema');
   const version=(await pool.query('SHOW server_version')).rows[0].server_version;
   assert(Number((await pool.query('SHOW server_version_num')).rows[0].server_version_num)>=180000,'Require native PostgreSQL 18+');
@@ -331,6 +333,7 @@ async function main(){
       assert(!JSON.stringify(modelRequests.at(-1).body).includes('PRIVATE_PROFILE_'));
       assert(!JSON.stringify(modelRequests.at(-1).body).includes(pilotHistoryCanary));
     }finally{disableMockPilot();}
+    await analyticsWrites.settleSession(session);
     const analytics=(await pool.query('SELECT user_id,anon,properties FROM analytics_events WHERE session_id=$1 ORDER BY id',[session])).rows;
     assert(analytics.some(row=>row.user_id===users.bob.id&&row.anon===false));
     assert(analytics.some(row=>row.user_id===null&&row.anon===true));
@@ -445,7 +448,8 @@ async function main(){
   });
   const sourceFiles=['src/routes/concierge.js','src/routes/conciergeAI.js','src/services/concierge-conversation.js',
     'src/services/concierge-constraints.js','src/services/concierge-intent.js','src/services/concierge-query-constraints.js',
-    'src/services/concierge-event-search.js','src/services/concierge-typed-plan.js','qa/concierge-conversation-native.cjs'];
+    'src/services/concierge-event-search.js','src/services/concierge-typed-plan.js','qa/concierge-conversation-native.cjs',
+    'qa/helpers/concierge-analytics-observer.cjs'];
   const report={at:new Date().toISOString(),native_postgres:version,fixture_venue_count:definitions.length,fixture_event_count:eventDefinitions.length,
     real_http_transport:true,external_network_attempts:externalAttempts,in_memory_model_requests:modelRequests.length,
     production_access:false,private_baseline_unchanged:(await privateSnapshot())===baselinePrivate,
@@ -458,5 +462,6 @@ async function main(){
 }
 main().catch(error=>{console.error(error.stack);process.exitCode=1;}).finally(async()=>{
   global.fetch=originalFetch;disableMockPilot();
+  analyticsWrites?.restore();
   if(server)await new Promise(resolve=>server.close(resolve));if(pool)await pool.end();
 });

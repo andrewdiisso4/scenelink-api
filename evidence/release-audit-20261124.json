@@ -133,14 +133,20 @@
       "engine": "JSDOM",
       "baseline": "text-context encoder did not encode angle brackets or ampersand",
       "fixed": "HTML-like names remain text in multi-venue table and selector"
+    },
+    {
+      "area": "native Concierge analytics assertion",
+      "engine": "actual handler with deferred database promises; native PostgreSQL 18.3 and real HTTP",
+      "baseline": "HTTP response completed while analytics INSERT was pending; a separate pooled SELECT can precede commit",
+      "fixed": "QA-only session completion barrier; unchanged privacy assertions; captured INSERT rejection fails QA; no production behavior change, retries, or timed sleeps"
     }
   ],
   "validation": {
     "runtime": "Node24.22.3 (repository range >=24.22.1 <25)",
     "syntax": "npm run check passed",
     "backend": {
-      "tests": 234,
-      "pass": 233,
+      "tests": 238,
+      "pass": 237,
       "fail": 0,
       "skipped": 1
     },
@@ -157,10 +163,25 @@
       "scope": "VM mocked fetch only; no HTTP/server/database/account writes"
     },
     "frontendManifestEntries": 471,
-    "independentReviews": "admin diagnostics; publication guard; owner transactions and UI; add-first follow-up; evidence report",
+    "independentReviews": "admin diagnostics; publication guard; owner transactions and UI; add-first follow-up; evidence report; QA analytics completion observer and unchanged privacy assertions",
     "nativeOwnerLockContention": "source-reviewed; not experimentally tested across native database connections",
     "hostedPatchAcceptance": "not performed",
-    "remotePatchCI": "consult assistance pull request checks for exact remote head"
+    "remotePatchCI": "consult assistance pull request checks for exact remote head",
+    "nativeConcierge": {
+      "database": "fresh disposable literal-loopback PostgreSQL 18.3",
+      "groupsPassed": 33,
+      "groupsFailed": 0,
+      "inMemoryModelRequests": 9,
+      "externalNetworkAttempts": 0,
+      "privateBaselineUnchanged": true,
+      "productionAccess": false,
+      "receipt": "evidence/concierge-analytics-native-20261124.json"
+    },
+    "deterministicAnalyticsObserver": {
+      "pass": 4,
+      "fail": 0,
+      "strictUnhandledRejections": true
+    }
   },
   "changedRuntimeFileSHA256": {
     "src/routes/admin.js": "f6cda61710358a56cd768c782633c21aab99abb87b3a0f1974b4f6f54d94e844",
@@ -189,5 +210,15 @@
       "production-equivalent existing-browser cache transition",
       "customer-visible owner gallery/promotions"
     ]
+  },
+  "assistanceCIInitialRun": {
+    "runId": 45341797020,
+    "head": "6cacc7bd1fa36fc411c7e120bc610b73e5af45b4",
+    "conclusion": "failure",
+    "jobsPassed": 7,
+    "jobsFailed": 1,
+    "failedJob": "postgres (concierge)",
+    "cause": "Native test queried analytics before asynchronous INSERT promises settled; deterministic actual-handler reproduction confirmed the ordering.",
+    "disposition": "QA-only completion observer awaits original session write promises, propagates insert errors, and preserves existing identity/privacy assertions. Consult PR42 checks for corrected-head CI."
   }
 }

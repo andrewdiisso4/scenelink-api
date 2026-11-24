@@ -96,6 +96,16 @@ The admin status view treated any parsed JSON object as a successful API result.
 
 The patch checks HTTP status and the explicit health contract, renders errors distinctly, and treats malformed/unavailable evidence as unknown. A healthy public check plus unavailable summary shows DB UNKNOWN. Updated controller URLs and asset hashes identify the revised assets; hosted and existing-browser cache-transition acceptance remains pending.
 
+### 5. The native Concierge check read analytics before the writes completed
+
+The first assistance CI run passed seven of eight jobs. Its only failure was the authenticated analytics assertion in the native Concierge privacy scenario. The route starts an analytics INSERT without awaiting it; a completed HTTP response does not guarantee that a SELECT on another pooled connection can already see that write.
+
+A deterministic actual-handler regression held the analytics promises unresolved and confirmed this ordering. The QA-only correction observes the original INSERT promises and awaits this session's writes before the existing identity and privacy assertions. Those assertions remain unchanged. Rejected writes still fail QA, even when the application catches the rejection. The observer does not retry writes or introduce a timed sleep.
+
+The four new deterministic regressions passed. The full native gate then passed all 33 groups on a fresh literal-loopback PostgreSQL 18.3 database, with nine in-memory model responses, zero external network attempts, and unchanged private fixtures. The receipt records the tested source hashes. No production Concierge behavior changed.
+
+Sources: [initial assistance CI](https://github.com/andrewdiisso4/scenelink-api/actions/runs/45341797020), [native receipt](../evidence/concierge-analytics-native-20261124.json). The latest [PR #42 checks](https://github.com/andrewdiisso4/scenelink-api/pull/42/checks) establish CI status for the corrected remote head.
+
 ## Work still needed for release
 
 | Priority | Work | Acceptance criteria | Suggested coordination |
@@ -135,4 +145,4 @@ Veylo's previously documented coordination thread is [the PR #35 handoff](https:
 
 ## Verification receipt
 
-See [release-audit-20261124.json](../evidence/release-audit-20261124.json) for the inspected baseline, aggregate observations, local test results, and remaining limitations. CI attached to the assistance draft is the authority for that draft's exact remote head.
+See [release-audit-20261124.json](../evidence/release-audit-20261124.json) for the inspected baseline, aggregate observations, local test results, and remaining limitations. [Draft PR #42](https://github.com/andrewdiisso4/scenelink-api/pull/42) contains the assistance patch and current handoff. Its attached CI is the authority for that draft's exact remote head.
