@@ -65,10 +65,10 @@ Apple sources checked 2026-11-24; recheck at submission. The outstanding provide
 
 | Record | Status / evidence |
 | --- | --- |
-| Final integrated source commit | Pending |
-| Exact-commit backend/frontend regression results and counts | Pending |
+| Integrated application source | PR #43 code candidate `792c973ff489f640f70fcf21fe9eec1278dcb2f2`; runtime tree `f13f97d5729acd1469fc2978ef1bdab1a726ee31`. Current branch checks are linked on the PR. |
+| Exact-commit backend/frontend regression results and counts | [CI run 45349601044](https://github.com/andrewdiisso4/scenelink-api/actions/runs/45349601044): 285 backend tests passed, 1 opt-in native restore-fixture guard skipped; 759 frontend tests passed; isolated host guards passed 9/9; social regression passed. |
 | Native schema upgrade, analytics concurrency, and browser receipt/artifact | Pending |
-| Conversation-deletion companion fix and direct/group acceptance | Pending |
+| Conversation-deletion fix and direct/group acceptance | Actual-route tests and complete message DOM suite pass; independent current/legacy error and retry review cleared. Hosted physical-device observation remains required. |
 | Backend migration 018 / deployed backend and frontend identifiers | Pending authorized rollout |
 | Real Google / Apple / SMTP / Cloudinary receipts | Pending |
 | Signed iPhone build, OS/device, VoiceOver acceptance | Pending |
