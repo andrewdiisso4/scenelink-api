@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const { createRequire } = require('node:module');
+const analyticsWrites = require('../src/services/analytics-writes');
 const { observeConciergeAnalytics } = require('./helpers/concierge-analytics-observer.cjs');
 
 const BOB = '00000000-0000-4000-8000-000000000002';
@@ -32,18 +33,37 @@ function actualHandler(pool, model) {
 }
 
 for (const model of [false, true]) {
-    test((model ? 'model' : 'directory') + ' response can precede analytics commit; QA awaits every real completion', async t => {
-        const pending = [], committed = [];
-        const pool = { query(sql, values) {
-            if (!/INSERT INTO analytics_events/.test(sql)) return Promise.resolve({ rows: [] });
-            const gate = Promise.withResolvers();
-            pending.push(gate);
-            return gate.promise.then(() => {
-                committed.push({ user_id: values[1], anon: values[2], properties: JSON.parse(values[4]) });
-                return { rows: [] };
-            });
-        } };
-        const original = pool.query;
+    test((model ? 'model' : 'directory') + ' response and INSERT can precede COMMIT; QA awaits the whole writer', async t => {
+        const commit = Promise.withResolvers(), guestInsert = Promise.withResolvers();
+        const inserted = [], committed = [], locks = []; let commitStarted = false, releases = 0;
+        const row = values => ({ user_id: values[1], anon: values[2], properties: JSON.parse(values[4]) });
+        const pool = {
+            query(sql, values) {
+                if (!/INSERT INTO analytics_events/.test(sql)) return Promise.resolve({ rows: [] });
+                return guestInsert.promise.then(() => { committed.push(row(values)); return { rows: [], rowCount: 1 }; });
+            },
+            async connect() {
+                let pendingRow;
+                return {
+                    query(sql, values) {
+                        if (/FROM users WHERE id=\$1 FOR KEY SHARE/.test(sql)) {
+                            locks.push(values[0]); return Promise.resolve({ rows: [{ id: values[0] }] });
+                        }
+                        if (/INSERT INTO analytics_events/.test(sql)) {
+                            pendingRow = row(values); inserted.push(pendingRow);
+                            return Promise.resolve({ rows: [], rowCount: 1 });
+                        }
+                        if (sql === 'COMMIT') {
+                            commitStarted = true;
+                            return commit.promise.then(() => { committed.push(pendingRow); return { rows: [] }; });
+                        }
+                        return Promise.resolve({ rows: [] });
+                    },
+                    release() { releases++; }
+                };
+            }
+        };
+        const originalQuery = pool.query, originalInsert = analyticsWrites.insert;
         const observer = observeConciergeAnalytics(pool);
         t.after(() => observer.restore());
         const handler = actualHandler(pool, model);
@@ -58,59 +78,90 @@ for (const model of [false, true]) {
             assert.equal(response.ok, true);
             assert.equal(response.source, model && user ? 'openai' : 'rule-based');
         }
-        assert.equal(pending.length, 2);
-        assert.deepEqual(committed, [], 'HTTP completion alone cannot justify reading analytics');
+        await turn();
+        assert.equal(inserted.length, 1, 'The authenticated INSERT has already returned');
+        assert.equal(commitStarted, true, 'The actual production writer is waiting for COMMIT');
+        assert.deepEqual(locks, [BOB]);
+        assert.deepEqual(committed, [], 'HTTP and INSERT completion do not establish committed analytics');
         let settled = false;
         const barrier = observer.settleSession(session).then(count => { settled = true; return count; });
-        // Scheduling checkpoints expose an incorrectly immediate/first-write-only
-        // barrier without relying on elapsed time or arbitrary sleeps.
         await turn();
         assert.equal(settled, false);
-        pending[0].resolve();
+        guestInsert.resolve();
         await turn();
-        assert.equal(committed.length, 1);
-        assert.equal(settled, false, 'The second session write must also commit');
-        pending[1].resolve();
+        assert.deepEqual(committed.map(row => [row.user_id, row.anon]), [[null, true]]);
+        assert.equal(settled, false, 'The authenticated INSERT returned, but its COMMIT is still pending');
+        commit.resolve();
         assert.equal(await barrier, 2);
-        assert.equal(settled, true);
-        assert.deepEqual(committed.map(row => [row.user_id, row.anon]), [[BOB, false], [null, true]]);
+        assert.equal(settled, true); assert.equal(releases, 1);
+        assert.deepEqual(committed.map(row => [row.user_id, row.anon]), [[null, true], [BOB, false]]);
         assert(committed.every(row => !Object.hasOwn(row.properties, 'message') &&
             !Object.hasOwn(row.properties, 'history') && !Object.hasOwn(row.properties, 'context')));
         observer.restore();
-        assert.equal(pool.query, original);
+        assert.equal(analyticsWrites.insert, originalInsert);
+        assert.equal(pool.query, originalQuery, 'Observer must not replace pool queries');
     });
 }
 
-test('analytics rejection still fails QA after the application catches it', async t => {
-    const failed = Promise.withResolvers();
-    const pool = { query() { return failed.promise; } };
-    const observer = observeConciergeAnalytics(pool);
-    t.after(() => observer.restore());
-    const sql = 'INSERT INTO analytics_events (event,user_id,anon,session_id,properties) VALUES ($1,$2,$3,$4,$5)';
-    const application = pool.query(sql, ['concierge_query', BOB, false, 'failed-session', '{}']).catch(() => {});
-    const failure = new Error('Synthetic analytics insert rejection');
-    const checked = assert.rejects(observer.settleSession('failed-session'), error =>
-        error instanceof AggregateError && error.errors.length === 1 && error.errors[0] === failure);
-    failed.reject(failure);
-    await application;
-    await checked;
-});
+for (const phase of ['INSERT', 'COMMIT']) {
+    test(phase + ' rejection still fails QA after the actual handler catches the write failure', async t => {
+        const failed = Promise.withResolvers(), statements = []; let releases = 0;
+        const pool = {
+            query() { return Promise.resolve({ rows: [] }); },
+            async connect() {
+                return {
+                    query(sql, values) {
+                        statements.push(sql);
+                        if (/FROM users WHERE id=\$1 FOR KEY SHARE/.test(sql)) return Promise.resolve({ rows: [{ id: values[0] }] });
+                        if (phase === 'INSERT' && /INSERT INTO analytics_events/.test(sql) || phase === 'COMMIT' && sql === 'COMMIT') return failed.promise;
+                        return Promise.resolve({ rows: [], rowCount: 1 });
+                    },
+                    release() { releases++; }
+                };
+            }
+        };
+        const observer = observeConciergeAnalytics(pool);
+        t.after(() => observer.restore());
+        let response;
+        await actualHandler(pool, false)({ user: { id: BOB }, body: { message: 'Find restaurants', session_id: 'failed-session' } }, {
+            setHeader() {}, status(code) { assert.equal(code, 200); return this; }, json(value) { response = value; }
+        });
+        assert.equal(response.ok, true);
+        await turn();
+        const failure = new Error('Synthetic analytics ' + phase + ' rejection');
+        const checked = assert.rejects(observer.settleSession('failed-session'), error =>
+            error instanceof AggregateError && error.errors.length === 1 && error.errors[0] === failure);
+        failed.reject(failure);
+        await checked;
+        assert(statements.includes('ROLLBACK')); assert.equal(releases, 1);
+    });
+}
 
-test('observer preserves query identity and does not wait for unrelated events or sessions', async t => {
+test('observer preserves writer promise and receiver; unrelated pools, events and sessions do not delay its barrier', async t => {
     const unrelated = Promise.withResolvers(), own = Promise.withResolvers();
-    const pool = { query(_sql, values) { return values?.[3] === 'own-session' ? own.promise : unrelated.promise; } };
-    const original = pool.query;
+    const pool = {}, otherPool = {}, productionInsert = analyticsWrites.insert;
+    function original(writerPool, _sql, values) {
+        assert.equal(this, analyticsWrites);
+        return writerPool === pool && values?.[0] === 'concierge_query' && values?.[3] === 'own-session' ? own.promise : unrelated.promise;
+    }
+    analyticsWrites.insert = original;
     const observer = observeConciergeAnalytics(pool);
-    t.after(() => observer.restore());
-    assert.equal(pool.query('SELECT 1'), unrelated.promise);
-    assert.equal(pool.query('INSERT INTO analytics_events VALUES ($1,$2,$3,$4)', ['page_view', null, true, 'other-session']), unrelated.promise);
-    assert.equal(pool.query('INSERT INTO analytics_events VALUES ($1,$2,$3,$4)', ['concierge_query', BOB, false, 'other-session']), unrelated.promise);
-    assert.equal(pool.query('INSERT INTO analytics_events VALUES ($1,$2,$3,$4)', ['concierge_query', BOB, false, 'own-session']), own.promise);
-    const barrier = observer.settleSession('own-session');
-    own.resolve({ rows: [] });
+    t.after(() => { unrelated.resolve({ rows: [] }); observer.restore(); analyticsWrites.insert = productionInsert; });
+    const sql = 'INSERT INTO analytics_events VALUES ($1,$2,$3,$4)';
+    assert.equal(analyticsWrites.insert(pool, 'SELECT 1'), unrelated.promise);
+    assert.equal(analyticsWrites.insert(pool, sql, ['page_view', null, true, 'own-session']), unrelated.promise);
+    assert.equal(analyticsWrites.insert(otherPool, sql, ['concierge_query', BOB, false, 'own-session']), unrelated.promise);
+    assert.equal(analyticsWrites.insert(pool, sql, ['concierge_query', BOB, false, 'other-session']), unrelated.promise);
+    assert.equal(analyticsWrites.insert(pool, sql, ['concierge_query', BOB, false, 'own-session']), own.promise);
+    let settled = false;
+    const barrier = observer.settleSession('own-session').then(count => { settled = true; return count; });
+    own.resolve({ rows: [] }); await turn();
+    assert.equal(settled, true, 'Unrelated work is deliberately still pending');
     assert.equal(await barrier, 1);
     await assert.rejects(observer.settleSession('never-written'), /No Concierge analytics writes/);
-    unrelated.resolve({ rows: [] });
-    observer.restore();
-    assert.equal(pool.query, original);
+    const wrapped = analyticsWrites.insert, replacement = () => unrelated.promise;
+    analyticsWrites.insert = replacement; observer.restore();
+    assert.equal(analyticsWrites.insert, replacement, 'Restoration must not overwrite another owner');
+    analyticsWrites.insert = wrapped; observer.restore();
+    assert.equal(analyticsWrites.insert, original);
 });

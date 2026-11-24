@@ -5,7 +5,7 @@ const TOKEN='a'.repeat(64);
 function node(){return {children:[],attrs:{},disabled:true,setAttribute(k,v){this.attrs[k]=v},addEventListener(k,v){this[k]=v},appendChild(n){this.children.push(n)},prepend(n){this.children.unshift(n)},remove(){this.removed=true},style:{}}}
 function confirmation(hash='#token='+TOKEN,status=200,fail=false){
  const nodes={verifySubmit:node(),verifyStatus:node()},calls=[],urls=[];
- vm.runInNewContext(confirmSource,{URLSearchParams,window:{location:{hash,pathname:'/verify-email.html'},history:{replaceState(...a){urls.push(a)}}},document:{readyState:'complete',getElementById:k=>nodes[k]},fetch:async(...a)=>{calls.push(a);if(fail)throw Error('offline');return {ok:status>=200&&status<300,status}}});
+ vm.runInNewContext(confirmSource,{URLSearchParams,setTimeout,clearTimeout,AbortController,window:{location:{hash,pathname:'/verify-email.html'},history:{replaceState(...a){urls.push(a)}}},document:{readyState:'complete',getElementById:k=>nodes[k]},fetch:async(...a)=>{calls.push(a);if(fail)throw Error('offline');return {ok:status>=200&&status<300,status,json:async()=>({ok:true})}}});
  return {nodes,calls,urls,async click(){if(nodes.verifySubmit.click)await nodes.verifySubmit.click()}};
 }
 function banner(flag,status=202,auth=true,fail=false){

@@ -275,19 +275,64 @@ function welcomeEmail(user = {}) {
   const origin = new URL(APP_BASE_URL);
   if (origin.username || origin.password || (origin.protocol !== 'https:' && !(process.env.NODE_ENV !== 'production' && origin.protocol === 'http:' && ['127.0.0.1','[::1]','localhost'].includes(origin.hostname)))) throw new Error('Welcome email origin is misconfigured');
   const exploreUrl = new URL('/explore.html', origin).href;
+  const profileUrl = new URL('/profile', origin).href;
+  const contactUrl = new URL('/contact.html', origin).href;
+  const privacyUrl = new URL('/privacy.html', origin).href;
+  const termsUrl = new URL('/terms.html', origin).href;
+  const logoUrl = new URL('/images/brand/scenelink-full.png', origin).href;
+  const introduction = 'Find your next dinner spot, discover places to go out in Boston, and save ideas for plans with friends.';
+  const profileCopy = 'Add a name and bio, then choose how people can find and message you.';
+  // Welcome has its own email-safe layout; other transactional templates and
+  // the signup-only dispatcher retain their existing behavior.
   return {
     subject: 'Welcome to SceneLink',
     replyTo: SUPPORT_EMAIL,
-    text: `${greeting}\n\nThanks for joining SceneLink. Discover places to eat, drink and go out in Boston, save your favorites and plan with friends.\n\n${verification ? verification + '\n\n' : ''}Start exploring: ${exploreUrl}\n\nNeed help? Contact ${SUPPORT_EMAIL}.\nIf you did not create this account, you can ignore this email.`,
-    html: brandedLayout({
-      title: escapeHtml(greeting),
-      bodyHtml: `<p>Thanks for joining SceneLink. Discover places to eat, drink and go out in Boston, save your favorites and plan with friends.</p>
-        ${verification ? `<p>${escapeHtml(verification)}</p>` : ''}
-        <p>Need help? Contact <a href="mailto:${escapeHtml(SUPPORT_EMAIL)}" style="color:#D4AF37">${escapeHtml(SUPPORT_EMAIL)}</a>.</p>
-        <p style="color:#888;font-size:13px">If you did not create this account, you can ignore this email.</p>`,
-      ctaUrl: escapeHtml(exploreUrl),
-      ctaLabel: 'Start exploring',
-    }),
+    text: `${greeting}\n\n${introduction}\n\nExplore Boston: ${exploreUrl}\n\n${verification ? verification + '\n\n' : ''}Make SceneLink yours. ${profileCopy}\nComplete your profile: ${profileUrl}\n\nNeed a hand? Contact ${SUPPORT_EMAIL} or visit ${contactUrl}\n\nPrivacy: ${privacyUrl}\nTerms: ${termsUrl}\n\nSceneLink · Boston, MA\nYou are receiving this because a SceneLink account was created with your email address. If you did not create this account, you can ignore this email.`,
+    html: `<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="x-apple-disable-message-reformatting"><title>Welcome to SceneLink</title></head>
+<body style="margin:0;padding:0;width:100%;background-color:#f4f1e8;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%">
+  <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all">Discover Boston, save your next stop, and make SceneLink your own.</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f1e8" style="width:100%;border-collapse:collapse">
+    <tr><td align="center" style="padding:24px 12px">
+      <!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#1a1d1e" style="width:100%;max-width:600px;border-collapse:separate;border-spacing:0;border:1px solid #42484a;border-radius:16px;color:#f5f2e8">
+        <tr><td align="center" style="padding:16px 28px 0">
+          <a href="${escapeHtml(exploreUrl)}" style="color:#e3bc54;text-decoration:none"><img src="${escapeHtml(logoUrl)}" width="184" height="184" alt="SceneLink — Eat. Drink. Discover." style="display:block;width:184px;max-width:100%;height:auto;border:0;color:#e3bc54;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:bold"></a>
+        </td></tr>
+        <tr><td style="padding:0 28px 28px;overflow-wrap:break-word;word-break:break-word">
+          <h1 style="margin:0 0 16px;color:#f5f2e8;font-family:Arial,Helvetica,sans-serif;font-size:32px;font-weight:700;line-height:1.2">${escapeHtml(greeting)}</h1>
+          <p style="margin:0;color:#c4c9cc;font-size:16px;line-height:26px">${introduction}</p>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;margin:26px 0 0">
+            <tr><td align="center" bgcolor="#e3bc54" style="border-radius:9px;mso-padding-alt:15px 24px"><a href="${escapeHtml(exploreUrl)}" style="display:inline-block;padding:15px 24px;border:1px solid #e3bc54;border-radius:9px;color:#18150d;font-size:16px;font-weight:bold;line-height:20px;text-align:center;text-decoration:none;mso-padding-alt:0">Explore Boston</a></td></tr>
+          </table>
+        </td></tr>
+        ${verification ? `<tr><td style="padding:0 28px 26px">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#252a2c" style="width:100%;border-collapse:separate;border-left:3px solid #e3bc54;border-radius:0 8px 8px 0">
+            <tr><td style="padding:18px 20px"><h2 style="margin:0 0 8px;color:#f5f2e8;font-size:17px;line-height:24px">Before you connect</h2><p style="margin:0;color:#c4c9cc;font-size:14px;line-height:23px">${escapeHtml(verification)}</p></td></tr>
+          </table>
+        </td></tr>` : ''}
+        <tr><td style="padding:0 28px 28px">
+          <h2 style="margin:0 0 8px;color:#f5f2e8;font-size:20px;line-height:27px">Make SceneLink yours</h2>
+          <p style="margin:0 0 12px;color:#c4c9cc;font-size:15px;line-height:24px">${profileCopy}</p>
+          <a href="${escapeHtml(profileUrl)}" style="display:inline-block;padding:8px 0;color:#e3bc54;font-size:15px;font-weight:bold;line-height:24px;text-decoration:underline">Complete your profile</a>
+        </td></tr>
+        <tr><td style="padding:24px 28px;border-top:1px solid #42484a">
+          <p style="margin:0 0 8px;color:#f5f2e8;font-size:16px;font-weight:bold;line-height:24px">Need a hand?</p>
+          <p style="margin:0;color:#c4c9cc;font-size:14px;line-height:23px">Visit <a href="${escapeHtml(contactUrl)}" style="color:#e3bc54;text-decoration:underline">SceneLink support</a> or reply to this email. We are here to help.</p>
+          <p style="margin:8px 0 0;font-size:14px;line-height:23px;overflow-wrap:break-word"><a href="mailto:${escapeHtml(SUPPORT_EMAIL)}" style="color:#e3bc54;text-decoration:underline">${escapeHtml(SUPPORT_EMAIL)}</a></p>
+        </td></tr>
+        <tr><td style="padding:0 28px 28px;color:#b9c1ca;font-size:12px;line-height:20px">
+          <p style="margin:0 0 12px"><a href="${escapeHtml(privacyUrl)}" style="color:#c4c9cc;text-decoration:underline">Privacy</a><span aria-hidden="true"> &nbsp;·&nbsp; </span><a href="${escapeHtml(termsUrl)}" style="color:#c4c9cc;text-decoration:underline">Terms</a></p>
+          <p style="margin:0 0 8px">SceneLink · Boston, MA</p>
+          <p style="margin:0">You are receiving this because a SceneLink account was created with your email address. If you did not create this account, you can ignore this email.</p>
+        </td></tr>
+      </table>
+      <!--[if mso]></td></tr></table><![endif]-->
+    </td></tr>
+  </table>
+</body>
+</html>`,
   };
 }
 

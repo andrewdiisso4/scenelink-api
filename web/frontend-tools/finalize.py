@@ -9,7 +9,7 @@ epoch=os.environ.get('SOURCE_DATE_EPOCH')
 built=(datetime.fromtimestamp(int(epoch),timezone.utc) if epoch is not None else datetime.now(timezone.utc)).isoformat()
 root=Path(__file__).resolve().parent.parent/'frontend'
 sync_auth_css(root)
-tag='connected-20261123-release-acceptance'
+tag='connected-20261124-account-social'
 for name in ['sl-bundle-7d.js','sl-bundle-7d-ui.js']:
  p=root/'js'/name;s=p.read_text();matches=list(re.finditer(r'/\* === (js/[^ ]+) === \*/',s));header=s[:matches[0].start()]
  p.write_text(header+'\n\n'.join('/* === '+m[1]+' === */\n'+(root/m[1]).read_text().strip() for m in matches)+'\n')
@@ -27,7 +27,10 @@ p=root/'js/sl-version-marker.js';s=p.read_text()
 for key,value in {'phase':'release-acceptance','sw_version':'sl-'+tag,'deploy':tag,'built':built,'backend_change':'paired-release-candidate'}.items():
  s=re.sub(key+r": '[^']+'",key+": '"+value+"'",s)
 p.write_text(s)
-(root/'version.json').write_text(json.dumps({'phase':'release-acceptance','sw_version':'sl-'+tag,'timestamp':built,'status':'versioned_build','requires_paired_backend':True,'required_migration':'016_private_list_invitations.sql','rollout_order':'paired_backend_then_frontend','summary':'Integrated admin access, business owner management, Concierge saved plans and inactive venue intake tooling. Requires the paired API candidate. AI and provider pilots remain off; this build performs no venue import or activation.'},indent=2)+'\n')
+# Preserve release provenance when issuing a new shared asset revision.
+metadata=json.loads((root/'version.json').read_text())
+metadata.update({'phase':'release-acceptance','sw_version':'sl-'+tag,'timestamp':built,'status':'versioned_build','requires_paired_backend':True,'required_migration':'018_account_deletion_receipts.sql','rollout_order':'paired_backend_then_frontend','admin_controller_cache_key':tag,'business_controller_cache_key':tag,'summary':'Account and social release candidate: consistent sign-in and recovery, verified profile persistence, consent-aware people actions, recent-provider account deletion and branded welcome email. Includes the prior admin, business and Concierge fixes. Requires the paired API candidate. External provider cleanup and native App Store acceptance remain release gates; AI and provider pilots remain off.'})
+(root/'version.json').write_text(json.dumps(metadata,indent=2)+'\n')
 evidence=root.parent/'frontend-evidence';evidence.mkdir(exist_ok=True)
 (evidence/'candidate-sha256.json').write_text(json.dumps({str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.rglob('*')) if p.is_file()},indent=2)+'\n')
 print(tag)

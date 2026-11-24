@@ -1,10 +1,19 @@
 'use strict';
 const crypto=require('node:crypto');
 const {UUID}=require('./shared');
+const providerSubjectHash=(provider,subject)=>crypto.createHash('sha256').update(provider+'\u0000'+subject).digest('hex');
 function makeAuth({jwt,pool,secret,adminSecret}) {
   if(typeof secret!=='string'||Buffer.byteLength(secret.trim())<32||/change[-_ ]?me|replace[-_ ]?me|your[-_ ]?(?:jwt[-_ ]?)?secret/i.test(secret))throw new Error('JWT_SECRET must be a non-placeholder secret of at least 32 bytes');
   const hash=token=>crypto.createHash('sha256').update(token).digest('hex');
-  const generateToken=user=>jwt.sign({id:user.id,role:user.role,v:Number(user.auth_version||0),jti:crypto.randomUUID()},secret,{expiresIn:'7d',algorithm:'HS256'});
+  const generateToken=(user,providerIdentity)=>{
+    const iat=Math.floor(Date.now()/1000),payload={id:user.id,role:user.role,v:Number(user.auth_version||0),jti:crypto.randomUUID(),iat};
+    // Only verified OAuth handlers supply this proof. A new generic JWT must not
+    // turn an old/password session into provider reauthentication for deletion.
+    if(providerIdentity&&['google','apple'].includes(providerIdentity.provider)&&typeof providerIdentity.subject==='string'&&providerIdentity.subject.length){
+      payload.provider_auth={provider:providerIdentity.provider,subject_hash:providerSubjectHash(providerIdentity.provider,providerIdentity.subject),at:iat};
+    }
+    return jwt.sign(payload,secret,{expiresIn:'7d',algorithm:'HS256'});
+  };
   const generateBusinessToken=user=>jwt.sign({id:user.id,role:'business',kind:'business',v:Number(user.auth_version||0),jti:crypto.randomUUID()},secret,{expiresIn:'7d',algorithm:'HS256'});
   async function check(req,res,next,optional,business=false) {
     res.setHeader('Cache-Control','private, no-store');
@@ -35,6 +44,7 @@ function makeAuth({jwt,pool,secret,adminSecret}) {
       if(!withdrawingListMembership && !decliningList && !deletingOwnMessage && !withdrawingOwnRsvp && !['/api/auth/verification/request','/api/auth/logout','/api/auth/logout-all','/api/auth/account','/api/users/me/settings','/api/reports'].includes(path) && !/^\/api\/users\/[0-9a-f-]{36}\/block$/i.test(path))return res.status(403).json({error:'Verify your email before participating on SceneLink.',code:'EMAIL_VERIFICATION_REQUIRED'});
     }
     req.user=user;req.authTokenHash=tokenHash;req.authExpires=decoded.exp;
+    req.authSession={issuedAt:decoded.iat,providerProof:decoded.provider_auth};
     res.setHeader('Cache-Control','private, no-store');return next();
   }
   const requireAuth=(req,res,next)=>check(req,res,next,false),optionalAuth=(req,res,next)=>check(req,res,next,true);
@@ -46,4 +56,4 @@ function makeAuth({jwt,pool,secret,adminSecret}) {
   }
   return{generateToken,generateBusinessToken,requireAuth,requireBusinessAuth,optionalAuth,requireAdmin,JWT_SECRET:secret};
 }
-module.exports={makeAuth};
+module.exports={makeAuth,providerSubjectHash};

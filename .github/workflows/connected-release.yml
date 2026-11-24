@@ -115,3 +115,75 @@ jobs:
       - run: npm ci --ignore-scripts --prefix web
       - name: Native isolated acceptance host lifecycle
         run: node --unhandled-rejections=strict qa/acceptance/native-smoke.cjs
+
+  account_analytics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18.3
+        env:
+          POSTGRES_DB: scenelink_test_account_analytics
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: scenelink_ci_disposable_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d scenelink_test_account_analytics"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:scenelink_ci_disposable_only@127.0.0.1:5432/scenelink_test_account_analytics
+      SCENELINK_TEST_ALLOW_SCHEMA_INIT: 'yes'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .node-version
+      - run: npm ci --ignore-scripts
+      - name: Native concurrent analytics and account deletion
+        run: node --unhandled-rejections=strict --test --test-reporter=spec qa/analytics-account-deletion-native.cjs
+
+  account_browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18.3
+        env:
+          POSTGRES_DB: scenelink_release_qa_20261123_browser
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: scenelink_ci_disposable_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d scenelink_release_qa_20261123_browser"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      TEST_DATABASE_URL: postgresql://postgres:scenelink_ci_disposable_only@127.0.0.1:5432/scenelink_release_qa_20261123_browser
+      SCENELINK_TEST_ALLOW_SCHEMA_INIT: 'yes'
+      SCENELINK_BROWSER_MODULE_ROOT: ${{ runner.temp }}/scenelink-browser/node_modules
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .node-version
+      - run: npm ci --ignore-scripts
+      - name: Install pinned isolated browser QA runtime
+        run: |
+          npm install --prefix "$RUNNER_TEMP/scenelink-browser" --no-save --ignore-scripts --package-lock=false playwright@1.62.1
+          node "$SCENELINK_BROWSER_MODULE_ROOT/playwright/cli.js" install --with-deps chromium
+      - name: Real account and social browser journey with fictional fixtures
+        run: node --unhandled-rejections=strict qa/account-browser-native.cjs
+      - name: Preserve screenshots and acceptance receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: account-social-browser-${{ github.sha }}
+          path: evidence/account-social
+          if-no-files-found: warn
+          retention-days: 14

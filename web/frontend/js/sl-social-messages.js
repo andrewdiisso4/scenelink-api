@@ -89,7 +89,7 @@
     target.textContent='Searching…';
     try{const data=await api('/users/search?q='+enc(q)+'&limit=20');if(!current(gen)||seq!==searchSeq)return;
       const results=data.results||data.users;if(!Array.isArray(results))throw new Error('The service returned an invalid search.');
-      const users=results.filter(u=>u.id!==me.id);target.innerHTML=users.length?users.map(u=>'<div class="slm-search-result"><a href="/profile?u='+enc(u.id)+'"><strong>'+E(name(u))+'</strong><span>@'+E(u.username||'')+'</span></a><button type="button" class="slm-button slm-secondary" data-message-user="'+E(u.id)+'">Message</button></div>').join(''):'<p>No matching discoverable users. Try their exact @username.</p>';
+      const users=results.filter(u=>u.id!==me.id);target.innerHTML=users.length?users.map(u=>'<div class="slm-search-result"><a href="/profile?u='+enc(u.id)+'"><strong>'+E(name(u))+'</strong><span>@'+E(u.username||'')+'</span></a>'+(u.can_message===true?'<button type="button" class="slm-button slm-secondary" data-message-user="'+E(u.id)+'">Message</button>':'<span class="slm-muted">Messaging unavailable</span>')+'</div>').join(''):'<p>No matching discoverable users. Try their exact @username.</p>';
       target.querySelectorAll('[data-message-user]').forEach(b=>b.onclick=()=>startConversation(b.dataset.messageUser,b));
     }catch(e){if(current(gen)&&seq===searchSeq)target.textContent=errorText(e);}
   }

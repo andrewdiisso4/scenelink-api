@@ -49,8 +49,14 @@
       err.code = 'AUTH_SUPERSEDED';
       throw err;
     }
-    if (!data || !data.token) throw new Error(failure);
+    if (!data || typeof data.token !== 'string' || !data.token || !data.user ||
+        typeof data.user.id !== 'string' || !data.user.id) {
+      throw new Error(failure + '. The account response could not be confirmed. Please try again.');
+    }
     writeToken(data.token);
+    if (readToken() !== data.token) {
+      throw new Error('Your browser could not save this sign-in. Allow site storage for SceneLink and try again.');
+    }
     writeCache(data.user);
     state.user = data.user;
     if (window.SLApi && window.SLApi.setToken) window.SLApi.setToken(data.token);
@@ -114,12 +120,18 @@
     var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
     var tok = readToken();
     if (tok) headers['Authorization'] = 'Bearer ' + tok;
-    return fetch(apiBase() + path, {
-      method: opts.method || 'GET',
-      headers: headers,
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
-      signal: opts.signal, keepalive: !!opts.keepalive
-    }).then(function(r){
+    var controller = !opts.signal && typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timeoutMs = opts.timeoutMs === 0 ? 0 : 15000, timer, request;
+    try {
+      request = fetch(apiBase() + path, {
+        method: opts.method || 'GET',
+        headers: headers,
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        credentials: 'omit', cache: 'no-store',
+        signal: opts.signal || controller && controller.signal, keepalive: !!opts.keepalive
+      });
+    } catch (error) { request = Promise.reject(error); }
+    var response = Promise.resolve(request).then(function(r){
       return r.json().catch(function(){ return {}; }).then(function(j){
         if (!r.ok) {
           var msg = (j && (j.error || j.message)) || ('HTTP ' + r.status);
@@ -131,6 +143,17 @@
         return j;
       });
     });
+    if (!timeoutMs) return response;
+    var timeout = new Promise(function(_resolve, reject){
+      timer = setTimeout(function(){
+        var error = new Error('SceneLink took too long to respond. Check your connection and try again.');
+        error.code = 'AUTH_TIMEOUT';
+        reject(error);
+        if (controller) controller.abort();
+      }, timeoutMs);
+    });
+    // Bound headers and body parsing. A late response cannot finish a timed-out sign-in.
+    return Promise.race([response, timeout]).finally(function(){ clearTimeout(timer); });
   }
 
   // ---------- auth operations ----------
@@ -147,7 +170,8 @@
       if(!ownsSession(refreshingSession)){ state.loading=false; return null; }
       state.loading = false;
       state.lastRefresh = Date.now();
-      var u = (j && j.user) ? j.user : j;
+      var u = j && j.user;
+      if (!u || typeof u.id !== 'string' || !u.id) throw new Error('Account refresh could not be confirmed');
       state.user = u;
       writeCache(u);
       if (window.SLApi && window.SLApi.setToken) {
@@ -190,7 +214,10 @@
   }
 
   function forgotPassword(email){
-    return apiCall('/auth/forgot-password', { method: 'POST', body: { email: email } });
+    return apiCall('/auth/forgot-password', { method: 'POST', body: { email: email } }).then(function(result){
+      if (!result || result.ok !== true) throw new Error('Your reset request could not be confirmed. Please try again.');
+      return result;
+    });
   }
 
   // Google OAuth — backend verifies the Google ID token
@@ -224,7 +251,7 @@
     var hadToken = !!readToken(), timer, controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     // Start with the existing bearer token, then immediately end local authentication.
     var request;
-    try { request = hadToken ? apiCall('/auth/logout', {method:'POST',body:{},signal:controller && controller.signal,keepalive:true}) : Promise.resolve({revoked:false}); }
+    try { request = hadToken ? apiCall('/auth/logout', {method:'POST',body:{},signal:controller && controller.signal,keepalive:true,timeoutMs:0}) : Promise.resolve({revoked:false}); }
     catch(err) { request = Promise.reject(err); }
     writeToken(null); writeCache(null); state.user = null;
     try { ['sl_token','sl_current_user','sl_auth_token','auth_token','jwt','sl_user'].forEach(function(k){ localStorage.removeItem(k); }); } catch(e){}

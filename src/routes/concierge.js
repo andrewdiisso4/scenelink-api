@@ -12,6 +12,7 @@
 
 const express = require('express');
 const pool = require('../config/database');
+const analyticsWrites = require('../services/analytics-writes');
 const { classifyIntent } = require('../services/concierge-intent');
 const { resolveConversation, searchContextFor } = require('../services/concierge-conversation');
 const { venueTypeSQL, exclusionSQL } = require('../services/concierge-query-constraints');
@@ -232,7 +233,7 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
                     })} : null,
                     actions: [], tools_used: ['venue_database']
                 };
-                pool.query(
+                analyticsWrites.insert(pool,
                     `INSERT INTO analytics_events (event, user_id, anon, session_id, properties)
                      VALUES ($1, $2, $3, $4, $5)`,
                     ['concierge_query', req.user ? req.user.id : null, !req.user, session_id,
@@ -243,7 +244,7 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
                          matches: ai.venues.length,
                          events: ai.events.length,
                          ms: Date.now() - startedAt
-                     })]
+                     })], req.user?.id || null
                 ).catch(()=>{});
                 return res.json({
                     ok: true,
@@ -292,11 +293,11 @@ router.post('/', aiLimiter, optionalAuth, async (req, res) => {
             : 'I couldn’t verify both stops for this plan. Here are the directory results instead. ' + directoryResponse;
         const actions = generateActions(intent, venues);
 
-        pool.query(
+        analyticsWrites.insert(pool,
             `INSERT INTO analytics_events (event, user_id, anon, session_id, properties)
              VALUES ($1, $2, $3, $4, $5)`,
             ['concierge_query', req.user ? req.user.id : null, !req.user, session_id,
-             JSON.stringify({ message_length: message.length, source: 'rule-based', intent: intent.primary, matches: venues.length, events: events.length, ms: Date.now() - startedAt })]
+             JSON.stringify({ message_length: message.length, source: 'rule-based', intent: intent.primary, matches: venues.length, events: events.length, ms: Date.now() - startedAt })], req.user?.id || null
         ).catch(()=>{});
 
         res.json({

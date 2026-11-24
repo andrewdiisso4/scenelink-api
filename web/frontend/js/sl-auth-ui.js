@@ -17,7 +17,8 @@
   }
   var MOUNTED = false;
   var overlay = null;
-  var previousFocus = null, previousOverflow = null;
+  var previousFocus = null, previousOverflow = null, backgroundNodes = [];
+  var focusEpoch = 0;
 
   function el(tag, attrs, html){
     var n = document.createElement(tag);
@@ -57,35 +58,38 @@
 
   function build(){
     if (MOUNTED) return;
-    overlay = el('div', { class: 'sl-auth-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'slAuthTitle' });
+    overlay = el('div', { class: 'sl-auth-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'slAuthTitle', 'aria-describedby': 'slAuthSubtitle', tabindex: '-1' });
     overlay.innerHTML = [
       '<div class="sl-auth-modal">',
       '  <button type="button" class="sl-auth-close" aria-label="Close">&times;</button>',
       '  <div class="sl-auth-brand">',
       '    <div class="sl-auth-brand-logo"><img class="sl-auth-official-logo" src="/images/brand/scenelink-full.png" alt="SceneLink" width="88" height="88"></div>',
       '    <h2 class="sl-auth-title" id="slAuthTitle" data-sl-title>Welcome back</h2>',
-      '    <p class="sl-auth-sub" data-sl-sub>Sign in to continue to SceneLink</p>',
+      '    <p class="sl-auth-sub" id="slAuthSubtitle" data-sl-sub>Sign in to continue to SceneLink</p>',
       '  </div>',
 
-      '  <div class="sl-auth-tabs" data-sl-tabs>',
-      '    <button type="button" class="sl-auth-tab active" data-tab="login">Sign in</button>',
-      '    <button type="button" class="sl-auth-tab" data-tab="signup">Create account</button>',
+      '  <div class="sl-auth-tabs" data-sl-tabs role="tablist" aria-label="Account access">',
+      '    <button type="button" class="sl-auth-tab active" id="slAuthLoginTab" role="tab" aria-selected="true" aria-controls="slLoginForm" data-tab="login">Sign in</button>',
+      '    <button type="button" class="sl-auth-tab" id="slAuthSignupTab" role="tab" aria-selected="false" aria-controls="slSignupForm" tabindex="-1" data-tab="signup">Create account</button>',
       '  </div>',
 
-      '  <div class="sl-auth-error" data-sl-error role="alert"></div>',
+      '  <div class="sl-auth-error" id="slAuthError" data-sl-error role="alert" aria-atomic="true"></div>',
       '  <div class="sl-auth-success" data-sl-success role="status" aria-live="polite"></div>',
 
       '  <div data-sl-oauth-slot>' + oauthButtonsHTML() + '</div>',
       '  <button type="button" class="sl-auth-link" data-oauth-cancel hidden>Cancel sign-in and retry</button>',
 
-      '  <form class="sl-auth-form active" data-form="login" autocomplete="on" novalidate>',
+      '  <form class="sl-auth-form active" data-form="login" id="slLoginForm" aria-labelledby="slAuthLoginTab" autocomplete="on" novalidate>',
       '    <div class="sl-auth-field">',
       '      <label class="sl-auth-label" for="slLoginEmail">Email</label>',
-      '      <input class="sl-auth-input" type="email" id="slLoginEmail" autocapitalize="none" spellcheck="false" name="email" autocomplete="email" placeholder="you@example.com" required>',
+      '      <input class="sl-auth-input" type="email" inputmode="email" id="slLoginEmail" autocapitalize="none" spellcheck="false" name="email" autocomplete="username" placeholder="you@example.com" required>',
       '    </div>',
       '    <div class="sl-auth-field">',
       '      <label class="sl-auth-label" for="slLoginPassword">Password</label>',
-      '      <input class="sl-auth-input" type="password" id="slLoginPassword" name="password" autocomplete="current-password" placeholder="••••••••" required>',
+      '      <div class="sl-auth-password">',
+      '        <input class="sl-auth-input" type="password" id="slLoginPassword" name="password" autocomplete="current-password" placeholder="Your password" required>',
+      '        <button type="button" class="sl-auth-password-toggle" data-password-toggle="slLoginPassword" aria-controls="slLoginPassword" aria-label="Show password" aria-pressed="false">Show</button>',
+      '      </div>',
       '    </div>',
       '    <button type="submit" class="sl-auth-submit">Sign in</button>',
       '    <div class="sl-auth-foot">',
@@ -93,38 +97,42 @@
       '    </div>',
       '  </form>',
 
-      '  <form class="sl-auth-form" data-form="signup" autocomplete="on" novalidate>',
+      '  <form class="sl-auth-form" data-form="signup" id="slSignupForm" aria-labelledby="slAuthSignupTab" autocomplete="on" novalidate>',
       '    <div class="sl-auth-field">',
       '      <label class="sl-auth-label" for="slSignupDisplayName">Display name</label>',
-      '      <input class="sl-auth-input" type="text" id="slSignupDisplayName" name="display_name" autocomplete="name" placeholder="How your friends know you" required maxlength="60">',
+      '      <input class="sl-auth-input" type="text" id="slSignupDisplayName" name="display_name" autocomplete="name" placeholder="How your friends know you" required maxlength="80">',
       '    </div>',
       '    <div class="sl-auth-row">',
       '      <div class="sl-auth-field">',
       '        <label class="sl-auth-label" for="slSignupUsername">Username</label>',
-      '        <input class="sl-auth-input" type="text" id="slSignupUsername" autocapitalize="none" spellcheck="false" name="username" autocomplete="username" placeholder="yourhandle" required maxlength="24" pattern="[a-zA-Z0-9_]+">',
+      '        <input class="sl-auth-input" type="text" id="slSignupUsername" autocapitalize="none" spellcheck="false" name="username" autocomplete="username" placeholder="yourhandle" required maxlength="24" minlength="3" pattern="[a-zA-Z0-9_]+" aria-describedby="slSignupUsernameHint">',
       '      </div>',
       '    </div>',
+      '    <p class="sl-auth-hint sl-auth-username-hint" id="slSignupUsernameHint">3–24 letters, numbers, or underscores. Friends can find you by this name.</p>',
       '    <div class="sl-auth-field">',
       '      <label class="sl-auth-label" for="slSignupEmail">Email</label>',
-      '      <input class="sl-auth-input" type="email" id="slSignupEmail" autocapitalize="none" spellcheck="false" name="email" autocomplete="email" placeholder="you@example.com" required>',
+      '      <input class="sl-auth-input" type="email" inputmode="email" id="slSignupEmail" autocapitalize="none" spellcheck="false" name="email" autocomplete="email" placeholder="you@example.com" required>',
       '    </div>',
       '    <div class="sl-auth-field">',
       '      <label class="sl-auth-label" for="slSignupPassword">Password</label>',
-      '      <input class="sl-auth-input" type="password" id="slSignupPassword" name="password" autocomplete="new-password" placeholder="At least 8 characters" required minlength="8">',
-      '      <div class="sl-auth-hint">Use at least 8 characters with a mix of letters and numbers.</div>',
+      '      <div class="sl-auth-password">',
+      '        <input class="sl-auth-input" type="password" id="slSignupPassword" name="password" autocomplete="new-password" placeholder="At least 8 characters" required minlength="8" aria-describedby="slSignupPasswordHint">',
+      '        <button type="button" class="sl-auth-password-toggle" data-password-toggle="slSignupPassword" aria-controls="slSignupPassword" aria-label="Show password" aria-pressed="false">Show</button>',
+      '      </div>',
+      '      <div class="sl-auth-hint" id="slSignupPasswordHint">Use at least 8 characters. A longer, unique password is best.</div>',
       '    </div>',
       '    <button type="submit" class="sl-auth-submit">Create account</button>',
       '    <p class="sl-auth-terms">',
       '      By creating an account, you agree to our ',
-      '      <a href="/terms.html" target="_blank">Terms</a> and ',
-      '      <a href="/privacy.html" target="_blank">Privacy Policy</a>.',
+      '      <a href="/terms.html" target="_blank" rel="noopener noreferrer">Terms</a> and ',
+      '      <a href="/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.',
       '    </p>',
       '  </form>',
 
-      '  <form class="sl-auth-form" data-form="forgot" autocomplete="on" novalidate>',
+      '  <form class="sl-auth-form" data-form="forgot" id="slRecoveryForm" aria-labelledby="slAuthTitle" autocomplete="on" novalidate>',
       '    <div class="sl-auth-field">',
       '      <label class="sl-auth-label" for="slRecoveryEmail">Email</label>',
-      '      <input class="sl-auth-input" type="email" id="slRecoveryEmail" name="email" autocomplete="email" placeholder="you@example.com" required>',
+      '      <input class="sl-auth-input" type="email" inputmode="email" autocapitalize="none" spellcheck="false" id="slRecoveryEmail" name="email" autocomplete="email" placeholder="you@example.com" required>',
       '      <div class="sl-auth-hint">We\'ll send a password reset link if an account exists.</div>',
       '    </div>',
       '    <button type="submit" class="sl-auth-submit">Send reset link</button>',
@@ -173,12 +181,84 @@
       else if (provider === 'apple') startApple();
     });
 
-    // ESC to close
-    document.addEventListener('keydown', function(e){
-      if (e.key === 'Escape' && overlay.classList.contains('open')) close();
+    overlay.addEventListener('click', function(event){
+      var toggle = event.target.closest('[data-password-toggle]');
+      if (!toggle) return;
+      var input = document.getElementById(toggle.getAttribute('data-password-toggle'));
+      var reveal = input.type === 'password';
+      input.type = reveal ? 'text' : 'password';
+      toggle.textContent = reveal ? 'Hide' : 'Show';
+      toggle.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+      toggle.setAttribute('aria-pressed', String(reveal));
+    });
+    overlay.addEventListener('input', function(event){
+      if (event.target.matches('input')) clearFieldError(event.target);
+    });
+    overlay.addEventListener('keydown', function(event){
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); return; }
+      var tab = event.target.closest('[role="tab"]');
+      if (tab && ['ArrowLeft','ArrowRight','Home','End'].indexOf(event.key) !== -1) {
+        event.preventDefault();
+        var next = event.key === 'Home' ? 'login' : event.key === 'End' ? 'signup' : tab.dataset.tab === 'login' ? 'signup' : 'login';
+        switchTab(next, true); return;
+      }
+      if (event.key !== 'Tab') return;
+      var controls = focusable();
+      var first = controls[0], last = controls[controls.length - 1];
+      if (!first) { event.preventDefault(); overlay.focus(); return; }
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === overlay)) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus();
+      }
+    });
+    document.addEventListener('focusin', function(event){
+      if (overlay.classList.contains('open') && !overlay.contains(event.target)) (focusable()[0] || overlay).focus();
     });
 
     MOUNTED = true;
+  }
+
+  function focusable(){
+    return Array.from(overlay.querySelectorAll('button, input, a[href], iframe, [tabindex]')).filter(function(node){
+      return !node.disabled && node.tabIndex >= 0 && !node.closest('[hidden], [inert]') &&
+        (!node.closest('.sl-auth-form') || node.closest('.sl-auth-form').classList.contains('active'));
+    });
+  }
+  function isolateBackground(){
+    if (backgroundNodes.length) return;
+    Array.from(document.body.children).forEach(function(node){
+      if (node === overlay || /^(SCRIPT|STYLE|LINK)$/.test(node.tagName)) return;
+      backgroundNodes.push({node:node, had:node.hasAttribute('inert'), value:node.inert});
+      node.inert = true; node.setAttribute('inert', '');
+    });
+  }
+  function restoreBackground(){
+    backgroundNodes.forEach(function(item){
+      item.node.inert = item.value || false;
+      if (!item.had) item.node.removeAttribute('inert');
+    });
+    backgroundNodes = [];
+  }
+  function fieldError(input, message){
+    input.setAttribute('aria-invalid', 'true');
+    var described = (input.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+    if (described.indexOf('slAuthError') === -1) described.push('slAuthError');
+    input.setAttribute('aria-describedby', described.join(' '));
+    setMessage('error', message); input.focus();
+  }
+  function clearFieldError(input){
+    input.removeAttribute('aria-invalid');
+    var described = (input.getAttribute('aria-describedby') || '').split(/\s+/).filter(function(id){ return id && id !== 'slAuthError'; });
+    if (described.length) input.setAttribute('aria-describedby', described.join(' '));
+    else input.removeAttribute('aria-describedby');
+  }
+  function validEmail(input){
+    input.value = input.value.trim();
+    if (!input.value || !input.validity.valid || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value)) {
+      fieldError(input, 'Enter a valid email address.'); return false;
+    }
+    return true;
   }
 
   function setMessage(type, text){
@@ -186,42 +266,53 @@
     var err = overlay.querySelector('[data-sl-error]');
     var suc = overlay.querySelector('[data-sl-success]');
     err.classList.remove('show'); suc.classList.remove('show');
+    err.textContent = ''; suc.textContent = '';
+    if (!type) overlay.querySelectorAll('input').forEach(clearFieldError);
     if (type === 'error'   && text){ err.textContent = text; err.classList.add('show'); }
     if (type === 'success' && text){ suc.textContent = text; suc.classList.add('show'); }
   }
 
-  function switchTab(tab){
+  function switchTab(tab, focusTab){
     if (!overlay) return;
+    var previous = overlay.querySelector('.sl-auth-form.active [name="email"]');
+    var previousEmail = previous && previous.value;
     resetRecovery();
     resetOAuth();
     setMessage();
+    overlay.querySelectorAll('[aria-invalid]').forEach(function(input){ input.removeAttribute('aria-invalid'); });
     var titles = {
       login:  { t: 'Welcome back',       s: 'Sign in to continue to SceneLink' },
       signup: { t: 'Create your account', s: 'Join SceneLink and start planning nights out' },
       forgot: { t: 'Reset password',     s: 'We\'ll email you a reset link' }
     };
-    var conf = titles[tab] || titles.login;
+    if (!titles[tab]) tab = 'login';
+    var conf = titles[tab];
     overlay.querySelector('[data-sl-title]').textContent = conf.t;
     overlay.querySelector('[data-sl-sub]').textContent   = conf.s;
 
     // tabs visibility: hide tab strip for forgot
     var tabStrip = overlay.querySelector('[data-sl-tabs]');
+    tabStrip.hidden = tab === 'forgot';
     tabStrip.style.display = (tab === 'forgot') ? 'none' : 'flex';
 
     overlay.querySelectorAll('.sl-auth-tab').forEach(function(el){
-      el.classList.toggle('active', el.getAttribute('data-tab') === tab);
+      var selected = el.getAttribute('data-tab') === tab;
+      el.classList.toggle('active', selected); el.setAttribute('aria-selected', String(selected)); el.tabIndex = selected ? 0 : -1;
     });
     overlay.querySelectorAll('.sl-auth-form').forEach(function(f){
-      f.classList.toggle('active', f.getAttribute('data-form') === tab);
+      var active = f.getAttribute('data-form') === tab;
+      f.classList.toggle('active', active); f.hidden = !active; f.removeAttribute('aria-busy');
+      var email = f.elements.namedItem('email');
+      if (active && email && !email.value && previousEmail) email.value = previousEmail;
     });
 
     overlay.querySelector('[data-sl-oauth-slot]').hidden = tab === 'forgot';
     if (tab !== 'forgot' && overlay.classList.contains('open')) prepareOAuth();
 
-    // focus first input
+    var focus = ++focusEpoch;
     setTimeout(function(){
-      var first = overlay.querySelector('.sl-auth-form.active input');
-      if (first && overlay.classList.contains('open')) first.focus();
+      var first = focusTab ? overlay.querySelector('[role="tab"][aria-selected="true"]') : overlay.querySelector('.sl-auth-form.active input');
+      if (focus === focusEpoch && first && overlay.classList.contains('open')) first.focus();
     }, 50);
   }
 
@@ -375,15 +466,19 @@
     var f = e.currentTarget;
     if (f.querySelector('.sl-auth-submit').disabled) return;
     setMessage();
-    var email = f.email.value.trim();
-    var pw    = f.password.value;
-    if (!email || !pw){ setMessage('error', 'Please enter email and password.'); return; }
+    var emailInput = f.elements.namedItem('email'), passwordInput = f.elements.namedItem('password');
+    var email = emailInput.value.trim(), pw = passwordInput.value;
+    if (!validEmail(emailInput)) return;
+    if (!pw) { fieldError(passwordInput, 'Enter your password.'); return; }
     resetOAuth();
     var emailEpoch = oauthEpoch, sequence = emailSequence;
     function emailCurrent(){ return isCurrent(emailEpoch) && sequence === emailSequence; }
     var btn = f.querySelector('.sl-auth-submit');
-    btn.disabled = true; btn.textContent = 'Signing in...';
-    window.SLAuth.login(email, pw, {isCurrent: emailCurrent}).then(function(user){
+    btn.disabled = true; btn.textContent = 'Signing in…'; f.setAttribute('aria-busy', 'true');
+    var request;
+    try { request = window.SLAuth.login(email, pw, {isCurrent: emailCurrent}); }
+    catch (error) { request = Promise.reject(error); }
+    Promise.resolve(request).then(function(user){
       if (!emailCurrent()) return;
       setMessage('success', 'Welcome back, ' + (user.display_name || user.username) + '!');
       setTimeout(function(){
@@ -406,7 +501,7 @@
     }).finally(function(){
       if (!emailCurrent()) return;
       prepareOAuth();
-      btn.disabled = false; btn.textContent = 'Sign in';
+      btn.disabled = false; btn.textContent = 'Sign in'; f.removeAttribute('aria-busy');
     });
   }
 
@@ -416,26 +511,29 @@
     if (f.querySelector('.sl-auth-submit').disabled) return;
     setMessage();
     var payload = {
-      display_name: f.display_name.value.trim(),
-      username:     f.username.value.trim().toLowerCase(),
-      email:        f.email.value.trim(),
-      password:     f.password.value
+      display_name: f.elements.namedItem('display_name').value.trim(),
+      username:     f.elements.namedItem('username').value.trim().toLowerCase(),
+      email:        f.elements.namedItem('email').value.trim(),
+      password:     f.elements.namedItem('password').value
     };
-    if (!payload.display_name || !payload.username || !payload.email || !payload.password){
-      setMessage('error', 'Please fill all fields.'); return;
-    }
+    if (!payload.display_name) { fieldError(f.elements.namedItem('display_name'), 'Enter the name you want friends to see.'); return; }
+    if (!validEmail(f.elements.namedItem('email'))) return;
     if (!/^[a-z0-9_]{3,24}$/.test(payload.username)){
-      setMessage('error', 'Username must be 3–24 chars: letters, numbers, underscore only.'); return;
+      fieldError(f.elements.namedItem('username'), 'Use 3–24 letters, numbers, or underscores for your username.'); return;
     }
-    if (payload.password.length < 8){
-      setMessage('error', 'Password must be at least 8 characters.'); return;
+    if (payload.password.length < 8) { fieldError(f.elements.namedItem('password'), 'Use a password with at least 8 characters.'); return; }
+    if (new Blob([payload.password]).size > 72 || payload.password.indexOf('\u0000') !== -1) {
+      fieldError(f.elements.namedItem('password'), 'This password is too long or contains an unsupported character. Use a shorter password.'); return;
     }
     resetOAuth();
     var emailEpoch = oauthEpoch, sequence = emailSequence;
     function emailCurrent(){ return isCurrent(emailEpoch) && sequence === emailSequence; }
     var btn = f.querySelector('.sl-auth-submit');
-    btn.disabled = true; btn.textContent = 'Creating account...';
-    window.SLAuth.signup(payload, {isCurrent: emailCurrent}).then(function(user){
+    btn.disabled = true; btn.textContent = 'Creating account…'; f.setAttribute('aria-busy', 'true');
+    var request;
+    try { request = window.SLAuth.signup(payload, {isCurrent: emailCurrent}); }
+    catch (error) { request = Promise.reject(error); }
+    Promise.resolve(request).then(function(user){
       if (!emailCurrent()) return;
       setMessage('success', 'Welcome to SceneLink, ' + (user.display_name || user.username) + '!');
       setTimeout(function(){ if (emailCurrent()) close(); }, 500);
@@ -449,7 +547,7 @@
     }).finally(function(){
       if (!emailCurrent()) return;
       prepareOAuth();
-      btn.disabled = false; btn.textContent = 'Create account';
+      btn.disabled = false; btn.textContent = 'Create account'; f.removeAttribute('aria-busy');
     });
   }
 
@@ -461,11 +559,12 @@
     setMessage();
     var input = f.elements.namedItem('email');
     var email = input.value.trim();
-    if (!email || !input.validity.valid){ setMessage('error', 'Enter a valid email address.'); input.focus(); return; }
+    if (!validEmail(input)) return;
     var epoch = recoveryEpoch;
     function current(){ return epoch === recoveryEpoch && overlay.classList.contains('open'); }
-    btn.disabled = true; btn.textContent = 'Sending...';
-    Promise.resolve().then(function(){ return window.SLAuth.forgotPassword(email); }).then(function(){
+    btn.disabled = true; btn.textContent = 'Sending…'; f.setAttribute('aria-busy', 'true');
+    Promise.resolve().then(function(){ return window.SLAuth.forgotPassword(email); }).then(function(result){
+      if (!result || result.ok !== true) throw new Error('Reset request not confirmed');
       if (current()) setMessage('success', 'If an account exists for that email, a password reset link has been requested. Check your inbox and spam folder.');
     }).catch(function(err){
       if (!current()) return;
@@ -473,7 +572,7 @@
         ? 'Too many reset requests. Please wait a few minutes, then try again.'
         : 'We could not confirm your reset request. Check your connection and try again.');
     }).finally(function(){
-      if (current()) { btn.disabled = false; btn.textContent = 'Send reset link'; }
+      if (current()) { btn.disabled = false; btn.textContent = 'Send reset link'; f.removeAttribute('aria-busy'); }
     });
   }
 
@@ -487,6 +586,8 @@
     setMessage();
     switchTab(tab || 'login');
     overlay.classList.add('open');
+    isolateBackground();
+    overlay.focus();
     restoreOAuth();
     if ((tab || 'login') !== 'forgot') prepareOAuth();
     document.body.style.overflow = 'hidden';
@@ -496,7 +597,11 @@
     if (!overlay || !overlay.classList.contains('open')) return;
     resetRecovery();
     resetOAuth();
+    focusEpoch++;
     overlay.classList.remove('open');
+    restoreBackground();
+    overlay.querySelectorAll('[name="password"]').forEach(function(input){ input.value = ''; input.type = 'password'; });
+    overlay.querySelectorAll('[data-password-toggle]').forEach(function(button){ button.textContent = 'Show'; button.setAttribute('aria-label', 'Show password'); button.setAttribute('aria-pressed', 'false'); });
     document.body.style.overflow = previousOverflow || '';
     if (previousFocus && previousFocus.isConnected && !previousFocus.disabled) previousFocus.focus();
     setMessage();

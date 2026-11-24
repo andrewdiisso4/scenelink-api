@@ -29,6 +29,7 @@ async function main(){
  delete process.env.RUN_ALL_SQL_MIGRATIONS;
  const app=req('./src/server');await app.locals.initializeDatabase();
  assert.equal((await pool.query("SELECT count(*)::int n FROM launch_schema_versions WHERE version='private-list-invitations-2026-11-09'")).rows[0].n,1,'Default startup must apply migration016 without opt-in');
+ assert.equal((await pool.query("SELECT count(*)::int n FROM launch_schema_versions WHERE version='account-deletion-receipts-2026-11-24'")).rows[0].n,1,'Default startup must apply migration018 without opt-in');
  // Repeating migration 007 must not reset privacy or duplicate schema objects.
  await pool.query(fs.readFileSync(path.join(root,'migrations/007_launch_social_integrity.sql'),'utf8'));
  await pool.query(fs.readFileSync(path.join(root,'migrations/008_connected_decision_rooms.sql'),'utf8'));

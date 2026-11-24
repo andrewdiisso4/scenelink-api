@@ -299,8 +299,9 @@
     health: function(){ return req('/health'); },
 
     // ---- compliance (App Store required)
-    deleteAccount: function(password, reason){
-      return req('/auth/account', { method:'DELETE', body:{ password: password || '', reason: reason || null } })
+    accountDeletionRequirements: function(){ return req('/auth/account/deletion'); },
+    deleteAccount: function(password, reason, confirmation){
+      return req('/auth/account', { method:'DELETE', body:{ password: password || '', reason: reason || null, confirmation: confirmation } })
         .then(function(d){ if(!d || d.deleted !== true) throw new Error('Deletion was not confirmed. Please try again.'); return d; });
     },
 

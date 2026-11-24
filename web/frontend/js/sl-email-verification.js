@@ -9,6 +9,25 @@
   } catch (_) { token = ''; }
   try { window.history.replaceState(null, '', window.location.pathname); }
   catch (_) { token = ''; }
+  function requestJSON(endpoint, payload) {
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null, timer;
+    var timeout = new Promise(function (_resolve, reject) {
+      timer = setTimeout(function () {
+        var error = new Error('Account service timed out'); error.code = 'ACCOUNT_TIMEOUT'; reject(error);
+        if (controller) controller.abort();
+      }, 15000);
+    });
+    var request = Promise.resolve().then(function () {
+      return fetch(endpoint, {
+        method: 'POST', mode: 'same-origin', credentials: 'omit', redirect: 'error',
+        cache: 'no-store', referrerPolicy: 'no-referrer', signal: controller && controller.signal,
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+    }).then(async function (response) {
+      return { response: response, body: await response.json().catch(function () { return null; }) };
+    });
+    return Promise.race([request, timeout]).finally(function () { clearTimeout(timer); });
+  }
   function init() {
     var button = document.getElementById('verifySubmit');
     var status = document.getElementById('verifyStatus');
@@ -23,15 +42,16 @@
       busy = true; button.disabled = true;
       message('Confirming your email…');
       try {
-        var response = await fetch('/api/auth/verification/confirm', {
-          method: 'POST', mode: 'same-origin', credentials: 'omit', redirect: 'error', cache: 'no-store', referrerPolicy: 'no-referrer',
-          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: token })
-        });
+        var result = await requestJSON('/api/auth/verification/confirm', { token: token });
+        var response = result.response;
         if (!response.ok) {
           if (response.status === 400) message('This verification link is invalid, expired, or already used. Sign in and request another verification email.', 'error');
           else if (response.status === 429) message('Too many attempts. Please wait before trying again.', 'error');
           else message('Email verification is temporarily unavailable. Please try again later.', 'error');
           return;
+        }
+        if (!result.body || result.body.ok !== true) {
+          message('Verification could not be confirmed. Sign in to check your account or request a fresh link.', 'error'); return;
         }
         token = '';
         message('Your email is verified. Previous sessions have been signed out. Return to SceneLink and log in again.', 'success');

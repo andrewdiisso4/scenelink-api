@@ -446,7 +446,7 @@ async function main(){
     assert(modelRequests.length>0,'No accidental fallback in all model parity cases');
     for(const request of modelRequests){assert(!JSON.stringify(request.body).includes(secretMarker));assert(!JSON.stringify(request.body).includes('PRIVATE_PROFILE_'));}
   });
-  const sourceFiles=['src/routes/concierge.js','src/routes/conciergeAI.js','src/services/concierge-conversation.js',
+  const sourceFiles=['src/routes/concierge.js','src/routes/conciergeAI.js','src/services/concierge-conversation.js','src/services/analytics-writes.js',
     'src/services/concierge-constraints.js','src/services/concierge-intent.js','src/services/concierge-query-constraints.js',
     'src/services/concierge-event-search.js','src/services/concierge-typed-plan.js','qa/concierge-conversation-native.cjs',
     'qa/helpers/concierge-analytics-observer.cjs'];

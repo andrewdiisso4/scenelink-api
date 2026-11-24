@@ -66,7 +66,8 @@ function install({router,pool,auth,write}) {
   router.get('/users/:identifier',auth.optionalAuth,H.noStore,profileRoute);
   router.get('/friends',...secured,H.wrap(async(req,res)=>{
     const limit=H.integer(req.query.limit,50,1,100),offset=H.integer(req.query.offset,0,0,10000,'offset');
-    const r=await pool.query(`SELECT u.id,u.username,u.display_name,u.avatar_url,u.neighborhood,f.id AS friendship_id,f.status FROM friendships f
+    const r=await pool.query(`SELECT u.id,u.username,u.display_name,u.avatar_url,u.neighborhood,f.id AS friendship_id,f.status,
+      COALESCE(u.allow_messages='everyone' OR (u.allow_messages='friends' AND f.status='accepted'),false) AS can_message FROM friendships f
       JOIN users u ON u.id=CASE WHEN f.user_a_id=$1 THEN f.user_b_id ELSE f.user_a_id END
       WHERE f.status='accepted' AND (f.user_a_id=$1 OR f.user_b_id=$1) AND ${H.actorSQL()}
       ORDER BY lower(u.display_name),u.id LIMIT $2 OFFSET $3`,[req.user.id,limit+1,offset]);res.json({friends:r.rows.slice(0,limit),has_more:r.rows.length>limit,offset});
@@ -122,6 +123,7 @@ async function searchPeople(pool,me,q,limit,offset=0){
   if(!me)return[];
   q=String(q).replace(/^@/,'');if(q.length<2)return[];
   const r=await pool.query(`SELECT u.id,u.username,u.display_name,u.avatar_url,u.is_private,
+    COALESCE(u.allow_messages='everyone' OR (u.allow_messages='friends' AND f.status='accepted'),false) AS can_message,
     CASE WHEN f.id IS NULL THEN NULL ELSE jsonb_build_object('id',f.id,'status',f.status,'direction',CASE WHEN f.status='pending' THEN CASE WHEN f.requester_id=$1 THEN 'outgoing' ELSE 'incoming' END ELSE NULL END) END AS friendship_status
     FROM users u LEFT JOIN friendships f ON f.user_a_id=LEAST(u.id,$1::uuid) AND f.user_b_id=GREATEST(u.id,$1::uuid) AND f.status IN ('pending','accepted')
     WHERE ${H.actorSQL()} AND u.id<>$1 AND (u.discoverable IS TRUE OR f.status='accepted')
