@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "scope": "Isolated fictional account and social acceptance. This is not hosted-provider or signed-iOS certification.",
+  "code_candidate": {
+    "repository": "andrewdiisso4/scenelink-api",
+    "pull_request": 43,
+    "head_sha": "9eca790fc4abc85c9076ca9b4e01df0726c3bc95",
+    "tree_sha": "30fa692dedfeadb157d979a555e7a0448f4b3559",
+    "tested_merge_sha": "9e7b19d2eed4a5fcddd497954ed7f84054a8a8e1"
+  },
+  "workflow": {
+    "id": 45351331962,
+    "url": "https://github.com/andrewdiisso4/scenelink-api/actions/runs/45351331962",
+    "jobs": [
+      {
+        "name": "account_browser",
+        "id": 138298229770,
+        "conclusion": "success"
+      },
+      {
+        "name": "acceptance_host",
+        "id": 138298230074,
+        "conclusion": "success"
+      },
+      {
+        "name": "postgres (welcome)",
+        "id": 138298230164,
+        "conclusion": "success"
+      },
+      {
+        "name": "account_analytics",
+        "id": 138298230185,
+        "conclusion": "success"
+      },
+      {
+        "name": "postgres (upgrade)",
+        "id": 138298230190,
+        "conclusion": "success"
+      },
+      {
+        "name": "postgres (concierge)",
+        "id": 138298230225,
+        "conclusion": "success"
+      },
+      {
+        "name": "postgres (api)",
+        "id": 138298230228,
+        "conclusion": "success"
+      },
+      {
+        "name": "regression",
+        "id": 138298230235,
+        "conclusion": "success"
+      },
+      {
+        "name": "postgres (venue-intake)",
+        "id": 138298230383,
+        "conclusion": "success"
+      },
+      {
+        "name": "postgres (ingestion)",
+        "id": 138298230427,
+        "conclusion": "success"
+      }
+    ]
+  },
+  "results": {
+    "backend": {
+      "passed": 285,
+      "failed": 0,
+      "skipped": 1,
+      "skip_reason": "Opt-in native restore-fixture guard; a real deployment backup/restore rehearsal remains required."
+    },
+    "frontend": {
+      "passed": 766,
+      "failed": 0,
+      "skipped": 0
+    },
+    "social_regression": {
+      "passed": 40
+    },
+    "isolated_host_guards": {
+      "passed": 9
+    },
+    "native_analytics_deletion": {
+      "passed": 14,
+      "failed": 0
+    },
+    "synthetic_schema_upgrade": {
+      "passed": 26
+    },
+    "browser": {
+      "stages_passed": 8,
+      "uncaught_errors": 0,
+      "matching_source_sha256_entries": 21,
+      "postgres": "18.3 (Debian 18.3-1.pgdg13+1)",
+      "chromium": "151.0.7922.34"
+    }
+  },
+  "artifact": {
+    "id": 14900985573,
+    "sha256": "68a294edb72fee7152853288a1cc694938fec9d164e67cab9ff513062093ad47",
+    "url": "https://github.com/andrewdiisso4/scenelink-api/actions/runs/45351331962/artifacts/14900985573",
+    "archived_receipt": "browser-receipt.json",
+    "archived_screenshots": 20
+  },
+  "remaining_gates": [
+    "Paired hosted rollout including migration 018 and backup/restore evidence",
+    "Real Google and Apple callbacks, returning sign-in and provider-only deletion",
+    "SMTP inbox arrival and actual email-client rendering",
+    "Cloudinary external asset destruction and automatic Apple token revocation",
+    "Signed iPhone/TestFlight, VoiceOver, device permissions and enabled native capabilities",
+    "Moderation operator workflow, privacy disclosures and App Store submission metadata"
+  ]
+}

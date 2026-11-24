@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../config/database');
 const { optionalAuth, requireAdmin } = require('../middleware/auth');
+const analyticsWrites = require('../services/analytics-writes');
 
 const router = express.Router();
 
@@ -55,12 +56,12 @@ router.post('/event', optionalAuth, async (req, res) => {
 
         if (!placeholders.length) return res.json({ ok: true, inserted: 0 });
 
-        await pool.query(
+        const result = await analyticsWrites.insert(pool,
             `INSERT INTO analytics_events (event, user_id, anon, session_id, url, referrer, properties)
              VALUES ${placeholders.join(',')}`,
-            values
+            values, authedUserId
         );
-        res.json({ ok: true, inserted: events.length });
+        res.json({ ok: true, inserted: result.rowCount });
     } catch (err) {
         console.error('[analytics/event]', err);
         // Never fail loudly — analytics should be best-effort

@@ -1,12 +1,22 @@
 'use strict';
 const crypto=require('node:crypto');
 const H=require('./shared');
+const {providerSubjectHash}=require('./session');
 const welcome=require('../services/welcome');
 const SELF='id,email,username,display_name,avatar_url,bio,neighborhood,city,role,created_at,is_private,allow_messages,profile_revision,social_links,discoverable,show_achievements,share_read_receipts,(email_verified_at IS NOT NULL AND verified_email=lower(email)) AS email_verified';
 function password(value){if(typeof value!=='string'||value.length<8||Buffer.byteLength(value,'utf8')>72||value.includes('\u0000'))throw new H.HttpError(400,'Use a password of at least 8 characters and at most 72 UTF-8 bytes');return value;}
 function email(value){const s=H.text(value,'email',254,{required:true}).toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))throw new H.HttpError(400,'Enter a valid email');return s;}
 function username(value){const s=H.text(value,'username',24,{required:true}).toLowerCase();if(!/^[a-z0-9_]{3,24}$/.test(s))throw new H.HttpError(400,'Username must be 3–24 letters, numbers or underscores');return s;}
 const digest=value=>crypto.createHash('sha256').update(value).digest('hex');
+const DELETION_SIGN_IN_SECONDS=300;
+function deletionConfirmation(user,session,now=Math.floor(Date.now()/1000)){
+  const provider=['google','apple'].includes(user.oauth_provider)&&typeof user.oauth_id==='string'&&user.oauth_id?user.oauth_provider:null;
+  const method=user.password_hash?'password':provider?'recent_provider_sign_in':'unavailable';
+  const proof=session?.providerProof,iat=session?.issuedAt;
+  const recent=!!(provider&&proof&&Number.isInteger(iat)&&Number.isInteger(proof.at)&&proof.at===iat&&iat<=now&&now-iat<=DELETION_SIGN_IN_SECONDS&&
+    proof.provider===provider&&proof.subject_hash===providerSubjectHash(provider,user.oauth_id));
+  return{method,provider,recent_sign_in_required:method==='recent_provider_sign_in'&&!recent,recent_sign_in_window_seconds:DELETION_SIGN_IN_SECONDS,can_delete:method==='password'||(method==='recent_provider_sign_in'&&recent)};
+}
 function install({router,pool,auth,write,authLimit,resetLimit,bcrypt,mailer,env=process.env}){
   const secured=[auth.requireAuth,H.noStore];
   router.get('/auth/username-available',H.noStore,H.wrap(async(req,res)=>{const name=username(req.query.u||req.query.username);const r=await pool.query('SELECT id FROM users WHERE lower(username)=$1',[name]);res.json({available:!r.rows.length,valid:true,username:name});}));
@@ -49,16 +59,38 @@ function install({router,pool,auth,write,authLimit,resetLimit,bcrypt,mailer,env=
       WHERE reset_token=$2 AND reset_token_expires>NOW() AND is_active IS TRUE AND COALESCE(is_suspended,false)=false RETURNING id`,[hash,digest(token)]);
     if(!r.rows.length)throw new H.HttpError(400,'Invalid or expired reset link');res.json({ok:true,message:'Password updated. All prior sessions are revoked. Sign in again.'});
   }));
+  router.get('/auth/account/deletion',...secured,H.wrap(async(req,res)=>{
+    const r=await pool.query('SELECT password_hash,oauth_provider,oauth_id FROM users WHERE id=$1',[req.user.id]);
+    if(!r.rows.length)throw new H.HttpError(401,'Account unavailable');
+    res.json({confirmation:deletionConfirmation(r.rows[0],req.authSession)});
+  }));
   router.delete('/auth/account',...secured,write,H.wrap(async(req,res)=>{
-    const reason=H.text(req.body?.reason,'reason',500),pw=req.body?.password;
-    await H.transaction(pool,async db=>{
-      const r=await db.query('SELECT id,email,password_hash FROM users WHERE id=$1 FOR UPDATE',[req.user.id]);const u=r.rows[0];if(!u)throw new H.HttpError(401,'Account unavailable');
-      // OAuth-only accounts must set a password by verified-email recovery first.
-      if(!u.password_hash)throw new H.HttpError(400,'Set a password using email recovery before deleting this account');
-      if(typeof pw!=='string'||Buffer.byteLength(pw)>72||!await bcrypt.compare(pw,u.password_hash))throw new H.HttpError(400,'Password confirmation is incorrect');
-      await db.query('INSERT INTO user_deletions(user_id,email_hash,deletion_reason,ip_address) VALUES($1,$2,$3,$4)',[u.id,digest(u.email.toLowerCase()),reason,String(req.ip||'').slice(0,100)]);
+    H.text(req.body?.reason,'reason',500); // Older clients may send a reason; do not retain personal free text.
+    const pw=req.body?.password;
+    const completion=await H.transaction(pool,async db=>{
+      const r=await db.query('SELECT id,password_hash,oauth_provider,oauth_id,auth_version,is_active,is_suspended FROM users WHERE id=$1 FOR UPDATE',[req.user.id]);const u=r.rows[0];
+      if(!u||u.is_active!==true||u.is_suspended||Number(u.auth_version)!==Number(req.user.auth_version)||!Number.isInteger(req.authExpires)||req.authExpires<=Math.floor(Date.now()/1000))throw new H.HttpError(401,'Session expired or revoked');
+      const revoked=await db.query('SELECT 1 FROM auth_revocations WHERE token_hash=$1 AND expires_at>NOW()',[req.authTokenHash]);
+      if(revoked.rows.length)throw new H.HttpError(401,'Session expired or revoked');
+      const confirmation=deletionConfirmation(u,req.authSession);
+      if(confirmation.method==='password'){
+        if(typeof pw!=='string'||!pw.length||Buffer.byteLength(pw)>72||pw.includes('\u0000')||!await bcrypt.compare(pw,u.password_hash))throw new H.HttpError(400,'Password confirmation is incorrect');
+      }else{
+        if(!confirmation.can_delete)throw new H.HttpError(409,'Sign in again with your account provider before deleting this account.','ACCOUNT_REAUTHENTICATION_REQUIRED');
+        if(req.body?.confirmation!=='DELETE')throw new H.HttpError(400,'Type DELETE to confirm permanent account deletion');
+      }
+      // The receipt schema requires the former account ID. Do not also retain
+      // an email hash, IP address, or potentially identifying free-text reason.
+      await db.query('INSERT INTO user_deletions(user_id) VALUES($1)',[u.id]);
+      await db.query('DELETE FROM notifications WHERE actor_id=$1',[u.id]);
+      // Analytics is installed by an optional router and has no user foreign key.
+      const analytics=await db.query("SELECT to_regclass('public.analytics_events') AS relation");
+      if(analytics.rows[0]?.relation)await db.query('DELETE FROM analytics_events WHERE user_id=$1::text',[u.id]);
       await db.query('DELETE FROM users WHERE id=$1',[u.id]);
-    });res.json({ok:true,deleted:true});
+      // Legacy Apple accounts have no stored revocable token. Fulfil deletion
+      // and expose the remaining manual step; do not claim automatic revocation.
+      return{apple_revocation_required:u.oauth_provider==='apple'};
+    });res.json({ok:true,deleted:true,...completion});
   }));
 }
 module.exports={install,password,email,username,digest,SELF};

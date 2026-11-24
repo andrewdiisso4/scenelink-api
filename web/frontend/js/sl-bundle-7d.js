@@ -380,8 +380,9 @@ if (typeof module !== 'undefined' && module.exports) {
     health: function(){ return req('/health'); },
 
     // ---- compliance (App Store required)
-    deleteAccount: function(password, reason){
-      return req('/auth/account', { method:'DELETE', body:{ password: password || '', reason: reason || null } })
+    accountDeletionRequirements: function(){ return req('/auth/account/deletion'); },
+    deleteAccount: function(password, reason, confirmation){
+      return req('/auth/account', { method:'DELETE', body:{ password: password || '', reason: reason || null, confirmation: confirmation } })
         .then(function(d){ if(!d || d.deleted !== true) throw new Error('Deletion was not confirmed. Please try again.'); return d; });
     },
 
@@ -471,8 +472,14 @@ if (typeof module !== 'undefined' && module.exports) {
       err.code = 'AUTH_SUPERSEDED';
       throw err;
     }
-    if (!data || !data.token) throw new Error(failure);
+    if (!data || typeof data.token !== 'string' || !data.token || !data.user ||
+        typeof data.user.id !== 'string' || !data.user.id) {
+      throw new Error(failure + '. The account response could not be confirmed. Please try again.');
+    }
     writeToken(data.token);
+    if (readToken() !== data.token) {
+      throw new Error('Your browser could not save this sign-in. Allow site storage for SceneLink and try again.');
+    }
     writeCache(data.user);
     state.user = data.user;
     if (window.SLApi && window.SLApi.setToken) window.SLApi.setToken(data.token);
@@ -536,12 +543,18 @@ if (typeof module !== 'undefined' && module.exports) {
     var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
     var tok = readToken();
     if (tok) headers['Authorization'] = 'Bearer ' + tok;
-    return fetch(apiBase() + path, {
-      method: opts.method || 'GET',
-      headers: headers,
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
-      signal: opts.signal, keepalive: !!opts.keepalive
-    }).then(function(r){
+    var controller = !opts.signal && typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timeoutMs = opts.timeoutMs === 0 ? 0 : 15000, timer, request;
+    try {
+      request = fetch(apiBase() + path, {
+        method: opts.method || 'GET',
+        headers: headers,
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        credentials: 'omit', cache: 'no-store',
+        signal: opts.signal || controller && controller.signal, keepalive: !!opts.keepalive
+      });
+    } catch (error) { request = Promise.reject(error); }
+    var response = Promise.resolve(request).then(function(r){
       return r.json().catch(function(){ return {}; }).then(function(j){
         if (!r.ok) {
           var msg = (j && (j.error || j.message)) || ('HTTP ' + r.status);
@@ -553,6 +566,17 @@ if (typeof module !== 'undefined' && module.exports) {
         return j;
       });
     });
+    if (!timeoutMs) return response;
+    var timeout = new Promise(function(_resolve, reject){
+      timer = setTimeout(function(){
+        var error = new Error('SceneLink took too long to respond. Check your connection and try again.');
+        error.code = 'AUTH_TIMEOUT';
+        reject(error);
+        if (controller) controller.abort();
+      }, timeoutMs);
+    });
+    // Bound headers and body parsing. A late response cannot finish a timed-out sign-in.
+    return Promise.race([response, timeout]).finally(function(){ clearTimeout(timer); });
   }
 
   // ---------- auth operations ----------
@@ -569,7 +593,8 @@ if (typeof module !== 'undefined' && module.exports) {
       if(!ownsSession(refreshingSession)){ state.loading=false; return null; }
       state.loading = false;
       state.lastRefresh = Date.now();
-      var u = (j && j.user) ? j.user : j;
+      var u = j && j.user;
+      if (!u || typeof u.id !== 'string' || !u.id) throw new Error('Account refresh could not be confirmed');
       state.user = u;
       writeCache(u);
       if (window.SLApi && window.SLApi.setToken) {
@@ -612,7 +637,10 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   function forgotPassword(email){
-    return apiCall('/auth/forgot-password', { method: 'POST', body: { email: email } });
+    return apiCall('/auth/forgot-password', { method: 'POST', body: { email: email } }).then(function(result){
+      if (!result || result.ok !== true) throw new Error('Your reset request could not be confirmed. Please try again.');
+      return result;
+    });
   }
 
   // Google OAuth — backend verifies the Google ID token
@@ -646,7 +674,7 @@ if (typeof module !== 'undefined' && module.exports) {
     var hadToken = !!readToken(), timer, controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     // Start with the existing bearer token, then immediately end local authentication.
     var request;
-    try { request = hadToken ? apiCall('/auth/logout', {method:'POST',body:{},signal:controller && controller.signal,keepalive:true}) : Promise.resolve({revoked:false}); }
+    try { request = hadToken ? apiCall('/auth/logout', {method:'POST',body:{},signal:controller && controller.signal,keepalive:true,timeoutMs:0}) : Promise.resolve({revoked:false}); }
     catch(err) { request = Promise.reject(err); }
     writeToken(null); writeCache(null); state.user = null;
     try { ['sl_token','sl_current_user','sl_auth_token','auth_token','jwt','sl_user'].forEach(function(k){ localStorage.removeItem(k); }); } catch(e){}
@@ -765,7 +793,7 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   var MOUNTED = false;
   var overlay = null;
-  var previousFocus = null, previousOverflow = null;
+  var previousFocus = null, previousOverflow = null, backgroundNodes = [];
 
   function el(tag, attrs, html){
     var n = document.createElement(tag);
@@ -805,35 +833,38 @@ if (typeof module !== 'undefined' && module.exports) {
 
   function build(){
     if (MOUNTED) return;
-    overlay = el('div', { class: 'sl-auth-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'slAuthTitle' });
+    overlay = el('div', { class: 'sl-auth-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'slAuthTitle', 'aria-describedby': 'slAuthSubtitle', tabindex: '-1' });
     overlay.innerHTML = [
       '<div class="sl-auth-modal">',
       '  <button type="button" class="sl-auth-close" aria-label="Close">&times;</button>',
       '  <div class="sl-auth-brand">',
       '    <div class="sl-auth-brand-logo"><img class="sl-auth-official-logo" src="/images/brand/scenelink-full.png" alt="SceneLink" width="88" height="88"></div>',
       '    <h2 class="sl-auth-title" id="slAuthTitle" data-sl-title>Welcome back</h2>',
-      '    <p class="sl-auth-sub" data-sl-sub>Sign in to continue to SceneLink</p>',
+      '    <p class="sl-auth-sub" id="slAuthSubtitle" data-sl-sub>Sign in to continue to SceneLink</p>',
       '  </div>',
 
-      '  <div class="sl-auth-tabs" data-sl-tabs>',
-      '    <button type="button" class="sl-auth-tab active" data-tab="login">Sign in</button>',
-      '    <button type="button" class="sl-auth-tab" data-tab="signup">Create account</button>',
+      '  <div class="sl-auth-tabs" data-sl-tabs role="tablist" aria-label="Account access">',
+      '    <button type="button" class="sl-auth-tab active" id="slAuthLoginTab" role="tab" aria-selected="true" aria-controls="slLoginForm" data-tab="login">Sign in</button>',
+      '    <button type="button" class="sl-auth-tab" id="slAuthSignupTab" role="tab" aria-selected="false" aria-controls="slSignupForm" tabindex="-1" data-tab="signup">Create account</button>',
       '  </div>',
 
-      '  <div class="sl-auth-error" data-sl-error role="alert"></div>',
+      '  <div class="sl-auth-error" id="slAuthError" data-sl-error role="alert" aria-atomic="true"></div>',
       '  <div class="sl-auth-success" data-sl-success role="status" aria-live="polite"></div>',
 
       '  <div data-sl-oauth-slot>' + oauthButtonsHTML() + '</div>',
       '  <button type="button" class="sl-auth-link" data-oauth-cancel hidden>Cancel sign-in and retry</button>',
 
-      '  <form class="sl-auth-form active" data-form="login" autocomplete="on" novalidate>',
+      '  <form class="sl-auth-form active" data-form="login" id="slLoginForm" aria-labelledby="slAuthLoginTab" autocomplete="on" novalidate>',
       '    <div class="sl-auth-field">',
       '      <label class="sl-auth-label" for="slLoginEmail">Email</label>',
-      '      <input class="sl-auth-input" type="email" id="slLoginEmail" autocapitalize="none" spellcheck="false" name="email" autocomplete="email" placeholder="you@example.com" required>',
+      '      <input class="sl-auth-input" type="email" inputmode="email" id="slLoginEmail" autocapitalize="none" spellcheck="false" name="email" autocomplete="username" placeholder="you@example.com" required>',
       '    </div>',
       '    <div class="sl-auth-field">',
       '      <label class="sl-auth-label" for="slLoginPassword">Password</label>',
-      '      <input class="sl-auth-input" type="password" id="slLoginPassword" name="password" autocomplete="current-password" placeholder="••••••••" required>',
+      '      <div class="sl-auth-password">',
+      '        <input class="sl-auth-input" type="password" id="slLoginPassword" name="password" autocomplete="current-password" placeholder="Your password" required>',
+      '        <button type="button" class="sl-auth-password-toggle" data-password-toggle="slLoginPassword" aria-controls="slLoginPassword" aria-label="Show password" aria-pressed="false">Show</button>',
+      '      </div>',
       '    </div>',
       '    <button type="submit" class="sl-auth-submit">Sign in</button>',
       '    <div class="sl-auth-foot">',
@@ -841,38 +872,42 @@ if (typeof module !== 'undefined' && module.exports) {
       '    </div>',
       '  </form>',
 
-      '  <form class="sl-auth-form" data-form="signup" autocomplete="on" novalidate>',
+      '  <form class="sl-auth-form" data-form="signup" id="slSignupForm" aria-labelledby="slAuthSignupTab" autocomplete="on" novalidate>',
       '    <div class="sl-auth-field">',
       '      <label class="sl-auth-label" for="slSignupDisplayName">Display name</label>',
-      '      <input class="sl-auth-input" type="text" id="slSignupDisplayName" name="display_name" autocomplete="name" placeholder="How your friends know you" required maxlength="60">',
+      '      <input class="sl-auth-input" type="text" id="slSignupDisplayName" name="display_name" autocomplete="name" placeholder="How your friends know you" required maxlength="80">',
       '    </div>',
       '    <div class="sl-auth-row">',
       '      <div class="sl-auth-field">',
       '        <label class="sl-auth-label" for="slSignupUsername">Username</label>',
-      '        <input class="sl-auth-input" type="text" id="slSignupUsername" autocapitalize="none" spellcheck="false" name="username" autocomplete="username" placeholder="yourhandle" required maxlength="24" pattern="[a-zA-Z0-9_]+">',
+      '        <input class="sl-auth-input" type="text" id="slSignupUsername" autocapitalize="none" spellcheck="false" name="username" autocomplete="username" placeholder="yourhandle" required maxlength="24" minlength="3" pattern="[a-zA-Z0-9_]+" aria-describedby="slSignupUsernameHint">',
       '      </div>',
       '    </div>',
+      '    <p class="sl-auth-hint sl-auth-username-hint" id="slSignupUsernameHint">3–24 letters, numbers, or underscores. Friends can find you by this name.</p>',
       '    <div class="sl-auth-field">',
       '      <label class="sl-auth-label" for="slSignupEmail">Email</label>',
-      '      <input class="sl-auth-input" type="email" id="slSignupEmail" autocapitalize="none" spellcheck="false" name="email" autocomplete="email" placeholder="you@example.com" required>',
+      '      <input class="sl-auth-input" type="email" inputmode="email" id="slSignupEmail" autocapitalize="none" spellcheck="false" name="email" autocomplete="email" placeholder="you@example.com" required>',
       '    </div>',
       '    <div class="sl-auth-field">',
       '      <label class="sl-auth-label" for="slSignupPassword">Password</label>',
-      '      <input class="sl-auth-input" type="password" id="slSignupPassword" name="password" autocomplete="new-password" placeholder="At least 8 characters" required minlength="8">',
-      '      <div class="sl-auth-hint">Use at least 8 characters with a mix of letters and numbers.</div>',
+      '      <div class="sl-auth-password">',
+      '        <input class="sl-auth-input" type="password" id="slSignupPassword" name="password" autocomplete="new-password" placeholder="At least 8 characters" required minlength="8" aria-describedby="slSignupPasswordHint">',
+      '        <button type="button" class="sl-auth-password-toggle" data-password-toggle="slSignupPassword" aria-controls="slSignupPassword" aria-label="Show password" aria-pressed="false">Show</button>',
+      '      </div>',
+      '      <div class="sl-auth-hint" id="slSignupPasswordHint">Use at least 8 characters. A longer, unique password is best.</div>',
       '    </div>',
       '    <button type="submit" class="sl-auth-submit">Create account</button>',
       '    <p class="sl-auth-terms">',
       '      By creating an account, you agree to our ',
-      '      <a href="/terms.html" target="_blank">Terms</a> and ',
-      '      <a href="/privacy.html" target="_blank">Privacy Policy</a>.',
+      '      <a href="/terms.html" target="_blank" rel="noopener noreferrer">Terms</a> and ',
+      '      <a href="/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.',
       '    </p>',
       '  </form>',
 
-      '  <form class="sl-auth-form" data-form="forgot" autocomplete="on" novalidate>',
+      '  <form class="sl-auth-form" data-form="forgot" id="slRecoveryForm" aria-labelledby="slAuthTitle" autocomplete="on" novalidate>',
       '    <div class="sl-auth-field">',
       '      <label class="sl-auth-label" for="slRecoveryEmail">Email</label>',
-      '      <input class="sl-auth-input" type="email" id="slRecoveryEmail" name="email" autocomplete="email" placeholder="you@example.com" required>',
+      '      <input class="sl-auth-input" type="email" inputmode="email" autocapitalize="none" spellcheck="false" id="slRecoveryEmail" name="email" autocomplete="email" placeholder="you@example.com" required>',
       '      <div class="sl-auth-hint">We\'ll send a password reset link if an account exists.</div>',
       '    </div>',
       '    <button type="submit" class="sl-auth-submit">Send reset link</button>',
@@ -921,12 +956,84 @@ if (typeof module !== 'undefined' && module.exports) {
       else if (provider === 'apple') startApple();
     });
 
-    // ESC to close
-    document.addEventListener('keydown', function(e){
-      if (e.key === 'Escape' && overlay.classList.contains('open')) close();
+    overlay.addEventListener('click', function(event){
+      var toggle = event.target.closest('[data-password-toggle]');
+      if (!toggle) return;
+      var input = document.getElementById(toggle.getAttribute('data-password-toggle'));
+      var reveal = input.type === 'password';
+      input.type = reveal ? 'text' : 'password';
+      toggle.textContent = reveal ? 'Hide' : 'Show';
+      toggle.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+      toggle.setAttribute('aria-pressed', String(reveal));
+    });
+    overlay.addEventListener('input', function(event){
+      if (event.target.matches('input')) clearFieldError(event.target);
+    });
+    overlay.addEventListener('keydown', function(event){
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); return; }
+      var tab = event.target.closest('[role="tab"]');
+      if (tab && ['ArrowLeft','ArrowRight','Home','End'].indexOf(event.key) !== -1) {
+        event.preventDefault();
+        var next = event.key === 'Home' ? 'login' : event.key === 'End' ? 'signup' : tab.dataset.tab === 'login' ? 'signup' : 'login';
+        switchTab(next, true); return;
+      }
+      if (event.key !== 'Tab') return;
+      var controls = focusable();
+      var first = controls[0], last = controls[controls.length - 1];
+      if (!first) { event.preventDefault(); overlay.focus(); return; }
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === overlay)) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus();
+      }
+    });
+    document.addEventListener('focusin', function(event){
+      if (overlay.classList.contains('open') && !overlay.contains(event.target)) (focusable()[0] || overlay).focus();
     });
 
     MOUNTED = true;
+  }
+
+  function focusable(){
+    return Array.from(overlay.querySelectorAll('button, input, a[href], iframe, [tabindex]')).filter(function(node){
+      return !node.disabled && node.tabIndex >= 0 && !node.closest('[hidden], [inert]') &&
+        (!node.closest('.sl-auth-form') || node.closest('.sl-auth-form').classList.contains('active'));
+    });
+  }
+  function isolateBackground(){
+    if (backgroundNodes.length) return;
+    Array.from(document.body.children).forEach(function(node){
+      if (node === overlay || /^(SCRIPT|STYLE|LINK)$/.test(node.tagName)) return;
+      backgroundNodes.push({node:node, had:node.hasAttribute('inert'), value:node.inert});
+      node.inert = true; node.setAttribute('inert', '');
+    });
+  }
+  function restoreBackground(){
+    backgroundNodes.forEach(function(item){
+      item.node.inert = item.value || false;
+      if (!item.had) item.node.removeAttribute('inert');
+    });
+    backgroundNodes = [];
+  }
+  function fieldError(input, message){
+    input.setAttribute('aria-invalid', 'true');
+    var described = (input.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+    if (described.indexOf('slAuthError') === -1) described.push('slAuthError');
+    input.setAttribute('aria-describedby', described.join(' '));
+    setMessage('error', message); input.focus();
+  }
+  function clearFieldError(input){
+    input.removeAttribute('aria-invalid');
+    var described = (input.getAttribute('aria-describedby') || '').split(/\s+/).filter(function(id){ return id && id !== 'slAuthError'; });
+    if (described.length) input.setAttribute('aria-describedby', described.join(' '));
+    else input.removeAttribute('aria-describedby');
+  }
+  function validEmail(input){
+    input.value = input.value.trim();
+    if (!input.value || !input.validity.valid || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value)) {
+      fieldError(input, 'Enter a valid email address.'); return false;
+    }
+    return true;
   }
 
   function setMessage(type, text){
@@ -934,43 +1041,56 @@ if (typeof module !== 'undefined' && module.exports) {
     var err = overlay.querySelector('[data-sl-error]');
     var suc = overlay.querySelector('[data-sl-success]');
     err.classList.remove('show'); suc.classList.remove('show');
+    err.textContent = ''; suc.textContent = '';
+    if (!type) overlay.querySelectorAll('input').forEach(clearFieldError);
     if (type === 'error'   && text){ err.textContent = text; err.classList.add('show'); }
     if (type === 'success' && text){ suc.textContent = text; suc.classList.add('show'); }
   }
 
-  function switchTab(tab){
+  function switchTab(tab, focusTab){
     if (!overlay) return;
+    var previous = overlay.querySelector('.sl-auth-form.active [name="email"]');
+    var previousEmail = previous && previous.value;
     resetRecovery();
     resetOAuth();
     setMessage();
+    overlay.querySelectorAll('[aria-invalid]').forEach(function(input){ input.removeAttribute('aria-invalid'); });
     var titles = {
       login:  { t: 'Welcome back',       s: 'Sign in to continue to SceneLink' },
       signup: { t: 'Create your account', s: 'Join SceneLink and start planning nights out' },
       forgot: { t: 'Reset password',     s: 'We\'ll email you a reset link' }
     };
-    var conf = titles[tab] || titles.login;
+    if (!titles[tab]) tab = 'login';
+    var conf = titles[tab];
     overlay.querySelector('[data-sl-title]').textContent = conf.t;
     overlay.querySelector('[data-sl-sub]').textContent   = conf.s;
 
     // tabs visibility: hide tab strip for forgot
     var tabStrip = overlay.querySelector('[data-sl-tabs]');
+    tabStrip.hidden = tab === 'forgot';
     tabStrip.style.display = (tab === 'forgot') ? 'none' : 'flex';
 
     overlay.querySelectorAll('.sl-auth-tab').forEach(function(el){
-      el.classList.toggle('active', el.getAttribute('data-tab') === tab);
+      var selected = el.getAttribute('data-tab') === tab;
+      el.classList.toggle('active', selected); el.setAttribute('aria-selected', String(selected)); el.tabIndex = selected ? 0 : -1;
     });
     overlay.querySelectorAll('.sl-auth-form').forEach(function(f){
-      f.classList.toggle('active', f.getAttribute('data-form') === tab);
+      var active = f.getAttribute('data-form') === tab;
+      f.classList.toggle('active', active); f.hidden = !active; f.removeAttribute('aria-busy');
+      var email = f.elements.namedItem('email');
+      if (active && email && !email.value && previousEmail) email.value = previousEmail;
     });
 
     overlay.querySelector('[data-sl-oauth-slot]').hidden = tab === 'forgot';
     if (tab !== 'forgot' && overlay.classList.contains('open')) prepareOAuth();
 
-    // focus first input
-    setTimeout(function(){
-      var first = overlay.querySelector('.sl-auth-form.active input');
-      if (first && overlay.classList.contains('open')) first.focus();
-    }, 50);
+    focusAuthControl(focusTab);
+  }
+
+  function focusAuthControl(focusTab){
+    if (!overlay || !overlay.classList.contains('open')) return;
+    var first = focusTab ? overlay.querySelector('[role="tab"][aria-selected="true"]') : overlay.querySelector('.sl-auth-form.active input');
+    (first || overlay).focus();
   }
 
   // SDK loads are shared; modal lifetimes and sign-in attempts are not.
@@ -1123,15 +1243,19 @@ if (typeof module !== 'undefined' && module.exports) {
     var f = e.currentTarget;
     if (f.querySelector('.sl-auth-submit').disabled) return;
     setMessage();
-    var email = f.email.value.trim();
-    var pw    = f.password.value;
-    if (!email || !pw){ setMessage('error', 'Please enter email and password.'); return; }
+    var emailInput = f.elements.namedItem('email'), passwordInput = f.elements.namedItem('password');
+    var email = emailInput.value.trim(), pw = passwordInput.value;
+    if (!validEmail(emailInput)) return;
+    if (!pw) { fieldError(passwordInput, 'Enter your password.'); return; }
     resetOAuth();
     var emailEpoch = oauthEpoch, sequence = emailSequence;
     function emailCurrent(){ return isCurrent(emailEpoch) && sequence === emailSequence; }
     var btn = f.querySelector('.sl-auth-submit');
-    btn.disabled = true; btn.textContent = 'Signing in...';
-    window.SLAuth.login(email, pw, {isCurrent: emailCurrent}).then(function(user){
+    btn.disabled = true; btn.textContent = 'Signing in…'; f.setAttribute('aria-busy', 'true');
+    var request;
+    try { request = window.SLAuth.login(email, pw, {isCurrent: emailCurrent}); }
+    catch (error) { request = Promise.reject(error); }
+    Promise.resolve(request).then(function(user){
       if (!emailCurrent()) return;
       setMessage('success', 'Welcome back, ' + (user.display_name || user.username) + '!');
       setTimeout(function(){
@@ -1154,7 +1278,7 @@ if (typeof module !== 'undefined' && module.exports) {
     }).finally(function(){
       if (!emailCurrent()) return;
       prepareOAuth();
-      btn.disabled = false; btn.textContent = 'Sign in';
+      btn.disabled = false; btn.textContent = 'Sign in'; f.removeAttribute('aria-busy');
     });
   }
 
@@ -1164,26 +1288,29 @@ if (typeof module !== 'undefined' && module.exports) {
     if (f.querySelector('.sl-auth-submit').disabled) return;
     setMessage();
     var payload = {
-      display_name: f.display_name.value.trim(),
-      username:     f.username.value.trim().toLowerCase(),
-      email:        f.email.value.trim(),
-      password:     f.password.value
+      display_name: f.elements.namedItem('display_name').value.trim(),
+      username:     f.elements.namedItem('username').value.trim().toLowerCase(),
+      email:        f.elements.namedItem('email').value.trim(),
+      password:     f.elements.namedItem('password').value
     };
-    if (!payload.display_name || !payload.username || !payload.email || !payload.password){
-      setMessage('error', 'Please fill all fields.'); return;
-    }
+    if (!payload.display_name) { fieldError(f.elements.namedItem('display_name'), 'Enter the name you want friends to see.'); return; }
+    if (!validEmail(f.elements.namedItem('email'))) return;
     if (!/^[a-z0-9_]{3,24}$/.test(payload.username)){
-      setMessage('error', 'Username must be 3–24 chars: letters, numbers, underscore only.'); return;
+      fieldError(f.elements.namedItem('username'), 'Use 3–24 letters, numbers, or underscores for your username.'); return;
     }
-    if (payload.password.length < 8){
-      setMessage('error', 'Password must be at least 8 characters.'); return;
+    if (payload.password.length < 8) { fieldError(f.elements.namedItem('password'), 'Use a password with at least 8 characters.'); return; }
+    if (new Blob([payload.password]).size > 72 || payload.password.indexOf('\u0000') !== -1) {
+      fieldError(f.elements.namedItem('password'), 'This password is too long or contains an unsupported character. Use a shorter password.'); return;
     }
     resetOAuth();
     var emailEpoch = oauthEpoch, sequence = emailSequence;
     function emailCurrent(){ return isCurrent(emailEpoch) && sequence === emailSequence; }
     var btn = f.querySelector('.sl-auth-submit');
-    btn.disabled = true; btn.textContent = 'Creating account...';
-    window.SLAuth.signup(payload, {isCurrent: emailCurrent}).then(function(user){
+    btn.disabled = true; btn.textContent = 'Creating account…'; f.setAttribute('aria-busy', 'true');
+    var request;
+    try { request = window.SLAuth.signup(payload, {isCurrent: emailCurrent}); }
+    catch (error) { request = Promise.reject(error); }
+    Promise.resolve(request).then(function(user){
       if (!emailCurrent()) return;
       setMessage('success', 'Welcome to SceneLink, ' + (user.display_name || user.username) + '!');
       setTimeout(function(){ if (emailCurrent()) close(); }, 500);
@@ -1197,7 +1324,7 @@ if (typeof module !== 'undefined' && module.exports) {
     }).finally(function(){
       if (!emailCurrent()) return;
       prepareOAuth();
-      btn.disabled = false; btn.textContent = 'Create account';
+      btn.disabled = false; btn.textContent = 'Create account'; f.removeAttribute('aria-busy');
     });
   }
 
@@ -1209,11 +1336,12 @@ if (typeof module !== 'undefined' && module.exports) {
     setMessage();
     var input = f.elements.namedItem('email');
     var email = input.value.trim();
-    if (!email || !input.validity.valid){ setMessage('error', 'Enter a valid email address.'); input.focus(); return; }
+    if (!validEmail(input)) return;
     var epoch = recoveryEpoch;
     function current(){ return epoch === recoveryEpoch && overlay.classList.contains('open'); }
-    btn.disabled = true; btn.textContent = 'Sending...';
-    Promise.resolve().then(function(){ return window.SLAuth.forgotPassword(email); }).then(function(){
+    btn.disabled = true; btn.textContent = 'Sending…'; f.setAttribute('aria-busy', 'true');
+    Promise.resolve().then(function(){ return window.SLAuth.forgotPassword(email); }).then(function(result){
+      if (!result || result.ok !== true) throw new Error('Reset request not confirmed');
       if (current()) setMessage('success', 'If an account exists for that email, a password reset link has been requested. Check your inbox and spam folder.');
     }).catch(function(err){
       if (!current()) return;
@@ -1221,7 +1349,7 @@ if (typeof module !== 'undefined' && module.exports) {
         ? 'Too many reset requests. Please wait a few minutes, then try again.'
         : 'We could not confirm your reset request. Check your connection and try again.');
     }).finally(function(){
-      if (current()) { btn.disabled = false; btn.textContent = 'Send reset link'; }
+      if (current()) { btn.disabled = false; btn.textContent = 'Send reset link'; f.removeAttribute('aria-busy'); }
     });
   }
 
@@ -1235,9 +1363,14 @@ if (typeof module !== 'undefined' && module.exports) {
     setMessage();
     switchTab(tab || 'login');
     overlay.classList.add('open');
+    isolateBackground();
+    overlay.focus();
     restoreOAuth();
     if ((tab || 'login') !== 'forgot') prepareOAuth();
     document.body.style.overflow = 'hidden';
+    // The overlay is now visible. Focus before returning, so a delayed callback
+    // cannot steal the person's next click or send typing into the wrong field.
+    focusAuthControl(false);
   }
 
   function close(){
@@ -1245,6 +1378,9 @@ if (typeof module !== 'undefined' && module.exports) {
     resetRecovery();
     resetOAuth();
     overlay.classList.remove('open');
+    restoreBackground();
+    overlay.querySelectorAll('[name="password"]').forEach(function(input){ input.value = ''; input.type = 'password'; });
+    overlay.querySelectorAll('[data-password-toggle]').forEach(function(button){ button.textContent = 'Show'; button.setAttribute('aria-label', 'Show password'); button.setAttribute('aria-pressed', 'false'); });
     document.body.style.overflow = previousOverflow || '';
     if (previousFocus && previousFocus.isConnected && !previousFocus.disabled) previousFocus.focus();
     setMessage();
@@ -3784,6 +3920,10 @@ if (typeof module !== 'undefined' && module.exports) {
  */
 (function () {
   'use strict';
+  if (window.__slUserSearchLoaded) return;
+  window.__slUserSearchLoaded = true;
+  var session, epoch = 0, searchSerial = 0, profileSerial = 0, searchTimer, returnFocus, previousOverflow;
+  var uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
   function ready(fn) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
@@ -3793,8 +3933,31 @@ if (typeof module !== 'undefined' && module.exports) {
   ready(function () {
     if (!window.SLApi) return;
     injectStyles();
-    tryInject();
-    window.addEventListener('sl-auth-ready', tryInject);
+    refreshSession();
+    ['sl-auth-ready', 'sl-auth-change', 'sl-auth-changed'].forEach(function (name) {
+      window.addEventListener(name, function () { refreshSession(true); });
+      document.addEventListener(name, function () { refreshSession(true); });
+    });
+    window.addEventListener('storage', function (event) {
+      if (event.key === 'sl_jwt_token' || event.key === null) refreshSession(true);
+    });
+    window.addEventListener('sl:explicit-modal', function () {
+      closeSearch(); closePublicProfile();
+    });
+    document.addEventListener('click', function (event) {
+      var wrap = document.querySelector('.sl-usearch-wrap');
+      if (wrap && !wrap.contains(event.target)) closeSearch();
+    });
+    document.addEventListener('keydown', function (event) {
+      var modal = document.getElementById('slPublicProfile');
+      if (event.key === 'Escape') { closeSearch(); closePublicProfile(); }
+      if (modal && event.key === 'Tab') {
+        var controls = Array.from(modal.querySelectorAll('button:not(:disabled), a[href], input:not(:disabled)'));
+        var first = controls[0], last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+    });
     setTimeout(tryInject, 1500);
   });
 
@@ -3831,9 +3994,12 @@ if (typeof module !== 'undefined' && module.exports) {
       }
       .sl-usearch-row {
         display: flex; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer;
+        width: 100%; border: 0; background: transparent; text-align: left; color: inherit;
       }
       .sl-usearch-row:hover { background: rgba(255,255,255,0.04); }
-      .sl-usearch-row img { width: 36px; height: 36px; border-radius: 50%; }
+      .sl-usearch-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }
+      .sl-usearch-row:focus-visible, #slPublicProfile button:focus-visible, #slPublicProfile a:focus-visible { outline: 2px solid #D4AF37; outline-offset: 3px; }
+      .sl-pp-initial { display: inline-flex; align-items: center; justify-content: center; color: #D4AF37; background: #222; font-weight: 700; }
       .sl-usearch-row .sl-usearch-meta { flex: 1; min-width: 0; font-size: 13px; }
       .sl-usearch-row .sl-usearch-meta strong { color: #fff; display: block; }
       .sl-usearch-row .sl-usearch-meta small { color: #888; }
@@ -3848,247 +4014,205 @@ if (typeof module !== 'undefined' && module.exports) {
         margin-top: -44px; background: #0a0a0a;
       }
       #slPublicProfile .sl-pp-stats {
-        display: grid; grid-template-columns: repeat(3,1fr); gap: 12px;
+        display: grid; grid-template-columns: repeat(2,1fr); gap: 12px;
         margin: 16px 0; padding: 12px; background: rgba(255,255,255,0.04);
         border-radius: 10px; text-align: center;
       }
       #slPublicProfile .sl-pp-stat strong { color: #D4AF37; font-size: 18px; display: block; }
       #slPublicProfile .sl-pp-stat small { color: rgba(255,255,255,0.6); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
       #slPublicProfile .sl-pp-actions {
-        display: flex; gap: 8px; margin-top: 12px;
+        display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
       }
       #slPublicProfile .sl-pp-actions button { flex: 1; }
     `;
     document.head.appendChild(st);
   }
 
-  function esc(s) { if (s == null) return ''; return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-  function avatar(u) {
-    if (!u) return (window.SL_AVATAR ? SL_AVATAR('?') : 'https://ui-avatars.com/api/?name=?&size=88&background=D4AF37&color=0a0a0a');
-    if (u.avatar_url) return u.avatar_url;
-    var n = u.display_name || u.username || '?';
-    return (window.SL_AVATAR ? SL_AVATAR(n) : 'https://ui-avatars.com/api/?name=' + encodeURIComponent(n) + '&size=88&background=D4AF37&color=0a0a0a');
-  }
-
-  function tryInject() {
-    if (!window.SLApi || !window.SLApi.isLoggedIn()) {
-      var existing = document.querySelector('.sl-usearch-wrap');
-      if (existing) existing.remove();
-      return;
+  function esc(value) { return value == null ? '' : String(value).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function token() { try { return window.SLApi && window.SLApi.getToken ? window.SLApi.getToken() || '' : localStorage.getItem('sl_jwt_token') || ''; } catch (_) { return ''; } }
+  function current(ticket) { return ticket.epoch === epoch && ticket.session === session && ticket.session === token(); }
+  function refreshSession(force) {
+    var next = token();
+    if (force || next !== session) {
+      session = next; epoch++; searchSerial++; clearTimeout(searchTimer);
+      closePublicProfile();
+      var wrap = document.querySelector('.sl-usearch-wrap'); if (wrap) wrap.remove();
     }
+    tryInject();
+  }
+  function avatarHTML(user, className) {
+    var value = user.avatar_url, url;
+    try { url = typeof value === 'string' && value.length <= 2048 ? new URL(value) : null; } catch (_) { url = null; }
+    if (url && url.protocol === 'https:' && !url.username && !url.password) return '<img class="' + className + '" src="' + esc(url.href) + '" alt="" referrerpolicy="no-referrer">';
+    return '<span class="' + className + ' sl-pp-initial" aria-hidden="true">' + esc(String(user.display_name || user.username || '?').trim().slice(0, 1).toUpperCase()) + '</span>';
+  }
+  function closeSearch() {
+    var panel = document.getElementById('slUSearchPanel'), button = document.getElementById('slUSearchBtn');
+    if (panel) panel.classList.remove('open'); if (button) button.setAttribute('aria-expanded', 'false');
+  }
+  function resetSearch() {
+    searchSerial++; clearTimeout(searchTimer); closeSearch();
+    var input = document.getElementById('slUSearchInput'), results = document.getElementById('slUSearchResults');
+    if (input) input.value = '';
+    if (results) results.innerHTML = '<div class="sl-usearch-empty">Type at least 2 characters</div>';
+  }
+  function tryInject() {
+    if (!window.SLApi || !token()) return;
     if (document.querySelector('.sl-usearch-wrap')) return;
-
-    var trigger = document.querySelector('.sl-bell-wrap') ||
-                  document.querySelector('.nav-right .sl-auth-trigger') ||
-                  document.querySelector('.nav-right button');
+    var trigger = document.querySelector('.sl-bell-wrap') || document.querySelector('.nav-right .sl-auth-trigger') || document.querySelector('.nav-right button');
     if (!trigger || !trigger.parentElement) return;
-
-    var wrap = document.createElement('div');
-    wrap.className = 'sl-usearch-wrap';
-    wrap.innerHTML =
-      '<button class="sl-usearch-btn" id="slUSearchBtn" aria-label="Find people"><i class="fas fa-search"></i></button>' +
-      '<div class="sl-usearch-panel" id="slUSearchPanel">' +
-      '  <input type="text" id="slUSearchInput" placeholder="Search people by username…" autocomplete="off">' +
-      '  <div class="sl-usearch-results" id="slUSearchResults">' +
-      '    <div class="sl-usearch-empty">Type at least 2 characters</div>' +
-      '  </div>' +
-      '</div>';
+    var wrap = document.createElement('div'); wrap.className = 'sl-usearch-wrap';
+    wrap.innerHTML = '<button type="button" class="sl-usearch-btn" id="slUSearchBtn" aria-label="Find people" aria-expanded="false" aria-controls="slUSearchPanel"><i class="fas fa-search" aria-hidden="true"></i></button>' +
+      '<div class="sl-usearch-panel" id="slUSearchPanel"><input type="search" id="slUSearchInput" aria-label="Search people by username" placeholder="Search people by username…" maxlength="80" autocomplete="off">' +
+      '<div class="sl-usearch-results" id="slUSearchResults" role="status" aria-live="polite"><div class="sl-usearch-empty">Type at least 2 characters</div></div></div>';
     trigger.parentElement.insertBefore(wrap, trigger);
-
-    var btn = document.getElementById('slUSearchBtn');
-    var panel = document.getElementById('slUSearchPanel');
-    var input = document.getElementById('slUSearchInput');
-    var results = document.getElementById('slUSearchResults');
-
-    btn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      panel.classList.toggle('open');
+    var button = wrap.querySelector('#slUSearchBtn'), panel = wrap.querySelector('#slUSearchPanel'), input = wrap.querySelector('#slUSearchInput'), results = wrap.querySelector('#slUSearchResults');
+    button.addEventListener('click', function (event) {
+      event.stopPropagation(); if (token() !== session) { refreshSession(); return; }
+      panel.classList.toggle('open'); button.setAttribute('aria-expanded', String(panel.classList.contains('open')));
       if (panel.classList.contains('open')) input.focus();
     });
-    document.addEventListener('click', function (e) {
-      if (panel.classList.contains('open') && !wrap.contains(e.target)) {
-        panel.classList.remove('open');
-      }
-    });
-
-    var timer = null;
-    input.addEventListener('input', function () {
-      var q = this.value.trim();
-      clearTimeout(timer);
-      if (q.length < 2) {
-        results.innerHTML = '<div class="sl-usearch-empty">Type at least 2 characters</div>';
-        return;
-      }
-      results.innerHTML = '<div class="sl-usearch-empty"><i class="fas fa-spinner fa-spin"></i></div>';
-      timer = setTimeout(function () {
-        SLApi.searchUsers(q, 10).then(function (r) {
-          var users = (r && (r.users || r.results)) || [];
-          if (users.length === 0) {
-            results.innerHTML = '<div class="sl-usearch-empty">No users found</div>';
-            return;
-          }
-          results.innerHTML = users.map(function (u) {
-            return (
-              '<div class="sl-usearch-row" data-user="' + esc(u.username || u.id) + '">' +
-              '  <img src="' + esc(avatar(u)) + '" alt="">' +
-              '  <div class="sl-usearch-meta">' +
-              '    <strong>' + esc(u.display_name || u.username) + '</strong>' +
-              '    <small>@' + esc(u.username || '') + '</small>' +
-              '  </div>' +
-              '</div>'
-            );
-          }).join('');
-          results.querySelectorAll('.sl-usearch-row').forEach(function (row) {
-            row.addEventListener('click', function () {
-              panel.classList.remove('open');
-              openPublicProfile(this.dataset.user);
-            });
-          });
+    function search() {
+      if (token() !== session) { refreshSession(); return; }
+      var query = input.value.trim(), ticket = { epoch: epoch, session: session, serial: ++searchSerial };
+      clearTimeout(searchTimer);
+      function valid() { return current(ticket) && ticket.serial === searchSerial && wrap.isConnected && input.value.trim() === query; }
+      if (query.replace(/^@/, '').length < 2) { results.innerHTML = '<div class="sl-usearch-empty">Type at least 2 characters</div>'; return; }
+      results.innerHTML = '<div class="sl-usearch-empty">Searching people…</div>';
+      searchTimer = setTimeout(function () {
+        if (!valid()) return;
+        Promise.resolve().then(function () { if (valid()) return window.SLApi.searchUsers(query, 10); }).then(function (response) {
+          if (!valid()) return;
+          var users = response && (response.results || response.users);
+          if (!Array.isArray(users) || users.some(function (u) { return !u || !uuid.test(u.id || ''); })) throw new Error('People search returned an incomplete response.');
+          results.innerHTML = users.length ? users.map(function (u) {
+            return '<button type="button" class="sl-usearch-row" data-user="' + esc(u.id) + '">' + avatarHTML(u, 'sl-usearch-avatar') + '<span class="sl-usearch-meta"><strong>' + esc(u.display_name || u.username || 'SceneLink member') + '</strong><small>' + esc(u.username ? '@' + u.username : '') + '</small></span></button>';
+          }).join('') : '<div class="sl-usearch-empty">No visible matches. Try an exact @username.</div>';
+          results.querySelectorAll('[data-user]').forEach(function (row) { row.addEventListener('click', function () { if (valid()) { closeSearch(); openPublicProfile(row.dataset.user); } }); });
         }).catch(function () {
-          results.innerHTML = '<div class="sl-usearch-empty" style="color:#e57373;">Search failed</div>';
+          if (!valid()) return;
+          results.innerHTML = '<div class="sl-usearch-empty">People search could not be loaded. <button type="button">Retry search</button></div>';
+          results.querySelector('button').addEventListener('click', search);
         });
       }, 280);
-    });
+    }
+    input.addEventListener('input', search);
   }
 
-  // ---------- Public profile modal ----------
+  // This modal owns its actions. Legacy decorators must not perform additional
+  // profile reads or attach actions whose identity/session has already changed.
   function buildPublicProfile() {
-    if (document.getElementById('slPublicProfile')) return;
-    var m = document.createElement('div');
-    m.id = 'slPublicProfile';
-    m.className = 'sl-modal-overlay';
-    m.innerHTML =
-      '<div class="sl-modal" style="max-width:460px;">' +
-      '  <div class="sl-modal-header">' +
-      '    <h2>Profile</h2>' +
-      '    <button class="sl-modal-close" data-close="slPublicProfile"><i class="fas fa-times"></i></button>' +
-      '  </div>' +
-      '  <div class="sl-modal-body" id="slPPBody" style="padding-top:24px;">' +
-      '    <div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin"></i></div>' +
-      '  </div>' +
-      '</div>';
-    document.body.appendChild(m);
-    m.querySelectorAll('[data-close]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        m.classList.remove('active');
-        document.body.style.overflow = '';
-      });
+    var modal = document.getElementById('slPublicProfile'); if (modal) return modal;
+    modal = document.createElement('div'); modal.id = 'slPublicProfile'; modal.className = 'sl-modal-overlay';
+    modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true'); modal.setAttribute('aria-labelledby', 'slPPTitle');
+    modal.innerHTML = '<div class="sl-modal" style="max-width:460px;"><div class="sl-modal-header"><h2 id="slPPTitle">Profile</h2><button type="button" class="sl-modal-close" data-close="slPublicProfile" aria-label="Close profile"><i class="fas fa-times" aria-hidden="true"></i></button></div><div class="sl-modal-body" id="slPPBody" data-sl-profile-managed="true" style="padding-top:24px;"></div></div>';
+    modal.querySelector('[data-close]').addEventListener('click', closePublicProfile);
+    modal.addEventListener('click', function (event) { if (event.target === modal) closePublicProfile(); });
+    document.body.appendChild(modal); return modal;
+  }
+  function closePublicProfile() {
+    profileSerial++;
+    var modal = document.getElementById('slPublicProfile');
+    if (!modal) return;
+    modal.remove(); document.body.style.overflow = previousOverflow || ''; previousOverflow = undefined;
+    if (returnFocus && returnFocus.isConnected) returnFocus.focus(); returnFocus = null;
+  }
+  function profileCurrent(context) { return current(context) && context.serial === profileSerial && context.modal.isConnected && context.modal.classList.contains('active'); }
+  function statusHTML(message) { return '<p id="slPPStatus" role="status" aria-live="polite">' + esc(message || '') + '</p>'; }
+  function openPublicProfile(identifier, confirmation) {
+    if (!window.SLApi) return;
+    if (token() !== session) refreshSession();
+    var modal = buildPublicProfile(), body = modal.querySelector('#slPPBody');
+    if (!modal.classList.contains('active')) { returnFocus = document.activeElement; previousOverflow = document.body.style.overflow; }
+    modal.classList.add('active'); document.body.style.overflow = 'hidden';
+    var context = { epoch: epoch, session: session, serial: ++profileSerial, modal: modal, body: body, busy: false };
+    body.innerHTML = '<p role="status">Loading profile…</p>' + statusHTML(confirmation);
+    modal.querySelector('[data-close]').focus();
+    return Promise.resolve().then(function () { if (profileCurrent(context)) return window.SLApi.userByIdentifier(identifier); }).then(function (response) {
+      if (!profileCurrent(context)) return;
+      var user = response && response.user, relation = response && response.friendship_status;
+      if (!user || !uuid.test(user.id || '') || (uuid.test(identifier) && user.id.toLowerCase() !== identifier.toLowerCase()) || typeof response.can_view !== 'boolean' || typeof response.is_me !== 'boolean' ||
+          (relation && (!uuid.test(relation.id || '') || !['accepted', 'pending', 'declined'].includes(relation.status) || relation.status === 'pending' && !['incoming', 'outgoing'].includes(relation.direction)))) throw new Error('Profile returned an incomplete response. Please retry.');
+      context.user = user; context.profile = response;
+      var counts = response.can_view ? [['post_count', 'Posts'], ['friend_count', 'Friends']].filter(function (item) { return Number.isSafeInteger(user[item[0]]) && user[item[0]] >= 0; }) : [];
+      body.innerHTML = '<div class="sl-pp-cover"></div>' + avatarHTML(user, 'sl-pp-avatar') + '<h2 style="color:#fff;margin:8px 0 2px;">' + esc(user.display_name || user.username || 'SceneLink member') + '</h2>' +
+        '<div class="sl-pp-username" style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:4px;">' + esc(user.username ? '@' + user.username : '') + '</div>' +
+        (response.can_view && user.bio ? '<p style="color:#ccc;font-size:14px;margin:8px 0;line-height:1.5;">' + esc(user.bio) + '</p>' : '') +
+        (!response.can_view ? '<p>This profile is private. An accepted friendship is required to see shared details.</p>' : '') +
+        (counts.length ? '<div class="sl-pp-stats">' + counts.map(function (item) { return '<div class="sl-pp-stat"><strong>' + user[item[0]] + '</strong><small>' + item[1] + '</small></div>'; }).join('') + '</div>' : '') +
+        renderActions(context) + statusHTML(confirmation) + '<p><a href="/profile?u=' + encodeURIComponent(user.id) + '">View ' + (response.is_me ? 'my' : 'full') + ' profile</a></p>';
+      body.querySelectorAll('[data-pp-act]').forEach(function (button) { button.addEventListener('click', function () { act(context, button.dataset.ppAct); }); });
+    }).catch(function (error) {
+      if (!profileCurrent(context)) return;
+      body.innerHTML = '<p role="alert">' + esc(error && error.message || 'Could not load profile.') + '</p>' + statusHTML(confirmation) + '<button type="button" data-profile-retry>Retry profile</button>';
+      body.querySelector('[data-profile-retry]').addEventListener('click', function () { if (profileCurrent(context)) openPublicProfile(identifier, confirmation); });
     });
   }
-
-  function openPublicProfile(identifier) {
-    buildPublicProfile();
-    var m = document.getElementById('slPublicProfile');
-    m.classList.add('active');
-    document.body.style.overflow = 'hidden';
-    var body = document.getElementById('slPPBody');
-    body.innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin"></i></div>';
-
-    SLApi.userByIdentifier(identifier).then(function (r) {
-      var u = (r && r.user) || r;
-      if (!u) throw new Error('No user');
-      var stats = u.stats || {
-        post_count: u.post_count || 0,
-        checkin_count: u.checkin_count || 0,
-        friend_count: u.friend_count || 0,
-        review_count: u.review_count || 0
-      };
-      var status = u.friendship_status || r.friendship_status || 'none';
-
-      body.innerHTML =
-        '<div class="sl-pp-cover"></div>' +
-        '<img class="sl-pp-avatar" src="' + esc(avatar(u)) + '">' +
-        '<h2 style="color:#fff;margin:8px 0 2px;">' + esc(u.display_name || u.username) + '</h2>' +
-        '<div style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:4px;">@' + esc(u.username || '') + '</div>' +
-        (u.bio ? '<p style="color:#ccc;font-size:14px;margin:8px 0;line-height:1.5;">' + esc(u.bio) + '</p>' : '') +
-        '<div class="sl-pp-stats">' +
-        '  <div class="sl-pp-stat"><strong>' + (stats.post_count || 0) + '</strong><small>Posts</small></div>' +
-        '  <div class="sl-pp-stat"><strong>' + (stats.checkin_count || 0) + '</strong><small>Check-ins</small></div>' +
-        '  <div class="sl-pp-stat"><strong>' + (stats.friend_count || 0) + '</strong><small>Friends</small></div>' +
-        '</div>' +
-        renderActions(u, status);
-
-      wireActions(u, status);
-    }).catch(function (e) {
-      body.innerHTML = '<div style="text-align:center;padding:40px;color:#e57373;">' + esc(e.message || 'Could not load profile') + '</div>';
-    });
+  function actionButton(action, label) { return '<button type="button" class="sl-btn sl-btn-secondary" data-pp-act="' + action + '">' + label + '</button>'; }
+  function renderActions(context) {
+    var profile = context.profile, relation = profile.friendship_status, actions = '';
+    if (profile.is_me) return '';
+    if (!context.session) return '<button type="button" class="sl-auth-trigger sl-btn sl-btn-primary">Sign in to connect</button>';
+    if (relation && relation.status === 'accepted') actions += actionButton('remove', 'Remove Friend');
+    else if (relation && relation.status === 'pending' && relation.direction === 'incoming') actions += actionButton('accept', 'Accept Request') + actionButton('decline', 'Decline');
+    else if (relation && relation.status === 'pending' && relation.direction === 'outgoing') actions += actionButton('cancel', 'Cancel Request');
+    else actions += actionButton('request', 'Add Friend');
+    if (profile.can_message === true) actions += actionButton('message', 'Message');
+    actions += actionButton('block', 'Block');
+    return '<div class="sl-pp-actions">' + actions + '</div>' + (profile.can_message === true ? '' : '<p>Messaging is unavailable under the current privacy settings.</p>');
   }
-
-  function renderActions(u, status) {
-    var myId = window.SL_USER && window.SL_USER.id;
-    if (myId === u.id) {
-      return '<div class="sl-pp-actions"><button class="sl-btn sl-btn-secondary" onclick="window.location.href=\'/profile.html\'">View My Profile</button></div>';
+  function confirmationFor(action, result, context) {
+    var user = context.user, relation = context.profile.friendship_status;
+    function unconfirmed() { throw new Error('The service did not confirm this change. Reload the profile before trying again.'); }
+    if (!result || typeof result !== 'object') return unconfirmed();
+    if (action === 'request') {
+      if (!uuid.test(result.friendship_id || '')) return unconfirmed();
+      if (result.status === 'accepted') return 'You are already friends.';
+      if (result.status !== 'pending' || !['incoming', 'outgoing'].includes(result.direction)) return unconfirmed();
+      return result.direction === 'incoming' ? 'This member already sent you a request. Accept it to become friends.' : 'Friend request sent. It is pending until this member accepts.';
     }
-    var html = '<div class="sl-pp-actions">';
-    if (status === 'accepted' || status === 'friends') {
-      html += '<button class="sl-btn sl-btn-secondary" data-pp-act="remove">Remove Friend</button>';
-      html += '<button class="sl-btn sl-btn-primary" data-pp-act="message"><i class="fas fa-envelope"></i> Message</button>';
-    } else if (status === 'pending_out') {
-      html += '<button class="sl-btn sl-btn-secondary" data-pp-act="cancel">Cancel Request</button>';
-      html += '<button class="sl-btn sl-btn-primary" data-pp-act="message"><i class="fas fa-envelope"></i> Message</button>';
-    } else if (status === 'pending_in') {
-      html += '<button class="sl-btn sl-btn-primary" data-pp-act="accept">Accept Request</button>';
-      html += '<button class="sl-btn sl-btn-secondary" data-pp-act="decline">Decline</button>';
-    } else {
-      html += '<button class="sl-btn sl-btn-primary" data-pp-act="request"><i class="fas fa-user-plus"></i> Add Friend</button>';
-      html += '<button class="sl-btn sl-btn-secondary" data-pp-act="message"><i class="fas fa-envelope"></i> Message</button>';
+    if (action === 'accept' || action === 'decline') {
+      if (!relation || result.friendship_id !== relation.id || result.status !== (action === 'accept' ? 'accepted' : 'declined')) return unconfirmed();
+      return action === 'accept' ? 'Friend request accepted.' : 'Request declined.';
     }
-    html += '</div>';
-    return html;
+    if (action === 'cancel' || action === 'remove') {
+      if (result.removed !== true || result.user_id !== user.id) return unconfirmed();
+      return action === 'cancel' ? 'Request cancelled.' : 'Friend removed.';
+    }
+    if (action === 'block' && result.success === true && result.blocked_id === user.id) return 'Member blocked. Any friendship has ended.';
+    return unconfirmed();
   }
-
-  function wireActions(u, status) {
-    document.querySelectorAll('[data-pp-act]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var act = this.dataset.ppAct;
-        var userId = u.id;
-        var username = u.username;
-        var origHTML = this.innerHTML;
-        this.disabled = true;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        var done = function (msg, refresh) {
-          if (msg && window.SLToast) window.SLToast(msg, 2500, 'success');
-          if (refresh) openPublicProfile(username || userId);
-        };
-        var fail = function (e) {
-          if (window.SLToast) window.SLToast((e && e.message) || 'Failed', 2800, 'error');
-          btn.disabled = false;
-          btn.innerHTML = origHTML;
-        };
-        switch (act) {
-          case 'request':
-            SLApi.sendFriendRequest({ user_id: userId }).then(function () { done('Friend request sent', true); }).catch(fail);
-            break;
-          case 'cancel':
-          case 'remove':
-            SLApi.removeFriend(userId).then(function () { done(act === 'remove' ? 'Friend removed' : 'Request cancelled', true); }).catch(fail);
-            break;
-          case 'accept':
-            SLApi.friendsPending().then(function (r) {
-              var inc = (r && r.incoming) || [];
-              var match = inc.filter(function (x) { return x.other_user_id === userId || x.requester_id === userId; })[0];
-              if (!match) throw new Error('No pending request');
-              return SLApi.acceptFriend(match.friendship_id);
-            }).then(function () { done('Friend accepted 🎉', true); }).catch(fail);
-            break;
-          case 'decline':
-            SLApi.friendsPending().then(function (r) {
-              var inc = (r && r.incoming) || [];
-              var match = inc.filter(function (x) { return x.other_user_id === userId || x.requester_id === userId; })[0];
-              if (!match) throw new Error('No pending request');
-              return SLApi.declineFriend(match.friendship_id);
-            }).then(function () { done('Declined', true); }).catch(fail);
-            break;
-          case 'message':
-            document.getElementById('slPublicProfile').classList.remove('active');
-            document.body.style.overflow = '';
-            window.location.href = '/messages.html?user=' + encodeURIComponent(userId);
-            break;
-        }
-      });
+  function act(context, action) {
+    if (token() !== session) { refreshSession(); return; }
+    if (!profileCurrent(context) || !context.session || context.busy) return;
+    if (action === 'message') {
+      if (context.profile.can_message === true) { closePublicProfile(); window.location.href = '/messages?to=' + encodeURIComponent(context.user.id); }
+      return;
+    }
+    if (['remove', 'cancel', 'block'].includes(action) && !window.confirm(action === 'block' ? 'Block this member? This ends any friendship and prevents contact.' : action === 'cancel' ? 'Cancel this pending friend request?' : 'Remove this friendship?')) return;
+    if (!profileCurrent(context)) return;
+    var relation = context.profile.friendship_status, api = window.SLApi, id = context.user.id;
+    var methods = { request: ['sendFriendRequest', { user_id: id }], accept: ['acceptFriend', relation && relation.id], decline: ['declineFriend', relation && relation.id], cancel: ['removeFriend', id], remove: ['removeFriend', id], block: ['blockUser', id] };
+    var operation = methods[action]; if (!operation) return;
+    context.busy = true;
+    var controls = context.body.querySelectorAll('[data-pp-act]'); controls.forEach(function (button) { button.disabled = true; });
+    context.body.querySelector('#slPPStatus').textContent = 'Saving your choice…';
+    Promise.resolve().then(function () { if (profileCurrent(context)) return api[operation[0]](operation[1]); }).then(function (result) {
+      if (!profileCurrent(context)) return;
+      var message = confirmationFor(action, result, context);
+      if (window.SLToast) window.SLToast(message, 3000, 'success');
+      if (action === 'block') { resetSearch(); closePublicProfile(); }
+      else openPublicProfile(id, message);
+    }).catch(function (error) {
+      if (!profileCurrent(context)) return;
+      var message = error && error.message || 'Could not save your choice. Please retry.';
+      context.body.querySelector('#slPPStatus').textContent = message;
+      if (window.SLToast) window.SLToast(message, 3000, 'error');
+    }).finally(function () {
+      context.busy = false;
+      if (profileCurrent(context)) controls.forEach(function (button) { button.disabled = false; });
     });
   }
-
   window.SLUserSearch = { openProfile: openPublicProfile };
 })();
 
@@ -4434,7 +4558,7 @@ if (typeof module !== 'undefined' && module.exports) {
     var modal = document.getElementById('slPublicProfile');
     if (!modal) return;
     var body = document.getElementById('slPPBody');
-    if (!body || body.getAttribute('data-p6e-decorating')) return;
+    if (!body || body.hasAttribute('data-sl-profile-managed') || body.getAttribute('data-p6e-decorating')) return;
 
     // The page exposes the loaded user via window-scoped state managed by
     // sl-user-search.js. We don't have a direct hook, so we read from the DOM:
@@ -6280,11 +6404,11 @@ if (typeof module !== 'undefined' && module.exports) {
 
 /* === js/sl-account-settings.js === */
 /**
- * SL Account Settings — auto-injects "Danger Zone" section with Delete My Account
- * on profile.html. Required for App Store compliance (Guideline 5.1.1(v)).
+ * SL Account Settings — mounts account controls in the owner's Privacy & settings
+ * panel, with a main-content fallback for legacy profile pages.
  *
- * The button opens a confirmation modal that requires password re-entry
- * (including OAuth accounts).
+ * Confirmation uses password re-entry or a recent verified provider sign-in,
+ * as required by the server for the current account.
  */
 (function () {
   if (window.__SL_ACCOUNT_SETTINGS__) return;
@@ -6306,39 +6430,41 @@ if (typeof module !== 'undefined' && module.exports) {
     s.id = 'sl-account-settings-style';
     s.textContent = [
       '.sl-acct-settings{margin:32px auto 48px;max-width:960px;padding:0 20px;}',
-      '.sl-acct-card{background:#0d0d0d;border:1px solid rgba(255,255,255,0.08);',
-      ' border-radius:14px;padding:22px;}',
-      '.sl-acct-card h3{margin:0 0 6px 0;font-size:16px;color:#fff;}',
-      '.sl-acct-card p{margin:0 0 16px 0;color:rgba(255,255,255,0.55);font-size:13px;}',
+      '#slspPanelSettings>.sl-acct-settings{margin:16px 0 0;max-width:none;padding:0;}',
+      '.sl-acct-card{background:var(--sl-ui-surface,#191e23);border:1px solid var(--sl-ui-border,#49535e);',
+      ' border-radius:var(--sl-ui-radius,12px);padding:22px;}',
+      '.sl-acct-card h3{margin:0 0 6px 0;font-size:16px;color:var(--sl-ui-text,#f5f6f7);}',
+      '.sl-acct-card p{margin:0 0 16px 0;color:var(--sl-ui-muted,#b9c1ca);font-size:14px;line-height:1.5;}',
       '.sl-acct-danger{border-color:rgba(229,57,53,0.35);}',
       '.sl-acct-danger h3{color:#ff8a80;}',
       '.sl-acct-btn{background:transparent;color:#ff8a80;border:1px solid rgba(229,57,53,0.4);',
-      ' padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;',
+      ' min-height:44px;padding:10px 16px;border-radius:var(--sl-ui-radius,12px);font-size:14px;font-weight:600;cursor:pointer;',
       ' transition:all 0.15s;}',
       '.sl-acct-btn:hover{background:rgba(229,57,53,0.1);border-color:#e53935;color:#fff;}',
       '.sl-acct-btn.neutral{color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.2);}',
       '.sl-acct-btn.neutral:hover{color:#fff;border-color:#D4AF37;}',
+      '#slspPanelSettings .sl-acct-btn{background:transparent;color:#ff8a80;border-color:rgba(229,57,53,0.4);}',
+      '#slspPanelSettings .sl-acct-btn:hover{background:rgba(229,57,53,0.1);color:#fff;border-color:#e53935;}',
+      '#slspPanelSettings .sl-acct-btn.neutral{color:var(--sl-ui-text,#f5f6f7);border-color:var(--sl-ui-border,#49535e);}',
+      '#slspPanelSettings .sl-acct-btn.neutral:hover{background:var(--sl-ui-raised,#252b31);border-color:var(--sl-ui-gold,#e3bc54);}',
       '.sl-acct-ov{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;',
       ' display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;overflow:auto;backdrop-filter:blur(6px);}',
-      '.sl-acct-m{background:#111;border:1px solid rgba(229,57,53,0.3);border-radius:16px;',
-      ' width:100%;max-width:460px;max-height:calc(100dvh - 40px);overflow:auto;box-sizing:border-box;padding:28px;color:#fff;',
+      '.sl-acct-m{background:var(--sl-ui-surface,#191e23);border:1px solid var(--sl-ui-border,#49535e);border-radius:var(--sl-ui-radius,12px);',
+      ' width:100%;max-width:460px;max-height:calc(100dvh - 40px);overflow:auto;box-sizing:border-box;padding:28px;color:var(--sl-ui-text,#f5f6f7);box-shadow:var(--sl-ui-shadow,0 18px 60px rgb(0 0 0 / 28%));',
       ' font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}',
       '.sl-acct-m h2{margin:0 0 10px 0;font-size:20px;color:#ff8a80;}',
-      '.sl-acct-m p{margin:0 0 16px 0;color:rgba(255,255,255,0.75);font-size:14px;line-height:1.5;}',
-      '.sl-acct-m ul{margin:0 0 18px 20px;padding:0;color:rgba(255,255,255,0.65);font-size:13px;}',
+      '.sl-acct-m p{margin:0 0 16px 0;color:var(--sl-ui-muted,#b9c1ca);font-size:14px;line-height:1.5;}',
+      '.sl-acct-m ul{margin:0 0 18px 20px;padding:0;color:var(--sl-ui-muted,#b9c1ca);font-size:14px;line-height:1.5;}',
       '.sl-acct-m ul li{margin-bottom:4px;}',
-      '.sl-acct-m input[type=password]{width:100%;background:#0a0a0a;',
-      ' border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:8px;padding:12px;',
-      ' font-size:14px;box-sizing:border-box;margin-bottom:10px;}',
-      '.sl-acct-m input[type=password]:focus{outline:none;border-color:#D4AF37;}',
-      '.sl-acct-m input[type=text]{width:100%;background:#0a0a0a;',
-      ' border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:8px;padding:12px;',
-      ' font-size:14px;box-sizing:border-box;margin-bottom:10px;}',
-      '.sl-acct-m textarea{width:100%;background:#0a0a0a;border:1px solid rgba(255,255,255,0.15);',
-      ' color:#fff;border-radius:8px;padding:10px;font:inherit;font-size:13px;min-height:60px;',
-      ' resize:vertical;box-sizing:border-box;margin-bottom:10px;}',
+      '.sl-acct-m input{width:100%;min-height:44px;background:var(--sl-ui-bg,#101316);',
+      ' border:1px solid var(--sl-ui-border,#49535e);color:var(--sl-ui-text,#f5f6f7);border-radius:var(--sl-ui-radius,12px);padding:12px;',
+      ' font-size:16px;box-sizing:border-box;margin-bottom:12px;}',
+      '.sl-acct-m label{display:block;margin-bottom:6px;color:var(--sl-ui-muted,#b9c1ca);font-size:14px;}',
+      '.sl-acct-m .sl-acct-link{min-height:44px;background:none;border:0;padding:8px 0;color:var(--sl-ui-gold,#e3bc54);text-decoration:underline;font:inherit;font-size:14px;cursor:pointer;}',
+      '.sl-acct-m [hidden]{display:none!important;}',
+      '.sl-acct-settings :focus-visible,.sl-acct-m :focus-visible{outline:3px solid var(--sl-ui-focus,#f4d88e);outline-offset:3px;}',
       '.sl-acct-m .sl-acct-actions{display:flex;gap:10px;margin-top:12px;}',
-      '.sl-acct-m .sl-acct-actions button{flex:1;padding:12px;border-radius:10px;',
+      '.sl-acct-m .sl-acct-actions button{flex:1;min-height:44px;padding:12px;border-radius:var(--sl-ui-radius,12px);',
       ' font-weight:600;font-size:14px;cursor:pointer;border:none;}',
       '.sl-acct-m .sl-acct-actions .cancel{background:transparent;color:rgba(255,255,255,0.7);',
       ' border:1px solid rgba(255,255,255,0.15);}',
@@ -6368,7 +6494,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (closeDialog) closeDialog();
     var returnFocus = document.activeElement;
     var oldOverflow = document.body.style.overflow;
-    var closed = false, generation = sessionGeneration;
+    var closed = false, generation = sessionGeneration, requirementsTimer = null, requirementsRequest = 0, cancelRequirements = null;
     function ownsSession(){ return sessionKey() === owner && sessionGeneration === generation; }
     function ownsDialog(){ return !closed && ownsSession(); }
     var status = document.getElementById('slAcctStatus');
@@ -6379,10 +6505,11 @@ if (typeof module !== 'undefined' && module.exports) {
     if (prev) prev.remove();
 
     var pwField =
-      '<p style="font-size:12px;color:rgba(255,255,255,0.6);">Password confirmation is required, including accounts created with Google or Apple. If you have not set a SceneLink password, use email recovery first, then sign in again.</p>' +
-      '<button type="button" id="slAcctRecover" style="background:none;border:none;color:#D4AF37;text-decoration:underline;cursor:pointer;margin-bottom:12px">Set or recover my password</button>' +
-      '<label for="slAcctPw" style="font-size:12px;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px;">Re-enter password</label>' +
-      '<input type="password" id="slAcctPw" placeholder="Your password" autocomplete="current-password">';
+      '<div id="slAcctPasswordFields" hidden>' +
+        '<label for="slAcctPw">Re-enter your SceneLink password</label>' +
+        '<input type="password" id="slAcctPw" placeholder="Your password" autocomplete="current-password" disabled>' +
+        '<button type="button" id="slAcctRecover" class="sl-acct-link">Forgot your password?</button>' +
+      '</div>';
 
     var ov = document.createElement('div');
     ov.className = 'sl-acct-ov';
@@ -6393,15 +6520,18 @@ if (typeof module !== 'undefined' && module.exports) {
         '<p>This is permanent and cannot be undone. The following will be deleted:</p>' +
         '<ul>' +
           '<li>Your profile, posts, reviews, and check-ins</li>' +
-          '<li>Your friends, messages, and conversation history</li>' +
+          '<li>Your friend connections and messages you sent</li>' +
           '<li>Your plans and all plan invitations</li>' +
           '<li>Your notifications and push-token registrations</li>' +
         '</ul>' +
-        '<p style="font-size:12px;color:rgba(255,255,255,0.5);">Type <b style="color:#ff8a80;">DELETE</b> to confirm.</p>' +
+        '<p>A deletion receipt retains your account ID and deletion time.</p>' +
+        '<p>Type <b>DELETE</b> to confirm.</p>' +
         '<input type="text" aria-label="Type DELETE to confirm account deletion" id="slAcctConfirm" placeholder="Type DELETE to confirm" autocomplete="off">' +
+        '<p id="slAcctRequirementStatus" role="status" aria-live="polite">Checking how to confirm your account…</p>' +
+        '<p id="slAcctAppleRevokeNotice" hidden>Apple access is not revoked automatically. After deletion, we will show how to disconnect SceneLink in your Apple Account settings.</p>' +
+        '<button type="button" id="slAcctRetryRequirements" class="sl-acct-link" hidden>Try again</button>' +
+        '<button type="button" id="slAcctReauthenticate" class="sl-acct-link" hidden>Sign in again</button>' +
         pwField +
-        '<label for="slAcctReason" style="font-size:12px;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px;margin-top:6px;">Reason (optional — helps us improve)</label>' +
-        '<textarea id="slAcctReason" maxlength="500" placeholder="Why are you leaving?"></textarea>' +
         '<div id="slAcctErr" role="alert" class="sl-acct-err" style="display:none;"></div>' +
         '<div class="sl-acct-actions">' +
           '<button class="cancel" id="slAcctCancel">Keep my account</button>' +
@@ -6414,18 +6544,25 @@ if (typeof module !== 'undefined' && module.exports) {
     function close() {
       if (closed) return;
       closed = true;
+      requirementsRequest++;
+      if (requirementsTimer) clearTimeout(requirementsTimer);
+      if (cancelRequirements) cancelRequirements();
       ov.querySelectorAll("input, textarea").forEach(function(input){ input.value = ""; });
       closeDialog = null;
       try { ov.remove(); } catch(_){}
       document.body.style.overflow = oldOverflow;
       if (returnFocus && returnFocus.isConnected && !returnFocus.disabled) returnFocus.focus();
+      else if (ownsSession()) {
+        var replacement = document.getElementById('slAcctDeleteBtn');
+        if (replacement && !replacement.disabled && !replacement.closest('[hidden]')) replacement.focus();
+      }
       document.removeEventListener('keydown', onKey);
     }
     closeDialog = close;
     function onKey(e){
       if(e.key === 'Escape') { e.preventDefault(); close(); return; }
       if(e.key !== 'Tab') return;
-      var items = Array.from(ov.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), a[href]'));
+      var items = Array.from(ov.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), a[href]')).filter(function(item){ return !item.closest('[hidden]'); });
       var first = items[0], last = items[items.length - 1];
       if (!first) return;
       if (e.shiftKey && (document.activeElement === first || !ov.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
@@ -6436,6 +6573,10 @@ if (typeof module !== 'undefined' && module.exports) {
       close();
       if(window.SLAuthUI && window.SLAuthUI.open) window.SLAuthUI.open('forgot');
     });
+    document.getElementById('slAcctReauthenticate').addEventListener('click', function(){
+      close();
+      if(window.SLAuthUI && window.SLAuthUI.open) window.SLAuthUI.open('login');
+    });
 
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     document.getElementById('slAcctCancel').addEventListener('click', close);
@@ -6443,16 +6584,71 @@ if (typeof module !== 'undefined' && module.exports) {
     var confirmInput = document.getElementById('slAcctConfirm');
     var pwInput = document.getElementById('slAcctPw');
     var confirmBtn = document.getElementById('slAcctConfirmBtn');
+    var confirmation = null;
+    var requirementStatus = document.getElementById('slAcctRequirementStatus');
+    var retryRequirements = document.getElementById('slAcctRetryRequirements');
+    var reauthenticate = document.getElementById('slAcctReauthenticate');
 
     function checkReady() {
       var typed = (confirmInput.value || '').trim() === 'DELETE';
-      var pwOk = !!(pwInput && pwInput.value.length >= 1);
-      confirmBtn.disabled = deleting || !(typed && pwOk);
+      var confirmed = confirmation && confirmation.can_delete && (confirmation.method === 'recent_provider_sign_in' || pwInput.value.length >= 1);
+      confirmBtn.disabled = deleting || !(typed && confirmed);
     }
     confirmInput.addEventListener('input', checkReady);
     if (pwInput) pwInput.addEventListener('input', checkReady);
 
     var deleting = false;
+    function loadRequirements(){
+      var attempt = ++requirementsRequest;
+      confirmation = null;
+      requirementStatus.textContent = 'Checking how to confirm your account…';
+      retryRequirements.hidden = true;
+      reauthenticate.hidden = true;
+      document.getElementById('slAcctAppleRevokeNotice').hidden = true;
+      document.getElementById('slAcctPasswordFields').hidden = true;
+      pwInput.disabled = true;
+      pwInput.value = '';
+      checkReady();
+      var request;
+      try { request = window.SLApi.accountDeletionRequirements(); } catch(error) { request = Promise.reject(error); }
+      var timer;
+      var cancel;
+      var timeout = new Promise(function(_resolve,reject){
+        cancel = cancelRequirements = function(){ reject(new Error('Confirmation check dismissed')); };
+        timer = requirementsTimer = setTimeout(function(){ reject(new Error('Confirmation check timed out')); },12000);
+      });
+      Promise.race([Promise.resolve(request),timeout]).then(function(result){
+        if(!ownsDialog() || attempt !== requirementsRequest) return;
+        var c = result && result.confirmation;
+        if(!c || ['password','recent_provider_sign_in','unavailable'].indexOf(c.method) < 0 ||
+          [null,'google','apple'].indexOf(c.provider) < 0 || typeof c.can_delete !== 'boolean' || typeof c.recent_sign_in_required !== 'boolean' || c.recent_sign_in_window_seconds !== 300 ||
+          (c.method === 'password' && (!c.can_delete || c.recent_sign_in_required)) ||
+          (c.method === 'recent_provider_sign_in' && (!c.provider || c.can_delete === c.recent_sign_in_required)) ||
+          (c.method === 'unavailable' && c.can_delete)) throw new Error('Invalid account confirmation response');
+        confirmation = c;
+        document.getElementById('slAcctAppleRevokeNotice').hidden = c.provider !== 'apple';
+        if(c.method === 'password'){
+          document.getElementById('slAcctPasswordFields').hidden = false;
+          pwInput.disabled = false;
+          requirementStatus.textContent = 'Confirm with your SceneLink password.';
+        }else if(c.method === 'recent_provider_sign_in'){
+          var providerName = c.provider === 'apple' ? 'Apple' : 'Google';
+          requirementStatus.textContent = c.can_delete ? 'Your recent '+providerName+' sign-in confirms this account. Type DELETE to continue.' : 'Sign in again with '+providerName+', then reopen account deletion within five minutes.';
+          reauthenticate.hidden = c.can_delete;
+        }else{
+          requirementStatus.textContent = 'We could not confirm an available sign-in method for deletion. Contact info@scenelink.app for help.';
+          retryRequirements.hidden = false;
+        }
+        checkReady();
+      }).catch(function(){
+        if(!ownsDialog() || attempt !== requirementsRequest) return;
+        confirmation = null;
+        requirementStatus.textContent = 'We could not confirm how to delete this account. Your account has not been deleted. Please try again.';
+        retryRequirements.hidden = false;
+        checkReady();
+      }).finally(function(){ clearTimeout(timer); if(requirementsTimer === timer) requirementsTimer = null; if(cancelRequirements === cancel) cancelRequirements = null; });
+    }
+    retryRequirements.addEventListener('click',loadRequirements);
     confirmBtn.addEventListener('click', function () {
       if(deleting || confirmBtn.disabled) return;
       if (!ownsDialog()) { close(); return; }
@@ -6463,15 +6659,27 @@ if (typeof module !== 'undefined' && module.exports) {
       err.style.display = 'none';
       confirmBtn.disabled = true;
       confirmBtn.textContent = 'Deleting…';
-      var pw = pwInput ? pwInput.value : '';
-      var reason = (document.getElementById('slAcctReason').value || '').trim().slice(0, 500);
+      var pw = confirmation.method === 'password' ? pwInput.value : '';
+      var reason = '';
 
       var request;
-      try { request = window.SLApi.deleteAccount(pw, reason); } catch(e) { request = Promise.reject(e); }
+      try { request = window.SLApi.deleteAccount(pw, reason, 'DELETE'); } catch(e) { request = Promise.reject(e); }
       pwInput.value = '';
-      Promise.resolve(request).then(function (result) {
+      var deletionTimer;
+      var deadline = new Promise(function(_resolve,reject){
+        deletionTimer = setTimeout(function(){
+          var error = new Error('The deletion outcome is unknown because the request timed out. Reload this page to check your account before trying again.');
+          error.code = 'ACCOUNT_DELETION_OUTCOME_UNKNOWN';
+          reject(error);
+        },20000);
+      });
+      // A hung fetch or response body cannot keep the account controls disabled.
+      // Once the deadline wins, later completion must never claim success or
+      // clear a session, even if the same person has opened a new request.
+      Promise.race([Promise.resolve(request),deadline]).then(function (result) {
         if (!ownsSession()) return;
         if(!result || result.deleted !== true) throw new Error('Deletion was not confirmed. Please try again.');
+        var manualAppleRevocation = result.apple_revocation_required === true;
         close();
         // Preserve native push cleanup while this is still the deleted session.
         if (window.Capacitor && window.SLPush && window.SLPush.unregister) {
@@ -6490,21 +6698,27 @@ if (typeof module !== 'undefined' && module.exports) {
               '<div style="font-size:48px;margin-bottom:16px;">👋</div>' +
               '<h1 style="font-size:22px;margin:0 0 12px;color:#D4AF37;">Account deleted</h1>' +
               '<p style="color:rgba(255,255,255,0.7);font-size:14px;line-height:1.5;margin:0 0 24px;">' +
-                'Your SceneLink account has been deleted. See our privacy policy for any records retained for security or legal obligations.' +
+                'Your SceneLink account has been deleted. A deletion receipt retains your account ID and deletion time.' +
               '</p>' +
+              (manualAppleRevocation ?
+                '<p style="color:var(--sl-ui-muted,#b9c1ca);font-size:14px;line-height:1.5;">Apple access has not been revoked automatically. On your iPhone, open Settings, choose your Apple Account, then Sign in with Apple. Select SceneLink and follow Apple&#39;s steps to remove access.</p>' +
+                '<p><a id="slAcctAppleRevokeHelp" href="https://support.apple.com/102571" target="_blank" rel="noopener noreferrer" style="color:var(--sl-ui-gold,#e3bc54);">Open Apple&#39;s instructions</a></p>' : '') +
               '<a href="/" style="display:inline-block;background:#D4AF37;color:#000;' +
               'padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600;">Return home</a>' +
             '</div>' +
           '</div>';
-        setTimeout(function () { if (!sessionKey()) location.href = '/'; }, 3000);
+        // Keep the remaining Apple instructions available until the person leaves.
+        if(!manualAppleRevocation) setTimeout(function () { if (!sessionKey()) location.href = '/'; }, 3000);
       }).catch(function (e) {
         if (!ownsSession()) return;
+        var outcomeUnknown = e && e.code === 'ACCOUNT_DELETION_OUTCOME_UNKNOWN';
         if (closed) {
           var status = document.getElementById('slAcctStatus');
-          if (status) status.textContent = 'Account deletion was not confirmed. Please try again.';
+          if (status) status.textContent = outcomeUnknown ? e.message : 'Account deletion was not confirmed. Please try again.';
           return;
         }
         deleting = false;
+        if(outcomeUnknown) confirmInput.value = '';
         // Phase 6B: if the backend deletion endpoint isn't live yet,
         // pivot to the honest "contact us to delete" path instead of
         // showing a confusing error. This is a temporary gate until
@@ -6541,14 +6755,22 @@ if (typeof module !== 'undefined' && module.exports) {
         }
         err.textContent = msg || 'Could not delete account';
         err.style.display = 'block';
+        if(e && (e.code === 'ACCOUNT_REAUTHENTICATION_REQUIRED' || (e.status === 409 && confirmation && confirmation.method === 'recent_provider_sign_in'))){
+          confirmation = null;
+          reauthenticate.hidden = false;
+          requirementStatus.textContent = 'Sign in again, then reopen account deletion within five minutes.';
+        }
         checkReady();
         confirmBtn.textContent = 'Delete permanently';
-        pwInput.focus();
-      }).finally(function(){ pendingOwners.delete(owner); updateDeleteButton(); });
+        if(!reauthenticate.hidden) reauthenticate.focus();
+        else if(!pwInput.disabled) pwInput.focus();
+        else confirmInput.focus();
+      }).finally(function(){ clearTimeout(deletionTimer); pendingOwners.delete(owner); updateDeleteButton(); });
     });
 
     // Autofocus
     confirmInput.focus();
+    loadRequirements();
   }
 
   function injectSection() {
@@ -6560,10 +6782,12 @@ if (typeof module !== 'undefined' && module.exports) {
     try { token = localStorage.getItem('sl_jwt_token'); } catch(_){}
     if (!token) return;
 
+    // The canonical controller replaces its host after asynchronous profile loads
+    // and saves. Only its own-profile settings panel is an account-controls mount.
+    var profile = document.getElementById('slSocialProfile');
+    var main = profile ? profile.querySelector('#slspPanelSettings') : document.querySelector('main') || document.body;
+    if (!main) return;
     injectStyle();
-
-    // Find main content container
-    var main = document.querySelector('main') || document.body;
     var section = document.createElement('section');
     section.className = 'sl-acct-settings';
     section.id = 'slAcctSettings';
@@ -6575,7 +6799,7 @@ if (typeof module !== 'undefined' && module.exports) {
       '</div>' +
       '<div class="sl-acct-card sl-acct-danger" style="margin-top:14px;">' +
         '<h3>Danger zone</h3>' +
-        '<p>Permanently delete your account and all associated data. This cannot be undone.</p>' +
+        '<p>Permanently delete your account and the content you created. This cannot be undone.</p>' +
         '<button class="sl-acct-btn" id="slAcctDeleteBtn">Delete my account</button>' +
         '<p id="slAcctStatus" role="status" aria-live="polite"></p>' +
       '</div>';
@@ -6603,12 +6827,19 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   function refreshAccount(){
     var current = sessionKey();
-    if (current !== observedSession) { sessionGeneration++; observedSession = current; }
-    if (closeDialog) closeDialog();
-    var section = document.getElementById('slAcctSettings');
-    if (section) section.remove();
+    if (current !== observedSession) {
+      sessionGeneration++; observedSession = current;
+      if (closeDialog) closeDialog();
+      var section = document.getElementById('slAcctSettings');
+      if (section) section.remove();
+      // Wait for the new account's profile, independent of auth-listener order.
+      if (document.getElementById('slSocialProfile')) return;
+    }
     injectSection();
   }
+  window.addEventListener('sl:profile-rendered', function(e){
+    if (e.target === document.getElementById('slSocialProfile')) injectSection();
+  });
   window.addEventListener('sl:explicit-modal', function(){ if (closeDialog) closeDialog(); });
   window.addEventListener('sl-auth-ready', refreshAccount);
   window.addEventListener('sl-auth-changed', refreshAccount);

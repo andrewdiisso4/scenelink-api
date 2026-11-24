@@ -3,6 +3,35 @@
 (function () {
   'use strict';
   var banner, button, status, busy = false, cooldownUntil = 0, timer;
+  var layoutHeader, headerObserver;
+  function alignBanner() {
+    if (!banner || !layoutHeader) return;
+    banner.style.marginTop = '0px';
+    if (window.getComputedStyle(layoutHeader).position !== 'fixed') return;
+    // Body spacing can still reflect the old, shorter header. Reserve only
+    // its uncovered height; document coordinates keep this stable when scrolled.
+    var start = banner.getBoundingClientRect().top + (window.scrollY || 0);
+    banner.style.marginTop = Math.max(0, Math.ceil(layoutHeader.getBoundingClientRect().bottom - start)) + 'px';
+  }
+  function placeBanner() {
+    layoutHeader = document.getElementById('mainHeader');
+    if (!layoutHeader || layoutHeader.parentNode !== document.body) {
+      layoutHeader = null; document.body.prepend(banner); return;
+    }
+    // The mobile header occupies normal flow; place the prompt after it, too.
+    layoutHeader.insertAdjacentElement('afterend', banner);
+    alignBanner();
+    window.addEventListener('resize', alignBanner);
+    if (typeof window.ResizeObserver === 'function') {
+      headerObserver = new window.ResizeObserver(alignBanner);
+      headerObserver.observe(layoutHeader);
+    }
+  }
+  function releaseLayout() {
+    if (headerObserver) headerObserver.disconnect();
+    headerObserver = layoutHeader = null;
+    window.removeEventListener('resize', alignBanner);
+  }
   function user() { return (window.SLAuth && typeof window.SLAuth.user === 'function' ? window.SLAuth.user() : null) || window.SL_USER; }
   function token() {
     if (window.SLAuth && typeof window.SLAuth.getToken === 'function') return window.SLAuth.getToken();
@@ -44,6 +73,7 @@
   function refresh() {
     if (!document.body) return;
     if (!eligible()) {
+      releaseLayout();
       if (banner) banner.remove(); banner = button = status = null;
       if (timer) clearTimeout(timer);
       return;
@@ -57,7 +87,7 @@
     button = document.createElement('button'); button.type = 'button'; button.textContent = 'Resend verification email';
     button.style.cssText = 'padding:10px 16px;background:#d4af37;color:#111;border:1px solid #d4af37;border-radius:6px;font:inherit;cursor:pointer';
     button.addEventListener('click', resend);
-    banner.appendChild(title); banner.appendChild(status); banner.appendChild(button); document.body.prepend(banner);
+    banner.appendChild(title); banner.appendChild(status); banner.appendChild(button); placeBanner();
     countdown();
   }
   window.addEventListener('sl-auth-ready', refresh);

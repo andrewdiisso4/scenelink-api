@@ -22,9 +22,10 @@
   function status(id, text, kind) { const el = $(id); if (el) { el.textContent = text; el.dataset.kind = kind || ''; } }
   function errorText(e) { return e.status === 401 ? 'Your session changed or expired. Sign in again to continue.' : e.code === 'STALE_PROFILE' ? 'This profile changed in another session. Reload the saved profile before applying your draft again.' : e.message || 'This service is unavailable. Please retry.'; }
   function avatar(u, small) {
-    const url = C().safeUrl(u.avatar_url, true), cl = 'slsp-avatar' + (small ? ' slsp-person-avatar' : '');
-    return url ? '<img class="' + cl + '" src="' + E(url) + '" alt="" referrerpolicy="no-referrer">' : '<span class="' + cl + '" aria-hidden="true">' + E(name(u).trim().slice(0,1).toUpperCase()) + '</span>';
+    const url = C().safeUrl(u.avatar_url, true), cl = 'slsp-avatar' + (small ? ' slsp-person-avatar' : ''), initial = name(u).trim().slice(0,1).toUpperCase();
+    return url ? '<img class="' + cl + '" src="' + E(url) + '" data-initial="' + E(initial) + '" alt="" referrerpolicy="no-referrer">' : '<span class="' + cl + '" aria-hidden="true">' + E(initial) + '</span>';
   }
+  function photoPreview(user) { return avatar(user,true) + '<p class="slsp-muted slsp-small">' + (user.avatar_url ? 'Your current saved photo.' : 'No photo saved. Your initial appears instead.') + '</p>'; }
   function action(kind, label, id, fid, extra) { return '<button type="button" data-action="' + E(kind) + '"' + (id ? ' data-id="' + E(id) + '"' : '') + (fid ? ' data-fid="' + E(fid) + '"' : '') + (extra || '') + '>' + E(label) + '</button>'; }
   function profileLink(u) { return '/profile?u=' + encodeURIComponent(u.id || u.username); }
   function relationshipActions(u, rel, message) {
@@ -42,11 +43,11 @@
   }
   function renderHero() {
     const u = state.user, p = state.public || {}, own = state.own;
-    return '<section class="slsp-card slsp-hero">' + avatar(u) + '<div class="slsp-grow"><p class="slsp-kicker">' + (own ? 'Your SceneLink' : 'SceneLink member') + '</p><h1>' + E(name(u)) + '</h1><p class="slsp-muted">' + E(u.username ? '@' + u.username : 'Username not set') + '</p>' + ((own || p.can_view === true) && u.bio ? '<p class="slsp-bio">' + E(u.bio) + '</p>' : '') + ((own || p.can_view === true) && (u.neighborhood || u.city) ? '<p class="slsp-muted slsp-small">' + E([u.neighborhood,u.city].filter(Boolean).join(' · ')) + '</p>' : '') + '<div class="slsp-row">' + (own ? action('edit','Edit profile',null,null,' class="slsp-primary"') + '<a class="slsp-button" href="/messages">Open messages</a>' : C().token() ? relationshipActions(u,p.friendship_status,p.can_message === true) + action('block','Block',u.id) + action('report','Report',u.id) : '<button type="button" class="sl-auth-trigger slsp-primary">Sign in to connect</button>') + '</div>' + (!own && C().token() && p.can_message !== true ? '<p class="slsp-muted slsp-small slsp-actions">Messaging is unavailable under the current privacy settings.</p>' : '') + '</div></section>';
+    return '<section class="slsp-card slsp-hero">' + avatar(u) + '<div class="slsp-grow"><div class="slsp-hero-identity"><p class="slsp-kicker">' + (own ? 'Your SceneLink' : 'SceneLink member') + '</p><h1>' + E(name(u)) + '</h1><p class="slsp-muted">' + E(u.username ? '@' + u.username : 'Username not set') + '</p></div><div class="slsp-hero-details">' + ((own || p.can_view === true) && u.bio ? '<p class="slsp-bio">' + E(u.bio) + '</p>' : '') + ((own || p.can_view === true) && (u.neighborhood || u.city) ? '<p class="slsp-muted slsp-small">' + E([u.neighborhood,u.city].filter(Boolean).join(' · ')) + '</p>' : '') + '<div class="slsp-row">' + (own ? action('edit','Edit profile',null,null,' class="slsp-primary"') + '<a class="slsp-button" href="/messages">Open messages</a>' : C().token() ? relationshipActions(u,p.friendship_status,p.can_message === true) + action('block','Block',u.id) + action('report','Report',u.id) : '<button type="button" class="sl-auth-trigger slsp-primary">Sign in to connect</button>') + '</div>' + (!own && C().token() && p.can_message !== true ? '<p class="slsp-muted slsp-small slsp-actions">Messaging is unavailable under the current privacy settings.</p>' : '') + '</div></div></section>';
   }
   function editForm() {
     const u = state.user, links = Object.fromEntries((u.social_links || []).map(l => [l.provider,l.url]));
-    return '<section class="slsp-card" id="slspEdit" hidden><div class="slsp-row slsp-end"><h2>Edit your profile</h2>' + action('cancel-edit','Cancel') + '</div><form id="slspEditForm" data-revision="' + E(u.profile_revision) + '"><div class="slsp-form-grid"><label>Display name<input name="display_name" maxlength="80" required value="' + E(u.display_name || '') + '"></label><label>Username<input name="username" minlength="3" maxlength="24" pattern="[a-z0-9_]{3,24}" required autocapitalize="none" value="' + E(u.username || '') + '"><small>3–24 lowercase letters, numbers or underscores.</small></label><label class="slsp-full">Bio<textarea name="bio" maxlength="500" rows="3">' + E(u.bio || '') + '</textarea></label><label>Neighborhood<input name="neighborhood" maxlength="80" value="' + E(u.neighborhood || '') + '"></label><label>City<input name="city" maxlength="80" value="' + E(u.city || '') + '"></label><div class="slsp-full"><h3>Profile photo</h3><div id="slspAvatarCapability"><p class="slsp-muted slsp-small">Checking upload availability…</p></div>' + (u.avatar_url ? '<label><input type="checkbox" name="remove_avatar">Remove my current photo when saving</label>' : '') + '</div></div><h3>Link your social profiles</h3><p class="slsp-notice">These are external profile links, not OAuth connections or verified accounts. Never enter passwords. Clear a URL to remove a link.</p><div class="slsp-form-grid">' + Object.entries(providers).map(([key,label]) => '<label>' + E(label) + ' URL<input name="social_' + key + '" type="url" maxlength="400" placeholder="https://…" value="' + E(links[key] || '') + '"></label>').join('') + '</div><p id="slspEditStatus" class="slsp-status" role="status"></p><div class="slsp-row"><button class="slsp-primary" type="submit">Save changes</button>' + action('reload-edit','Reload saved profile') + '</div></form></section>';
+    return '<section class="slsp-card" id="slspEdit" aria-labelledby="slspEditTitle" hidden><div class="slsp-row slsp-end"><h2 id="slspEditTitle">Edit your profile</h2>' + action('cancel-edit','Cancel') + '</div><form id="slspEditForm" data-revision="' + E(u.profile_revision) + '"><div class="slsp-form-grid"><label>Display name<input name="display_name" maxlength="80" required value="' + E(u.display_name || '') + '"></label><label>Username<input name="username" minlength="3" maxlength="24" pattern="[a-z0-9_]{3,24}" required autocapitalize="none" value="' + E(u.username || '') + '"><small>3–24 lowercase letters, numbers or underscores.</small></label><label class="slsp-full">Bio<textarea name="bio" maxlength="500" rows="3">' + E(u.bio || '') + '</textarea></label><label>Neighborhood<input name="neighborhood" maxlength="80" value="' + E(u.neighborhood || '') + '"></label><label>City<input name="city" maxlength="80" value="' + E(u.city || '') + '"></label><div class="slsp-full"><h3>Profile photo</h3><div id="slspAvatarPreview" class="slsp-row">' + photoPreview(u) + '</div><div id="slspAvatarCapability" aria-live="polite"><p class="slsp-muted slsp-small">Checking upload availability…</p></div><label id="slspRemoveAvatar"' + (u.avatar_url ? '' : ' hidden') + '><input type="checkbox" name="remove_avatar">Remove my current photo when saving</label></div></div><h3>Link your social profiles</h3><p class="slsp-notice">These are external profile links, not OAuth connections or verified accounts. Never enter passwords. Clear a URL to remove a link.</p><div class="slsp-form-grid">' + Object.entries(providers).map(([key,label]) => '<label>' + E(label) + ' URL<input name="social_' + key + '" type="url" maxlength="400" placeholder="https://…" value="' + E(links[key] || '') + '"></label>').join('') + '</div><p id="slspEditStatus" class="slsp-status" role="status"></p><div class="slsp-row"><button class="slsp-primary" type="submit">Save changes</button>' + action('reload-edit','Reload saved profile') + '</div></form></section>';
   }
   function setting(name, title, description, checked) { return '<label class="slsp-checkbox"><input type="checkbox" name="' + name + '"' + (checked ? ' checked' : '') + '>' + title + '<span>' + description + '</span></label>'; }
   function settingsPanel() {
@@ -59,6 +60,8 @@
     host.innerHTML = renderHero() + '<p id="slspActionStatus" class="slsp-status" role="status"></p>' + (own ? editForm() + '<div class="slsp-tabs" role="tablist" aria-label="Your profile sections"><button type="button" id="slspTabProfile" role="tab" data-tab="profile" aria-controls="slspPanelProfile">Overview</button><button type="button" id="slspTabFriends" role="tab" data-tab="friends" aria-controls="slspPanelFriends">Friends & search</button><button type="button" id="slspTabSettings" role="tab" data-tab="settings" aria-controls="slspPanelSettings">Privacy & settings</button></div><section id="slspPanelProfile" role="tabpanel" aria-labelledby="slspTabProfile"><div class="slsp-grid"><section class="slsp-card"><div class="slsp-row slsp-end"><h2>Earned on SceneLink</h2>' + action('achievements','Refresh') + '</div><p class="slsp-muted slsp-small">From your saved venues, accepted friendships, shared posts and collaborative plans. Current milestones can change if activity is removed. Not proof of a real-world visit.</p><div id="slspAchievements"><p class="slsp-status">Loading recorded activity…</p></div></section><div>' + renderLinks(u) + '<section class="slsp-card"><h2>Your plans & discoveries</h2><p class="slsp-muted">Keep the next night out close.</p><div class="slsp-row"><a class="slsp-button" href="/my-lists">Saved lists</a><a class="slsp-button" href="/events#my-rsvps">My RSVPs</a><a class="slsp-button" href="/plan-with-friends">Plan with friends</a><a class="slsp-button" href="/social-feed">Social feed</a></div></section></div></div></section><section id="slspPanelFriends" role="tabpanel" aria-labelledby="slspTabFriends" hidden><section class="slsp-card"><h2>Find your people</h2><p class="slsp-muted">Search SceneLink usernames or names. Requests only become friendships when accepted.</p><form id="slspSearchForm" class="slsp-search"><label>Find a member<input id="slspSearchInput" name="q" type="search" minlength="2" maxlength="80" placeholder="Name or @username" autocomplete="off" required></label><button type="submit" class="slsp-primary">Search</button></form><div id="slspSearchResults" aria-live="polite"><p class="slsp-muted slsp-small">Use an exact @username to look for a private profile. Search visibility settings apply.</p></div></section><div class="slsp-grid"><section class="slsp-card"><div class="slsp-row slsp-end"><h2>Friend requests</h2>' + action('friends','Refresh') + '</div><div id="slspRequests"><p class="slsp-status">Loading requests…</p></div></section><section class="slsp-card"><h2>Your friends</h2><div id="slspFriends"><p class="slsp-status">Loading friends…</p></div></section></div></section><section id="slspPanelSettings" role="tabpanel" aria-labelledby="slspTabSettings" hidden>' + settingsPanel() + '</section>' : p.can_view !== true ? '<section class="slsp-card"><h2>This profile is private</h2><p class="slsp-muted">Connect as friends to see the details this member shares.</p></section>' : '<div class="slsp-grid">' + renderLinks(u) + '<section class="slsp-card"><h2>Earned achievements</h2><div id="slspPublicAchievements"></div></section></div>') + (!own ? '<section class="slsp-card" id="slspReport" hidden><h2>Report this member</h2><p class="slsp-muted slsp-small">A report sends information to SceneLink moderation. It does not automatically block a member or guarantee a moderation outcome.</p><form id="slspReportForm"><label>Reason<select name="reason"><option value="spam">Spam</option><option value="harassment">Harassment</option><option value="hate_speech">Hate speech</option><option value="impersonation">Impersonation</option><option value="violence">Violence</option><option value="sexual_content">Sexual content</option><option value="self_harm">Self-harm concern</option><option value="other">Other</option></select></label><label>Additional details<textarea name="details" maxlength="1000" rows="3"></textarea></label><p id="slspReportStatus" class="slsp-status" role="status"></p><div class="slsp-row"><button type="submit">Submit report</button>' + action('cancel-report','Cancel') + '</div></form></section>' : '');
     if (own) { selectTab(location.hash.slice(1),false); loadAchievements(); }
     else if ($('slspPublicAchievements')) renderAchievements(p.achievements,$('slspPublicAchievements'),false);
+    // Notify controls that mount inside the freshly replaced profile panels.
+    host.dispatchEvent(new CustomEvent('sl:profile-rendered',{bubbles:true}));
   }
   function renderAchievements(data, target, own) {
     if (!data || data.source !== 'persisted_scenelink_activity') { target.innerHTML = '<p class="slsp-muted">' + (own ? 'Recorded achievements are unavailable.' : 'No achievements are shared with you.') + '</p>'; return; }
@@ -91,7 +94,7 @@
   }
   function renderFriendList(error, more) {
     const target=$('slspFriends');if(!target)return;
-    target.innerHTML=(state.friendItems.length?'<ul class="slsp-list">'+state.friendItems.map(u=>person(u,relationshipActions(u,{status:'accepted'},true))).join('')+'</ul>':'<p class="slsp-empty">'+(error?'Friends could not be loaded.':'No accepted friends yet. Search above to send a request.')+'</p>')+(error?'<p class="slsp-status" data-kind="error">'+E(errorText(error))+'</p>'+action(more?'friends-more':'friends','Retry friends'):state.friendMore?action('friends-more','Load more friends'):'');
+    target.innerHTML=(state.friendItems.length?'<ul class="slsp-list">'+state.friendItems.map(u=>person(u,relationshipActions(u,{status:'accepted'},u.can_message===true))).join('')+'</ul>':'<p class="slsp-empty">'+(error?'Friends could not be loaded.':'No accepted friends yet. Search above to send a request.')+'</p>')+(error?'<p class="slsp-status" data-kind="error">'+E(errorText(error))+'</p>'+action(more?'friends-more':'friends','Retry friends'):state.friendMore?action('friends-more','Load more friends'):'');
   }
   async function loadFriends(more) {
     if(!state.own)return;const epoch=state.epoch,session=C().token(),serial=++state.friendSerial,offset=more?state.friendItems.length:0;
@@ -104,7 +107,7 @@
   }
   function renderSearch(error, more) {
     const target=$('slspSearchResults');if(!target)return;
-    target.innerHTML=(state.searchItems.length?'<ul class="slsp-list">'+state.searchItems.map(u=>person(u,relationshipActions(u,u.friendship_status,u.friendship_status&&u.friendship_status.status==='accepted'))).join('')+'</ul>':error?'':'<p class="slsp-empty">No visible matches. Try an exact @username; some members have chosen not to appear in search.</p>')+(error?'<p class="slsp-status" data-kind="error">'+E(errorText(error))+'</p>'+action(more?'search-more':'search','Retry search'):state.searchMore?action('search-more','Load more people'):'');
+    target.innerHTML=(state.searchItems.length?'<ul class="slsp-list">'+state.searchItems.map(u=>person(u,relationshipActions(u,u.friendship_status,u.can_message===true))).join('')+'</ul>':error?'':'<p class="slsp-empty">No visible matches. Try an exact @username; some members have chosen not to appear in search.</p>')+(error?'<p class="slsp-status" data-kind="error">'+E(errorText(error))+'</p>'+action(more?'search-more':'search','Retry search'):state.searchMore?action('search-more','Load more people'):'');
   }
   async function search(more) {
     const input=$('slspSearchInput'),target=$('slspSearchResults');if(!input||!target)return;
@@ -128,24 +131,24 @@
   }
   async function loadAvatarCapability() {
     const target=$('slspAvatarCapability'),epoch=state.epoch,session=C().token(); if(!target||target.querySelector('input[type=file]')||target.dataset.loading==='true')return;
-    target.dataset.loading='true';
+    const restoreFocus=target.contains(document.activeElement);
+    target.dataset.loading='true';target.setAttribute('aria-busy','true');target.innerHTML='<p class="slsp-muted slsp-small">Checking upload availability…</p>';
     try { const d=await C().request('/media/capability'); if(!valid(epoch,session)||!target.isConnected)return;
       if(d.enabled===true && d.contract==='server-upload-v1'){state.media=d;target.innerHTML='<label>Choose a photo<input id="slspAvatarFile" type="file" accept="image/png,image/jpeg,image/webp"><small>PNG, JPEG or WebP, up to 4 MB. Upload saves the photo immediately, separately from your profile draft.</small></label>'+action('upload-avatar','Upload photo')+'<p id="slspAvatarStatus" class="slsp-status" role="status"></p>';}
-      else target.innerHTML='<p class="slsp-muted slsp-small">Photo uploads are not connected. No photo will be uploaded. Existing photos can be removed when saving.</p>';
-      lockPendingControls(target.closest('form'));
-    }catch(e){if(valid(epoch,session)&&target.isConnected)target.innerHTML='<p class="slsp-muted slsp-small">Photo upload availability could not be checked. You can still edit the rest of your profile.</p>';}
-    finally { delete target.dataset.loading; }
+      else target.innerHTML='<p class="slsp-muted slsp-small">Photo uploads are not connected. No photo will be uploaded. Existing photos can be removed when saving.</p>'+action('retry-avatar','Check upload availability again');
+    }catch(e){if(valid(epoch,session)&&target.isConnected)target.innerHTML='<p class="slsp-muted slsp-small">Photo upload availability could not be checked. You can still edit the rest of your profile.</p>'+action('retry-avatar','Retry upload availability');}
+    finally { delete target.dataset.loading;target.removeAttribute('aria-busy');if(valid(epoch,session)&&target.isConnected){lockPendingControls(target.closest('form'));if(restoreFocus&&document.activeElement===document.body)target.querySelector('input,button')?.focus();} }
   }
   async function uploadAvatar(button) {
     if(state.busy.has('avatar')||state.busy.has('profile-mutation'))return;const input=$('slspAvatarFile'),file=input&&input.files[0];
     if(!file){status('slspAvatarStatus','Choose an image first.','error');return;}
-    if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>Math.min(state.media.max_bytes||4194304,4194304)){status('slspAvatarStatus','Use a PNG, JPEG or WebP image up to 4 MB.','error');return;}
+    if(!['image/png','image/jpeg','image/webp'].includes(file.type)||!file.size||file.size>Math.min(state.media.max_bytes||4194304,4194304)){status('slspAvatarStatus','Use a PNG, JPEG or WebP image up to 4 MB.','error');return;}
     const epoch=state.epoch,session=C().token(),beforeRevision=state.user.profile_revision;state.busy.add('avatar');state.busy.add('profile-mutation');button.disabled=true;input.disabled=true;status('slspAvatarStatus','Uploading photo…');
-    try {const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('The image could not be read.'));reader.readAsDataURL(file);});
-      if(!valid(epoch,session))return;const result=await C().request('/media/upload',{method:'POST',body:{kind:'avatar',data}});if(!valid(epoch,session))return;
+    try {const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reader.onabort=()=>reject(new Error('The image could not be read.'));reader.readAsDataURL(file);});
+      if(!valid(epoch,session))return;const result=await C().request('/media/upload',{method:'POST',body:{kind:'avatar',data,revision:beforeRevision}});if(!valid(epoch,session))return;
       if(result.pending_review){status('slspAvatarStatus','The provider is reviewing this photo. It has not been attached to your profile.');return;}
       if(!result.asset||result.asset.kind!=='avatar'||!C().safeUrl(result.asset.url,true))throw new Error('Upload did not return a verified profile photo. Reload your profile before retrying.');
-      const read=await C().request('/users/me');if(!valid(epoch,session))return;if(!read.user||read.user.id!==state.user.id||read.user.avatar_url!==result.asset.url||!Number.isInteger(read.user.profile_revision)||read.user.profile_revision<=beforeRevision)throw new Error('The uploaded photo could not be confirmed on your account.');input.value='';state.user=read.user;const onlyUpload=read.user.profile_revision===beforeRevision+1;if(onlyUpload)host.querySelectorAll('#slspEditForm,#slspSettingsForm').forEach(f=>{if(Number(f.dataset.revision)===beforeRevision)f.dataset.revision=read.user.profile_revision;});status('slspAvatarStatus',onlyUpload?'Photo saved and read back. Other profile edits are still unsaved.':'Photo saved and read back. Your account also changed elsewhere. Reload saved profile before applying other edits; your draft is unchanged.','success');const hero=host.querySelector('.slsp-hero');if(hero)hero.outerHTML=renderHero();
+      const read=await C().request('/users/me');if(!valid(epoch,session))return;if(!read.user||read.user.id!==state.user.id||read.user.avatar_url!==result.asset.url||!Number.isSafeInteger(read.user.profile_revision)||read.user.profile_revision<=beforeRevision)throw new Error('The uploaded photo could not be confirmed on your account.');input.value='';state.user=read.user;const onlyUpload=read.user.profile_revision===beforeRevision+1;if(onlyUpload)host.querySelectorAll('#slspEditForm,#slspSettingsForm').forEach(f=>{if(Number(f.dataset.revision)===beforeRevision)f.dataset.revision=read.user.profile_revision;});status('slspAvatarStatus',onlyUpload?'Photo saved and read back. Other profile edits are still unsaved.':'Photo saved and read back. Your account also changed elsewhere. Reload saved profile before applying other edits; your draft is unchanged.','success');const hero=host.querySelector('.slsp-hero');if(hero)hero.outerHTML=renderHero();if($('slspAvatarPreview'))$('slspAvatarPreview').innerHTML=photoPreview(read.user);if($('slspRemoveAvatar'))$('slspRemoveAvatar').hidden=false;
     }catch(e){if(valid(epoch,session))status('slspAvatarStatus',errorText(e)+' Check the saved profile before retrying an upload.','error');}
     finally{state.busy.delete('avatar');state.busy.delete('profile-mutation');if(button.isConnected)button.disabled=false;if(input.isConnected)input.disabled=false;}
   }
@@ -183,6 +186,22 @@
       Number.isSafeInteger(user.profile_revision) && user.profile_revision >= minimumRevision &&
       privacyFlags.every(key => user[key] === payload[key]) && user.allow_messages === payload.allow_messages;
   }
+  function comparableLinks(links) {
+    if(!Array.isArray(links))return null;
+    const hosts={instagram:['instagram.com','www.instagram.com'],facebook:['facebook.com','www.facebook.com'],tiktok:['www.tiktok.com','tiktok.com'],x:['x.com','www.x.com','twitter.com','www.twitter.com'],youtube:['www.youtube.com','youtube.com'],linkedin:['www.linkedin.com','linkedin.com'],snapchat:['www.snapchat.com','snapchat.com']},seen=new Set();
+    try{return links.map(link=>{
+      if(!link||!hosts[link.provider]||seen.has(link.provider)||typeof link.url!=='string')throw Error();
+      const url=new URL(link.url);if(url.protocol!=='https:'||!hosts[link.provider].includes(url.hostname)||url.username||url.password||url.port||url.search||url.hash)throw Error();
+      seen.add(link.provider);url.hostname=hosts[link.provider][0];url.pathname=url.pathname.replace(/\/+$/,'');return link.provider+':'+url.href;
+    }).sort().join('\n');}catch(_){return null;}
+  }
+  function matchesProfile(user,payload,minimumRevision) {
+    const expected=comparableLinks(payload.social_links),actual=comparableLinks(user.social_links);
+    return Number.isSafeInteger(minimumRevision)&&minimumRevision>0&&Number.isSafeInteger(user.profile_revision)&&user.profile_revision>=minimumRevision&&
+      user.display_name===payload.display_name&&user.username===payload.username.toLowerCase()&&
+      ['bio','neighborhood','city'].every(key=>(user[key]??'')===payload[key])&&
+      (!Object.hasOwn(payload,'avatar_url')||user.avatar_url===payload.avatar_url)&&expected!==null&&actual===expected;
+  }
   async function saveProfile(form, settings) {
     const key = settings ? 'settings-save' : 'profile-save', sid = settings ? 'slspSettingsStatus' : 'slspEditStatus'; if (state.busy.has(key)||state.busy.has('profile-mutation')) return;
     const epoch = state.epoch, session = C().token(), payload = {revision:Number(form.dataset.revision)}, data = new FormData(form);
@@ -194,14 +213,18 @@
       const result = await C().request(settings ? '/users/me/settings' : '/auth/profile',{method:settings ? 'PATCH' : 'PUT',body:payload}); saved = true;
       if (!valid(epoch,session)) return;
       if (!result.user || result.user.id !== state.user.id) throw new Error('The server did not return the saved profile. Reload to verify.');
-      if (settings && !matchesPrivacy(result.user,payload,payload.revision)) throw new Error('Privacy save did not confirm the requested settings.');
+      const minimumRevision=payload.revision+(!settings&&!matchesProfile(state.user,payload,payload.revision)?1:0);
+      if (!(settings?matchesPrivacy:matchesProfile)(result.user,payload,minimumRevision)) throw new Error('The save did not confirm the requested changes.');
       const read = await C().request('/users/me'); if (!valid(epoch,session)) return;
       if (!read.user || read.user.id !== state.user.id) throw new Error('The saved profile could not be read back. Reload to verify.');
-      if (settings && !matchesPrivacy(read.user,payload,result.user.profile_revision)) throw new Error('Saved privacy settings do not match the submitted choices.');
+      if (!(settings?matchesPrivacy:matchesProfile)(read.user,payload,result.user.profile_revision)) throw new Error('The saved profile does not match the submitted choices.');
       const draft = keepOtherDraft(settings,read.user);
       state.user = read.user; state.friendsLoaded = false; render(); restoreOtherDraft(draft); if (settings) selectTab('settings',false);
       status('slspActionStatus',settings ? 'Privacy settings saved and read back from your account.' : 'Profile saved and read back from your account.','success');
-    } catch (e) { if (valid(epoch,session)) status(sid,saved ? (settings ? 'Privacy readback failed to confirm your choices. Your draft is still here. Reload saved settings to verify before making another change.' : 'The save was accepted, but readback failed. Reload the saved profile to verify before making another change.') : errorText(e),'error'); }
+      // A confirmation opened while saving owns focus until the person closes it.
+      if(!document.activeElement?.closest('[role="dialog"][aria-modal="true"]'))
+        (settings?$('slspSettingsForm').querySelector('[type=submit]'):host.querySelector('[data-action=edit]'))?.focus();
+    } catch (e) { if (valid(epoch,session)) status(sid,saved ? (settings ? 'Privacy readback failed to confirm your choices. Your draft is still here. Reload saved settings to verify before making another change.' : 'Profile readback failed to confirm your changes. Your draft is still here. Reload the saved profile to verify before making another change.') : errorText(e),'error'); }
     finally {state.busy.delete(key); state.busy.delete('profile-mutation'); if(form.isConnected){controls.forEach((disabled,el)=>{if(form.contains(el))el.disabled=disabled;});form.removeAttribute('aria-busy');}formLocks.delete(form);}
   }
   function confirmedRelationshipMessage(kind, result, id, fid) {
@@ -266,11 +289,16 @@
     if(['request','accept','decline','remove','block','unblock'].includes(kind)){friendAction(btn);return;}
     if(kind==='edit'){const el=$('slspEdit');el.hidden=false;el.querySelector('input').focus();loadAvatarCapability();}
     else if(kind==='cancel-edit'){$('slspEdit').hidden=true;const b=host.querySelector('[data-action=edit]');if(b)b.focus();}
-    else if(kind==='reload-edit'||kind==='reload-settings'){if(window.confirm('Discard any unsaved draft and reload your saved profile?')){await boot(true);if(kind==='reload-settings')selectTab('settings',false);}}
+    else if(kind==='reload-edit'||kind==='reload-settings'){if(window.confirm('Discard any unsaved draft and reload your saved profile?')){await boot(true);if(kind==='reload-settings')selectTab('settings',false);else if($('slspEdit')){$('slspEdit').hidden=false;$('slspEdit').querySelector('input').focus();loadAvatarCapability();}}}
+    else if(kind==='retry-avatar')loadAvatarCapability();
     else if(kind==='upload-avatar')uploadAvatar(btn);
     else if(kind==='reload')boot(true);
     else if(kind==='achievements')loadAchievements();
-    else if(kind==='friends')loadFriends();
+    else if(kind==='friends'){
+      const epoch=state.epoch,session=C().token();
+      status('slspActionStatus','');await loadFriends();
+      if(valid(epoch,session)&&state.query)await search();
+    }
     else if(kind==='friends-more')loadFriends(true);
     else if(kind==='search')search();
     else if(kind==='search-more')search(true);
@@ -280,6 +308,7 @@
   });
   host.addEventListener('submit',event=>{const form=event.target;if(!['slspEditForm','slspSettingsForm','slspSearchForm','slspReportForm'].includes(form.id))return;event.preventDefault();if(form.id==='slspSearchForm')search();else if(form.id==='slspReportForm')report(form);else saveProfile(form,form.id==='slspSettingsForm');});
   host.addEventListener('input',event=>{if(event.target.id==='slspSearchInput'){state.search++;state.query='';const target=$('slspSearchResults');if(target)target.innerHTML='<p class="slsp-muted slsp-small">Press Search to find members.</p>';}});
+  host.addEventListener('error',event=>{const img=event.target;if(!img.matches||!img.matches('img.slsp-avatar'))return;const fallback=document.createElement('span');fallback.className=img.className;fallback.textContent=img.dataset.initial||'S';fallback.setAttribute('aria-hidden','true');img.replaceWith(fallback);},true);
   host.addEventListener('keydown',event=>{if(event.target.matches('[role=tab]')&&['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const tabs=[...host.querySelectorAll('[role=tab]')],i=tabs.indexOf(event.target),next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(i+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;selectTab(tabs[next].dataset.tab,true);tabs[next].focus();}if(event.key==='Escape'){const edit=$('slspEdit'),rep=$('slspReport');if(edit&&!edit.hidden){edit.hidden=true;host.querySelector('[data-action=edit]').focus();}else if(rep&&!rep.hidden){rep.hidden=true;host.querySelector('[data-action=report]').focus();}}});
   window.addEventListener('popstate',()=>selectTab(location.hash.slice(1),false));
   window.addEventListener('hashchange',()=>selectTab(location.hash.slice(1),false));

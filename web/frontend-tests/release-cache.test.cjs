@@ -10,7 +10,7 @@ const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '../frontend');
-const tag = 'connected-20261123-release-acceptance';
+const tag = 'connected-20261124-account-social';
 const version = 'sl-' + tag;
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 
@@ -26,7 +26,7 @@ test('release marker, service-worker shell and every published asset hash agree'
   assert.equal(metadata.sw_version, version);
   assert.equal(metadata.status, 'versioned_build');
   assert.equal(metadata.requires_paired_backend, true);
-  assert.equal(metadata.required_migration, '016_private_list_invitations.sql');
+  assert.equal(metadata.required_migration, '018_account_deletion_receipts.sql');
   assert.equal(metadata.rollout_order, 'paired_backend_then_frontend');
   assert.equal(metadata.phase, 'release-acceptance');
   assert(read('js/sl-version-marker.js').includes("backend_change: 'paired-release-candidate'"));

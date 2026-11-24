@@ -18,9 +18,9 @@
   'use strict';
   var V = {
     phase: 'release-acceptance',
-    sw_version: 'sl-connected-20261123-release-acceptance',
-    deploy: 'connected-20261123-release-acceptance',
-    built: '2026-11-23T21:10:16+00:00',
+    sw_version: 'sl-connected-20261124-account-social',
+    deploy: 'connected-20261124-account-social',
+    built: '2026-11-24T08:00:00+00:00',
     backend_change: 'paired-release-candidate'
   };
   // Always-available global

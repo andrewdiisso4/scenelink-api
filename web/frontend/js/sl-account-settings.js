@@ -1,9 +1,9 @@
 /**
- * SL Account Settings — auto-injects "Danger Zone" section with Delete My Account
- * on profile.html. Required for App Store compliance (Guideline 5.1.1(v)).
+ * SL Account Settings — mounts account controls in the owner's Privacy & settings
+ * panel, with a main-content fallback for legacy profile pages.
  *
- * The button opens a confirmation modal that requires password re-entry
- * (including OAuth accounts).
+ * Confirmation uses password re-entry or a recent verified provider sign-in,
+ * as required by the server for the current account.
  */
 (function () {
   if (window.__SL_ACCOUNT_SETTINGS__) return;
@@ -25,39 +25,41 @@
     s.id = 'sl-account-settings-style';
     s.textContent = [
       '.sl-acct-settings{margin:32px auto 48px;max-width:960px;padding:0 20px;}',
-      '.sl-acct-card{background:#0d0d0d;border:1px solid rgba(255,255,255,0.08);',
-      ' border-radius:14px;padding:22px;}',
-      '.sl-acct-card h3{margin:0 0 6px 0;font-size:16px;color:#fff;}',
-      '.sl-acct-card p{margin:0 0 16px 0;color:rgba(255,255,255,0.55);font-size:13px;}',
+      '#slspPanelSettings>.sl-acct-settings{margin:16px 0 0;max-width:none;padding:0;}',
+      '.sl-acct-card{background:var(--sl-ui-surface,#191e23);border:1px solid var(--sl-ui-border,#49535e);',
+      ' border-radius:var(--sl-ui-radius,12px);padding:22px;}',
+      '.sl-acct-card h3{margin:0 0 6px 0;font-size:16px;color:var(--sl-ui-text,#f5f6f7);}',
+      '.sl-acct-card p{margin:0 0 16px 0;color:var(--sl-ui-muted,#b9c1ca);font-size:14px;line-height:1.5;}',
       '.sl-acct-danger{border-color:rgba(229,57,53,0.35);}',
       '.sl-acct-danger h3{color:#ff8a80;}',
       '.sl-acct-btn{background:transparent;color:#ff8a80;border:1px solid rgba(229,57,53,0.4);',
-      ' padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;',
+      ' min-height:44px;padding:10px 16px;border-radius:var(--sl-ui-radius,12px);font-size:14px;font-weight:600;cursor:pointer;',
       ' transition:all 0.15s;}',
       '.sl-acct-btn:hover{background:rgba(229,57,53,0.1);border-color:#e53935;color:#fff;}',
       '.sl-acct-btn.neutral{color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.2);}',
       '.sl-acct-btn.neutral:hover{color:#fff;border-color:#D4AF37;}',
+      '#slspPanelSettings .sl-acct-btn{background:transparent;color:#ff8a80;border-color:rgba(229,57,53,0.4);}',
+      '#slspPanelSettings .sl-acct-btn:hover{background:rgba(229,57,53,0.1);color:#fff;border-color:#e53935;}',
+      '#slspPanelSettings .sl-acct-btn.neutral{color:var(--sl-ui-text,#f5f6f7);border-color:var(--sl-ui-border,#49535e);}',
+      '#slspPanelSettings .sl-acct-btn.neutral:hover{background:var(--sl-ui-raised,#252b31);border-color:var(--sl-ui-gold,#e3bc54);}',
       '.sl-acct-ov{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;',
       ' display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;overflow:auto;backdrop-filter:blur(6px);}',
-      '.sl-acct-m{background:#111;border:1px solid rgba(229,57,53,0.3);border-radius:16px;',
-      ' width:100%;max-width:460px;max-height:calc(100dvh - 40px);overflow:auto;box-sizing:border-box;padding:28px;color:#fff;',
+      '.sl-acct-m{background:var(--sl-ui-surface,#191e23);border:1px solid var(--sl-ui-border,#49535e);border-radius:var(--sl-ui-radius,12px);',
+      ' width:100%;max-width:460px;max-height:calc(100dvh - 40px);overflow:auto;box-sizing:border-box;padding:28px;color:var(--sl-ui-text,#f5f6f7);box-shadow:var(--sl-ui-shadow,0 18px 60px rgb(0 0 0 / 28%));',
       ' font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}',
       '.sl-acct-m h2{margin:0 0 10px 0;font-size:20px;color:#ff8a80;}',
-      '.sl-acct-m p{margin:0 0 16px 0;color:rgba(255,255,255,0.75);font-size:14px;line-height:1.5;}',
-      '.sl-acct-m ul{margin:0 0 18px 20px;padding:0;color:rgba(255,255,255,0.65);font-size:13px;}',
+      '.sl-acct-m p{margin:0 0 16px 0;color:var(--sl-ui-muted,#b9c1ca);font-size:14px;line-height:1.5;}',
+      '.sl-acct-m ul{margin:0 0 18px 20px;padding:0;color:var(--sl-ui-muted,#b9c1ca);font-size:14px;line-height:1.5;}',
       '.sl-acct-m ul li{margin-bottom:4px;}',
-      '.sl-acct-m input[type=password]{width:100%;background:#0a0a0a;',
-      ' border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:8px;padding:12px;',
-      ' font-size:14px;box-sizing:border-box;margin-bottom:10px;}',
-      '.sl-acct-m input[type=password]:focus{outline:none;border-color:#D4AF37;}',
-      '.sl-acct-m input[type=text]{width:100%;background:#0a0a0a;',
-      ' border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:8px;padding:12px;',
-      ' font-size:14px;box-sizing:border-box;margin-bottom:10px;}',
-      '.sl-acct-m textarea{width:100%;background:#0a0a0a;border:1px solid rgba(255,255,255,0.15);',
-      ' color:#fff;border-radius:8px;padding:10px;font:inherit;font-size:13px;min-height:60px;',
-      ' resize:vertical;box-sizing:border-box;margin-bottom:10px;}',
+      '.sl-acct-m input{width:100%;min-height:44px;background:var(--sl-ui-bg,#101316);',
+      ' border:1px solid var(--sl-ui-border,#49535e);color:var(--sl-ui-text,#f5f6f7);border-radius:var(--sl-ui-radius,12px);padding:12px;',
+      ' font-size:16px;box-sizing:border-box;margin-bottom:12px;}',
+      '.sl-acct-m label{display:block;margin-bottom:6px;color:var(--sl-ui-muted,#b9c1ca);font-size:14px;}',
+      '.sl-acct-m .sl-acct-link{min-height:44px;background:none;border:0;padding:8px 0;color:var(--sl-ui-gold,#e3bc54);text-decoration:underline;font:inherit;font-size:14px;cursor:pointer;}',
+      '.sl-acct-m [hidden]{display:none!important;}',
+      '.sl-acct-settings :focus-visible,.sl-acct-m :focus-visible{outline:3px solid var(--sl-ui-focus,#f4d88e);outline-offset:3px;}',
       '.sl-acct-m .sl-acct-actions{display:flex;gap:10px;margin-top:12px;}',
-      '.sl-acct-m .sl-acct-actions button{flex:1;padding:12px;border-radius:10px;',
+      '.sl-acct-m .sl-acct-actions button{flex:1;min-height:44px;padding:12px;border-radius:var(--sl-ui-radius,12px);',
       ' font-weight:600;font-size:14px;cursor:pointer;border:none;}',
       '.sl-acct-m .sl-acct-actions .cancel{background:transparent;color:rgba(255,255,255,0.7);',
       ' border:1px solid rgba(255,255,255,0.15);}',
@@ -87,7 +89,7 @@
     if (closeDialog) closeDialog();
     var returnFocus = document.activeElement;
     var oldOverflow = document.body.style.overflow;
-    var closed = false, generation = sessionGeneration;
+    var closed = false, generation = sessionGeneration, requirementsTimer = null, requirementsRequest = 0, cancelRequirements = null;
     function ownsSession(){ return sessionKey() === owner && sessionGeneration === generation; }
     function ownsDialog(){ return !closed && ownsSession(); }
     var status = document.getElementById('slAcctStatus');
@@ -98,10 +100,11 @@
     if (prev) prev.remove();
 
     var pwField =
-      '<p style="font-size:12px;color:rgba(255,255,255,0.6);">Password confirmation is required, including accounts created with Google or Apple. If you have not set a SceneLink password, use email recovery first, then sign in again.</p>' +
-      '<button type="button" id="slAcctRecover" style="background:none;border:none;color:#D4AF37;text-decoration:underline;cursor:pointer;margin-bottom:12px">Set or recover my password</button>' +
-      '<label for="slAcctPw" style="font-size:12px;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px;">Re-enter password</label>' +
-      '<input type="password" id="slAcctPw" placeholder="Your password" autocomplete="current-password">';
+      '<div id="slAcctPasswordFields" hidden>' +
+        '<label for="slAcctPw">Re-enter your SceneLink password</label>' +
+        '<input type="password" id="slAcctPw" placeholder="Your password" autocomplete="current-password" disabled>' +
+        '<button type="button" id="slAcctRecover" class="sl-acct-link">Forgot your password?</button>' +
+      '</div>';
 
     var ov = document.createElement('div');
     ov.className = 'sl-acct-ov';
@@ -112,15 +115,18 @@
         '<p>This is permanent and cannot be undone. The following will be deleted:</p>' +
         '<ul>' +
           '<li>Your profile, posts, reviews, and check-ins</li>' +
-          '<li>Your friends, messages, and conversation history</li>' +
+          '<li>Your friend connections and messages you sent</li>' +
           '<li>Your plans and all plan invitations</li>' +
           '<li>Your notifications and push-token registrations</li>' +
         '</ul>' +
-        '<p style="font-size:12px;color:rgba(255,255,255,0.5);">Type <b style="color:#ff8a80;">DELETE</b> to confirm.</p>' +
+        '<p>A deletion receipt retains your account ID and deletion time.</p>' +
+        '<p>Type <b>DELETE</b> to confirm.</p>' +
         '<input type="text" aria-label="Type DELETE to confirm account deletion" id="slAcctConfirm" placeholder="Type DELETE to confirm" autocomplete="off">' +
+        '<p id="slAcctRequirementStatus" role="status" aria-live="polite">Checking how to confirm your account…</p>' +
+        '<p id="slAcctAppleRevokeNotice" hidden>Apple access is not revoked automatically. After deletion, we will show how to disconnect SceneLink in your Apple Account settings.</p>' +
+        '<button type="button" id="slAcctRetryRequirements" class="sl-acct-link" hidden>Try again</button>' +
+        '<button type="button" id="slAcctReauthenticate" class="sl-acct-link" hidden>Sign in again</button>' +
         pwField +
-        '<label for="slAcctReason" style="font-size:12px;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px;margin-top:6px;">Reason (optional — helps us improve)</label>' +
-        '<textarea id="slAcctReason" maxlength="500" placeholder="Why are you leaving?"></textarea>' +
         '<div id="slAcctErr" role="alert" class="sl-acct-err" style="display:none;"></div>' +
         '<div class="sl-acct-actions">' +
           '<button class="cancel" id="slAcctCancel">Keep my account</button>' +
@@ -133,18 +139,25 @@
     function close() {
       if (closed) return;
       closed = true;
+      requirementsRequest++;
+      if (requirementsTimer) clearTimeout(requirementsTimer);
+      if (cancelRequirements) cancelRequirements();
       ov.querySelectorAll("input, textarea").forEach(function(input){ input.value = ""; });
       closeDialog = null;
       try { ov.remove(); } catch(_){}
       document.body.style.overflow = oldOverflow;
       if (returnFocus && returnFocus.isConnected && !returnFocus.disabled) returnFocus.focus();
+      else if (ownsSession()) {
+        var replacement = document.getElementById('slAcctDeleteBtn');
+        if (replacement && !replacement.disabled && !replacement.closest('[hidden]')) replacement.focus();
+      }
       document.removeEventListener('keydown', onKey);
     }
     closeDialog = close;
     function onKey(e){
       if(e.key === 'Escape') { e.preventDefault(); close(); return; }
       if(e.key !== 'Tab') return;
-      var items = Array.from(ov.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), a[href]'));
+      var items = Array.from(ov.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), a[href]')).filter(function(item){ return !item.closest('[hidden]'); });
       var first = items[0], last = items[items.length - 1];
       if (!first) return;
       if (e.shiftKey && (document.activeElement === first || !ov.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
@@ -155,6 +168,10 @@
       close();
       if(window.SLAuthUI && window.SLAuthUI.open) window.SLAuthUI.open('forgot');
     });
+    document.getElementById('slAcctReauthenticate').addEventListener('click', function(){
+      close();
+      if(window.SLAuthUI && window.SLAuthUI.open) window.SLAuthUI.open('login');
+    });
 
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     document.getElementById('slAcctCancel').addEventListener('click', close);
@@ -162,16 +179,71 @@
     var confirmInput = document.getElementById('slAcctConfirm');
     var pwInput = document.getElementById('slAcctPw');
     var confirmBtn = document.getElementById('slAcctConfirmBtn');
+    var confirmation = null;
+    var requirementStatus = document.getElementById('slAcctRequirementStatus');
+    var retryRequirements = document.getElementById('slAcctRetryRequirements');
+    var reauthenticate = document.getElementById('slAcctReauthenticate');
 
     function checkReady() {
       var typed = (confirmInput.value || '').trim() === 'DELETE';
-      var pwOk = !!(pwInput && pwInput.value.length >= 1);
-      confirmBtn.disabled = deleting || !(typed && pwOk);
+      var confirmed = confirmation && confirmation.can_delete && (confirmation.method === 'recent_provider_sign_in' || pwInput.value.length >= 1);
+      confirmBtn.disabled = deleting || !(typed && confirmed);
     }
     confirmInput.addEventListener('input', checkReady);
     if (pwInput) pwInput.addEventListener('input', checkReady);
 
     var deleting = false;
+    function loadRequirements(){
+      var attempt = ++requirementsRequest;
+      confirmation = null;
+      requirementStatus.textContent = 'Checking how to confirm your account…';
+      retryRequirements.hidden = true;
+      reauthenticate.hidden = true;
+      document.getElementById('slAcctAppleRevokeNotice').hidden = true;
+      document.getElementById('slAcctPasswordFields').hidden = true;
+      pwInput.disabled = true;
+      pwInput.value = '';
+      checkReady();
+      var request;
+      try { request = window.SLApi.accountDeletionRequirements(); } catch(error) { request = Promise.reject(error); }
+      var timer;
+      var cancel;
+      var timeout = new Promise(function(_resolve,reject){
+        cancel = cancelRequirements = function(){ reject(new Error('Confirmation check dismissed')); };
+        timer = requirementsTimer = setTimeout(function(){ reject(new Error('Confirmation check timed out')); },12000);
+      });
+      Promise.race([Promise.resolve(request),timeout]).then(function(result){
+        if(!ownsDialog() || attempt !== requirementsRequest) return;
+        var c = result && result.confirmation;
+        if(!c || ['password','recent_provider_sign_in','unavailable'].indexOf(c.method) < 0 ||
+          [null,'google','apple'].indexOf(c.provider) < 0 || typeof c.can_delete !== 'boolean' || typeof c.recent_sign_in_required !== 'boolean' || c.recent_sign_in_window_seconds !== 300 ||
+          (c.method === 'password' && (!c.can_delete || c.recent_sign_in_required)) ||
+          (c.method === 'recent_provider_sign_in' && (!c.provider || c.can_delete === c.recent_sign_in_required)) ||
+          (c.method === 'unavailable' && c.can_delete)) throw new Error('Invalid account confirmation response');
+        confirmation = c;
+        document.getElementById('slAcctAppleRevokeNotice').hidden = c.provider !== 'apple';
+        if(c.method === 'password'){
+          document.getElementById('slAcctPasswordFields').hidden = false;
+          pwInput.disabled = false;
+          requirementStatus.textContent = 'Confirm with your SceneLink password.';
+        }else if(c.method === 'recent_provider_sign_in'){
+          var providerName = c.provider === 'apple' ? 'Apple' : 'Google';
+          requirementStatus.textContent = c.can_delete ? 'Your recent '+providerName+' sign-in confirms this account. Type DELETE to continue.' : 'Sign in again with '+providerName+', then reopen account deletion within five minutes.';
+          reauthenticate.hidden = c.can_delete;
+        }else{
+          requirementStatus.textContent = 'We could not confirm an available sign-in method for deletion. Contact info@scenelink.app for help.';
+          retryRequirements.hidden = false;
+        }
+        checkReady();
+      }).catch(function(){
+        if(!ownsDialog() || attempt !== requirementsRequest) return;
+        confirmation = null;
+        requirementStatus.textContent = 'We could not confirm how to delete this account. Your account has not been deleted. Please try again.';
+        retryRequirements.hidden = false;
+        checkReady();
+      }).finally(function(){ clearTimeout(timer); if(requirementsTimer === timer) requirementsTimer = null; if(cancelRequirements === cancel) cancelRequirements = null; });
+    }
+    retryRequirements.addEventListener('click',loadRequirements);
     confirmBtn.addEventListener('click', function () {
       if(deleting || confirmBtn.disabled) return;
       if (!ownsDialog()) { close(); return; }
@@ -182,15 +254,27 @@
       err.style.display = 'none';
       confirmBtn.disabled = true;
       confirmBtn.textContent = 'Deleting…';
-      var pw = pwInput ? pwInput.value : '';
-      var reason = (document.getElementById('slAcctReason').value || '').trim().slice(0, 500);
+      var pw = confirmation.method === 'password' ? pwInput.value : '';
+      var reason = '';
 
       var request;
-      try { request = window.SLApi.deleteAccount(pw, reason); } catch(e) { request = Promise.reject(e); }
+      try { request = window.SLApi.deleteAccount(pw, reason, 'DELETE'); } catch(e) { request = Promise.reject(e); }
       pwInput.value = '';
-      Promise.resolve(request).then(function (result) {
+      var deletionTimer;
+      var deadline = new Promise(function(_resolve,reject){
+        deletionTimer = setTimeout(function(){
+          var error = new Error('The deletion outcome is unknown because the request timed out. Reload this page to check your account before trying again.');
+          error.code = 'ACCOUNT_DELETION_OUTCOME_UNKNOWN';
+          reject(error);
+        },20000);
+      });
+      // A hung fetch or response body cannot keep the account controls disabled.
+      // Once the deadline wins, later completion must never claim success or
+      // clear a session, even if the same person has opened a new request.
+      Promise.race([Promise.resolve(request),deadline]).then(function (result) {
         if (!ownsSession()) return;
         if(!result || result.deleted !== true) throw new Error('Deletion was not confirmed. Please try again.');
+        var manualAppleRevocation = result.apple_revocation_required === true;
         close();
         // Preserve native push cleanup while this is still the deleted session.
         if (window.Capacitor && window.SLPush && window.SLPush.unregister) {
@@ -209,21 +293,27 @@
               '<div style="font-size:48px;margin-bottom:16px;">👋</div>' +
               '<h1 style="font-size:22px;margin:0 0 12px;color:#D4AF37;">Account deleted</h1>' +
               '<p style="color:rgba(255,255,255,0.7);font-size:14px;line-height:1.5;margin:0 0 24px;">' +
-                'Your SceneLink account has been deleted. See our privacy policy for any records retained for security or legal obligations.' +
+                'Your SceneLink account has been deleted. A deletion receipt retains your account ID and deletion time.' +
               '</p>' +
+              (manualAppleRevocation ?
+                '<p style="color:var(--sl-ui-muted,#b9c1ca);font-size:14px;line-height:1.5;">Apple access has not been revoked automatically. On your iPhone, open Settings, choose your Apple Account, then Sign in with Apple. Select SceneLink and follow Apple&#39;s steps to remove access.</p>' +
+                '<p><a id="slAcctAppleRevokeHelp" href="https://support.apple.com/102571" target="_blank" rel="noopener noreferrer" style="color:var(--sl-ui-gold,#e3bc54);">Open Apple&#39;s instructions</a></p>' : '') +
               '<a href="/" style="display:inline-block;background:#D4AF37;color:#000;' +
               'padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600;">Return home</a>' +
             '</div>' +
           '</div>';
-        setTimeout(function () { if (!sessionKey()) location.href = '/'; }, 3000);
+        // Keep the remaining Apple instructions available until the person leaves.
+        if(!manualAppleRevocation) setTimeout(function () { if (!sessionKey()) location.href = '/'; }, 3000);
       }).catch(function (e) {
         if (!ownsSession()) return;
+        var outcomeUnknown = e && e.code === 'ACCOUNT_DELETION_OUTCOME_UNKNOWN';
         if (closed) {
           var status = document.getElementById('slAcctStatus');
-          if (status) status.textContent = 'Account deletion was not confirmed. Please try again.';
+          if (status) status.textContent = outcomeUnknown ? e.message : 'Account deletion was not confirmed. Please try again.';
           return;
         }
         deleting = false;
+        if(outcomeUnknown) confirmInput.value = '';
         // Phase 6B: if the backend deletion endpoint isn't live yet,
         // pivot to the honest "contact us to delete" path instead of
         // showing a confusing error. This is a temporary gate until
@@ -260,14 +350,22 @@
         }
         err.textContent = msg || 'Could not delete account';
         err.style.display = 'block';
+        if(e && (e.code === 'ACCOUNT_REAUTHENTICATION_REQUIRED' || (e.status === 409 && confirmation && confirmation.method === 'recent_provider_sign_in'))){
+          confirmation = null;
+          reauthenticate.hidden = false;
+          requirementStatus.textContent = 'Sign in again, then reopen account deletion within five minutes.';
+        }
         checkReady();
         confirmBtn.textContent = 'Delete permanently';
-        pwInput.focus();
-      }).finally(function(){ pendingOwners.delete(owner); updateDeleteButton(); });
+        if(!reauthenticate.hidden) reauthenticate.focus();
+        else if(!pwInput.disabled) pwInput.focus();
+        else confirmInput.focus();
+      }).finally(function(){ clearTimeout(deletionTimer); pendingOwners.delete(owner); updateDeleteButton(); });
     });
 
     // Autofocus
     confirmInput.focus();
+    loadRequirements();
   }
 
   function injectSection() {
@@ -279,10 +377,12 @@
     try { token = localStorage.getItem('sl_jwt_token'); } catch(_){}
     if (!token) return;
 
+    // The canonical controller replaces its host after asynchronous profile loads
+    // and saves. Only its own-profile settings panel is an account-controls mount.
+    var profile = document.getElementById('slSocialProfile');
+    var main = profile ? profile.querySelector('#slspPanelSettings') : document.querySelector('main') || document.body;
+    if (!main) return;
     injectStyle();
-
-    // Find main content container
-    var main = document.querySelector('main') || document.body;
     var section = document.createElement('section');
     section.className = 'sl-acct-settings';
     section.id = 'slAcctSettings';
@@ -294,7 +394,7 @@
       '</div>' +
       '<div class="sl-acct-card sl-acct-danger" style="margin-top:14px;">' +
         '<h3>Danger zone</h3>' +
-        '<p>Permanently delete your account and all associated data. This cannot be undone.</p>' +
+        '<p>Permanently delete your account and the content you created. This cannot be undone.</p>' +
         '<button class="sl-acct-btn" id="slAcctDeleteBtn">Delete my account</button>' +
         '<p id="slAcctStatus" role="status" aria-live="polite"></p>' +
       '</div>';
@@ -322,12 +422,19 @@
   }
   function refreshAccount(){
     var current = sessionKey();
-    if (current !== observedSession) { sessionGeneration++; observedSession = current; }
-    if (closeDialog) closeDialog();
-    var section = document.getElementById('slAcctSettings');
-    if (section) section.remove();
+    if (current !== observedSession) {
+      sessionGeneration++; observedSession = current;
+      if (closeDialog) closeDialog();
+      var section = document.getElementById('slAcctSettings');
+      if (section) section.remove();
+      // Wait for the new account's profile, independent of auth-listener order.
+      if (document.getElementById('slSocialProfile')) return;
+    }
     injectSection();
   }
+  window.addEventListener('sl:profile-rendered', function(e){
+    if (e.target === document.getElementById('slSocialProfile')) injectSection();
+  });
   window.addEventListener('sl:explicit-modal', function(){ if (closeDialog) closeDialog(); });
   window.addEventListener('sl-auth-ready', refreshAccount);
   window.addEventListener('sl-auth-changed', refreshAccount);
