@@ -794,7 +794,6 @@ if (typeof module !== 'undefined' && module.exports) {
   var MOUNTED = false;
   var overlay = null;
   var previousFocus = null, previousOverflow = null, backgroundNodes = [];
-  var focusEpoch = 0;
 
   function el(tag, attrs, html){
     var n = document.createElement(tag);
@@ -1085,11 +1084,13 @@ if (typeof module !== 'undefined' && module.exports) {
     overlay.querySelector('[data-sl-oauth-slot]').hidden = tab === 'forgot';
     if (tab !== 'forgot' && overlay.classList.contains('open')) prepareOAuth();
 
-    var focus = ++focusEpoch;
-    setTimeout(function(){
-      var first = focusTab ? overlay.querySelector('[role="tab"][aria-selected="true"]') : overlay.querySelector('.sl-auth-form.active input');
-      if (focus === focusEpoch && first && overlay.classList.contains('open')) first.focus();
-    }, 50);
+    focusAuthControl(focusTab);
+  }
+
+  function focusAuthControl(focusTab){
+    if (!overlay || !overlay.classList.contains('open')) return;
+    var first = focusTab ? overlay.querySelector('[role="tab"][aria-selected="true"]') : overlay.querySelector('.sl-auth-form.active input');
+    (first || overlay).focus();
   }
 
   // SDK loads are shared; modal lifetimes and sign-in attempts are not.
@@ -1367,13 +1368,15 @@ if (typeof module !== 'undefined' && module.exports) {
     restoreOAuth();
     if ((tab || 'login') !== 'forgot') prepareOAuth();
     document.body.style.overflow = 'hidden';
+    // The overlay is now visible. Focus before returning, so a delayed callback
+    // cannot steal the person's next click or send typing into the wrong field.
+    focusAuthControl(false);
   }
 
   function close(){
     if (!overlay || !overlay.classList.contains('open')) return;
     resetRecovery();
     resetOAuth();
-    focusEpoch++;
     overlay.classList.remove('open');
     restoreBackground();
     overlay.querySelectorAll('[name="password"]').forEach(function(input){ input.value = ''; input.type = 'password'; });

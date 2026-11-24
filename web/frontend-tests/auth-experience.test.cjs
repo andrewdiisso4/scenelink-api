@@ -59,6 +59,32 @@ test('password controls preserve values and closing clears secrets while restori
   assert.equal(f.w.document.activeElement, f.q('#opener'));
 });
 
+for (const [mode, selector] of [['login', '#slLoginEmail'], ['signup', '#slSignupDisplayName'], ['forgot', '#slRecoveryEmail']]) {
+  test(mode + ' focuses its first field before open returns', t => {
+    const f = fixture(t); f.open(mode);
+    assert.equal(f.w.document.activeElement, f.q(selector));
+  });
+}
+
+test('initial signup autofocus cannot steal focus while a person types in the username field', t => {
+  const f = fixture(t); f.open('signup');
+  const name = f.q('#slSignupDisplayName'), username = f.q('#slSignupUsername');
+  name.focus(); name.value = 'Morgan · QA';
+  username.focus(); username.value = 'qa_';
+  f.fire(50); // Expose the former delayed autofocus after the person moves on.
+  f.w.document.activeElement.value += 'new_member';
+  assert.equal(f.w.document.activeElement, username);
+  assert.equal(username.value, 'qa_new_member');
+  assert.equal(name.value, 'Morgan · QA');
+});
+
+test('clicking an account tab focuses its form without a later focus change', t => {
+  const f = fixture(t); f.open('login'); f.q('[data-tab="signup"]').click();
+  assert.equal(f.w.document.activeElement, f.q('#slSignupDisplayName'));
+  f.q('#slSignupUsername').focus(); f.fire(50);
+  assert.equal(f.w.document.activeElement, f.q('#slSignupUsername'));
+});
+
 for (const mode of ['login', 'signup']) test(mode + ' rejects malformed email before any request, with field focus and accessible error', t => {
   const f = fixture(t); f.open(mode); const form = f.fill(mode, { email: 'not-an-email' }); f.submit(form);
   assert.equal(f.calls.length, 0);
@@ -76,14 +102,14 @@ test('signup enforces the server UTF-8 password limit without a request', t => {
 });
 
 test('keyboard navigation contains focus and selects account tabs with the correct active panel', t => {
-  const f = fixture(t); f.open(); f.fire(50);
+  const f = fixture(t); f.open();
   const close = f.q('.sl-auth-close'), last = f.q('[data-action="forgot"]');
   close.focus(); close.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }));
   assert.equal(f.w.document.activeElement, last);
   last.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
   assert.equal(f.w.document.activeElement, close);
   const login = f.q('[data-tab="login"]'); login.focus();
-  login.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); f.fire(50);
+  login.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
   const signup = f.q('[data-tab="signup"]');
   assert.equal(signup.getAttribute('aria-selected'), 'true'); assert.equal(signup.tabIndex, 0);
   assert.equal(login.getAttribute('aria-selected'), 'false'); assert.equal(login.tabIndex, -1);

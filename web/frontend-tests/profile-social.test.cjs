@@ -142,6 +142,22 @@ test('people search suppresses older and input-changed responses; requests use s
  }});m.click('[data-tab=friends]');await tick();m.$('slspSearchInput').value='old';m.submit('slspSearchForm');await tick();m.$('slspSearchInput').value='new';m.$('slspSearchInput').dispatchEvent(new m.w.Event('input',{bubbles:true}));m.submit('slspSearchForm');await tick();releaseOld();await tick();assert.match(m.$('slspSearchResults').textContent,/NEW RESPONSE/);assert(!m.$('slspSearchResults').textContent.includes('OLD RESPONSE'));
  m.click('#slspSearchResults [data-action=request]');await tick();assert.match(m.$('slspSearchResults').textContent,/Request pending/);assert.match(m.$('slspActionStatus').textContent,/pending until/);assert.equal(m.calls.find(c=>c.url==='/api/friends/request').body.user_id,PEER);
 });
+test('refreshing friends replaces a pending request notice and search controls after recipient acceptance',async t=>{
+ let relationship=null;
+ const peer=()=>({id:PEER,username:'friend',display_name:'Fictional friend',can_message:relationship==='accepted',friendship_status:relationship?{id:'request-id',status:relationship,direction:'outgoing'}:null});
+ const m=await make(t,{handle:r=>{
+  if(r.url.startsWith('/api/users/search'))return{body:{results:[peer()]}};
+  if(r.url.startsWith('/api/friends?'))return{body:{friends:relationship==='accepted'?[peer()]:[]}};
+  if(r.url==='/api/friends/request'){relationship='pending';return{body:{friendship_id:'request-id',status:'pending',direction:'outgoing'}};}
+ }});
+ m.click('[data-tab=friends]');await tick();m.$('slspSearchInput').value='friend';m.submit('slspSearchForm');await tick();
+ m.click('#slspSearchResults [data-action=request]');await tick();assert.match(m.$('slspActionStatus').textContent,/pending until/);
+ relationship='accepted';m.click('[data-action=friends]');await tick();await tick();
+ assert.equal(m.$('slspActionStatus').textContent,'');
+ assert.equal(m.$('slspSearchResults').querySelector('[data-action=remove]').textContent,'Remove friend');
+ assert(m.$('slspSearchResults').querySelector('a[href^="/messages"]'));
+ assert.match(m.$('slspFriends').textContent,/Fictional friend/);
+});
 test('session change clears private profile and ignores stale response',async t=>{
  let release;const m=await make(t,{handle:async r=>{if(r.url.includes('/users/search')){await new Promise(resolve=>release=resolve);return{body:{results:[{id:PEER,display_name:'OLD PRIVATE RESULT'}]}};}}});m.click('[data-tab=friends]');await tick();m.$('slspSearchInput').value='test';m.submit('slspSearchForm');await tick();m.w.localStorage.removeItem('sl_jwt_token');m.w.dispatchEvent(new m.w.Event('sl-auth-change'));release();await tick();assert.match(m.$('slSocialProfile').textContent,/Sign in to edit/);assert(!m.$('slSocialProfile').textContent.includes('OLD PRIVATE RESULT'));assert(!m.$('slspSettingsForm'));
 });

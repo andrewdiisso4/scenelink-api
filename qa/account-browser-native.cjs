@@ -86,16 +86,29 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
   let appLog='';for(const stream of [app.stdout,app.stderr])stream.on('data',b=>{appLog=(appLog+b.toString()).slice(-6000);});
   await waitUntil(async()=>{if(app.exitCode!==null)throw Error('Isolated app exited: '+appLog);try{return (await fetch(origin+'/__acceptance/health')).ok;}catch{return false;}},'isolated health',30000);
   fs.mkdirSync(OUT,{recursive:true});
+  // This directory contains generated QA evidence. A failed rerun must never
+  // upload a previous successful receipt or screenshots it did not recapture.
+  for(const name of fs.readdirSync(OUT)){
+    const file=path.join(OUT,name);if(/\.(png|json)$/.test(name)&&fs.lstatSync(file).isFile())fs.unlinkSync(file);
+  }
   browser=await chromium.launch({...(process.env.SCENELINK_CHROMIUM?{executablePath:process.env.SCENELINK_CHROMIUM}:{}),headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
   const member=await context();page=member.p;
   await stage('Desktop and mobile login, signup, recovery visuals',async()=>{
-    await openAuth(page);await shot(page,'login-desktop');
+    await openAuth(page);await page.locator('.sl-auth-official-logo').evaluate(img=>img.decode());await shot(page,'login-desktop');
     await page.setViewportSize({width:390,height:844});await shot(page,'login-mobile');
+    const closeSize=await page.locator('.sl-auth-close').boundingBox();assert(closeSize.width>=44&&closeSize.height>=44,'Auth close target is at least 44px in both dimensions');
+    assert((await page.locator('#slLoginEmail').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)))>=16,'Mobile auth inputs retain readable 16px text');
     await page.locator('[data-tab=signup]').click();await shot(page,'signup-mobile');
+    await page.locator('#slSignupForm .sl-auth-submit').scrollIntoViewIfNeeded();await shot(page,'signup-mobile-submit');
     await page.locator('[data-tab=login]').click();await page.locator('[data-action=forgot]').click();await shot(page,'recovery-mobile');
     await page.locator('#slRecoveryEmail').fill('qa.member@example.invalid');await page.locator('#slRecoveryForm .sl-auth-submit').click();
     await page.locator('[data-sl-error].show').waitFor();assert.match(await page.locator('[data-sl-error]').textContent(),/could not confirm/);
     assert.equal(await page.locator('[data-sl-success].show').count(),0);
+    const contrast=await page.locator('[data-sl-error]').evaluate(el=>{
+      const css=getComputedStyle(el),lum=value=>{const rgb=value.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;});return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;};
+      const fg=lum(css.color),bg=lum(css.backgroundColor);return (Math.max(fg,bg)+.05)/(Math.min(fg,bg)+.05);
+    });
+    assert(contrast>=4.5,'Auth error text retains at least 4.5:1 contrast');await shot(page,'recovery-error-mobile');
     await page.locator('.sl-auth-close').click();await page.setViewportSize({width:1440,height:1100});
   });
   await stage('Real password sign-in and profile customization persist through reload',async()=>{
@@ -112,7 +125,8 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
     assert.equal(saved.display_name,'Casey · QA member');assert.equal(saved.city,'Boston');assert.equal(saved.social_links[0].provider,'instagram');assert(saved.profile_revision>0);
     await page.reload();await page.locator('#slSocialProfile .slsp-hero h1').waitFor();assert.equal(await page.locator('#slSocialProfile .slsp-hero h1').textContent(),saved.display_name);
     await shot(page,'profile-desktop');await page.setViewportSize({width:390,height:844});await shot(page,'profile-mobile');
-    await page.locator('[data-action=edit]').click();await shot(page,'profile-editor-mobile');
+    await page.locator('[data-action=edit]').click();
+    await page.locator('#slspEdit').evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));await shot(page,'profile-editor-mobile');
     await page.locator('[data-action=cancel-edit]').click();await page.setViewportSize({width:1440,height:1100});
   });
   const friend=await context();
@@ -125,7 +139,11 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
     await waitUntil(async()=>!!(await db("SELECT 1 FROM friendships WHERE requester_id=$1 AND user_a_id=LEAST($1::uuid,$2::uuid) AND user_b_id=GREATEST($1::uuid,$2::uuid) AND status='accepted'",[memberID,adminID])).length,'accepted request');
     await page.locator('[data-action=friends]').first().click();await page.locator('#slspFriends .slsp-person').waitFor();
     assert.equal(await page.locator('#slspFriends a[href*="/messages?to="]').count(),1);
-    await page.setViewportSize({width:390,height:844});await shot(page,'friends-mobile');await page.setViewportSize({width:1440,height:1100});
+    await waitUntil(async()=>(await page.locator('#slspSearchResults [data-action=remove]').textContent())==='Remove friend','search reflects accepted friendship');
+    assert.equal(await page.locator('#slspActionStatus').textContent(),'');
+    await page.setViewportSize({width:390,height:844});
+    await page.locator('#slspPanelFriends').evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));await shot(page,'friends-mobile');
+    await page.setViewportSize({width:1440,height:1100});
   });
   await stage('Privacy settings remove messaging and blocks remove friendship',async()=>{
     await friend.p.locator('#slspTabSettings').click();await friend.p.locator('#slspSettingsForm [name=allow_messages]').selectOption('none');
@@ -154,6 +172,8 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
     await openAuth(page,'signup');
     await page.locator('#slSignupForm [name=display_name]').fill('Morgan · QA signup');await page.locator('#slSignupForm [name=username]').fill('qa_new_member');
     await page.locator('#slSignupForm [name=email]').fill('qa.signup@example.invalid');await page.locator('#slSignupForm [name=password]').fill(password);
+    assert.equal(await page.locator('#slSignupForm [name=display_name]').inputValue(),'Morgan · QA signup','Signup focus preserves the display name');
+    assert.equal(await page.locator('#slSignupForm [name=username]').inputValue(),'qa_new_member','Signup focus preserves the username');
     await page.locator('#slSignupForm .sl-auth-submit').click();await page.waitForFunction(()=>window.SLAuth?.isAuthed()===true);
     await page.locator('.sl-auth-overlay.open').waitFor({state:'hidden'});await page.locator('#slAcctDeleteBtn').waitFor();
     newUser=(await db("SELECT id FROM users WHERE email='qa.signup@example.invalid'"))[0];assert(newUser);
@@ -192,14 +212,19 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
     await emailCtx.close();
   });
   assert.deepEqual(errors,[],'No uncaught JavaScript errors in tested real pages');
-  const sourceFiles=['src/launch/identity.js','src/launch/people.js','src/launch/media.js','src/services/mailer.js','web/frontend/js/sl-bundle-7d.js','web/frontend/js/sl-social-profile.js','web/frontend/js/sl-account-settings.js','web/frontend/css/sl-auth-ui.css','web/frontend/css/sl-account-entry.css'];
-  const receipt={scope:'local fictional browser acceptance; no real-provider or iOS certification',native_postgres:nativeVersion,browser:await browser.version(),source_commit_before_uncommitted_changes:sourceCommit,
+  const sourceFiles=['src/launch/identity.js','src/launch/people.js','src/launch/media.js','src/launch/messages.js','src/launch/session.js','src/routes/oauth.js','src/services/mailer.js','web/frontend/js/sl-auth-core.js','web/frontend/js/sl-auth-ui.js','web/frontend/js/sl-bundle-7d.js','web/frontend/js/sl-social-profile.js','web/frontend/js/sl-social-messages.js','web/frontend/js/sl-account-settings.js','web/frontend/js/sl-reset-password.js','web/frontend/js/sl-email-verification.js','web/frontend/css/sl-social-profile.css','web/frontend/css/sl-auth-ui.css','web/frontend/css/sl-account-entry.css','web/frontend/css/sl-bundle-7d.css','web/frontend/css/sl-design-system.css'];
+  const receipt={scope:'isolated fictional browser acceptance; no real-provider or iOS certification',native_postgres:nativeVersion,browser:await browser.version(),tested_commit:sourceCommit,workflow_run_id:process.env.GITHUB_RUN_ID||null,
     source_sha256:Object.fromEntries(sourceFiles.map(file=>[file,crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT,file))).digest('hex')])),steps,api_responses:requests,uncaught_errors:errors,
     limitations:['SMTP inbox delivery not tested','Real Apple/Google OAuth not tested','Cloudinary upload and external cleanup not tested','Physical iOS, native accessibility and signed App Store build not tested','Recovery token validation uses separate route/DOM tests; these screenshots do not certify email delivery']};
   fs.writeFileSync(path.join(OUT,'browser-receipt.json'),JSON.stringify(receipt,null,2)+'\n');
   console.log('[account-browser] '+steps.length+' stages passed; artifacts: evidence/account-social');
 })().catch(async error=>{
-  if(page){try{await page.screenshot({path:path.join(OUT,'failure.png'),fullPage:true});}catch{}}
+  if(page){try{
+    fs.mkdirSync(OUT,{recursive:true});
+    await page.screenshot({path:path.join(OUT,'failure.png'),fullPage:true});
+    const visibleErrors=await page.locator('.sl-auth-error.show, .slsp-status[data-kind=error]').allTextContents();
+    fs.writeFileSync(path.join(OUT,'failure-receipt.json'),JSON.stringify({stage:currentStage,tested_commit:sourceCommit,completed_steps:steps,api_responses:requests,uncaught_errors:errors,visible_error_copy:visibleErrors},null,2)+'\n');
+  }catch{}}
   console.error('[account-browser] FAILED at '+currentStage+': '+error.stack);process.exitCode=1;
 }).finally(async()=>{
   if(browser)await browser.close();

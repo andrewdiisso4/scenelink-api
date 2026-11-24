@@ -49,3 +49,144 @@ test('new-message people search requires explicit server messaging permission',a
 test('logout clears private messages and in-memory drafts, late send cannot repaint',async()=>{let resolveSend;const c=await setup(call=>{if(call.method==='POST'&&call.url.endsWith('/messages'))return new Promise(r=>resolveSend=()=>r(reply({message:msg(call.body.client_id,2,call.body.body,ME)})));});await open(c);compose(c,'Private text');await tick();c.w.localStorage.removeItem('sl_jwt_token');c.w.dispatchEvent(new c.w.Event('sl-auth-change'));resolveSend();await tick();assert.match(q(c,'main').textContent,/Sign in/);assert(!q(c,'main').textContent.includes('Private text'));assert(!q(c,'[data-message-id]'));c.close();});
 test('hidden tab does not mark messages read or poll their contents',async()=>{let hidden=true;const c=await setup(null);Object.defineProperty(c.w.document,'hidden',{configurable:true,get:()=>hidden});await open(c);assert.equal(c.calls.filter(x=>x.url.endsWith('/read')).length,0);const before=c.calls.length;c.poll.forEach(fn=>fn());await tick();assert.equal(c.calls.length,before);hidden=false;c.w.document.dispatchEvent(new c.w.Event('visibilitychange'));await tick();assert(c.calls.some(x=>x.url.endsWith('/read')));c.close();});
 test('authoritative inbox refresh evicts blocked previews while preserving the loaded page span',async()=>{let blocked=false;const extra=Array.from({length:30},(_,i)=>({id:'extra-'+i,participants:[peer],last_message:'Extra '+i}));const c=await setup(call=>{if(call.url.startsWith('/api/conversations?')){const u=new URL(call.url,'https://test'),limit=Number(u.searchParams.get('limit')),offset=Number(u.searchParams.get('offset')),all=[...(blocked?[]:[{id:CID,participants:[peer],last_message:'Private preview'}]),...extra];return reply({conversations:all.slice(offset,offset+limit),has_more:offset+limit<all.length,offset});}if(blocked&&call.url.includes('/changes?'))return reply({error:'Conversation unavailable'},404);});await open(c);q(c,'[data-more-conversations]').click();await tick();assert.equal(c.w.document.querySelectorAll('[data-open-conversation]').length,31);blocked=true;c.w.dispatchEvent(new c.w.Event('online'));await tick();assert(!q(c,'[data-open-conversation="'+CID+'"]'));assert.equal(c.w.document.querySelectorAll('[data-open-conversation]').length,30);assert(!q(c,'[data-conversations]').textContent.includes('Private preview'));assert(!q(c,'[data-message-id]'));assert.equal(q(c,'[data-compose]').disabled,true);c.close();});
+
+test('deleted direct peer clears cached author, profile link, receipts and editor on the next poll',async()=>{
+ let deleted=false;
+ const c=await setup(call=>{
+  if(deleted&&call.url.startsWith('/api/conversations?'))return reply({conversations:[],has_more:false});
+  if(deleted&&(call.url.includes('/changes?')||call.url.includes('/messages?')))return reply({error:'Conversation unavailable'},404);
+  if(call.url.includes('/messages?'))return reply({messages:[msg(MID,1,'Departed private message'),msg(MID2,2,'Stored survivor message',ME)],participants:[user,peer],conversation:{id:CID},sync_seq:'2',has_more:false,read_receipts:[{user_id:PEER,last_read_message_id:MID2}]});
+ });
+ try{await open(c);assert(q(c,'[data-thread] a[href="/profile?u='+PEER+'"]'));q(c,'[data-edit]').click();assert(q(c,'[data-edit-form]'));
+  deleted=true;c.w.dispatchEvent(new c.w.Event('online'));await tick();
+  assert(!q(c,'[data-message-id]'));assert(!q(c,'[data-thread]').textContent.includes('Peer'));
+  assert(!q(c,'[data-thread] a[href="/profile?u='+PEER+'"]'));assert(!q(c,'[data-edit-form]'));assert(!q(c,'.slm-read-receipt'));
+  assert.equal(q(c,'[data-compose]').disabled,true);assert.equal(q(c,'[data-send]').disabled,true);
+  assert.match(q(c,'[data-thread-status]').textContent,/unavailable/);assert(!q(c,'[data-open-conversation="'+CID+'"]'));
+ }finally{c.close();}
+});
+
+test('an older history response cannot resurrect a direct thread after its peer becomes unavailable',async()=>{
+ let resolveOlder;
+ const c=await setup(call=>{
+  if(call.url.includes('cursor='))return new Promise(resolve=>{resolveOlder=resolve;});
+  if(call.url.includes('/messages?'))return reply({messages:[msg(MID2,2)],participants:[user,peer],conversation:{id:CID},sync_seq:'2',has_more:true,next_cursor:'older'});
+  if(call.url.includes('/changes?'))return reply({error:'Conversation unavailable'},404);
+ });
+ try{await open(c);q(c,'[data-older]').click();await tick();assert(resolveOlder);
+  c.w.dispatchEvent(new c.w.Event('online'));await tick();assert(!q(c,'[data-message-id]'));
+  resolveOlder(reply({messages:[msg(MID,1,'Late deleted-author history')],participants:[user,peer],conversation:{id:CID},sync_seq:'2',has_more:false}));await tick();
+  assert(!q(c,'[data-message-id]'));assert(!q(c,'[data-thread]').textContent.includes('Late deleted-author history'));assert.equal(q(c,'[data-compose]').disabled,true);
+ }finally{c.close();}
+});
+
+test('a group membership snapshot evicts deleted-author cache without closing the surviving conversation',async()=>{
+ const survivor={id:'10000000-0000-4000-8000-000000000003',username:'survivor',display_name:'Fictional survivor'};let resolveOlder,departed=false;
+ const c=await setup(call=>{
+  if(call.url.startsWith('/api/conversations?'))return reply({conversations:[{id:CID,is_group:true,participants:departed?[survivor]:[peer,survivor],last_message:departed?'Keep survivor group message':'Departed group preview'}],has_more:false});
+  if(call.url.includes('cursor='))return new Promise(resolve=>{resolveOlder=resolve;});
+  if(call.url.includes('/messages?'))return reply({messages:[msg(MID,1,'Departed group message'),{...msg(MID2,2,'Keep survivor group message',survivor.id),display_name:survivor.display_name}],participants:[user,peer,survivor],conversation:{id:CID,is_group:true},sync_seq:'2',has_more:true,next_cursor:'older'});
+  if(call.url.includes('/changes?')){departed=true;return reply({messages:[],participants:[user,survivor],next_seq:'2',can_send:true,has_more:false,read_receipts:[]});}
+ });
+ try{await open(c);q(c,'[data-older]').click();await tick();assert(resolveOlder);
+  c.w.dispatchEvent(new c.w.Event('online'));await tick();
+  assert(!q(c,'[data-message-id="'+MID+'"]'));assert(q(c,'[data-message-id="'+MID2+'"]'));
+  assert(!q(c,'[data-thread]').textContent.includes('Departed group message'));assert(!q(c,'[data-thread]').textContent.includes('Peer'));
+  assert(!q(c,'[data-conversations]').textContent.includes('Peer'));assert(!q(c,'[data-conversations]').textContent.includes('Departed group preview'));
+  assert.match(q(c,'[data-thread]').textContent,/Existing group conversation/);assert.equal(q(c,'[data-compose]').disabled,false);
+  resolveOlder(reply({messages:[msg(MID,1,'Late departed group message')],participants:[user,peer,survivor],conversation:{id:CID,is_group:true},sync_seq:'2',has_more:false}));await tick();
+  assert(!q(c,'[data-message-id="'+MID+'"]'));assert(q(c,'[data-message-id="'+MID2+'"]'));assert(!q(c,'[data-thread]').textContent.includes('Peer'));
+ }finally{c.close();}
+});
+
+test('a successful send arriving after unavailable cannot repaint cleared history or claim confirmation',async()=>{
+ let resolveSend;
+ const c=await setup(call=>{
+  if(call.method==='POST'&&call.url.endsWith('/messages'))return new Promise(resolve=>{resolveSend=()=>resolve(reply({message:msg(call.body.client_id,2,call.body.body,ME)}));});
+  if(call.url.includes('/changes?'))return reply({error:'Conversation unavailable'},404);
+ });
+ try{await open(c);compose(c,'Survivor unconfirmed message');await tick();assert(resolveSend);
+  c.w.dispatchEvent(new c.w.Event('online'));await tick();resolveSend();await tick();
+  assert(!q(c,'[data-message-id]'));assert.equal(q(c,'[data-compose]').disabled,true);
+  assert.match(q(c,'[data-thread-status]').textContent,/unavailable/);assert(!q(c,'[data-outbox]').textContent.includes('Saving to server'));
+  assert(q(c,'[data-retry-message]').disabled);
+ }finally{c.close();}
+});
+
+for(const code of ['MESSAGE_UNAVAILABLE',undefined])test('a delayed '+(code?'missing-message':'legacy')+' read acknowledgement keeps the surviving group open and polling',async()=>{
+ const survivor={id:'10000000-0000-4000-8000-000000000003',username:'survivor',display_name:'Fictional survivor'};let resolveRead,departed=false;
+ const c=await setup(call=>{
+  if(call.url.startsWith('/api/conversations?'))return reply({conversations:[{id:CID,is_group:true,participants:departed?[survivor]:[peer,survivor]}],has_more:false});
+  if(call.url.includes('/messages?'))return reply({messages:[msg(MID,1,'Keep the survivor message',ME),msg(MID2,2,'Departed last message')],participants:[user,peer,survivor],conversation:{id:CID,is_group:true},sync_seq:'2',has_more:false});
+  if(call.url.endsWith('/read')&&call.body.through_id===MID2)return new Promise(resolve=>{resolveRead=resolve;});
+  if(call.url.includes('/changes?'))return reply({messages:[],participants:[user,survivor],next_seq:'2',can_send:true,has_more:false,read_receipts:[]});
+ });
+ try{await open(c);assert(resolveRead);departed=true;
+  resolveRead(reply({error:'Message unavailable',code},404));await tick();
+  assert.equal(q(c,'[data-compose]').disabled,false);assert(q(c,'[data-open-conversation="'+CID+'"]'));
+  const before=c.calls.filter(call=>call.url.includes('/changes?')).length;c.poll.forEach(fn=>fn());await tick();
+  assert(c.calls.filter(call=>call.url.includes('/changes?')).length>before,'A missing read target must not stop group polling');
+  assert(q(c,'[data-message-id="'+MID+'"]'));assert(!q(c,'[data-message-id="'+MID2+'"]'));
+  assert(!q(c,'[data-thread]').textContent.includes('Peer'));assert.match(q(c,'[data-thread]').textContent,/Existing group conversation/);
+ }finally{c.close();}
+});
+
+for(const method of ['PATCH','DELETE'])test('a missing '+method+' message target does not close its valid group',async()=>{
+ const c=await setup(call=>{
+  if(call.url.includes('/messages?'))return reply({messages:[msg(MID,1,'My original message',ME)],participants:[user,peer],conversation:{id:CID,is_group:true},sync_seq:'1',has_more:false});
+  if(call.method===method)return reply({error:'Message unavailable',code:'MESSAGE_UNAVAILABLE'},404);
+ });
+ try{await open(c);q(c,method==='PATCH'?'[data-edit]':'[data-delete]').click();
+  if(method==='PATCH'){q(c,'[data-edit-body]').value='Keep my unsaved edit';q(c,'[data-edit-body]').dispatchEvent(new c.w.Event('input',{bubbles:true}));}
+  q(c,'[data-edit-form]').dispatchEvent(new c.w.Event('submit',{bubbles:true,cancelable:true}));await tick();
+  assert.equal(q(c,'[data-compose]').disabled,false);assert(q(c,'[data-message-id="'+MID+'"]'));
+  assert.match(q(c,'[data-message-editor]').textContent,/Message unavailable/);assert.match(q(c,'[data-thread]').textContent,/Existing group conversation/);
+  if(method==='PATCH')assert.equal(q(c,'[data-edit-body]').value,'Keep my unsaved edit');
+  assert(!q(c,'[data-message-list]').textContent.includes('Message deleted'));
+ }finally{c.close();}
+});
+
+test('a conversation-level read failure still clears a deleted direct peer immediately',async()=>{
+ let resolveRead;
+ const c=await setup(call=>call.url.endsWith('/read')?new Promise(resolve=>{resolveRead=resolve;}):undefined);
+ try{await open(c);assert(resolveRead);resolveRead(reply({error:'Conversation unavailable',code:'CONVERSATION_UNAVAILABLE'},404));await tick();
+  assert.equal(q(c,'[data-compose]').disabled,true);assert(!q(c,'[data-message-id]'));assert(!q(c,'[data-thread]').textContent.includes('Peer'));
+  assert.match(q(c,'[data-thread-status]').textContent,/unavailable/);
+ }finally{c.close();}
+});
+
+test('a legacy read404 clears a direct thread only after conversation access is revalidated',async()=>{
+ let resolveRead;
+ const c=await setup(call=>{
+  if(call.url.endsWith('/read'))return new Promise(resolve=>{resolveRead=resolve;});
+  if(call.url.includes('/changes?'))return reply({error:'Conversation unavailable'},404);
+ });
+ try{await open(c);assert(resolveRead);resolveRead(reply({error:'Unavailable'},404));await tick();
+  assert(c.calls.some(call=>call.url.includes('/changes?')),'An unclassified404 must be checked at the conversation boundary');
+  assert.equal(q(c,'[data-compose]').disabled,true);assert(!q(c,'[data-message-id]'));assert(!q(c,'[data-thread]').textContent.includes('Peer'));
+  assert.match(q(c,'[data-thread-status]').textContent,/unavailable/);
+ }finally{c.close();}
+});
+
+test('legacy changes without participants cannot loop on the same missing read target',async()=>{
+ let resolveRead,changes=0,publishNext=false;
+ const reads=[],nextId='30000000-0000-4000-8000-000000000003';
+ const c=await setup(call=>{
+  if(call.url.includes('/messages?'))return reply({messages:[msg(MID,1,'Previously displayed group message')],participants:[user,peer],conversation:{id:CID,is_group:true},sync_seq:'1',has_more:false});
+  if(call.url.endsWith('/read')){
+   reads.push(call.body.through_id);
+   if(reads.length===1)return new Promise(resolve=>{resolveRead=resolve;});
+   if(call.body.through_id===nextId)return reply({ok:true,through_id:nextId});
+   // Bound the regression fixture itself if a broken client repeats immediately.
+   return reply({error:'Missing legacy read target'},reads.length<4?404:503);
+  }
+  if(call.url.includes('/changes?')){changes++;return reply({messages:publishNext?[msg(nextId,2,'New survivor message',ME)]:[],next_seq:publishNext?'2':'1',can_send:true,has_more:false,read_receipts:[]});}
+ });
+ try{await open(c);assert(resolveRead);resolveRead(reply({error:'Message unavailable'},404));await tick();
+  assert.deepEqual(reads,[MID],'A missing target is not immediately retried after a legacy sync');assert.equal(changes,1);
+  assert.equal(q(c,'[data-compose]').disabled,false);
+  c.poll.forEach(fn=>fn());await tick();assert.equal(changes,2);assert.deepEqual(reads,[MID],'A scheduled poll must not acknowledge the same failed target');
+  publishNext=true;c.poll.forEach(fn=>fn());await tick();assert.deepEqual(reads,[MID,nextId]);
+  assert(q(c,'[data-message-id="'+nextId+'"]'));assert.equal(q(c,'[data-compose]').disabled,false);
+ }finally{c.close();}
+});

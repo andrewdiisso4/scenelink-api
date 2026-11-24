@@ -8,7 +8,7 @@
   const api = (path, options) => C().request(path, options);
   const enc = encodeURIComponent;
   let session = '', epoch = 0, me, active = null, conversationOffset = 0, moreConversations = false;
-  let conversations = new Map(), threads = new Map(), listBusy = false, searchSeq = 0, searchTimer, listStamp = 0, startBusy = false;
+  let conversations = new Map(), threads = new Map(), listBusy = false, listVersion = 0, searchSeq = 0, searchTimer, listStamp = 0, startBusy = false;
   let pollTimer, started = false;
   const $ = s => host.querySelector(s);
   const current = gen => gen === epoch && C().token() === session;
@@ -21,8 +21,19 @@
     const s = Array.from(bytes, b => b.toString(16).padStart(2,'0')).join(''); return s.slice(0,8)+'-'+s.slice(8,12)+'-'+s.slice(12,16)+'-'+s.slice(16,20)+'-'+s.slice(20);
   }
   function thread(id) {
-    if (!threads.has(id)) threads.set(id,{id, messages:new Map(), cursor:null, more:false, syncSeq:'0', receipts:[], loaded:false, loading:false, olderBusy:false, syncing:false, outbox:[], draft:'', edit:null, error:'', readId:null, readBusy:false, allowed:true});
+    if (!threads.has(id)) threads.set(id,{id, messages:new Map(), cursor:null, more:false, syncSeq:'0', receipts:[], loaded:false, loading:false, olderBusy:false, syncing:false, outbox:[], draft:'', edit:null, error:'', readId:null, failedReadId:null, readBusy:false, allowed:true, accessVersion:0, membersVersion:0});
     return threads.get(id);
+  }
+  const currentThread = (t,gen,version) => current(gen) && t.accessVersion === version;
+  function unavailable(t) {
+    // Revoke cached content and any earlier response still in flight. Keep only
+    // this account's unsent text; it cannot be retried while the thread is closed.
+    ++t.accessVersion;++t.membersVersion;++listVersion;
+    t.messages.clear();t.participants=[];t.conversation=null;t.receipts=[];t.edit=null;
+    t.loaded=false;t.allowed=false;t.cursor=null;t.more=false;t.syncSeq='0';
+    t.loading=false;t.olderBusy=false;t.syncing=false;t.readBusy=false;t.readId=null;t.failedReadId=null;t.lastMarkedDisplayedId=null;
+    for(const o of t.outbox){o.sending=false;o.error='Conversation unavailable. Sending was not confirmed.';}
+    conversations.delete(t.id);renderList();if(active===t.id)renderThread(t);
   }
   function sorted(t) { return Array.from(t.messages.values()).sort((a,b) => String(a.cursor_at||a.created_at).localeCompare(String(b.cursor_at||b.created_at)) || String(a.id).localeCompare(String(b.id))); }
   function merge(t, messages) {
@@ -64,7 +75,7 @@
     $('[data-more-conversations]').disabled=listBusy;
   }
   async function loadConversations(more, quiet) {
-    if(listBusy||!me)return;listBusy=true;const gen=epoch;
+    if(listBusy||!me)return;listBusy=true;const gen=epoch,version=listVersion;
     const moreButton=$('[data-more-conversations]');if(moreButton)moreButton.disabled=true;
     try {
       // Refresh every loaded page, rather than merging stale previews forever. Blocks/removals
@@ -73,7 +84,7 @@
       let offset=more?conversationOffset:0,remaining=wanted,hasMore=false;
       do {
         const limit=Math.min(100,remaining),data=await api('/conversations?limit='+limit+'&offset='+offset);
-        if(!current(gen))return;if(!Array.isArray(data.conversations))throw new Error('The service returned an invalid inbox.');
+        if(!current(gen)||version!==listVersion)return;if(!Array.isArray(data.conversations))throw new Error('The service returned an invalid inbox.');
         collected.push(...data.conversations);offset+=data.conversations.length;remaining-=data.conversations.length;hasMore=data.has_more===true;
         if(!data.conversations.length)break;
       } while(!more&&remaining>0&&hasMore);
@@ -147,43 +158,58 @@
   }
   function setThreadStatus(t){if(active===t.id&&$('[data-thread-status]')){$('[data-thread-status]').textContent=t.error;$('[data-thread-status]').classList.toggle('slm-error',!!t.error);}}
   async function loadThread(t,older) {
-    if(t.loading||t.olderBusy||older&&!t.cursor)return;const gen=epoch;
+    if(t.loading||t.olderBusy||older&&!t.cursor)return;const gen=epoch,version=t.accessVersion,membersVersion=t.membersVersion;
     if(older)t.olderBusy=true;else{t.loading=true;t.error='';}if(active===t.id){if(!older)renderThread(t);else $('[data-older]').disabled=true;}
-    try{const data=await api('/conversations/'+enc(t.id)+'/messages?limit=40'+(older?'&cursor='+enc(t.cursor):''));if(!current(gen))return;
+    try{const data=await api('/conversations/'+enc(t.id)+'/messages?limit=40'+(older?'&cursor='+enc(t.cursor):''));if(!currentThread(t,gen,version)||membersVersion!==t.membersVersion)return;
       if(!Array.isArray(data.messages))throw new Error('The service returned an invalid message history.');
       merge(t,data.messages);t.conversation=data.conversation;t.participants=data.participants||[];t.cursor=data.next_cursor||null;t.more=data.has_more===true;t.receipts=data.read_receipts||[];t.loaded=true;t.allowed=data.can_send!==false;
       // Older pages cannot advance the change feed past unseen changes.
-      if(!older)t.syncSeq=String(data.sync_seq||'0');t.error=t.allowed?'':'This person is not currently accepting new messages from you.';
+      if(!older){t.syncSeq=String(data.sync_seq||'0');t.failedReadId=null;}t.error=t.allowed?'':'This person is not currently accepting new messages from you.';
       if(active===t.id){if(!older)renderThread(t);else{renderMessages(t,false);$('[data-older]').hidden=!t.more;}}markRead(t);
-    }catch(e){if(current(gen)){t.error=errorText(e);if(e.status===403||e.status===404){t.allowed=false;t.messages.clear();t.loaded=false;conversations.delete(t.id);renderList();}setThreadStatus(t);if(active===t.id&&!older){renderThread(t);const tools=$('[data-thread-tools]');tools.innerHTML='<button type="button" class="slm-button slm-secondary" data-retry-thread>Retry loading</button>';tools.querySelector('button').onclick=()=>loadThread(t);}}}
-    finally{if(current(gen)){t.loading=false;t.olderBusy=false;if(active===t.id&&$('[data-older]'))$('[data-older]').disabled=false;}}
+    }catch(e){if(currentThread(t,gen,version)&&membersVersion===t.membersVersion){t.error=errorText(e);if(e.status===403||e.status===404)unavailable(t);setThreadStatus(t);if(active===t.id&&!older){renderThread(t);const tools=$('[data-thread-tools]');tools.innerHTML='<button type="button" class="slm-button slm-secondary" data-retry-thread>Retry loading</button>';tools.querySelector('button').onclick=()=>loadThread(t);}}}
+    finally{if(currentThread(t,gen,version)){t.loading=false;t.olderBusy=false;if(active===t.id&&$('[data-older]'))$('[data-older]').disabled=false;}}
   }
   async function sync(t) {
-    if(t.syncing||t.loading||!t.loaded||document.hidden)return;t.syncing=true;const gen=epoch;
+    if(t.syncing||t.loading||!t.loaded||document.hidden)return;t.syncing=true;const gen=epoch,version=t.accessVersion;let participantsChanged=false;
     try{
       let hasMore=true,rounds=0;
       while(hasMore&&current(gen)&&active===t.id&&!document.hidden){
-        const data=await api('/conversations/'+enc(t.id)+'/changes?after_seq='+enc(t.syncSeq)+'&limit=80');if(!current(gen))return;
+        const data=await api('/conversations/'+enc(t.id)+'/changes?after_seq='+enc(t.syncSeq)+'&limit=80');if(!currentThread(t,gen,version))return;
         if(!Array.isArray(data.messages))throw new Error('Message updates are unavailable.');
         merge(t,data.messages);t.syncSeq=String(data.next_seq||t.syncSeq);t.receipts=data.read_receipts||[];if(data.can_send!==undefined)t.allowed=data.can_send;
+        if(Array.isArray(data.participants)){
+          const members=new Set(data.participants.map(p=>p.id)),removed=(t.participants||[]).some(p=>!members.has(p.id));
+          if(JSON.stringify(t.participants)!==JSON.stringify(data.participants)){++t.membersVersion;participantsChanged=true;}
+          t.participants=data.participants;
+          for(const [id,message] of t.messages)if(!members.has(message.sender_id))t.messages.delete(id);
+          if(removed){
+            // The old preview may belong to the departed author. Hide it until a
+            // fresh inbox response, and discard any earlier inbox request.
+            ++listVersion;listStamp=0;const inbox=conversations.get(t.id);
+            if(inbox){inbox.participants=t.participants.filter(p=>p.id!==me.id);inbox.last_message=null;inbox.last_message_deleted=false;inbox.unread_count=null;renderList();}
+          }
+        }
         hasMore=data.has_more===true;if(++rounds>=10)break; // Continue next poll; never spin indefinitely on a broken cursor.
       }
-      t.error=t.allowed?'':'This person is not currently accepting new messages from you.';if(active===t.id){renderMessages(t);renderOutbox(t);setThreadStatus(t);$('[data-compose]').disabled=!t.allowed;$('[data-send]').disabled=!t.allowed;}markRead(t);
-    }catch(e){if(current(gen)){t.error=errorText(e);if(e.status===403||e.status===404){t.allowed=false;t.messages.clear();t.loaded=false;conversations.delete(t.id);renderList();if(active===t.id)renderThread(t);}else setThreadStatus(t);}}
-    finally{if(current(gen))t.syncing=false;}
+      t.error=t.allowed?'':'This person is not currently accepting new messages from you.';if(active===t.id){if(participantsChanged)renderThread(t);else{renderMessages(t);renderOutbox(t);setThreadStatus(t);$('[data-compose]').disabled=!t.allowed;$('[data-send]').disabled=!t.allowed;}}if(participantsChanged)loadConversations(false,true);markRead(t);
+    }catch(e){if(currentThread(t,gen,version)){t.error=errorText(e);if(e.status===403||e.status===404)unavailable(t);else setThreadStatus(t);}}
+    finally{if(currentThread(t,gen,version))t.syncing=false;}
   }
   async function markRead(t) {
     if(document.hidden||active!==t.id||t.readBusy||!t.loaded)return;
     const h=$('[data-history]');if(!h||h.scrollHeight-h.scrollTop-h.clientHeight>90)return;
-    const last=sorted(t).at(-1);if(!last||last.id===t.lastMarkedDisplayedId)return;
-    t.readBusy=true;const gen=epoch;
-    try{const r=await api('/conversations/'+enc(t.id)+'/read',{method:'POST',body:{through_id:last.id}});if(!current(gen))return;if(r.ok!==true||!r.through_id)throw new Error('Read state was not confirmed.');t.readId=r.through_id;t.lastMarkedDisplayedId=last.id;loadConversations(false,true);}
-    catch(e){if(current(gen)){t.error='Read state could not be saved. '+errorText(e);setThreadStatus(t);}}
-    finally{if(current(gen))t.readBusy=false;}
+    const last=sorted(t).at(-1);if(!last||last.id===t.lastMarkedDisplayedId||last.id===t.failedReadId)return;
+    t.readBusy=true;const gen=epoch,version=t.accessVersion;
+    try{const r=await api('/conversations/'+enc(t.id)+'/read',{method:'POST',body:{through_id:last.id}});if(!currentThread(t,gen,version))return;if(r.ok!==true||!r.through_id)throw new Error('Read state was not confirmed.');t.readId=r.through_id;t.lastMarkedDisplayedId=last.id;loadConversations(false,true);}
+    catch(e){if(currentThread(t,gen,version)){t.error='Read state could not be saved. '+errorText(e);
+      if(e.status===404&&e.code==='CONVERSATION_UNAVAILABLE')unavailable(t);
+      else{setThreadStatus(t);if(e.status===404){t.failedReadId=last.id;sync(t);}} // Revalidate once; legacy sync may not remove the missing target.
+    }}
+    finally{if(currentThread(t,gen,version))t.readBusy=false;}
   }
   function renderOutbox(t) {
     if(active!==t.id)return;const el=$('[data-outbox]');if(!el)return;
-    el.innerHTML=t.outbox.map(o=>'<div class="slm-outbox" data-outbox-id="'+E(o.id)+'"><p>'+E(o.body)+'</p><span role="status">'+E(o.sending?'Saving to server…':o.error||'Not confirmed')+'</span>'+(!o.sending?'<button class="slm-button slm-secondary" type="button" data-retry-message="'+E(o.id)+'">Retry same message</button>':'')+'</div>').join('');
+    el.innerHTML=t.outbox.map(o=>'<div class="slm-outbox" data-outbox-id="'+E(o.id)+'"><p>'+E(o.body)+'</p><span role="status">'+E(o.sending?'Saving to server…':o.error||'Not confirmed')+'</span>'+(!o.sending?'<button class="slm-button slm-secondary" type="button" data-retry-message="'+E(o.id)+'" '+(!t.loaded?'disabled':'')+'>Retry same message</button>':'')+'</div>').join('');
     el.querySelectorAll('[data-retry-message]').forEach(b=>b.onclick=()=>transmit(t,t.outbox.find(o=>o.id===b.dataset.retryMessage)));
   }
   async function send(t) {
@@ -192,12 +218,12 @@
     try{const o={id:uuid(),body,sending:false,error:''};t.outbox.push(o);t.draft='';input.value='';await transmit(t,o);}catch(e){t.error=errorText(e);setThreadStatus(t);}
   }
   async function transmit(t,o) {
-    if(!o||o.sending)return;o.sending=true;o.error='';renderOutbox(t);const gen=epoch;
-    try{const data=await api('/conversations/'+enc(t.id)+'/messages',{method:'POST',body:{body:o.body,client_id:o.id}});if(!current(gen))return;
+    if(!o||o.sending||!t.loaded)return;o.sending=true;o.error='';renderOutbox(t);const gen=epoch,version=t.accessVersion;
+    try{const data=await api('/conversations/'+enc(t.id)+'/messages',{method:'POST',body:{body:o.body,client_id:o.id}});if(!currentThread(t,gen,version))return;
       if(!data.message||data.message.id!==o.id)throw new Error('The server did not confirm this message.');
       merge(t,[data.message]);t.error='';if(active===t.id){renderMessages(t,true);setThreadStatus(t);}loadConversations(false,true);markRead(t);
-    }catch(e){if(current(gen)){o.error=(e.status===408||!e.status?'Not confirmed — it may already be saved. Retry uses the same message ID. ':'Not sent. ')+errorText(e);if(e.status===403||e.status===404)t.allowed=false;}}
-    finally{if(current(gen)){o.sending=false;renderOutbox(t);}}
+    }catch(e){if(currentThread(t,gen,version)){o.error=(e.status===408||!e.status?'Not confirmed — it may already be saved. Retry uses the same message ID. ':'Not sent. ')+errorText(e);if(e.status===404&&e.code==='CONVERSATION_UNAVAILABLE'){t.error=errorText(e);unavailable(t);}else if(e.status===403)t.allowed=false;}}
+    finally{if(currentThread(t,gen,version)){o.sending=false;renderOutbox(t);}}
   }
   function renderEditor(t) {
     if(active!==t.id)return;const el=$('[data-message-editor]');if(!el)return;const edit=t.edit;
@@ -208,12 +234,12 @@
     $('[data-edit-form]').onsubmit=e=>{e.preventDefault();editMessage(t);};
   }
   async function editMessage(t) {
-    const edit=t.edit;if(!edit||edit.busy)return;edit.busy=true;edit.error='';const gen=epoch;
+    const edit=t.edit;if(!edit||edit.busy||!t.loaded)return;edit.busy=true;edit.error='';const gen=epoch,version=t.accessVersion;
     const payload={revision:edit.revision};if(edit.kind==='edit'){payload.body=edit.body.trim();if(!payload.body){edit.busy=false;edit.error='Write a message or cancel.';renderEditor(t);return;}}
     renderEditor(t);
-    try{const data=await api('/conversations/'+enc(t.id)+'/messages/'+enc(edit.id),{method:edit.kind==='delete'?'DELETE':'PATCH',body:payload});if(!current(gen))return;if(!data.message||data.message.id!==edit.id)throw new Error('This change was not confirmed.');merge(t,[data.message]);t.edit=null;renderMessages(t);renderEditor(t);loadConversations(false,true);}
-    catch(e){if(current(gen)){edit.error=errorText(e);if(e.status===409){await sync(t);const fresh=t.messages.get(edit.id);if(fresh){edit.revision=fresh.revision;edit.error+=' Current server message: '+(fresh.deleted_at?'Deleted':fresh.body||'');}}}}
-    finally{if(current(gen)&&t.edit===edit){edit.busy=false;renderEditor(t);}}
+    try{const data=await api('/conversations/'+enc(t.id)+'/messages/'+enc(edit.id),{method:edit.kind==='delete'?'DELETE':'PATCH',body:payload});if(!currentThread(t,gen,version))return;if(!data.message||data.message.id!==edit.id)throw new Error('This change was not confirmed.');merge(t,[data.message]);t.edit=null;renderMessages(t);renderEditor(t);loadConversations(false,true);}
+    catch(e){if(currentThread(t,gen,version)){edit.error=errorText(e);if(e.status===404&&e.code==='CONVERSATION_UNAVAILABLE'){t.error=errorText(e);unavailable(t);}else if(e.status===409){await sync(t);const fresh=t.messages.get(edit.id);if(fresh){edit.revision=fresh.revision;edit.error+=' Current server message: '+(fresh.deleted_at?'Deleted':fresh.body||'');}}}}
+    finally{if(currentThread(t,gen,version)&&t.edit===edit){edit.busy=false;renderEditor(t);}}
   }
   function blockPrompt(t,peer) {
     const tools=$('[data-thread-tools]');tools.innerHTML='<div class="slm-editor"><h3>Block '+E(name(peer))+'?</h3><p>This removes your friendship and prevents messages and profile access between you. You can manage blocked accounts in your profile.</p><div class="slm-row"><button type="button" data-confirm-block class="slm-button">Block account</button><button type="button" data-cancel-block class="slm-button slm-secondary">Cancel</button></div><p role="status"></p></div>';
