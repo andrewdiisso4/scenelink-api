@@ -3,6 +3,20 @@
 // the isolated host; canonical frontend files remain byte-for-byte unchanged.
 function browserBootstrap(origin, release) {
   window.__SL_ENV = {env:'isolated-acceptance',sentryDsn:'',gaId:'',release:release};
+  // This host removes ADMIN_SECRET. Keep the canonical portal nodes for its
+  // event wiring, but only offer the supported account sign-in method here.
+  function accountOnlyAdmin() {
+    const link=document.getElementById('useSecretLink');
+    if(link) (link.closest('.gate-hint') || link).hidden=true;
+    const gate=document.getElementById('secretGate');
+    if(gate) gate.hidden=true;
+    for(const id of ['adminSecret','useSecretBtn']) {
+      const control=document.getElementById(id);
+      if(control) control.disabled=true;
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',accountOnlyAdmin,{once:true});
+  else accountOnlyAdmin();
   const forced = {API_BASE_URL:'/api',API_URL:'/api',API_BASE:origin,GOOGLE_CLIENT_ID:'',APPLE_CLIENT_ID:'',APPLE_ENABLED:false};
   for (const name of ['SL_CONFIG','SLConfig']) {
     let current;

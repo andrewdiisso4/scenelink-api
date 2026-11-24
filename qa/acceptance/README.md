@@ -42,6 +42,8 @@ Only the HTML responses that render the synthetic unlock form and the overview's
 
 All four accounts initially use `ACCEPTANCE_FIXTURE_PASSWORD`. Four explicitly fictional venue rows support dinner/drinks planning and owner controls. Three are eligible for this private fixture directory; QA Pending Cafe remains inactive. No real venue record is imported or activated.
 
+Admin sign-in uses `qa.admin@example.invalid` and its account password. The acceptance browser overlay hides and disables the admin-secret alternative because this host deliberately removes `ADMIN_SECRET`. The outer gate's access secret does not replace the account password. Canonical frontend files and environments that support the admin-secret alternative are unchanged.
+
 The browser can create and reopen private group plans under **Your plans**. The separate **Saved itineraries** store starts empty; these fixtures seed no itineraries, and disabled-model Concierge responses contain no itinerary to save. Its empty-state check does not establish positive itinerary save/reopen acceptance.
 
 ## Database initialization and restarts

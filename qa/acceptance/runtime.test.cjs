@@ -111,6 +111,63 @@ test('browser overlay survives bundled configuration and keeps real connected re
   assert.equal(calls.length,1,'No external request may reach the transport');
 });
 
+test('QA overlay hides unavailable admin-secret controls and preserves shipped account sign-in', async t => {
+  const {JSDOM,VirtualConsole}=require(path.join(root,'web/node_modules/jsdom'));
+  const html=fs.readFileSync(path.join(root,'web/frontend/admin.html'),'utf8');
+  const user={id:'synthetic-admin',role:'admin',username:'qa_admin',email:'qa.admin@example.invalid'};
+  const password='  synthetic fixture password  ';
+  const calls=[];
+  const dom=new JSDOM(html,{url:'https://qa.example.invalid/admin.html',runScripts:'outside-only',virtualConsole:new VirtualConsole(),
+    beforeParse(w) {
+      w.fetch=async(input,options={})=>{
+        const call={path:new URL(input,w.location.href).pathname,options};
+        calls.push(call);
+        const body=call.path==='/api/auth/login'?{user,token:'synthetic-admin-token'}:
+          call.path==='/api/auth/me'?{user}:
+          call.path==='/api/admin/stats'?{users:{total:2},venues:{total:4}}:
+          call.path==='/api/admin/venues/summary'?{total:4,active:3}:
+          call.path==='/api/admin/contacts'?{messages:[],total:0}:{};
+        return new Response(JSON.stringify(body),{status:200,headers:{'Content-Type':'application/json'}});
+      };
+      // Match /env.js running in the head before the admin controls exist.
+      w.eval(browserScript(w.location.origin,'fixture-commit'));
+    }});
+  const w=dom.window,$=id=>w.document.getElementById(id);
+  t.after(()=>w.close());
+  w.eval(fs.readFileSync(path.join(root,'web/frontend/js/sl-auth-core.js'),'utf8'));
+  w.eval(fs.readFileSync(path.join(root,'web/frontend/js/sl-admin-portal.js'),'utf8'));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal($('sl-admin-gate').style.display,'flex');
+  const secretHint=$('useSecretLink').closest('.gate-hint');
+  assert.equal(w.getComputedStyle(secretHint).display,'none','Do not offer the disabled QA auth method');
+  assert.equal($('adminSecret').disabled,true);
+  assert.equal($('useSecretBtn').disabled,true);
+  $('useSecretLink').click();
+  assert.equal(w.getComputedStyle($('secretGate')).display,'none','Existing portal listeners must not reveal it');
+  $('useSecretBtn').click();
+  assert.equal(calls.length,0,'The unavailable method must not initiate an auth probe');
+  assert.equal($('adminEmail').disabled,false);
+  assert.equal($('adminPassword').disabled,false);
+  assert.equal($('adminLoginBtn').disabled,false);
+  $('adminEmail').value=' '+user.email+' ';
+  $('adminPassword').value=password;
+  $('adminLoginBtn').click();
+  await new Promise(resolve=>setImmediate(resolve));
+  const loginCalls=calls.filter(call=>call.path==='/api/auth/login');
+  assert.equal(loginCalls.length,1);
+  assert.deepEqual(JSON.parse(loginCalls[0].options.body),{email:user.email,password});
+  assert.equal($('sl-admin-app').style.display,'block');
+  assert.equal($('adminPassword').value,'');
+  const protectedCalls=calls.filter(call=>call.path.startsWith('/api/admin/'));
+  assert(protectedCalls.length>0);
+  for(const call of protectedCalls) {
+    const headers=new Headers(call.options.headers);
+    assert.equal(headers.get('authorization'),'Bearer synthetic-admin-token');
+    assert.equal(headers.has('x-admin-secret'),false);
+    assert.equal(call.options.credentials,'same-origin');
+  }
+});
+
 test('real HTTP gate protects files and API, preserves bearer auth and enforces same-origin writes', async t => {
   const config=validateEnvironment(environment(),root), app=express();
   let healthy=true, writes=0;
