@@ -1,0 +1,363 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-24T02:49:15.796Z",
+  "status": "passed",
+  "scope": "synthetic_logical_database_restore",
+  "sourceCommit": "fe39d8bebf662f7d1a1d038e402dc67f4dbcbc0d",
+  "harnessSha256": "2b6e049be3af6744bf8521fd48c5f066ae8b3ab4d2da66d8f754f1536d826929",
+  "versions": {
+    "sourceServer": "18.3",
+    "targetServer": "18.3",
+    "pgDump": "pg_dump (PostgreSQL) 18.3 (Debian 18.3-1.pgdg13+1)",
+    "pgRestore": "pg_restore (PostgreSQL) 18.3 (Debian 18.3-1.pgdg13+1)",
+    "node": "v24.22.3"
+  },
+  "archive": {
+    "format": "custom",
+    "bytes": 157684,
+    "sha256": "54829d995410052986c989cfb11e8282426858250d6505866e0d4bf203b165a8",
+    "retained": false
+  },
+  "restore": {
+    "singleTransaction": true,
+    "exitOnError": true,
+    "noOwner": true,
+    "noAcl": true,
+    "clean": false,
+    "createDatabase": false
+  },
+  "fixtures": {
+    "users": 3,
+    "venues": 1,
+    "privateLists": 1,
+    "acceptedInvitations": 1,
+    "conversations": 1,
+    "messagesBeforeArchive": 2,
+    "realData": false
+  },
+  "preserved": {
+    "schemaSha256": "d836cc3d989c5d33a31772da5fdf31d8a37ac9023455b44af698240a8efcbeca",
+    "sequenceStateSha256": "e5cfc882a5a2d083074d0b2e93c22c080bc520af9e86deaad4ffae54e5a2409c",
+    "sequenceCount": 2,
+    "tables": [
+      {
+        "name": "activities",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "analytics_events",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "auth_revocations",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "business_auth_revocations",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "business_upgrade_interest",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "business_users",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "business_venues",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "checkins",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "contact_messages",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "content_reports",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "conversation_participants",
+        "count": 2,
+        "sha256": "10cd41b13629b78636ef86cbdfa43c6a065a4f1e7015304cd55401dcd8ec7387"
+      },
+      {
+        "name": "conversations",
+        "count": 1,
+        "sha256": "eb97d19fb8db1c535af5a368628251a0d7fa6b5a600a41d08bd6f77f05ae5f01"
+      },
+      {
+        "name": "email_verification_tokens",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "event_rsvps",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "event_source_reviews",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "events",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "favorites",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "friendships",
+        "count": 1,
+        "sha256": "3b317cb75dd9e8499168980b779428f53699f7f92dab58231629cd450cc17914"
+      },
+      {
+        "name": "launch_room_members",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "launch_room_options",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "launch_room_votes",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "launch_rooms",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "launch_schema_versions",
+        "count": 9,
+        "sha256": "cea2e3e30a5434d9d9300eb1482f4ade207cb97bae395b0627b29762ea71d4a1"
+      },
+      {
+        "name": "list_create_requests",
+        "count": 1,
+        "sha256": "5f8307e4287dc3d2dd84f220ae71669bbf95a919b9ca6773fc23a72439585216"
+      },
+      {
+        "name": "list_id_reservations",
+        "count": 1,
+        "sha256": "0d21119999fc162a3e5e3bbd51d5e681ba7d25be7f97069b5eb5cf376a95ba6d"
+      },
+      {
+        "name": "list_members",
+        "count": 1,
+        "sha256": "f03db4e7e3fa59e2a67c828f0e901d1554a174e00809547862a357c547dcc093"
+      },
+      {
+        "name": "list_venues",
+        "count": 1,
+        "sha256": "6114d188f45e36f1a5129229973f1b18454d337e4c5dad80ec2cb8483fa819e4"
+      },
+      {
+        "name": "lists",
+        "count": 1,
+        "sha256": "533f3e8ff86bb93562f7ccd75f545637f596dd57b8c0c12968ec84ac7644771b"
+      },
+      {
+        "name": "media_assets",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "messages",
+        "count": 2,
+        "sha256": "e5e590ec294f013764546b0375f4c1f0259a7da8e8765fb0cc4e620b04e8c089"
+      },
+      {
+        "name": "notifications",
+        "count": 1,
+        "sha256": "e6f2716e6b323339b09d6c840faffd7d3ce6cfdf01629aa00b1c29ee4bf1dad5"
+      },
+      {
+        "name": "plan_invites",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "plan_members",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "plan_stops",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "plan_venues",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "plans",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "post_comments",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "post_likes",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "posts",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "push_subscriptions",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "push_tokens",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "reviews",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "scenelink_restore_rehearsal",
+        "count": 1,
+        "sha256": "c74c3b9e993087adb8088678cb489f57f701cf1ab75548387f475f7c1bce9497"
+      },
+      {
+        "name": "signup_welcome_emails",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "user_blocks",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "user_deletions",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "users",
+        "count": 3,
+        "sha256": "a86f4708040080c203a27768a4a2e6ce7df210d8eff2911f07d95782e5e7d05a"
+      },
+      {
+        "name": "venue_import_batches",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "venue_photos",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "venue_promos",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "venue_source_records",
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "venues",
+        "count": 1,
+        "sha256": "698ab5f3d47fe922b8c606cd2bfeae40dfb9627a93505438e43d094c01bfa117"
+      }
+    ],
+    "fullRows": true,
+    "schemaObjects": true,
+    "sequences": true,
+    "identities": true,
+    "foreignKeys": true,
+    "jsonAndNonForeignKeyReferences": true
+  },
+  "checks": [
+    "fresh distinct native PostgreSQL 18.3 loopback targets and matching clients",
+    "actual default startup and reference-rich fictional fixture graph; writers stopped",
+    "full logical custom archive restored atomically with exact rows, schema and sequence state",
+    "restored real login, admin/member boundaries, private consent, tombstones and reference-safe writes"
+  ],
+  "limitations": [
+    "Synthetic application-data/schema logical recovery only; no production backup or production data restore.",
+    "No cluster roles, ownership, ACLs, tablespaces, PITR or provider recovery were restored.",
+    "No production locking duration, old-writer cutover, browser acceptance or production deployment is established."
+  ],
+  "cleanup": {
+    "applicationProcessesStopped": true,
+    "archiveRemoved": true,
+    "callerOwnsDisposableDatabases": true,
+    "ownedLocalClusterStopped": true,
+    "ownedLocalClusterDirectoryRemoved": true
+  },
+  "guardVerification": {
+    "unitGroups": 3,
+    "nativeFreshnessGroup": 1,
+    "privateSchemaTypeLargeObjectAndTableRefusalsPreservedData": true,
+    "nonemptyTargetRefusedWithoutChangingEitherDatabase": true
+  },
+  "clientProvenance": {
+    "source": "https://apt-archive.postgresql.org/pub/repos/apt/",
+    "index_sha256": "bacd002a364e98613d9863609e877fd6b825aff14049355eee7d2fc95e3f77b2",
+    "signature_verified": true,
+    "signer_fingerprint": "B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8",
+    "packages": [
+      {
+        "Package": "libpq5",
+        "Version": "18.3-1.pgdg13+1",
+        "Architecture": "amd64",
+        "Depends": "libc6 (>= 2.38), libgssapi-krb5-2 (>= 1.17), libldap2 (>= 2.6.2), libssl3t64 (>= 3.0.0)",
+        "Filename": "pool/main/p/postgresql-18/libpq5_18.3-1.pgdg13+1_amd64.deb",
+        "Size": "256872",
+        "SHA256": "f8a7cf80f955162a1bf82f0c6479ccec260101ae2e4d5d4d912b18dd939da167"
+      },
+      {
+        "Package": "postgresql-client-18",
+        "Version": "18.3-1.pgdg13+1",
+        "Architecture": "amd64",
+        "Depends": "libpq5 (>= 18.3), postgresql-client-common (>= 182~), sensible-utils, libc6 (>= 2.38), liblz4-1 (>= 0.0~r127), libreadline8t64 (>= 6.0), libssl3t64 (>= 3.0.0), libzstd1 (>= 1.5.5), zlib1g (>= 1:1.1.4)",
+        "Filename": "pool/main/p/postgresql-18/postgresql-client-18_18.3-1.pgdg13+1_amd64.deb",
+        "Size": "2110916",
+        "SHA256": "55fc98cbe7fc46c6430a2ea8cdc72188acf2127df97a7a3d1bf64852af974373"
+      }
+    ]
+  },
+  "sourceCommitMeaning": "Unchanged application baseline; the newly added rehearsal is bound separately by harnessSha256.",
+  "guardTestSha256": "8712084db778de11f0b4aa6dfa0dad307b88204676553e532ed84d8c3b4bd1d4"
+}

@@ -253,6 +253,8 @@
   async function logout() {
     ADMIN_SECRET = '';
     localStorage.removeItem(LS_SECRET);
+    $('#adminPassword').value = '';
+    $('#adminSecret').value = '';
     clearAccess();
     showGate();
     $('#gateError').textContent = '';
@@ -921,6 +923,7 @@
       const sbBadge = document.getElementById('sb-users-count');
       if (sbBadge && r.users) { sbBadge.textContent = fmtNum(r.users.total); }
     } catch (err) {
+      if (err.code === 'ADMIN_SESSION_CHANGED') return;
       console.warn('[admin] stats load failed:', err.message);
     }
   }

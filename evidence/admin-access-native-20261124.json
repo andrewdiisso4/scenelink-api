@@ -1,0 +1,232 @@
+{
+  "schema": "scenelink-admin-access-native-acceptance/v1",
+  "recordedAtUtc": "2026-11-24T03:02:25.618Z",
+  "result": "pass",
+  "groupCount": 5,
+  "runWindowUtc": {
+    "started": "2026-11-24T03:00:41.582Z",
+    "completed": "2026-11-24T03:00:46.445Z",
+    "durationMilliseconds": 4863,
+    "timeSource": "Native run log creation through scratch evidence write, observed filesystem timestamps"
+  },
+  "frontend": {
+    "testedCommit": "b94fa09d0e44259262d8bf3912542fc9842dde7b",
+    "testedTree": "c43370fced3874d2f5efebb94155a2221e9ea902",
+    "baseCommit": "db579dbca96d57edcca5a36cb3d009c1724f2262",
+    "publishedCommit": "252da477e254e48416eb764b144e78e6544ed583",
+    "publishedTree": "c43370fced3874d2f5efebb94155a2221e9ea902",
+    "pullRequest": 40,
+    "equivalence": "Local tested tree equals the exact GitHub publication tree observed and supplied by root; commit identity differs only by metadata."
+  },
+  "backend": {
+    "testedCommit": "7b11bc0cd4edd0b1f7ebb8b6af3f3df096b79b7a",
+    "mountedApplication": "src/server.js -> src/launch/router.js -> src/launch/identity.js; admin middleware and routes unchanged"
+  },
+  "runtime": {
+    "node": "v24.22.3",
+    "postgresql": "18.3",
+    "transport": "real loopback HTTP from jsdom to the exact mounted Express app",
+    "dom": "jsdom with exact admin.html, shipped sl-auth-core.js and hotfix sl-admin-portal.js; native fetch to owned loopback server"
+  },
+  "checks": [
+    {
+      "name": "signed-out exact hotfix HTML opens the login gate without protected requests",
+      "result": "pass"
+    },
+    {
+      "name": "fictional administrator password login obtains a fresh server role and real protected data",
+      "result": "pass"
+    },
+    {
+      "name": "reload discards a stale cached role and refresh uses the production protected API",
+      "result": "pass"
+    },
+    {
+      "name": "fictional member is denied by both the portal and actual requireAdmin middleware",
+      "result": "pass"
+    },
+    {
+      "name": "logout clears the portal immediately and revokes the real database session",
+      "result": "pass"
+    }
+  ],
+  "sourceSha256": {
+    "frontend:web/frontend/admin.html": "9e462fe63bdeb03f9e80197d8266c09e59e6a3186ed96d91dcb0247bf036c474",
+    "frontend:web/frontend/js/sl-auth-core.js": "d952e6870ea8813d3230604083e2c0ba69622308d8a51a33af96a8d1f96b55dc",
+    "frontend:web/frontend/js/sl-admin-portal.js": "a82ca83940bb57e739acbaa2c6db90a5387c542e84749e6f416974d30db1be03",
+    "backend:src/server.js": "07324f32763356d2c59265e5a77147b3a3a62813f93954cbb4801d77fe22cdfe",
+    "backend:src/launch/router.js": "7bd270fbd0c4594a0e56a66e6a8876c26313ebeb1f94c17deeede857dd31a7a2",
+    "backend:src/launch/identity.js": "53d19aae1d28fc19ee206aef5a15ba6e5c3d419b87de8b08304b34e36aeec45d",
+    "backend:src/launch/session.js": "e27e73c48cd3c32f8ef661b8179aac9633ccef06e52af2c81e8307cceea58d97",
+    "backend:src/routes/admin.js": "cceb80abbe0499b9647151ff721e726ca88783ceb774de15c7e863d49b7cb09d"
+  },
+  "scope": {
+    "fictionalOnly": true,
+    "fictionalAccounts": 2,
+    "defaultSchemaInitialization": true,
+    "productionRequests": false,
+    "productionWrites": false,
+    "productionCredentials": false,
+    "hostedQaRepointed": false,
+    "deployedByRunner": false,
+    "realMail": false,
+    "externalProviders": false
+  },
+  "assertions": {
+    "signedOutProtectedApiStatus": 401,
+    "memberProtectedApiStatus": 403,
+    "revokedSessionMeStatus": 401,
+    "revokedSessionAdminStatus": 401,
+    "adminSessionRevocationRowVerified": true,
+    "adminPasswordFieldClearedAfterLogin": true,
+    "protectedUiClearedImmediatelyOnLogout": true,
+    "reloadFreshServerRoleOverridesCachedMember": true,
+    "domHttpRequestCount": 20
+  },
+  "requestAudit": [
+    {
+      "path": "/api/auth/login",
+      "method": "POST",
+      "bearer": false,
+      "status": 200
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/admin/venues/summary",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/admin/stats",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/admin/contacts",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/admin/stats",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/admin/users",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/admin/venues/summary",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/admin/stats",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/admin/contacts",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/admin/stats",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/admin/users",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/admin/stats",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/admin/users",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/auth/login",
+      "method": "POST",
+      "bearer": false,
+      "status": 200
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/auth/logout",
+      "method": "POST",
+      "bearer": true,
+      "status": 200
+    },
+    {
+      "path": "/api/auth/logout",
+      "method": "POST",
+      "bearer": true,
+      "status": 200
+    }
+  ],
+  "cleanup": {
+    "ownedClusterStopped": true,
+    "ownedClusterDirectoryRemoved": true
+  },
+  "limitations": [
+    "Local jsdom DOM execution, not a physical browser or device acceptance.",
+    "Real loopback HTTP and native PostgreSQL 18.3; production TLS, Netlify routing, hosted CSP and browser cache delivery are not exercised by this run.",
+    "Fresh isolated schema with fictional fixtures; no production database contents or migration state inspected.",
+    "Only administrator access compatibility is accepted; user search, venue editing and other portal feature completeness are outside this run."
+  ],
+  "artifacts": {
+    "runner": {
+      "path": "/workspace/scratch/ae78878cb511/admin-access-native-compat.cjs",
+      "sha256": "999ad79e5ce993a06cb2c082bd45e2d607657c572f9e6d346e1b7a9945816e85"
+    },
+    "log": {
+      "path": "/workspace/scratch/ae78878cb511/admin-access-native-compat.log",
+      "sha256": "1a0f6dfb7720f7c40c13597e12863daa30a51b0c94a10eec513cacd5f93f37e0"
+    },
+    "scratchEvidence": {
+      "path": "/workspace/scratch/ae78878cb511/admin-access-native-compat-evidence.json",
+      "sha256": "eb1dca94e5d4699b5f01a75444e6718d01e420894d8992f42baa8ac4b1f9dca3"
+    }
+  }
+}
