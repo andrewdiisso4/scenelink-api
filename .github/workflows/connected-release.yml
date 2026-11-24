@@ -20,6 +20,10 @@ jobs:
           node-version-file: .node-version
       - run: npm ci --ignore-scripts
       - run: npm run check && npm test
+      - name: Validate the reviewed Boston venue packet
+        run: node src/operations/inactive-venue-intake.cjs validate --packet data/venue-intake/boston-20261120 --packet-sha cbc0d3e4c93748d8feef25ad496e01125494eba15c8c3034e5080cf0aef6b008
+      - name: Offline venue preparation regression
+        run: python3 qa/prepare-real-venues.test.py
       - run: npm ci --ignore-scripts --prefix web
       - run: npm test --prefix web && npm run test:social --prefix web
   postgres:
@@ -28,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [api, ingestion, upgrade, welcome]
+        suite: [api, ingestion, upgrade, welcome, venue-intake]
     services:
       postgres:
         image: postgres:18.3
@@ -73,3 +77,6 @@ jobs:
         env:
           TEST_WELCOME_DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
         run: node --test qa/welcome-email.test.cjs
+      - name: Native inactive venue intake acceptance
+        if: matrix.suite == 'venue-intake'
+        run: node --unhandled-rejections=strict qa/inactive-venue-intake-native.cjs
