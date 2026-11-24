@@ -218,3 +218,50 @@ test('an unavailable secret-verification endpoint keeps the portal closed withou
   assert.equal(h.w.localStorage.getItem('sl_admin_secret'),'fixture-secret');
   assert.match(h.$('#gateError').textContent,/could not be verified/);
 });
+
+test('a rejected password keeps the usable login gate and allows a successful retry',async t=>{
+  let rejectLogin=true;
+  const h=await setup(t,{fetch:c=>rejectLogin&&c.path==='/api/auth/login'?response({error:'Invalid email or password'},401):null});
+  await login(h);
+  assert.equal(h.$('#sl-admin-gate').style.display,'flex');
+  assert.match(h.$('#gateError').textContent,/Invalid email or password/);
+  assert.equal(h.$('#adminLoginBtn').disabled,false);
+  assert.equal(h.w.localStorage.getItem('sl_jwt_token'),null);
+  assert.equal(adminCalls(h).length,0);
+  rejectLogin=false;await login(h);
+  assert.equal(h.$('#sl-admin-app').style.display,'block');
+});
+
+test('a server role denial clears protected data and the denial sign-out remains functional',async t=>{
+  let demoted=false;
+  const h=await setup(t,{token:'admin-token',fetch:c=>demoted&&c.path==='/api/admin/users'?response({error:'Admin access required'},403):null});
+  h.click('[data-section=users]');await wait();
+  assert.match(h.$('#usersTbody').textContent,/Private Admin Fixture/);
+  demoted=true;h.click('#refreshBtn');await wait();
+  assert.equal(h.$('#sl-admin-deny').style.display,'flex');
+  assert.equal(h.$('#sl-admin-app').style.display,'none');
+  assert.equal(h.$('#usersTbody').textContent,'');
+  h.click('#denyLogout');await wait();
+  assert.equal(h.$('#sl-admin-gate').style.display,'flex');
+  assert.equal(h.w.localStorage.getItem('sl_jwt_token'),null);
+});
+
+test('an email-verification write restriction does not misidentify an administrator as a denied member',async t=>{
+  const h=await setup(t,{token:'admin-token',fetch:c=>c.method==='PATCH'?response({error:'Verify your email before participating on SceneLink.',code:'EMAIL_VERIFICATION_REQUIRED'},403):null});
+  await h.w.SLAdmin.markContact('contact-fixture','read');
+  assert.equal(h.$('#sl-admin-app').style.display,'block');
+  assert.equal(h.$('#sl-admin-deny').style.display,'none');
+  assert.match(h.$('#toastStack').textContent,/Verify your email/);
+  assert.equal(h.w.localStorage.getItem('sl_jwt_token'),'admin-token');
+});
+
+test('a delayed overview contact count cannot restore the prior session badges or cards after logout',async t=>{
+  let resolveContacts;
+  const h=await setup(t,{token:'admin-token',fetch:c=>c.path==='/api/admin/contacts'?new Promise(resolve=>{resolveContacts=resolve;}):null});
+  assert(h.$('#stat-users-card'));
+  h.click('#sbLogout');
+  resolveContacts(response({messages:[],total:9}));await wait();
+  assert.equal(h.$('#sb-users-count').textContent,'');
+  assert.equal(h.$('#sb-contacts-count').textContent,'');
+  assert.equal(h.$('#stat-users-card'),null);
+});
