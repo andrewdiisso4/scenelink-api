@@ -77,6 +77,13 @@ function buildTransportOptions() {
 let transport = null;
 let transportReady = false;
 let transportError = null;
+let isolatedVerification = null;
+function enableIsolatedVerification(adapter) {
+  if(process.env.ACCEPTANCE_MODE!=='isolated-synthetic'||process.env.EMAIL_PROVIDER!=='disabled'||
+     transport||isolatedVerification||typeof adapter?.ready!=='function'||typeof adapter?.send!=='function')
+    throw new Error('Isolated verification adapter refused');
+  isolatedVerification=adapter;
+}
 
 // ── In-process mailer concurrency cap (Phase 5G) ──────────────────────────
 // Microsoft 365 enforces a ~3-concurrent-connections cap per authenticated
@@ -157,7 +164,7 @@ function initTransport() {
 initTransport();
 
 // ── Public API ──────────────────────────────────────────────────────────────
-function isReady() { return transportReady && !!transport; }
+function isReady() { return isolatedVerification ? isolatedVerification.ready() : transportReady && !!transport; }
 
 async function verify() {
   if (!transport) return { ok: false, error: 'transport not initialized' };
@@ -179,6 +186,10 @@ async function verify() {
  *   @param {boolean} [opts.privateLog]     omit recipients, subjects and provider errors from send logs
  */
 async function sendMail(opts) {
+  if(isolatedVerification){
+    try{return await isolatedVerification.send(opts);}
+    catch{return {ok:false,skipped:true,reason:'isolated-verification-refused'};}
+  }
   if (!isReady()) {
     return { ok: false, skipped: true, reason: 'mailer-not-ready' };
   }
@@ -408,7 +419,7 @@ function escapeHtml(s) {
 }
 
 module.exports = {
-  isReady, verify, sendMail,
+  isReady, verify, sendMail, enableIsolatedVerification,
   // templates
   welcomeEmail, newsletterConfirmEmail,
   contactNotifyAdminEmail, contactAckEmail, passwordResetEmail,
