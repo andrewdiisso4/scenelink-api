@@ -82,10 +82,69 @@
       if (button.isConnected) button.disabled = false;
     }
   }
+  const ROOM_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const ROOM_STATES = {planning:'Planning',confirmed:'Venue selected · not booked',cancelled:'Cancelled'};
+  const planDate = raw => typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(raw) ? raw.slice(0,10) : '';
+  const planName = p => typeof p?.name === 'string' && p.name.trim() ? p.name : 'Untitled plan';
+
+  function planCard() {
+    return '<section class="slsp-card" aria-labelledby="slspPlansTitle"><h2 id="slspPlansTitle">Your plans & saved places</h2>' +
+      '<p class="slsp-muted">Open a saved itinerary or get back to a private group plan. Only you see this section on your profile.</p>' +
+      '<div class="slsp-row">' + action('plans','Show saved plans',null,null,' id="slspShowPlans" aria-controls="slspSavedPlans" aria-expanded="false"') +
+      '<a class="slsp-button" href="/my-lists#want-to-try">Favorites</a><a class="slsp-button" href="/my-lists">Saved lists</a>' +
+      '<a class="slsp-button" href="/events#my-rsvps">My RSVPs</a><a class="slsp-button" href="/plan-with-friends">Plan with friends</a>' +
+      '<a class="slsp-button" href="/social-feed">Social feed</a></div><p id="slspPlansStatus" class="slsp-status" role="status"></p>' +
+      '<div id="slspSavedPlans" hidden></div></section>';
+  }
+  function planRows(rooms) {
+    const rows = rooms.filter(r => r && typeof r.id === 'string' && ROOM_ID.test(r.id) &&
+      Object.prototype.hasOwnProperty.call(ROOM_STATES,r.state)).slice(0,5);
+    if (!rows.length) return rooms.length ? '<p>Group plan details could not be displayed.</p>' : '<p>No group plans yet.</p>';
+    return '<ul>' + rows.map(r => '<li><a href="/plan-with-friends?room_id=' + encodeURIComponent(r.id.toLowerCase()) + '">' +
+      E(planName(r)) + '</a><br><small class="slsp-muted">' + E([planDate(r.event_date),
+        r.access_restricted === true ? 'Access restricted' : ROOM_STATES[r.state]].filter(Boolean).join(' · ')) + '</small></li>').join('') + '</ul>';
+  }
+  function itineraryRows(plans) {
+    const order = p => Date.parse(p.updated_at || p.created_at || '') || 0;
+    const recent = plans.filter(p => p && typeof p === 'object').sort((a,b) => order(b)-order(a)).slice(0,5);
+    if (!recent.length) return plans.length ? '<p>Itinerary details could not be displayed.</p>' : '<p>No saved itineraries yet.</p>';
+    const stops = (values,tag) => Array.isArray(values) && values.length
+      ? '<' + tag + '>' + values.map(v => '<li>' + E(v?.venue_name || v?.name || 'Unnamed venue') +
+        (v?.venue_available === false ? ' · Currently unavailable' : '') + '</li>').join('') + '</' + tag + '>' : '';
+    return recent.map(p => {
+      const ordered = stops(p.stops,'ol'), legacy = stops(p.legacy_venues,'ul'), date = planDate(p.date);
+      return '<details class="slsp-notice"><summary>' + E(planName(p)) + '</summary>' + (date ? '<p>' + E(date) + '</p>' : '') +
+        (ordered ? '<h4>Stops</h4>' + ordered : '') + (legacy ? '<h4>Other saved venues</h4>' + legacy : '') +
+        (!ordered && !legacy ? '<p>' + (Array.isArray(p.stops) ? 'No stops saved yet.' : 'Stop details unavailable.') + '</p>' : '') +
+        '<p class="slsp-muted slsp-small">A saved itinerary is not a reservation.</p></details>';
+    }).join('');
+  }
+  async function loadPrivatePlans(btn) {
+    const target = $('slspSavedPlans'), session = C().token(), epoch = state.epoch;
+    if (!state.own || !session || !target || btn.disabled) return;
+    btn.disabled = true;
+    status('slspPlansStatus','Loading your saved plans…');
+    try {
+      const [rooms, itineraries] = await Promise.allSettled([
+        C().request('/rooms?limit=5&offset=0'), C().request('/plans')
+      ]);
+      if (!valid(epoch,session) || !target.isConnected) return;
+      const roomsOK = rooms.status === 'fulfilled' && Array.isArray(rooms.value?.rooms);
+      const itinerariesOK = itineraries.status === 'fulfilled' && Array.isArray(itineraries.value?.plans);
+      target.innerHTML = '<h3>Recent group plans</h3>' + (roomsOK ? planRows(rooms.value.rooms) :
+        '<p>Group plans could not be loaded.</p>') + '<h3>Recent saved itineraries</h3>' +
+        (itinerariesOK ? itineraryRows(itineraries.value.plans) : '<p>Saved itineraries could not be loaded.</p>') +
+        '<p><a href="/plan-with-friends">See all plans and itineraries</a></p>';
+      target.hidden = false;btn.setAttribute('aria-expanded','true');
+      status('slspPlansStatus',roomsOK && itinerariesOK ? 'Saved plans loaded.' :
+        'Some saved plans could not be loaded. Refresh to try again.',roomsOK && itinerariesOK ? 'success' : 'error');
+      btn.textContent = 'Refresh saved plans';
+    } finally {if (btn.isConnected) btn.disabled = false;}
+  }
   function render(identityConfirmed) {
     state.search++;state.friendSerial++;state.query='';state.searchItems=[];state.searchMore=false;state.friendItems=[];state.friendMore=false;state.friendsLoaded=false;
     const u = state.user, own = state.own, p = state.public || {};
-    host.innerHTML = renderHero() + '<p id="slspActionStatus" class="slsp-status" role="status"></p>' + (own ? editForm() + '<div class="slsp-tabs" role="tablist" aria-label="Your profile sections"><button type="button" id="slspTabProfile" role="tab" data-tab="profile" aria-controls="slspPanelProfile">Overview</button><button type="button" id="slspTabFriends" role="tab" data-tab="friends" aria-controls="slspPanelFriends">Friends & search</button><button type="button" id="slspTabSettings" role="tab" data-tab="settings" aria-controls="slspPanelSettings">Privacy & settings</button></div><section id="slspPanelProfile" role="tabpanel" aria-labelledby="slspTabProfile"><div class="slsp-grid"><section class="slsp-card"><div class="slsp-row slsp-end"><h2>Earned on SceneLink</h2>' + action('achievements','Refresh') + '</div><p class="slsp-muted slsp-small">From your saved venues, accepted friendships, shared posts and collaborative plans. Current milestones can change if activity is removed. Not proof of a real-world visit.</p><div id="slspAchievements"><p class="slsp-status">Loading recorded activity…</p></div></section><div>' + renderLinks(u) + '<section class="slsp-card"><h2>Your plans & discoveries</h2><p class="slsp-muted">Keep the next night out close.</p><div class="slsp-row"><a class="slsp-button" href="/my-lists">Saved lists</a><a class="slsp-button" href="/events#my-rsvps">My RSVPs</a><a class="slsp-button" href="/plan-with-friends">Plan with friends</a><a class="slsp-button" href="/social-feed">Social feed</a></div></section></div></div></section><section id="slspPanelFriends" role="tabpanel" aria-labelledby="slspTabFriends" hidden><section class="slsp-card"><h2>Find your people</h2><p class="slsp-muted">Search SceneLink usernames or names. Requests only become friendships when accepted.</p><form id="slspSearchForm" class="slsp-search"><label>Find a member<input id="slspSearchInput" name="q" type="search" minlength="2" maxlength="80" placeholder="Name or @username" autocomplete="off" required></label><button type="submit" class="slsp-primary">Search</button></form><div id="slspSearchResults" aria-live="polite"><p class="slsp-muted slsp-small">Use an exact @username to look for a private profile. Search visibility settings apply.</p></div></section>' + inviteCard(u) + '<div class="slsp-grid"><section class="slsp-card"><div class="slsp-row slsp-end"><h2>Friend requests</h2>' + action('friends','Refresh') + '</div><div id="slspRequests"><p class="slsp-status">Loading requests…</p></div></section><section class="slsp-card"><h2>Your friends</h2><div id="slspFriends"><p class="slsp-status">Loading friends…</p></div></section></div></section><section id="slspPanelSettings" role="tabpanel" aria-labelledby="slspTabSettings" hidden>' + settingsPanel() + '</section>' : p.can_view !== true ? '<section class="slsp-card"><h2>This profile is private</h2><p class="slsp-muted">Connect as friends to see the details this member shares.</p></section>' : '<div class="slsp-grid">' + renderLinks(u) + '<section class="slsp-card"><h2>Earned achievements</h2><div id="slspPublicAchievements"></div></section></div>') + (!own ? '<section class="slsp-card" id="slspReport" hidden><h2>Report this member</h2><p class="slsp-muted slsp-small">A report sends information to SceneLink moderation. It does not automatically block a member or guarantee a moderation outcome.</p><form id="slspReportForm"><label>Reason<select name="reason"><option value="spam">Spam</option><option value="harassment">Harassment</option><option value="hate_speech">Hate speech</option><option value="impersonation">Impersonation</option><option value="violence">Violence</option><option value="sexual_content">Sexual content</option><option value="self_harm">Self-harm concern</option><option value="other">Other</option></select></label><label>Additional details<textarea name="details" maxlength="1000" rows="3"></textarea></label><p id="slspReportStatus" class="slsp-status" role="status"></p><div class="slsp-row"><button type="submit">Submit report</button>' + action('cancel-report','Cancel') + '</div></form></section>' : '');
+    host.innerHTML = renderHero() + '<p id="slspActionStatus" class="slsp-status" role="status"></p>' + (own ? editForm() + '<div class="slsp-tabs" role="tablist" aria-label="Your profile sections"><button type="button" id="slspTabProfile" role="tab" data-tab="profile" aria-controls="slspPanelProfile">Overview</button><button type="button" id="slspTabFriends" role="tab" data-tab="friends" aria-controls="slspPanelFriends">Friends & search</button><button type="button" id="slspTabSettings" role="tab" data-tab="settings" aria-controls="slspPanelSettings">Privacy & settings</button></div><section id="slspPanelProfile" role="tabpanel" aria-labelledby="slspTabProfile"><div class="slsp-grid"><section class="slsp-card"><div class="slsp-row slsp-end"><h2>Earned on SceneLink</h2>' + action('achievements','Refresh') + '</div><p class="slsp-muted slsp-small">From your saved venues, accepted friendships, shared posts and collaborative plans. Current milestones can change if activity is removed. Not proof of a real-world visit.</p><div id="slspAchievements"><p class="slsp-status">Loading recorded activity…</p></div></section><div>' + renderLinks(u) + '' + planCard() + '</div></div></section><section id="slspPanelFriends" role="tabpanel" aria-labelledby="slspTabFriends" hidden><section class="slsp-card"><h2>Find your people</h2><p class="slsp-muted">Search SceneLink usernames or names. Requests only become friendships when accepted.</p><form id="slspSearchForm" class="slsp-search"><label>Find a member<input id="slspSearchInput" name="q" type="search" minlength="2" maxlength="80" placeholder="Name or @username" autocomplete="off" required></label><button type="submit" class="slsp-primary">Search</button></form><div id="slspSearchResults" aria-live="polite"><p class="slsp-muted slsp-small">Use an exact @username to look for a private profile. Search visibility settings apply.</p></div></section>' + inviteCard(u) + '<div class="slsp-grid"><section class="slsp-card"><div class="slsp-row slsp-end"><h2>Friend requests</h2>' + action('friends','Refresh') + '</div><div id="slspRequests"><p class="slsp-status">Loading requests…</p></div></section><section class="slsp-card"><h2>Your friends</h2><div id="slspFriends"><p class="slsp-status">Loading friends…</p></div></section></div></section><section id="slspPanelSettings" role="tabpanel" aria-labelledby="slspTabSettings" hidden>' + settingsPanel() + '</section>' : p.can_view !== true ? '<section class="slsp-card"><h2>This profile is private</h2><p class="slsp-muted">Connect as friends to see the details this member shares.</p></section>' : '<div class="slsp-grid">' + renderLinks(u) + '<section class="slsp-card"><h2>Earned achievements</h2><div id="slspPublicAchievements"></div></section></div>') + (!own ? '<section class="slsp-card" id="slspReport" hidden><h2>Report this member</h2><p class="slsp-muted slsp-small">A report sends information to SceneLink moderation. It does not automatically block a member or guarantee a moderation outcome.</p><form id="slspReportForm"><label>Reason<select name="reason"><option value="spam">Spam</option><option value="harassment">Harassment</option><option value="hate_speech">Hate speech</option><option value="impersonation">Impersonation</option><option value="violence">Violence</option><option value="sexual_content">Sexual content</option><option value="self_harm">Self-harm concern</option><option value="other">Other</option></select></label><label>Additional details<textarea name="details" maxlength="1000" rows="3"></textarea></label><p id="slspReportStatus" class="slsp-status" role="status"></p><div class="slsp-row"><button type="submit">Submit report</button>' + action('cancel-report','Cancel') + '</div></form></section>' : '');
     if (own) { selectTab(location.hash.slice(1),false); loadAchievements(); }
     else if ($('slspPublicAchievements')) renderAchievements(p.achievements,$('slspPublicAchievements'),false);
     // Notify controls that mount inside the freshly replaced profile panels.
@@ -330,6 +389,7 @@
     else if(kind==='upload-avatar')uploadAvatar(btn);
     else if(kind==='reload')boot(true);
     else if(kind==='achievements')loadAchievements();
+    else if(kind==='plans')await loadPrivatePlans(btn);
     else if(kind==='friends'){
       const epoch=state.epoch,session=C().token();
       status('slspActionStatus','');await loadFriends();

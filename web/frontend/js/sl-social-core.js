@@ -116,6 +116,8 @@
     getUserPosts:   function (userId) { return GET('/posts?user_id=' + encodeURIComponent(userId)); },
     createPost:     function (payload) { return POST('/posts', payload); }, // { body, venue_id?, image_url? }
     deletePost:     function (postId) { return DEL('/posts/' + encodeURIComponent(postId)); },
+    getPost:        function (postId) { return GET('/posts/' + encodeURIComponent(postId)); },
+    setPostLike:     function (postId, liked) { return PUT('/posts/' + encodeURIComponent(postId) + '/like', { liked: liked }); },
     likePost:       function (postId) { return POST('/posts/' + encodeURIComponent(postId) + '/like'); }, // toggle
     getComments:    function (postId) { return GET('/posts/' + encodeURIComponent(postId) + '/comments'); },
     commentPost:    function (postId, text) { return POST('/posts/' + encodeURIComponent(postId) + '/comments', { body: text }); },

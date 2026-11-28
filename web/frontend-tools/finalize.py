@@ -9,7 +9,7 @@ epoch=os.environ.get('SOURCE_DATE_EPOCH')
 built=(datetime.fromtimestamp(int(epoch),timezone.utc) if epoch is not None else datetime.now(timezone.utc)).isoformat()
 root=Path(__file__).resolve().parent.parent/'frontend'
 sync_auth_css(root)
-tag='connected-20261128-real-social-session'
+tag='connected-20261128-social-plan-share'
 for name in ['sl-bundle-7d.js','sl-bundle-7d-ui.js']:
  p=root/'js'/name;s=p.read_text();matches=list(re.finditer(r'/\* === (js/[^ ]+) === \*/',s));header=s[:matches[0].start()]
  p.write_text(header+'\n\n'.join('/* === '+m[1]+' === */\n'+(root/m[1]).read_text().strip() for m in matches)+'\n')

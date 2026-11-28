@@ -40,6 +40,12 @@
     return '<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:linear-gradient(135deg,#D4AF37,#b8860b);color:#000;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:'+Math.round(size*0.4)+'px;">'+esc(initial(name))+'</div>';
   }
 
+  var UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  var linkedParams = new URLSearchParams(window.location.search);
+  var linkedValues = linkedParams.getAll('post');
+  var linkedPost = linkedValues.length===1 && UUID.test(linkedValues[0]) ? linkedValues[0].toLowerCase() : null;
+  function shareable(x){ return x.kind==='post' && UUID.test(x.id) && x.audience==='public' && !x.ref_type; }
+
   var STATE = {
     me: null,
     feed: [],
@@ -124,7 +130,14 @@
   function showLanding(){
     STATE.epoch++;clearPrivateState();
     var landing=$('socialLanding'), feed=$('socialFeed');
-    if(landing){ landing.classList.remove('hidden'); landing.style.display=''; }
+    if(landing){
+      landing.classList.remove('hidden'); landing.style.display='';
+      if(linkedValues.length&&!$('sfLinkedLoginHint')){
+        var note=document.createElement('p');note.id='sfLinkedLoginHint';note.setAttribute('role','status');
+        note.textContent=linkedPost?'Sign in to view this shared post.': 'This post link is invalid.';
+        landing.prepend(note);
+      }
+    }
     if(feed){ feed.classList.remove('active'); feed.style.display='none'; }
   }
   function showFeed(){
@@ -341,8 +354,32 @@
   }
 
   // ── Feed ────────────────────────────────────────────────────────────
+  function loadLinkedPost(content){
+    var navigation='<p><a href="/social-feed">Back to activity</a></p>';
+    var tabs=document.querySelector('.sf-tabs');if(tabs){ tabs.hidden=true;tabs.style.display='none'; }
+    if(!linkedPost){content.innerHTML=navigation+'<p role="status">This post link is invalid.</p>';return;}
+    var request=++STATE.feedRequest;
+    content.innerHTML=navigation+'<p role="status">Loading shared post…</p>';
+    function unavailable(retry){
+      content.innerHTML=navigation+(retry
+        ? '<p role="status">Could not load the post.</p><button type="button" id="sfRetryFeed">Try again</button>'
+        : '<p role="status">This post is unavailable or is not shared with you.</p>');
+      if(retry)wireRetry();
+    }
+    social().getPost(linkedPost).then(forSession(function(r){
+      if(request!==STATE.feedRequest)return;
+      if(r.loggedOut){showLanding();return;}
+      if(!r.ok){unavailable(!r.notFound&&!r.forbidden);return;}
+      var post=r.data&&r.data.post;
+      if(!post||post.kind!=='post'||post.id!==linkedPost){unavailable(true);return;}
+      content.innerHTML=navigation+renderCard(post);
+      wireCard(post);
+    })).catch(forSession(function(){if(request===STATE.feedRequest)unavailable(true);}));
+  }
+
   function loadFeed(reset){
     var content=$('sfFeedContent'); if(!content || !STATE.me) return;
+    if(linkedValues.length){loadLinkedPost(content);return;}
     if(!reset && (STATE.loadingFeed || !STATE.nextCursor)) return;
     var request=++STATE.feedRequest, scope=STATE.activeTab, settled=false;
     STATE.loadingFeed=true;
@@ -419,13 +456,16 @@
       ({private:' · Only you',friends:' · Shared with accepted friends',public:' · Public'})[x.audience] || '' : '';
 
     var actions = isPost ? (
-      '<div class="sf-card-actions" style="display:flex;gap:18px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05);font-size:13px;">'+
-        '<button class="sf-like" data-id="'+esc(x.id)+'" style="background:none;border:none;color:'+(x.liked_by_me?'#D4AF37':'rgba(255,255,255,.6)')+';cursor:pointer;font-size:13px;display:flex;align-items:center;gap:5px;">'+
+      '<div class="sf-card-actions" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05);font-size:13px;">'+
+        '<button type="button" class="sf-like" aria-label="Like post" aria-pressed="'+String(!!x.liked_by_me)+'" data-id="'+esc(x.id)+'" style="background:none;border:none;color:'+(x.liked_by_me?'#D4AF37':'rgba(255,255,255,.6)')+';cursor:pointer;font-size:13px;display:flex;align-items:center;gap:5px;">'+
           '<i class="'+(x.liked_by_me?'fas':'far')+' fa-heart"></i> <span class="sf-like-count">'+(x.like_count||0)+'</span></button>'+
-        '<button class="sf-comment-toggle" data-id="'+esc(x.id)+'" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:5px;">'+
+        '<button type="button" class="sf-comment-toggle" aria-label="Comments" aria-expanded="false" data-id="'+esc(x.id)+'" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:5px;">'+
           '<i class="far fa-comment"></i> <span class="sf-comment-count">'+(x.comment_count||0)+'</span></button>'+
+        (shareable(x)?'<button type="button" class="sf-share" style="border:0;background:none;color:#E3C56B;cursor:pointer;padding:8px;">Share link</button>':'')+
         (canModerate?'<button class="sf-report" data-id="'+esc(x.id)+'" title="Report" style="background:none;border:none;color:rgba(255,255,255,.3);cursor:pointer;margin-left:auto;"><i class="fas fa-flag"></i></button>':'')+
       '</div>'+
+      '<p class="sf-action-status" role="status" style="color:#ddd;font-size:13px;margin:6px 0;"></p>'+
+      '<div class="sf-share-fallback" hidden></div>'+
       '<div class="sf-comments" data-id="'+esc(x.id)+'" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05);"></div>'
     ) : '';
 
@@ -450,26 +490,54 @@
   function wireCard(x){
     var article=document.querySelector('.sf-card[data-id="'+cssEsc(x.id)+'"]');
     if(!article) return;
+    var status=article.querySelector('.sf-action-status');
     var like=article.querySelector('.sf-like');
     if(like) like.addEventListener('click', function(){
       if(!STATE.me) return showLanding();
+      if(like.disabled)return;
       var icon=like.querySelector('i'); var cnt=like.querySelector('.sf-like-count');
-      social().likePost(x.id).then(forSession(function(r){
-        if(r.ok && r.data){
-          var liked = r.data.liked!=null?r.data.liked:!x.liked_by_me;
-          x.liked_by_me=liked; x.like_count=r.data.like_count!=null?r.data.like_count:x.like_count;
+      like.disabled=true;status.textContent='';
+      social().setPostLike(x.id,!x.liked_by_me).then(forSession(function(r){
+        like.disabled=false;
+        if(r.ok && typeof r.data?.liked==='boolean' && Number.isSafeInteger(r.data.like_count)){
+          var liked=r.data.liked;
+          x.liked_by_me=liked;x.like_count=r.data.like_count;
           if(icon) icon.className=(liked?'fas':'far')+' fa-heart';
           like.style.color=liked?'#D4AF37':'rgba(255,255,255,.6)';
+          like.setAttribute('aria-pressed',String(liked));
           if(cnt) cnt.textContent=x.like_count;
         } else if(r.loggedOut){ showLanding(); }
-      }));
+        else status.textContent='Could not confirm your reaction. Refresh the feed before retrying.';
+      })).catch(forSession(function(){like.disabled=false;status.textContent='Could not confirm your reaction. Refresh the feed before retrying.';}));
+    });
+
+    var share=article.querySelector('.sf-share');
+    if(share)share.addEventListener('click',function(){
+      if(!STATE.me||STATE.session!==sessionToken()||!shareable(x))return;
+      var url=new URL('/social-feed',window.location.origin);
+      url.searchParams.set('post',x.id.toLowerCase());
+      var fallback=article.querySelector('.sf-share-fallback');
+      function showFallback(){
+        if(!article.isConnected)return;
+        var field=document.createElement('input');
+        field.value=url.href;field.readOnly=true;field.style.maxWidth='100%';field.setAttribute('aria-label','Shared SceneLink post link');
+        fallback.replaceChildren(field);fallback.hidden=false;field.focus();field.select();
+        status.textContent='Copy this link to share. The recipient must sign in and have access.';
+      }
+      status.textContent='';fallback.hidden=true;fallback.replaceChildren();
+      if(!navigator.clipboard||typeof navigator.clipboard.writeText!=='function'){showFallback();return;}
+      try {
+        Promise.resolve(navigator.clipboard.writeText(url.href)).then(forSession(function(){
+          if(article.isConnected)status.textContent='Link copied. The recipient must sign in and have access.';
+        })).catch(forSession(showFallback));
+      } catch(_){showFallback();}
     });
 
     var ct=article.querySelector('.sf-comment-toggle');
     var box=article.querySelector('.sf-comments');
     if(ct && box) ct.addEventListener('click', function(){
-      if(box.style.display!=='none'){ box.style.display='none'; return; }
-      box.style.display='block';
+      if(box.style.display!=='none'){ box.style.display='none';ct.setAttribute('aria-expanded','false');return; }
+      box.style.display='block';ct.setAttribute('aria-expanded','true');
       if(box.querySelector('.sf-comment-input')||box.dataset.loading==='true')return;
       box.dataset.loading='true';
       box.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:12px;">Loading…</div>';
