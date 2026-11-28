@@ -411,7 +411,7 @@
   "js/sl-sync.js": "7e116f4929f2792c8173ca20b3e77ce6bbcf668905f651758095d25bfac31f37",
   "js/sl-universal-actions.js": "b3cfab31f545ca3e7e7eec44f31254132f88f2e2921d7a58b37a8f78762af54d",
   "js/sl-universal-guards.js": "ad432a3b08fd86c8becb0b475581249a0ba2d639a3be14aeb57e4ec7f8a9135e",
-  "js/sl-universal-search.js": "d7724eb4bb5a084596899980db0689d4cb69a3c17a721aac43441f1287911e51",
+  "js/sl-universal-search.js": "0e288b2a0057b67ecb757f12ebbd027856b328e91017172af25ec4795a128c91",
   "js/sl-unread-poller.js": "371058b60b2c50d6485641288257bcf3be73025088311a63864b9f7abc2042b0",
   "js/sl-user-search.js": "63d9b0f1b21f0f2842982c2aa2d64ae77e73ef7f52f833d55c4b306b2119b211",
   "js/sl-user-state.js": "0b94a9163c36cc7c2ea1ecc43cd00ccb512da66c372c2a1d01a09392caf4b94c",

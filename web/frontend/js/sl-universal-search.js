@@ -158,7 +158,7 @@
   }
   function hotkeys(){ document.addEventListener('keydown',function(e){ if((e.metaKey||e.ctrlKey)&&String(e.key).toLowerCase()==='k'){ var i=qs('.slus-input'); if(i){ e.preventDefault(); i.focus(); i.select(); } } }); }
   function mountConciergeLauncher(){
-    if (!window.__SL_PHASE8D_RECOVERY__ || /\/(?:admin|offline|404)(?:\.html)?\/?$/.test(window.location.pathname || '')) return;
+    if (qs('.sl-concierge-launcher') || !window.__SL_PHASE8D_RECOVERY__ || /\/(?:admin|offline|404)(?:\.html)?\/?$/.test(window.location.pathname || '')) return;
     var launch=document.createElement('button');
     launch.type='button';
     launch.className='sl-concierge-launcher';
@@ -181,6 +181,12 @@
     document.body.classList.add('sl-has-concierge-launcher');
     document.body.appendChild(launch);
   }
-  function boot(){ var root=ensureHeaderSearch(); if(root){ bind(root); hotkeys(); mountConciergeLauncher(); } }
+  function boot(){
+    var root=ensureHeaderSearch();
+    if(!root) return;
+    bind(root); hotkeys();
+    if(window.__SL_PHASE8D_RECOVERY__) mountConciergeLauncher();
+    else if(document.readyState!=='complete') document.addEventListener('DOMContentLoaded',mountConciergeLauncher,{once:true});
+  }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
 })();

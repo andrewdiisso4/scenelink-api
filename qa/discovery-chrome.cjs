@@ -29,6 +29,7 @@ const server=http.createServer((req,res)=>{
   for(const route of (width===390||width===1440?['index','explore','events','nightlife','tonight','profile','messages','social-feed','my-lists','plan-with-friends','business','contact']:['index','explore','events'])){
    await page.goto(origin+'/'+route+'.html',{waitUntil:'domcontentloaded'});
    const prefix=width+' '+route;
+   console.log('CHECK',prefix);
    const search=page.locator('.slus-input'), launcher=page.locator('.sl-concierge-launcher');
    const out=await page.evaluate(()=>({view:innerWidth,scroll:document.documentElement.scrollWidth, root:document.querySelector('.sl-universal-search')?.parentElement?.className}));
    await search.waitFor({state:'visible',timeout:6000}); await launcher.waitFor({state:'visible',timeout:6000});

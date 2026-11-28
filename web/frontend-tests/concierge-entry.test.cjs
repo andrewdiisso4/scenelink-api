@@ -120,3 +120,14 @@ for (const route of ['index.html','events.html','profile.html','messages.html','
  assert.equal(launcher.getAttribute('aria-expanded'),'false');
  assert.equal(d.activeElement,launcher);
 });
+
+test('the floating launcher mounts when the recovery bridge runs after the header defer script',async t=>{
+ const {w,d}=setup(t,'index.html');
+ Object.defineProperty(d,'readyState',{value:'interactive',configurable:true});
+ w.eval(read('js/sl-universal-search.js'));
+ assert(d.querySelector('.slus-input'));
+ assert(!d.querySelector('.sl-concierge-launcher'));
+ w.eval(read('js/sl-phase8d-recovery.js'));
+ d.dispatchEvent(new w.Event('DOMContentLoaded'));
+ assert.equal(d.querySelectorAll('.sl-concierge-launcher').length,1);
+});
