@@ -162,7 +162,7 @@ function isReady() { return transportReady && !!transport; }
 
 function isReadyFor(purpose) {
   if (signupResend.selects(purpose)) return signupResend.ready(purpose);
-  return !isolatedVerification && isReady();
+  return isReady();
 }
 
 async function verify() {
@@ -185,6 +185,12 @@ async function verify() {
  *   @param {boolean} [opts.privateLog]     omit recipients, subjects and provider errors from send logs
  */
 async function sendMail(opts) {
+  if (signupResend.selects(opts.purpose)) {
+    if (!signupResend.ready(opts.purpose)) return { ok: false, skipped: true, reason: 'mailer-not-ready' };
+    await _acquireSlot();
+    try { return await signupResend.send(opts); }
+    finally { _releaseSlot(); }
+  }
   if (!isReady()) {
     return { ok: false, skipped: true, reason: 'mailer-not-ready' };
   }
@@ -423,7 +429,8 @@ function escapeHtml(s) {
 }
 
 module.exports = {
-  isReady, verify, sendMail,
+  isReady, isReadyFor, verify, sendMail,
+  welcomeNotBefore: signupResend.welcomeNotBefore,
   // templates
   welcomeEmail, newsletterConfirmEmail,
   contactNotifyAdminEmail, contactAckEmail, passwordResetEmail,
