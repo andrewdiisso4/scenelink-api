@@ -35,7 +35,7 @@ function install({router,pool,auth,write}) {
     const r=await pool.query(`SELECT u.id,u.username,u.display_name,u.avatar_url FROM users u
       WHERE u.id<>$1 AND u.discoverable IS TRUE AND u.is_private IS FALSE AND ${H.actorSQL()} AND NOT EXISTS(SELECT 1 FROM friendships f
       WHERE f.user_a_id=LEAST(u.id,$1::uuid) AND f.user_b_id=GREATEST(u.id,$1::uuid) AND f.status IN ('pending','accepted','declined','blocked'))
-      AND u.email NOT LIKE 'seed_reviewer_%@scenelink.app' ORDER BY u.created_at DESC,u.id DESC LIMIT $2`,[me,limit]);
+      ORDER BY u.created_at DESC,u.id DESC LIMIT $2`,[me,limit]);
     res.json({suggestions:r.rows});
   }));
   router.get('/users/blocked',...secured,H.wrap(async(req,res)=>{

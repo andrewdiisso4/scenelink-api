@@ -76,3 +76,18 @@ test('suggestion title and subtitle are separate block lines with a shrinking te
  try{const style=h.w.document.createElement('style');style.textContent=fs.readFileSync(path.join(__dirname,'../frontend/css/sl-universal-search.css'),'utf8');h.w.document.head.appendChild(style);await h.search('fixture');const copies=[...h.w.document.querySelectorAll('.slus-copy')];assert.equal(copies.length,5);for(const copy of copies){assert.equal(h.w.getComputedStyle(copy).minWidth,'0');for(const el of copy.children)assert.equal(h.w.getComputedStyle(el).display,'block');assert.match(copy.textContent,/\S\s+\S/);}assert.match(copies[0].textContent,/Long venue name pizza/);
  }finally{h.w.close();}
 });
+
+test('clear returns focus, cancels the prior request, and restores quick searches',async()=>{
+ let signal;const h=await harness((url,options)=>{signal=options.signal;return new Promise(()=>{});});
+ try{await h.search('dinner');const button=h.w.document.querySelector('.slus-clear');assert.equal(button.hidden,false);button.click();assert.equal(signal.aborted,true);assert.equal(h.input.value,'');assert.equal(h.w.document.activeElement,h.input);assert.equal(button.hidden,true);assert(h.w.document.querySelector('[data-slus-chip]'));}
+ finally{h.w.close();}
+});
+test('universal search distinguishes an outage from zero results and keeps a draft-only Concierge fallback',async()=>{
+ const calls=[], draft=[];
+ const h=await harness(async url=>{calls.push(url);return {ok:false,status:503,text:async()=>'{"error":"unavailable"}'};});
+ try{h.w.__SL_PHASE8D_RECOVERY__=true;h.w.addEventListener('sl-concierge-draft',e=>draft.push(e.detail.prompt));
+ await h.search('dinner');assert.match(h.w.document.querySelector('.slus-announcer').textContent,/unavailable/);
+ h.w.document.querySelector('[data-slus-ask-ai]').click();assert.deepEqual(draft,['dinner']);
+ assert.equal(calls.length,2);assert.equal(h.w.localStorage.getItem('sl_recent_searches_v1'),null);}
+ finally{h.w.close();}
+});

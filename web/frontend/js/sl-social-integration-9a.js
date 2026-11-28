@@ -50,7 +50,7 @@
     document.head.appendChild(st);
   }
 
-  var els = {}, epoch = 0, session = '', notificationSeq = 0, stopUnread = null, priorFocus = null, loginTrigger = null;
+  var els = {}, epoch = 0, session = '', notificationSeq = 0, identitySeq = 0, stopUnread = null, priorFocus = null, loginTrigger = null;
   function token(){
     try {
       if(window.SLAuth && window.SLAuth.getToken) return window.SLAuth.getToken() || '';
@@ -62,7 +62,13 @@
   function resultOK(r){ return r && r.ok === true; }
   function confirmed(r){ return resultOK(r) && r.data && r.data.ok === true; }
   function drawerStatus(text){ var el=document.getElementById('slNotifStatus'); if(el) el.textContent=text || ''; }
-
+  function renderAvatar(user){
+    if(!user || !els.avatar || !els.avatar.isConnected) return;
+    var name=user.display_name||user.username||'You';
+    els.avatar.outerHTML=user.avatar_url?'<img class="sl-hdr-avatar" id="slHdrAvatar" src="'+esc(user.avatar_url)+'" alt="'+esc(name)+'">':
+      '<span class="sl-hdr-avatar" id="slHdrAvatar" style="display:inline-flex;align-items:center;justify-content:center;color:#000;background:linear-gradient(135deg,#D4AF37,#b8860b);font-weight:800;font-size:14px;">'+esc((name.trim().charAt(0)||'·').toUpperCase())+'</span>';
+    els.avatar=document.getElementById('slHdrAvatar');
+  }
 
   function build(){
     var host = actionsHost();
@@ -105,15 +111,11 @@
     if(loginBtn){ loginTrigger={element:loginBtn,display:loginBtn.style.display}; loginBtn.style.display='none'; }
 
     // load avatar + initial badges
-    var captured=epoch;
+    var captured=epoch, identity=++identitySeq;
     social().getMe().then(function(r){
-      if(!current(captured)) return;
+      if(!current(captured) || identity!==identitySeq) return;
       var u=(r.ok&&r.data&&(r.data.user||r.data))||null;
-      if(u && els.avatar){
-        var name=u.display_name||u.username||'You';
-        if(u.avatar_url){ els.avatar.outerHTML='<img class="sl-hdr-avatar" id="slHdrAvatar" src="'+esc(u.avatar_url)+'" alt="'+esc(name)+'">'; els.avatar=document.getElementById('slHdrAvatar'); }
-        else { els.avatar.textContent=(name.charAt(0)||'·').toUpperCase(); }
-      }
+      renderAvatar(u);
     });
   }
 
@@ -279,6 +281,13 @@
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', start); else start();
+  document.addEventListener('sl:profile-rendered',function(event){
+    var identity=event.detail&&event.detail.identity;
+    if(!current(epoch) || event.target!==document.getElementById('slSocialProfile') || !identity || typeof identity.id!=='string') return;
+    // The owner profile emits this limited identity only after a confirmed save
+    // and readback. A late initial fetch must not replace the newer saved photo.
+    identitySeq++;renderAvatar(identity);
+  });
   ['sl-auth-change','sl-auth-changed','sl-auth-ready'].forEach(function(type){
     window.addEventListener(type, start); document.addEventListener(type, start);
   });

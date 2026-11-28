@@ -14,23 +14,23 @@
  *     stale HTML even momentarily
  */
 
-const VERSION = 'sl-connected-20261127-signup-newsletter';
+const VERSION = 'sl-connected-20261128-social-business';
 const SHELL_CACHE = `sl-shell-${VERSION}`;
 const RUNTIME_CACHE = `sl-runtime-${VERSION}`;
 const IMG_CACHE = `sl-img-${VERSION}`;
 
 const SHELL_URLS = [
-  '/js/ai-concierge-v5.js?v=connected-20261127-signup-newsletter',
-  '/css/sl-design-system.css?v=connected-20261127-signup-newsletter',
+  '/js/ai-concierge-v5.js?v=connected-20261128-social-business',
+  '/css/sl-design-system.css?v=connected-20261128-social-business',
   '/images/brand/scenelink-wordmark.png',
   '/images/brand/scenelink-full.png',
-  '/js/sl-connected-lists.js?v=connected-20261127-signup-newsletter',
-  '/js/sl-social-messages.js?v=connected-20261127-signup-newsletter',
-  '/js/sl-social-profile.js?v=connected-20261127-signup-newsletter',
-  '/js/sl-events.js?v=connected-20261127-signup-newsletter',
-  '/js/sl-connected-plans.js?v=connected-20261127-signup-newsletter',
-  '/js/sl-connected-actions.js?v=connected-20261127-signup-newsletter',
-  '/js/sl-connected-api.js?v=connected-20261127-signup-newsletter',
+  '/js/sl-connected-lists.js?v=connected-20261128-social-business',
+  '/js/sl-social-messages.js?v=connected-20261128-social-business',
+  '/js/sl-social-profile.js?v=connected-20261128-social-business',
+  '/js/sl-events.js?v=connected-20261128-social-business',
+  '/js/sl-connected-plans.js?v=connected-20261128-social-business',
+  '/js/sl-connected-actions.js?v=connected-20261128-social-business',
+  '/js/sl-connected-api.js?v=connected-20261128-social-business',
   '/offline.html',
   '/manifest.json',
   '/icons/icon-192.png',
@@ -38,21 +38,21 @@ const SHELL_URLS = [
   '/icons/apple-touch-icon.png',
   '/icons/favicon.ico',
   // Phase 7D: precache the bundles so first-paint after install is instant
-  '/css/sl-bundle-7d.css?v=connected-20261127-signup-newsletter',
-  '/js/sl-bundle-7d.js?v=connected-20261127-signup-newsletter',
-  '/js/sl-nav-gate.js?v=connected-20261127-signup-newsletter',
-  '/js/sl-fetch-guard.js?v=connected-20261127-signup-newsletter',
-  '/js/sl-version-marker.js?v=connected-20261127-signup-newsletter',
-  '/js/sl-bundle-7d-ui.js?v=connected-20261127-signup-newsletter',
-  '/css/sl-phase8-launch.css?v=connected-20261127-signup-newsletter',
-  '/js/sl-phase8-completion.js?v=connected-20261127-signup-newsletter',
-  '/js/sl-phase8d-recovery.js?v=connected-20261127-signup-newsletter',
-  '/css/sl-universal-search.css?v=connected-20261127-signup-newsletter',
-  '/js/sl-universal-search.js?v=connected-20261127-signup-newsletter',
-  '/js/sl-social-network.js?v=connected-20261127-signup-newsletter',
-  '/js/sl-social-core.js?v=connected-20261127-signup-newsletter',
-  '/js/sl-social-integration-9a.js?v=connected-20261127-signup-newsletter',
-  '/js/sl-venue-activity-9a.js?v=connected-20261127-signup-newsletter'
+  '/css/sl-bundle-7d.css?v=connected-20261128-social-business',
+  '/js/sl-bundle-7d.js?v=connected-20261128-social-business',
+  '/js/sl-nav-gate.js?v=connected-20261128-social-business',
+  '/js/sl-fetch-guard.js?v=connected-20261128-social-business',
+  '/js/sl-version-marker.js?v=connected-20261128-social-business',
+  '/js/sl-bundle-7d-ui.js?v=connected-20261128-social-business',
+  '/css/sl-phase8-launch.css?v=connected-20261128-social-business',
+  '/js/sl-phase8-completion.js?v=connected-20261128-social-business',
+  '/js/sl-phase8d-recovery.js?v=connected-20261128-social-business',
+  '/css/sl-universal-search.css?v=connected-20261128-social-business',
+  '/js/sl-universal-search.js?v=connected-20261128-social-business',
+  '/js/sl-social-network.js?v=connected-20261128-social-business',
+  '/js/sl-social-core.js?v=connected-20261128-social-business',
+  '/js/sl-social-integration-9a.js?v=connected-20261128-social-business',
+  '/js/sl-venue-activity-9a.js?v=connected-20261128-social-business'
 ];
 
 // ── install: nuke ALL old sl-* caches, then precache shell ──────────────

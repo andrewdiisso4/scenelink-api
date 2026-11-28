@@ -190,3 +190,56 @@ test('legacy changes without participants cannot loop on the same missing read t
   assert(q(c,'[data-message-id="'+nextId+'"]'));assert.equal(q(c,'[data-compose]').disabled,false);
  }finally{c.close();}
 });
+
+test('profile link checks the named recipient and requires an explicit open before any conversation write',async()=>{
+ const c=await setup(call=>{
+  if(call.url==='/api/users/'+PEER)return reply({user:peer,can_message:true});
+  if(call.url==='/api/conversations'&&call.method==='POST'){assert.equal(call.body.user_id,PEER);return reply({conversation:{id:CID}});}
+ },{query:'?to='+PEER});
+ try{
+  assert.equal(q(c,'.slm-layout').dataset.view,'review');
+  const confirm=q(c,'[data-confirm-recipient]');assert(confirm);
+  assert.equal(c.calls.filter(x=>x.method==='POST').length,0);
+  confirm.click();await tick();
+  assert.equal(q(c,'.slm-layout').dataset.view,'thread');
+  assert.equal(c.calls.filter(x=>x.url==='/api/conversations'&&x.method==='POST').length,1);
+  assert.equal(new URL(c.w.location.href).searchParams.get('conversation'),CID);
+  assert.equal(new URL(c.w.location.href).searchParams.has('to'),false);
+  assert.equal(q(c,'[data-compose]').disabled,false);
+ }finally{c.close();}
+});
+test('profile link does not offer messaging or create a thread without confirmed permission',async()=>{
+ const c=await setup(call=>call.url==='/api/users/'+PEER?reply({user:{...peer,display_name:'Unconfirmed member'}}):undefined,{query:'?to='+PEER});
+ try{
+  assert.equal(q(c,'.slm-layout').dataset.view,'review');
+  assert(!q(c,'[data-confirm-recipient]'));
+  assert.doesNotMatch(q(c,'[data-thread]').textContent,/Unconfirmed member/);
+  assert.equal(c.calls.filter(x=>x.method==='POST').length,0);
+  q(c,'[data-cancel-recipient]').click();assert.equal(q(c,'.slm-layout').dataset.view,'inbox');
+  assert.equal(c.w.location.search,'');
+ }finally{c.close();}
+});
+test('recipient response cannot navigate away from the inbox once review has been dismissed',async()=>{
+ let finish;
+ const c=await setup(call=>call.url==='/api/users/'+PEER?new Promise(r=>finish=r):undefined,{query:'?to='+PEER});
+ try{
+  q(c,'[data-cancel-recipient]').click();finish(reply({user:peer,can_message:true}));await tick();
+  assert.equal(q(c,'.slm-layout').dataset.view,'inbox');
+  assert(!q(c,'[data-confirm-recipient]'));assert.equal(c.calls.filter(x=>x.method==='POST').length,0);
+ }finally{c.close();}
+});
+test('compose deep link opens people search without messaging and inbox return preserves the draft',async()=>{
+ const c=await setup(null,{query:'?compose=1'});
+ try{
+  assert(!q(c,'[data-search-form]').hidden);
+  assert.equal(q(c,'[data-new-message]').getAttribute('aria-expanded'),'true');
+  assert.equal(c.calls.filter(x=>x.method==='POST').length,0);
+  await open(c);
+  q(c,'[data-compose]').value='Unsent in this tab';
+  q(c,'[data-close-thread]').click();
+  assert.equal(q(c,'.slm-layout').dataset.view,'inbox');
+  assert.equal(c.w.document.activeElement,q(c,'[data-open-conversation]'));
+  await open(c);
+  assert.equal(q(c,'[data-compose]').value,'Unsent in this tab');
+ }finally{c.close();}
+});

@@ -52,7 +52,7 @@ function install({router,pool,auth,write}) {
   }));
   router.get('/reviews',auth.optionalAuth,H.noStore,H.wrap(async(req,res)=>{
     const vid=H.id(req.query.venue_id,'venue'),r=await pool.query(`SELECT r.id,r.user_id,r.rating,r.content,r.created_at,u.username,u.display_name,u.avatar_url
-      FROM reviews r JOIN users u ON u.id=r.user_id WHERE r.venue_id=$2 AND ${H.profileSQL()} AND COALESCE(to_jsonb(r)->>'is_hidden','false') <> 'true' AND u.email NOT LIKE 'seed_reviewer_%@scenelink.app' ORDER BY r.created_at DESC,r.id DESC LIMIT 50`,[req.user?.id||null,vid]);res.json({reviews:r.rows});
+      FROM reviews r JOIN users u ON u.id=r.user_id WHERE r.venue_id=$2 AND ${H.profileSQL()} AND COALESCE(to_jsonb(r)->>'is_hidden','false') <> 'true' ORDER BY r.created_at DESC,r.id DESC LIMIT 50`,[req.user?.id||null,vid]);res.json({reviews:r.rows});
   }));
 }
 module.exports={install,summary,ROOM_NOTICE};

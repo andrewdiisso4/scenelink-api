@@ -447,7 +447,7 @@ async function handleVenueUpdate(req, res) {
 
         // Keep business_users.venue_name in sync if name changed
         if (req.body.name) {
-            pool.query('UPDATE business_users SET venue_name=$1 WHERE id=$2', [req.body.name, req.user.id]).catch(()=>{});
+            pool.query('UPDATE business_users SET venue_name=$1 WHERE id=$2 AND venue_id=$3', [req.body.name, req.user.id, venue_id]).catch(()=>{});
         }
 
         res.json({ ok: true, venue: businessVenue(result.rows[0]) });
@@ -532,7 +532,7 @@ router.get('/reviews', requireAuth, requireBusiness, async (req, res) => {
                     u.display_name AS user_display_name, u.username
              FROM reviews r
              LEFT JOIN users u ON u.id = r.user_id
-             WHERE r.venue_id = $1
+             WHERE r.venue_id = $1 AND ${H.nonFixtureSQL()}
              ORDER BY r.created_at DESC
              LIMIT $2`,
             [venue_id, limit]
@@ -678,14 +678,18 @@ router.post('/venues/add', requireAuth, requireBusiness, async (req, res) => {
 });
 
 // POST /api/business/venues/switch — change primary/active venue
-router.post('/venues/switch', requireAuth, requireBusiness, async (req, res) => {
+router.post('/venues/switch', requireAuth, requireBusiness, H.noStore, async (req, res) => {
     try {
-        const { venue_id } = req.body || {};
-        if (!venue_id) return res.status(400).json({ error: 'venue_id required' });
-
-        await H.transaction(pool, async db => {
-            const current = await db.query('SELECT venue_id FROM business_users WHERE id=$1 FOR UPDATE',[req.user.id]);
-            const previous = current.rows[0]?.venue_id;
+        const venue_id = H.id(req.body?.venue_id, 'venue_id');
+        const expected = req.body?.expected_active_venue_id === undefined ? undefined :
+            (req.body.expected_active_venue_id === null ? null :
+                H.id(req.body.expected_active_venue_id, 'expected_active_venue_id'));
+        const activeVenueId = await H.transaction(pool, async db => {
+            const owner = await lockBusinessOwner(db, req.user.id);
+            const previous = owner.venue_id;
+            if (expected !== undefined && previous !== expected) {
+                throw new H.HttpError(409, 'The active location changed in another tab. Reload your dashboard before switching.');
+            }
             if (previous !== venue_id) {
                 const owned = await db.query('SELECT 1 FROM business_venues WHERE business_user_id=$1 AND venue_id=$2',[req.user.id,venue_id]);
                 if (!owned.rows.length) throw new H.HttpError(403,'You do not own this venue');
@@ -696,10 +700,12 @@ router.post('/venues/switch', requireAuth, requireBusiness, async (req, res) => 
             }
             await db.query('UPDATE business_venues SET is_primary=false WHERE business_user_id=$1 AND is_primary',[req.user.id]);
             await db.query('INSERT INTO business_venues(business_user_id,venue_id,is_primary) VALUES($1,$2,true) ON CONFLICT(business_user_id,venue_id) DO UPDATE SET is_primary=true',[req.user.id,venue_id]);
-            await db.query('UPDATE business_users SET venue_id=v.id,venue_name=v.name FROM venues v WHERE business_users.id=$1 AND v.id=$2',[req.user.id,venue_id]);
+            const updated = await db.query('UPDATE business_users SET venue_id=v.id,venue_name=v.name FROM venues v WHERE business_users.id=$1 AND v.id=$2 RETURNING business_users.venue_id',[req.user.id,venue_id]);
+            if (updated.rows[0]?.venue_id !== venue_id) throw new H.HttpError(404, 'Location not found');
+            return updated.rows[0].venue_id;
         });
 
-        res.json({ ok: true, active_venue_id: venue_id });
+        res.json({ ok: true, active_venue_id: activeVenueId });
     } catch (err) {
         if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venues switch]', err);
