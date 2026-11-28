@@ -202,10 +202,9 @@
 
     function getAuthToken() {
         try {
-            return (window.SLAuth && typeof SLAuth.getToken === 'function' && SLAuth.getToken()) ||
-                   localStorage.getItem('sl_auth_token') ||
-                   localStorage.getItem('sl_jwt_token') ||
-                   null;
+            if (typeof window.SLAuth?.token === 'function') return window.SLAuth.token() || null;
+            if (typeof window.SLAuth?.getToken === 'function') return window.SLAuth.getToken() || null;
+            return localStorage.getItem('sl_jwt_token') || null;
         } catch (_) { return null; }
     }
 

@@ -210,7 +210,7 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
     const emailCtx=await browser.newContext({viewport:{width:900,height:1150},reducedMotion:'reduce'});const emailPage=await emailCtx.newPage();
     await emailCtx.route('**/*',route=>{
       const url=route.request().url();
-      if(url==='https://scenelink.app/images/brand/scenelink-full.png')return route.fulfill({contentType:'image/png',body:fs.readFileSync(path.join(ROOT,'web/frontend/images/brand/scenelink-full.png'))});
+      if(url==='https://scenelink.app/images/brand/welcome-scenelink-logo.png')return route.fulfill({contentType:'image/png',body:fs.readFileSync(path.join(ROOT,'web/frontend/images/brand/welcome-scenelink-logo.png'))});
       if(url.startsWith(origin+'/__welcome-preview/')){const variant=url.endsWith('/verified')?'verified':'unverified';return route.fulfill({contentType:'text/html',body:fs.readFileSync(path.join(ROOT,'evidence/welcome-email',variant+'.html'))});}
       return route.abort('blockedbyclient');
     });
@@ -218,6 +218,15 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
       await emailPage.goto(origin+'/__welcome-preview/'+variant);await emailPage.locator('img').first().waitFor();await emailPage.waitForFunction(()=>[...document.images].every(i=>i.complete&&i.naturalWidth>0));
       await emailPage.setViewportSize({width:900,height:1150});await shot(emailPage,'welcome-'+variant+'-desktop',true);
       await emailPage.setViewportSize({width:390,height:1100});await shot(emailPage,'welcome-'+variant+'-mobile',true);
+      await emailPage.route('**/welcome-scenelink-logo.png', route=>route.abort('blockedbyclient'));
+      await emailPage.reload();
+      await emailPage.getByText('Eat. Drink. Discover.',{exact:true}).waitFor({state:'visible'});
+      await emailPage.getByRole('heading',{name:'Welcome to SceneLink',exact:true}).waitFor({state:'visible'});
+      assert.equal(await emailPage.getByRole('link',{name:'Explore Boston',exact:true}).getAttribute('href'),'https://scenelink.app/explore.html');
+      assert.equal(await emailPage.getByRole('link',{name:variant==='verified'?'Set up your profile':'Open your profile',exact:true}).getAttribute('href'),'https://scenelink.app/profile.html');
+      assert(await emailPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'welcome must fit without its remote image');
+      await shot(emailPage,'welcome-'+variant+'-images-blocked',true);
+      await emailPage.unroute('**/welcome-scenelink-logo.png');
     }
     const newsletter=require('../src/services/mailer').newsletterConfirmEmail('T'.repeat(43));
     for(const width of [320,390,900]){

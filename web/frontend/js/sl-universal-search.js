@@ -11,10 +11,10 @@
   function qs(sel, root){ return (root || document).querySelector(sel); }
   function qsa(sel, root){ return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
   function esc(s){ return String(s || '').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
-  function token(){ try{return localStorage.getItem('sl_jwt_token')||localStorage.getItem('sl_auth_token')||'';}catch(_){return '';} }
+  function token(){ try{return typeof window.SLAuth?.token==='function' ? window.SLAuth.token() : (localStorage.getItem('sl_jwt_token')||'');}catch(_){return '';} }
   function getRecent(){ try{return JSON.parse(localStorage.getItem(RECENT_KEY)||'[]').filter(Boolean).slice(0,6);}catch(_){return [];} }
   function saveRecent(q){ q=String(q||'').trim(); if(!q) return; var items=[q].concat(getRecent().filter(function(x){return x.toLowerCase()!==q.toLowerCase();})).slice(0,6); try{localStorage.setItem(RECENT_KEY,JSON.stringify(items));}catch(_){} }
-  function api(path,signal){ var h={'Accept':'application/json'}; var t=token(); if(t) h.Authorization='Bearer '+t; return fetch(API+path,{headers:h,credentials:'omit',signal:signal}).then(function(r){return r.text().then(function(txt){var d=null;try{d=txt?JSON.parse(txt):null;}catch(_){d={raw:txt};} if(!r.ok){var e=new Error(d&&d.error||('HTTP '+r.status));e.status=r.status;throw e;} return d;});}); }
+  function api(path,signal){ var h={'Accept':'application/json'}; var t=token(); if(t) h.Authorization='Bearer '+t; return fetch(API+path,{headers:h,credentials:'omit',cache:'no-store',signal:signal}).then(function(r){return r.text().then(function(txt){var d=null;try{d=txt?JSON.parse(txt):null;}catch(_){d={raw:txt};} if(!r.ok){var e=new Error(d&&d.error||('HTTP '+r.status));e.status=r.status;throw e;} return d;});}); }
   function venueUrl(v){ return '/explore.html?' + (v.slug ? 'venue=' + encodeURIComponent(v.slug) : 'venue_id=' + encodeURIComponent(v.id || '')); }
   function initials(name){ return String(name||'?').trim().split(/\s+/).slice(0,2).map(function(x){return x[0]||'';}).join('').toUpperCase() || '?'; }
   function thumbnail(url, label){
@@ -28,6 +28,14 @@
         '<span class="slus-copy"><span class="slus-name">'+esc(obj.name||'Venue')+'</span> <span class="slus-meta">'+esc([obj.cuisine||obj.category||obj.type,obj.neighborhood].filter(Boolean).join(' · ')||'Boston venue')+'</span></span>'+
         '<span class="slus-kind">Venue</span></a>';
     }
+    if(kind==='event'){
+      var date = /^\d{4}-\d{2}-\d{2}$/.test(obj.date||'') ? new Date(obj.date+'T12:00:00Z') : null;
+      var day = date && Number.isFinite(date.valueOf()) ? date.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'America/New_York'}) : '';
+      return '<a class="slus-item" data-slus-item href="/events.html?event='+encodeURIComponent(obj.id)+'" data-slus-label="'+esc(obj.title)+'">'+
+        thumbnail('', '◷')+
+        '<span class="slus-copy"><span class="slus-name">'+esc(obj.title)+'</span> <span class="slus-meta">'+esc([day,obj.venue_name].filter(Boolean).join(' · ')||'Reviewed Boston event')+'</span></span>'+
+        '<span class="slus-kind">Event</span></a>';
+    }
     if(kind==='person'){
       return '<a class="slus-item" data-slus-item href="/profile.html?user='+encodeURIComponent(obj.username||obj.id||'')+'" data-slus-label="'+esc(obj.display_name||obj.username)+'">'+
         thumbnail(obj.avatar_url,initials(obj.display_name||obj.username))+
@@ -36,9 +44,9 @@
     }
     if(kind==='neighborhood'){
       return '<a class="slus-item" data-slus-item href="/explore.html?neighborhood='+encodeURIComponent(obj.name||obj.neighborhood||obj.label||'')+'" data-slus-label="'+esc(obj.name||obj.neighborhood||obj.label)+'">'+
-        '<span class="slus-thumb"><i class="fas fa-map"></i></span><span class="slus-copy"><span class="slus-name">'+esc(obj.name||obj.neighborhood||obj.label)+'</span> <span class="slus-meta">'+esc(obj.count||'')+' Boston venues</span></span><span class="slus-kind">Area</span></a>';
+        '<span class="slus-thumb"><i class="fas fa-map"></i></span><span class="slus-copy"><span class="slus-name">'+esc(obj.name||obj.neighborhood||obj.label)+'</span> <span class="slus-meta">'+esc(Number.isInteger(obj.count)?obj.count+' Boston venues':'Explore this neighborhood')+'</span></span><span class="slus-kind">Area</span></a>';
     }
-    return '<a class="slus-item" data-slus-item href="/explore.html?q='+encodeURIComponent(obj.name||obj.label||'')+'" data-slus-label="'+esc(obj.name||obj.label)+'"><span class="slus-thumb"><i class="fas fa-tags"></i></span><span class="slus-copy"><span class="slus-name">'+esc(obj.name||obj.label||'Category')+'</span> <span class="slus-meta">'+esc(obj.count||'')+' matches</span></span><span class="slus-kind">Type</span></a>';
+    return '<a class="slus-item" data-slus-item href="/explore.html?q='+encodeURIComponent(obj.name||obj.label||'')+'" data-slus-label="'+esc(obj.name||obj.label)+'"><span class="slus-thumb"><i class="fas fa-tags"></i></span><span class="slus-copy"><span class="slus-name">'+esc(obj.name||obj.label||'Category')+'</span> <span class="slus-meta">'+esc(Number.isInteger(obj.count)?obj.count+' matches':'Explore this category')+'</span></span><span class="slus-kind">Type</span></a>';
   }
   function openConcierge(q){
     q = String(q || '').trim();
@@ -56,7 +64,7 @@
     wrap.setAttribute('role','search');
     wrap.setAttribute('aria-label','Sitewide search');
     wrap.innerHTML='<div class="slus-box"><span class="slus-icon">'+SEARCH_ICON+'</span>'+
-      '<input class="slus-input" type="search" maxlength="120" enterkeyhint="search" placeholder="Venues, areas, people…" aria-label="Search SceneLink" role="combobox" aria-autocomplete="list" aria-controls="slusSuggestions" aria-expanded="false" autocomplete="off">'+
+      '<input class="slus-input" type="search" maxlength="120" enterkeyhint="search" placeholder="Venues, events, people…" aria-label="Search SceneLink" role="combobox" aria-autocomplete="list" aria-controls="slusSuggestions" aria-expanded="false" autocomplete="off">'+
       '<button class="slus-clear" type="button" aria-label="Clear search" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m7 7 10 10M17 7 7 17"/></svg></button>'+
       '<kbd class="slus-shortcut" aria-hidden="true">'+(/Mac|iPad|iPhone/.test((window.navigator && window.navigator.platform || ''))?'⌘ K':'Ctrl K')+'</kbd></div>'+
       '<button class="slus-ai" type="button" aria-label="Ask Concierge" aria-haspopup="dialog" title="Open Concierge. Your search stays a draft until you send it.">'+ASK_ICON+'<span>Ask Concierge</span></button>'+
@@ -75,7 +83,7 @@
   function chips(title, arr){ if(!arr||!arr.length)return ''; return '<div class="slus-section"><div class="slus-title">'+esc(title)+'</div><div class="slus-chiprow">'+arr.map(function(x){return '<button class="slus-chip" type="button" data-slus-item data-slus-chip="'+esc(x)+'">'+esc(x)+'</button>';}).join('')+'</div></div>'; }
   function renderDefault(root){
     var sc=qs('.slus-scroll',root), recent=getRecent();
-    sc.innerHTML = (recent.length?chips('Recent searches',recent):'') + chips('Try a Boston search', TRENDING) + '<div class="slus-empty">Try a venue, neighborhood or username. Press Enter to search Explore.</div>';
+    sc.innerHTML = (recent.length?chips('Recent searches',recent):'') + chips('Try a Boston search', TRENDING) + '<div class="slus-empty">Try a venue, event, neighborhood or username. Press Enter to search Explore.</div>';
     announce(root,'');
     setActive(root,-1);
   }
@@ -88,7 +96,7 @@
   }
   function setOpen(root, value){root.classList.toggle('open',value);qs('.slus-input',root).setAttribute('aria-expanded',String(value));if(!value)setActive(root,-1);}
 
-  function renderResults(root, data, q){
+  function renderResults(root, data, q, limited){
     var sc=qs('.slus-scroll',root);
     var venues=Array.isArray(data&&data.venues)?data.venues:[], people=Array.isArray(data&&data.users)?data.users:[], hoods=Array.isArray(data&&data.neighborhoods)?data.neighborhoods:[], cats=Array.isArray(data&&data.categories)?data.categories:[];
     var html='';
@@ -96,10 +104,14 @@
     html += section('People', people.slice(0,4).map(function(u){return itemHtml('person',u);}).join(''));
     html += section('Neighborhoods', hoods.slice(0,4).map(function(n){return itemHtml('neighborhood',n);}).join(''));
     html += section('Categories', cats.slice(0,4).map(function(c){return itemHtml('category',c);}).join(''));
-    var count=Math.min(6,venues.length)+Math.min(4,people.length)+Math.min(4,hoods.length)+Math.min(4,cats.length);
+    var events=(Array.isArray(data&&data.events)?data.events:[]).filter(function(event){
+      return event && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(event.id||'') && typeof event.title==='string' && event.title.trim();
+    }).slice(0,4);
+    html += section('Events',events.map(function(event){return itemHtml('event',event);}).join(''));
+    var count=Math.min(6,venues.length)+Math.min(4,people.length)+Math.min(4,hoods.length)+Math.min(4,cats.length)+events.length;
     if(!count) html='<div class="slus-empty"><strong>No matches for “'+esc(q)+'”</strong><br>Try a shorter search or a different neighborhood.</div>';
-    sc.innerHTML=html+askRow(q);
-    announce(root,count ? count+' search suggestion'+(count===1?'':'s')+'.' : 'No direct matches.');
+    sc.innerHTML=(limited?'<div class="slus-status">Only venue results are available right now. Try again for events and people.</div>':'')+html+askRow(q);
+    announce(root,limited?'Limited search. Only venue results are available.':(count ? count+' search suggestion'+(count===1?'':'s')+'.' : 'No direct matches.'));
     setActive(root,-1);
   }
   function fetchResults(root,q){
@@ -113,7 +125,7 @@
     var sc=qs('.slus-scroll',root); sc.innerHTML='<div class="slus-status"><i class="fas fa-spinner fa-spin"></i> Searching SceneLink…</div>';
     api('/search/universal?q='+encodeURIComponent(q)+'&limit=6',signal).then(function(data){ if(current()) renderResults(root,data,q); }).catch(function(){
       if(!current())return;
-      api('/venues?search='+encodeURIComponent(q)+'&limit=6',signal).then(function(data){ if(current()) renderResults(root,{venues:(data&&data.venues)||[]},q); }).catch(function(){ if(current()){ sc.innerHTML='<div class="slus-empty"><strong>Search is temporarily unavailable</strong><br>Press Enter to try Explore or retry your search.</div>'+askRow(q); announce(root,'Search is temporarily unavailable.'); setActive(root,-1); } });
+      api('/venues?search='+encodeURIComponent(q)+'&limit=6',signal).then(function(data){ if(current()) renderResults(root,{venues:(data&&data.venues)||[]},q,true); }).catch(function(){ if(current()){ sc.innerHTML='<div class="slus-empty"><strong>Search is temporarily unavailable</strong><br>Press Enter to try Explore or retry your search.</div>'+askRow(q); announce(root,'Search is temporarily unavailable.'); setActive(root,-1); } });
     });
   }
   function goSearch(q){ q=String(q||'').trim(); if(!q) return; saveRecent(q); window.location.href='/explore.html?q='+encodeURIComponent(q); }
@@ -185,6 +197,15 @@
     var root=ensureHeaderSearch();
     if(!root) return;
     bind(root); hotkeys();
+    document.addEventListener('click',function(e){
+      var trigger=e.target?.closest?.('[data-sl-open-search]');
+      if(!trigger||e.defaultPrevented||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+      var input=qs('.slus-input',root);if(!input)return;
+      e.preventDefault();
+      var query=trigger.getAttribute('data-sl-open-search');
+      if(query){input.value=query;input.dispatchEvent(new Event('input'));}
+      input.focus();
+    });
     if(window.__SL_PHASE8D_RECOVERY__) mountConciergeLauncher();
     else if(document.readyState!=='complete') document.addEventListener('DOMContentLoaded',mountConciergeLauncher,{once:true});
   }

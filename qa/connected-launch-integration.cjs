@@ -200,6 +200,18 @@ async function main(){
   const e=events.events[0];assert.equal(e.id,eventId);assert.equal(e.attending_count,0);assert.equal(e.rating,null);assert.equal(e.venue_name,'Harbor & Pine');
   assert.equal(e.attending_count_source,'public_scenelink_rsvps');assert.equal(e.rsvp_is_reservation,false);assert.equal(e.booking_status,'not_booked');assert.equal(e.booking.reservation_confirmed,false);
   assert.equal((await api('GET','/events?include_past=true')).total,2);
+  const universal=await api('GET','/search/universal?q=QA%20Event',undefined,a.token);
+  assert.deepEqual(universal.events.map(row=>row.id),[eventId]);
+  assert.deepEqual(Object.keys(universal.events[0]).sort(),['date','id','title','venue_name']);
+  assert.equal(universal.events[0].venue_name,'Harbor & Pine');
+  assert.deepEqual((await api('GET','/search/universal?q=QA%25Event')).events,[]);
+  const hiddenEvent=crypto.randomUUID(),closedVenue=crypto.randomUUID();
+  await pool.query("INSERT INTO venues(id,name,slug,type,is_active) VALUES($1,'Closed Test Room','closed-test-room','bar',false)",[closedVenue]);
+  await pool.query(`INSERT INTO events(id,title,date,venue_id,source,source_url,source_review_status,source_reviewed_at,is_active)
+     VALUES($1,'Closed QA Event',${EVENT_TODAY_SQL}+1,$2,'official_venue','https://example.com/closed-event','reviewed',NOW(),true)`,[hiddenEvent,closedVenue]);
+  assert.deepEqual((await api('GET','/search/universal?q=QA%20Event')).events.map(e=>e.id),[eventId]);
+  await pool.query('DELETE FROM events WHERE id=$1',[hiddenEvent]);
+  await pool.query('DELETE FROM venues WHERE id=$1',[closedVenue]);
   assert.equal((await pool.query('SELECT count(*)::int n FROM event_source_reviews')).rows[0].n,2);
   await api('GET','/events?date=2026-02-31',undefined,null,400);
   await api('GET','/events?venue_id=invalid',undefined,null,400);
