@@ -4,12 +4,14 @@
  * POST /api/auth/apple    — verify Apple identity token, return SceneLink JWT
  */
 const express = require('express');
+const crypto = require('node:crypto');
 const router = express.Router();
 const pool = require('../config/database');
 const { generateToken } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimits');
 const { verified } = require('../launch/verification');
 const { noStore, transaction } = require('../launch/shared');
+const { username: validateUsername } = require('../launch/identity');
 const welcome = require('../services/welcome');
 const { validIdToken, oauthError, verifyProvider } = require('../services/oauth-errors');
 router.use(noStore, authLimiter);
@@ -133,8 +135,8 @@ function sendOAuthError(res, provider, err) {
     const label = provider === 'google' ? 'Google' : 'Apple';
     if (err.code === 'OAUTH_TOKEN_INVALID') return res.status(401).json({error: `Invalid or expired ${label} token`});
     if (err.code === 'OAUTH_ACCOUNT_UNAVAILABLE') return res.status(403).json({error: 'Account unavailable'});
-    if (err.code === 'OAUTH_PROVIDER_UNAVAILABLE') {
-        console.error(`[oauth/${provider}]`, 'OAUTH_PROVIDER_UNAVAILABLE');
+    if (err.code === 'OAUTH_PROVIDER_UNAVAILABLE' || err.code === 'OAUTH_USERNAME_UNAVAILABLE') {
+        console.error(`[oauth/${provider}]`, err.code);
         return res.status(503).json({error: `${label} sign-in is temporarily unavailable. Please try again.`});
     }
     console.error(`[oauth/${provider}]`, 'OAUTH_ACCOUNT_FAILED');
@@ -184,20 +186,29 @@ async function upsertOAuthUser({ email, display_name, avatar_url, oauth_provider
     }
 
     // 3. Create new user
-    const username = generateUsername(email);
     const avatarFallback = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(display_name || email)}`;
 
     const newUser = await transaction(pool, async db => {
-      const insertResult = await db.query(
-        `INSERT INTO users (email, password_hash, display_name, username, avatar_url, bio, neighborhood, oauth_provider, oauth_id, email_verified_at, verified_email)
-         VALUES ($1::text, NULL, $2, $3, $4, '', 'Back Bay', $5, $6, NOW(), lower($1::text))
-         RETURNING id, email, display_name, username, avatar_url, bio, neighborhood, city, role, created_at, auth_version, is_active, is_suspended`,
-        [email, display_name, username, avatar_url || avatarFallback, oauth_provider, oauth_id]
-    );
-
-      const created = insertResult.rows[0];
-      await welcome.enqueue(db, created);
-      return created;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const username = generateUsername(email);
+        const insertResult = await db.query(
+          `INSERT INTO users (email, password_hash, display_name, username, avatar_url, bio, neighborhood, oauth_provider, oauth_id, email_verified_at, verified_email)
+           VALUES ($1::text, NULL, $2, $3, $4, '', 'Back Bay', $5, $6, NOW(), lower($1::text))
+           ON CONFLICT DO NOTHING
+           RETURNING id, email, display_name, username, avatar_url, bio, neighborhood, city, role, created_at, auth_version, is_active, is_suspended`,
+          [email, display_name, username, avatar_url || avatarFallback, oauth_provider, oauth_id]
+        );
+        const created = insertResult.rows[0];
+        if (created) {
+          await welcome.enqueue(db, created);
+          return created;
+        }
+        // Let the unique indexes arbitrate concurrent allocations. Retry only
+        // a taken username; never replace an account on another unique conflict.
+        const taken = await db.query('SELECT 1 FROM users WHERE lower(username)=lower($1)', [username]);
+        if (!taken.rows.length) throw oauthError(500, 'OAUTH_ACCOUNT_FAILED');
+      }
+      throw oauthError(503, 'OAUTH_USERNAME_UNAVAILABLE');
     });
     welcome.kick();
     newUser.email_verified = true;
@@ -206,8 +217,8 @@ async function upsertOAuthUser({ email, display_name, avatar_url, oauth_provider
 }
 
 function generateUsername(email) {
-    const base = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
-    return base + '_' + Math.random().toString(36).substr(2, 4);
+    const base = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 17);
+    return validateUsername(base + '_' + crypto.randomBytes(3).toString('hex'));
 }
 
 module.exports = router;
