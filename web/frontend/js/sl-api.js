@@ -326,15 +326,7 @@
     },
   };
 
-  // Fire once-on-load auth check
-  if (getToken()) {
-    window.SLApi.me().then(function(d){
-      if (d && d.user) {
-        window.SL_USER = d.user;
-        window.dispatchEvent(new CustomEvent('sl-auth-ready', { detail:{ user: d.user }}));
-      } else {
-        clearToken();
-      }
-    }).catch(function(){ clearToken(); });
-  }
+  // SLAuth owns startup validation and the legacy sl-auth-ready announcement.
+  // A second unowned probe here could erase a newer login or treat a transient
+  // account-read failure as an invalid session.
 })();

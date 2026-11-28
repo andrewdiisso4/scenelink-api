@@ -1,12 +1,20 @@
 'use strict';
 const H=require('./shared');
+function engagementCountSQL(table,post='p.id',viewer='$1') {
+  return `(SELECT count(*)::int FROM ${table} engagement JOIN users actor ON actor.id=engagement.user_id
+    WHERE engagement.post_id=${post} AND ${H.actorSQL('actor',viewer)})`;
+}
+async function assertParticipant(db,me) {
+  const r=await db.query(`SELECT u.id FROM users u WHERE u.id=$1 AND ${H.actorSQL()}`,[me]);
+  if(!r.rows.length)throw new H.HttpError(403,'Social participation unavailable');
+}
 function feedSQL() {
   const ownerFilter=a=>`($2::uuid IS NULL OR ${a}.user_id=$2) AND (NOT $3::boolean OR ${a}.user_id=$1 OR ${H.friendSQL(a+'.user_id')})`;
   return `WITH activity AS (
     SELECT p.id,p.user_id,p.body,p.venue_id,p.image_url,p.thumb_url,p.created_at,'post'::text AS kind,p.ref_type,p.ref_id,
       COALESCE(p.audience,CASE WHEN p.is_public THEN 'public' ELSE 'private' END) AS audience,
-      (SELECT count(*)::int FROM post_likes pl WHERE pl.post_id=p.id) AS like_count,
-      (SELECT count(*)::int FROM post_comments pc WHERE pc.post_id=p.id) AS comment_count,
+      ${engagementCountSQL('post_likes')} AS like_count,
+      ${engagementCountSQL('post_comments')} AS comment_count,
       EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id=p.id AND pl.user_id=$1) AS liked_by_me,NULL::numeric AS rating
       FROM posts p JOIN users u ON u.id=p.user_id WHERE ${H.postSQL()} AND ${ownerFilter('p')}
     UNION ALL
@@ -16,7 +24,7 @@ function feedSQL() {
     UNION ALL
     SELECT r.id,r.user_id,r.content,r.venue_id,NULL::text,NULL::text,r.created_at,'review',NULL::text,NULL::uuid,'public',0,0,false,r.rating::numeric
       FROM reviews r JOIN users u ON u.id=r.user_id JOIN venues v ON v.id=r.venue_id AND v.is_active
-      WHERE NOT $4::boolean AND ${H.profileSQL()} AND ${ownerFilter('r')} AND COALESCE(to_jsonb(r)->>'is_hidden','false') <> 'true' AND u.email NOT LIKE 'seed_reviewer_%@scenelink.app'
+      WHERE NOT $4::boolean AND ${H.profileSQL()} AND ${ownerFilter('r')} AND COALESCE(to_jsonb(r)->>'is_hidden','false') <> 'true'
   ) SELECT a.*,${H.timeSQL('a')},u.username,u.display_name,u.avatar_url,
     v.name AS venue_name,v.slug AS venue_slug,v.neighborhood AS venue_neighborhood
     FROM activity a JOIN users u ON u.id=a.user_id LEFT JOIN venues v ON v.id=a.venue_id
@@ -24,8 +32,9 @@ function feedSQL() {
     ORDER BY a.created_at DESC,a.id DESC,a.kind DESC LIMIT $8`;
 }
 async function visiblePost(db,me,pid,lock=false) {
-  if(lock) {const r=await db.query('SELECT user_id FROM posts WHERE id=$1',[pid]);if(!r.rows.length)throw new H.HttpError(404,'Post unavailable');await H.lockPair(db,me,r.rows[0].user_id);}
+  if(lock) {await assertParticipant(db,me);const r=await db.query('SELECT user_id FROM posts WHERE id=$1',[pid]);if(!r.rows.length)throw new H.HttpError(404,'Post unavailable');await H.lockPair(db,me,r.rows[0].user_id);}
   const r=await db.query(`SELECT p.*,u.username,u.display_name,u.avatar_url,v.name AS venue_name,v.slug AS venue_slug,
+    ${engagementCountSQL('post_likes')} AS like_count,${engagementCountSQL('post_comments')} AS comment_count,
     EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id=p.id AND l.user_id=$1) AS liked_by_me
     FROM posts p JOIN users u ON u.id=p.user_id LEFT JOIN venues v ON v.id=p.venue_id
     WHERE p.id=$2 AND ${H.postSQL()} ${lock?'FOR UPDATE OF p':''}`,[me,pid]);
@@ -53,6 +62,7 @@ function install({router,pool,auth,write}) {
     const me=req.user.id,b=req.body||{},body=H.text(b.body,'post',2000),vid=b.venue_id?H.id(b.venue_id,'venue'):null,pid=H.newId(b.client_id),aud=H.audience(b.audience);
     if(!body&&!vid&&!b.image_url)throw new H.HttpError(400,'Write a post or attach a venue or image');
     const post=await H.transaction(pool,async db=>{
+      await assertParticipant(db,me);
       if(vid){const v=await db.query("SELECT id FROM venues WHERE id=$1 AND is_active IS TRUE AND COALESCE(business_status,'') NOT ILIKE 'CLOSED%' AND lower(COALESCE(business_status,'')) NOT IN ('temporarily_closed','permanently_closed')",[vid]);if(!v.rows.length)throw new H.HttpError(404,'Venue unavailable');}
       const image=await imageFor(db,me,b.image_url);
       const ins=await db.query(`INSERT INTO posts(id,user_id,body,venue_id,image_url,thumb_url,audience,is_public)
@@ -72,7 +82,7 @@ function install({router,pool,auth,write}) {
       const liked=toggle?!check.rows.length:req.body.liked;
       if(liked){const r=await db.query('INSERT INTO post_likes(post_id,user_id) VALUES($1,$2) ON CONFLICT(post_id,user_id) DO NOTHING RETURNING id',[pid,me]);if(r.rows.length)await H.notify(db,post.user_id,me,'post_like','post',pid);}
       else await db.query('DELETE FROM post_likes WHERE post_id=$1 AND user_id=$2',[pid,me]);
-      const count=await db.query('UPDATE posts SET like_count=(SELECT count(*) FROM post_likes WHERE post_id=$1) WHERE id=$1 RETURNING like_count',[pid]);return{liked,like_count:count.rows[0].like_count};
+      const count=await db.query(`UPDATE posts SET like_count=(SELECT count(*) FROM post_likes WHERE post_id=$1) WHERE id=$1 RETURNING ${engagementCountSQL('post_likes','$1','$2')} AS like_count`,[pid,me]);return{liked,like_count:count.rows[0].like_count};
     });res.json(outcome);
   }
   router.put('/posts/:postId/like',...secured,write,H.wrap((q,s)=>likePost(q,s,false)));
@@ -91,7 +101,7 @@ function install({router,pool,auth,write}) {
       const p=await visiblePost(db,me,pid,true);const ins=await db.query('INSERT INTO post_comments(id,post_id,user_id,body) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO NOTHING RETURNING id',[cid,pid,me,body]);
       const row=await db.query('SELECT c.*,u.username,u.display_name,u.avatar_url FROM post_comments c JOIN users u ON u.id=c.user_id WHERE c.id=$1',[cid]);const c=row.rows[0];
       if(!c||c.user_id!==me||c.post_id!==pid||c.body!==body)throw new H.HttpError(409,'Conflicting comment submission');
-      const counts=await db.query('UPDATE posts SET comment_count=(SELECT count(*) FROM post_comments WHERE post_id=$1) WHERE id=$1 RETURNING comment_count',[pid]);
+      const counts=await db.query(`UPDATE posts SET comment_count=(SELECT count(*) FROM post_comments WHERE post_id=$1) WHERE id=$1 RETURNING ${engagementCountSQL('post_comments','$1','$2')} AS comment_count`,[pid,me]);
       if(ins.rows.length)await H.notify(db,p.user_id,me,'post_comment','post',pid,{comment_id:cid});return{comment:c,comment_count:counts.rows[0].comment_count,replayed:!ins.rows.length};
     });res.status(result.replayed?200:201).json(result);
   }));
@@ -99,11 +109,12 @@ function install({router,pool,auth,write}) {
     const me=req.user.id,pid=H.id(req.params.postId,'post'),cid=H.id(req.params.commentId,'comment');
     const result=await H.transaction(pool,async db=>{const p=await visiblePost(db,me,pid,true);
       const del=await db.query('DELETE FROM post_comments WHERE id=$1 AND post_id=$2 AND (user_id=$3 OR $4::boolean) RETURNING id',[cid,pid,me,p.user_id===me]);if(!del.rows.length)throw new H.HttpError(404,'Comment unavailable');
-      const count=await db.query('UPDATE posts SET comment_count=(SELECT count(*) FROM post_comments WHERE post_id=$1) WHERE id=$1 RETURNING comment_count',[pid]);return{removed:true,id:cid,comment_count:count.rows[0].comment_count};});res.json(result);
+      const count=await db.query(`UPDATE posts SET comment_count=(SELECT count(*) FROM post_comments WHERE post_id=$1) WHERE id=$1 RETURNING ${engagementCountSQL('post_comments','$1','$2')} AS comment_count`,[pid,me]);return{removed:true,id:cid,comment_count:count.rows[0].comment_count};});res.json(result);
   }));
   router.post('/checkins',...secured,write,H.wrap(async(req,res)=>{
     const me=req.user.id,b=req.body||{},vid=H.id(b.venue_id,'venue'),cid=H.newId(b.client_id),note=H.text(b.note,'note',500),aud=H.audience(b.audience,'private');
     const result=await H.transaction(pool,async db=>{
+      await assertParticipant(db,me);
       const v=await db.query("SELECT id FROM venues WHERE id=$1 AND is_active IS TRUE AND COALESCE(business_status,'') NOT ILIKE 'CLOSED%' AND lower(COALESCE(business_status,'')) NOT IN ('temporarily_closed','permanently_closed')",[vid]);if(!v.rows.length)throw new H.HttpError(404,'Venue unavailable');
       const ins=await db.query('INSERT INTO checkins(id,user_id,venue_id,note,audience) VALUES($1,$2,$3,$4,$5) ON CONFLICT(id) DO NOTHING RETURNING id',[cid,me,vid,note||null,aud]);
       const r=await db.query('SELECT * FROM checkins WHERE id=$1',[cid]);const c=r.rows[0];if(!c||c.user_id!==me||c.venue_id!==vid||String(c.note||'')!==note||c.audience!==aud)throw new H.HttpError(409,'Conflicting check-in submission');return{checkin:c,replayed:!ins.rows.length};

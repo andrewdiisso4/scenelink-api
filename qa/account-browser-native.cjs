@@ -135,6 +135,21 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
     await page.locator('#slspEdit').evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));await shot(page,'profile-editor-mobile');
     await page.locator('[data-action=cancel-edit]').click();await page.setViewportSize({width:1440,height:1100});
   });
+  await stage('A single real consumer session carries across discovery, social, RSVP and business header',async()=>{
+    for(const route of ['/explore.html','/events.html','/messages.html','/social-feed.html','/my-lists.html','/plan-with-friends.html','/business.html','/contact.html']){
+      const verifiedSession=page.waitForResponse(r=>r.request().method()==='GET'&&new URL(r.url()).pathname==='/api/auth/me'&&r.status()===200);
+      await page.goto(origin+route,{waitUntil:'domcontentloaded'});
+      assert.equal((await (await verifiedSession).json()).user.id,memberID,route+' real session');
+      await page.waitForFunction(id=>window.SLAuth?.user()?.id===id,memberID);
+      assert.equal(await page.evaluate(()=>!!window.SLAuth.token()),true,route);
+      await page.locator('.slus-input').waitFor({state:'visible'});
+      assert.equal(await page.locator('.slus-input').count(),1,route);
+      assert.equal(await page.locator('.sl-auth-overlay.open').count(),0,route);
+    }
+    await page.goto(origin+'/profile.html',{waitUntil:'domcontentloaded'});
+    await page.locator('#slSocialProfile .slsp-hero h1').waitFor();
+    assert.equal(await page.locator('#slSocialProfile .slsp-hero h1').textContent(),'Casey · QA member');
+  });
   const friend=await context();
   await stage('Search, request, recipient acceptance and shared friendship state',async()=>{
     await login(friend.p,'qa.admin@example.invalid');await search(page,'qa_admin');
@@ -189,6 +204,32 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
     newUser=(await db("SELECT id FROM users WHERE email='qa.signup@example.invalid'"))[0];assert(newUser);
     const queued=await db('SELECT status FROM signup_welcome_emails WHERE user_id=$1',[newUser.id]);assert.deepEqual(queued,[{status:'pending'}]);
   });
+  await stage('Newly signed-up member can sign out and sign back in with the same credentials',async()=>{
+    const logoutResponse=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname==='/api/auth/logout');
+    await page.locator('#slAcctLogout').click();
+    assert.equal((await logoutResponse).status(),200);
+    await page.waitForURL(origin+'/');
+    await page.waitForFunction(()=>window.SLAuth && !window.SLAuth.token());
+    await page.goto(origin+'/profile.html',{waitUntil:'domcontentloaded'});
+    const entry=page.locator('header .sl-auth-trigger:visible').first();
+    await entry.click();
+    const signInResponse=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname==='/api/auth/login');
+    await page.locator('#slLoginEmail').fill('qa.signup@example.invalid');
+    await page.locator('#slLoginPassword').fill(password);
+    await page.locator('#slLoginForm .sl-auth-submit').click();
+    const loggedIn=await signInResponse;
+    assert.equal(loggedIn.status(),200);
+    const account=(await loggedIn.json()).user;
+    assert.equal(account.id,newUser.id);
+    assert.equal(account.email_verified,false);
+    await page.locator('#slSocialProfile .slsp-hero h1').waitFor();
+    assert.equal(await page.locator('#slSocialProfile .slsp-hero h1').textContent(),'Morgan · QA signup');
+    await page.reload();
+    await page.locator('#slSocialProfile .slsp-hero h1').waitFor();
+    await page.waitForFunction(id=>window.SLAuth?.user()?.id===id,newUser.id);
+    await page.locator('#slspTabSettings').click();
+    await page.locator('#slAcctDeleteBtn').waitFor();
+  });
   await stage('In-app permanent deletion clears the account, queue and current session',async()=>{
     await page.locator('#slAcctDeleteBtn').click();await page.locator('#slAcctPw').waitFor();
     await page.setViewportSize({width:390,height:844});await shot(page,'delete-mobile');
@@ -210,7 +251,7 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
     const emailCtx=await browser.newContext({viewport:{width:900,height:1150},reducedMotion:'reduce'});const emailPage=await emailCtx.newPage();
     await emailCtx.route('**/*',route=>{
       const url=route.request().url();
-      if(url==='https://scenelink.app/images/brand/scenelink-full.png')return route.fulfill({contentType:'image/png',body:fs.readFileSync(path.join(ROOT,'web/frontend/images/brand/scenelink-full.png'))});
+      if(url==='https://scenelink.app/images/brand/welcome-scenelink-logo.png')return route.fulfill({contentType:'image/png',body:fs.readFileSync(path.join(ROOT,'web/frontend/images/brand/welcome-scenelink-logo.png'))});
       if(url.startsWith(origin+'/__welcome-preview/')){const variant=url.endsWith('/verified')?'verified':'unverified';return route.fulfill({contentType:'text/html',body:fs.readFileSync(path.join(ROOT,'evidence/welcome-email',variant+'.html'))});}
       return route.abort('blockedbyclient');
     });
@@ -218,6 +259,15 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
       await emailPage.goto(origin+'/__welcome-preview/'+variant);await emailPage.locator('img').first().waitFor();await emailPage.waitForFunction(()=>[...document.images].every(i=>i.complete&&i.naturalWidth>0));
       await emailPage.setViewportSize({width:900,height:1150});await shot(emailPage,'welcome-'+variant+'-desktop',true);
       await emailPage.setViewportSize({width:390,height:1100});await shot(emailPage,'welcome-'+variant+'-mobile',true);
+      await emailPage.route('**/welcome-scenelink-logo.png', route=>route.abort('blockedbyclient'));
+      await emailPage.reload();
+      await emailPage.getByText('Eat. Drink. Discover.',{exact:true}).waitFor({state:'visible'});
+      await emailPage.getByRole('heading',{name:'Welcome to SceneLink',exact:true}).waitFor({state:'visible'});
+      assert.equal(await emailPage.getByRole('link',{name:'Explore Boston',exact:true}).getAttribute('href'),'https://scenelink.app/explore.html');
+      assert.equal(await emailPage.getByRole('link',{name:variant==='verified'?'Set up your profile':'Open your profile',exact:true}).getAttribute('href'),'https://scenelink.app/profile.html');
+      assert(await emailPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'welcome must fit without its remote image');
+      await shot(emailPage,'welcome-'+variant+'-images-blocked',true);
+      await emailPage.unroute('**/welcome-scenelink-logo.png');
     }
     const newsletter=require('../src/services/mailer').newsletterConfirmEmail('T'.repeat(43));
     for(const width of [320,390,900]){

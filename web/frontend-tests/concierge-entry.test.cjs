@@ -133,3 +133,20 @@ test('the floating launcher mounts when the recovery bridge runs after the heade
  d.dispatchEvent(new w.Event('DOMContentLoaded'));
  assert.equal(d.querySelectorAll('.sl-concierge-launcher').length,1);
 });
+
+
+test('legacy login tokens never authenticate Concierge and a rotated canonical token clears the draft',async t=>{
+ const {w,d,calls}=setup(t,'index.html','?ask=Guest%20draft');
+ w.localStorage.setItem('sl_auth_token','deprecated-fixture');
+ w.SLAuth={token:()=>w.localStorage.getItem('sl_jwt_token')||''};
+ w.eval(read('js/sl-phase8d-recovery.js'));await tick(5);
+ w.eval(read('js/ai-concierge-v5.js'));d.querySelector('script[src*="ai-concierge-v5.js"]').dispatchEvent(new w.Event('load'));await tick(20);
+ const input=d.querySelector('.slc-input');
+ assert.equal(input.value,'Guest draft');assert.equal(w.SLConciergeDraft.read(),'Guest draft');
+ input.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));await tick(20);
+ const post=calls.find(x=>x.opts.method==='POST');assert(post);assert(!new Headers(post.opts.headers).has('Authorization'));
+ w.localStorage.setItem('sl_jwt_token','first-canonical');w.localStorage.setItem('sl_user_cache',JSON.stringify({id:'same-user'}));
+ w.dispatchEvent(new w.Event('sl-auth-changed'));w.SLConcierge.draft('Do not keep across session');await tick(30);
+ w.localStorage.setItem('sl_jwt_token','next-canonical');w.dispatchEvent(new w.Event('sl-auth-changed'));await tick(30);
+ assert.equal(input.value,'');assert.equal(w.SLConciergeDraft.read(),null);
+});

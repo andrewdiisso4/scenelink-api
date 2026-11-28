@@ -455,3 +455,71 @@ test('old-session late photo capability cannot mount controls on replacement pro
  const replacement=m.$('slspEditForm');replacement.elements.bio.disabled=true;
  releaseCapability();releaseWrite();await tick();assert(!m.$('slspAvatarFile'));assert.equal(replacement.elements.bio.disabled,true);assert.equal(replacement.hasAttribute('aria-busy'),false);assert(!m.$('slspActionStatus').textContent.includes('Profile saved'));
 });
+
+test('Friends can copy a stable own-profile invitation without creating or sending anything',async t=>{
+ const m=await make(t,{url:'https://isolated.example.test/profile#friends'});const copies=[];
+ Object.defineProperty(m.w.navigator,'clipboard',{value:{writeText:async text=>{copies.push(text);}}});
+ const field=m.$('slspInviteLink');
+ assert.equal(field.readOnly,true);
+ assert.equal(field.value,'https://isolated.example.test/profile?u='+ID);
+ m.click('[data-action=copy-invite]');await tick();
+ assert.deepEqual(copies,[field.value]);
+ assert.match(m.$('slspInviteStatus').textContent,/Nothing was sent/);
+ assert(m.calls.every(c=>c.method==='GET'));
+});
+test('copy failure focuses the existing link for manual sharing without reporting success',async t=>{
+ const m=await make(t,{url:'https://scenelink.test/profile#friends'});
+ Object.defineProperty(m.w.navigator,'clipboard',{value:{writeText:async()=>{throw Error('Clipboard not permitted');}}});
+ m.click('[data-action=copy-invite]');await tick();
+ assert.equal(m.w.document.activeElement,m.$('slspInviteLink'));
+ assert.match(m.$('slspInviteStatus').textContent,/Copy the selected link/);
+ assert.doesNotMatch(m.$('slspInviteStatus').textContent,/copied/);
+ assert(m.calls.every(c=>c.method==='GET'));
+});
+test('public profile views never offer to invite as that member',async t=>{
+ const handle=(r)=>r.url==='/api/users/'+ID?{body:{user:baseUser,can_view:false,can_message:false,is_me:false}}:undefined;
+ const guest=await make(t,{url:'https://scenelink.test/profile?u='+ID,token:null,handle});
+ assert.equal(guest.$('slspInviteLink'),null);
+ assert.match(guest.$('slSocialProfile').textContent,/Sign in to connect/);
+ const other=await make(t,{url:'https://scenelink.test/profile?u='+ID,handle});
+ assert.equal(other.$('slspInviteLink'),null);
+ assert.match(other.$('slSocialProfile').textContent,/Add friend/);
+});
+test('an unresolved clipboard operation cannot repaint the next account',async t=>{
+ const m=await make(t,{url:'https://scenelink.test/profile#friends'});let finish;
+ Object.defineProperty(m.w.navigator,'clipboard',{value:{writeText:()=>new Promise(r=>{finish=r;})}});
+ m.click('[data-action=copy-invite]');
+ m.w.localStorage.removeItem('sl_jwt_token');
+ m.w.dispatchEvent(new m.w.Event('sl-auth-changed'));
+ finish();await tick();
+ assert.equal(m.$('slspInviteLink'),null);
+ assert.doesNotMatch(m.$('slSocialProfile').textContent,/Invite link copied/);
+});
+
+test('invitation destination stays unavailable when existing server privacy denies the relationship',async t=>{
+ const m=await make(t,{url:'https://scenelink.test/profile?u='+ID,handle:r=>r.url==='/api/users/'+ID?{status:404,body:{error:'User unavailable'}}:undefined});
+ assert.match(m.$('slSocialProfile').textContent,/Profile unavailable/);
+ assert.equal(m.$('slspInviteLink'),null);
+ assert.equal(m.w.document.querySelector('[data-action=request]'),null);
+});
+
+test('recipient keeps the invited profile after sign-in and explicitly requests friendship',async t=>{
+ let pending=false;
+ const m=await make(t,{url:'https://scenelink.test/profile?u='+PEER,token:null,handle:r=>{
+  if(r.url==='/api/users/'+PEER)return{body:{user:{...baseUser,id:PEER},is_me:false,can_view:false,can_message:false,friendship_status:pending?{status:'pending',direction:'outgoing',id:'f1'}:null}};
+  if(r.url==='/api/friends/request'){
+   assert.equal(r.method,'POST');assert.deepEqual(r.body,{user_id:PEER});
+   pending=true;return{body:{friendship_id:'f1',status:'pending',direction:'outgoing'}};
+  }
+ }});
+ assert.match(m.$('slSocialProfile').textContent,/Sign in to connect/);
+ assert.equal(m.w.document.querySelector('[data-action=request]'),null);
+ m.w.localStorage.setItem('sl_jwt_token','recipient-session');
+ m.w.dispatchEvent(new m.w.Event('sl-auth-changed'));await tick();
+ assert.equal(m.w.location.search,'?u='+PEER);
+ assert(m.calls.every(c=>c.method==='GET'));
+ m.click('[data-action=request]');await tick();
+ assert.equal(m.calls.filter(c=>c.method==='POST').length,1);
+ assert.match(m.$('slspActionStatus').textContent,/pending until the other person accepts/);
+ assert(m.w.document.querySelector('[data-action=remove]'));
+});

@@ -333,9 +333,16 @@
     openLogin: openLogin
   };
 
-  // Initial refresh on boot (quietly)
+  // One owned startup refresh also preserves the legacy account-ready contract.
   if (isAuthed()) {
-    setTimeout(function(){ refresh(); }, 0);
+    setTimeout(function(){
+      var initialSession = { epoch: sessionEpoch, token: readToken() };
+      refresh().then(function(user){
+        if (!user || !ownsSession(initialSession)) return;
+        window.SL_USER = user;
+        window.dispatchEvent(new CustomEvent('sl-auth-ready', { detail: { user: user } }));
+      });
+    }, 0);
   }
 
   // Cross-tab sync

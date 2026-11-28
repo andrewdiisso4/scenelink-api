@@ -3,6 +3,8 @@ const H = require('./shared');
 const {publicVenue,availableVenueSQL} = require('../services/venue-helpers');
 const {visibleDiscoveryVenueSQL} = require('../services/venue-duplicate-discovery');
 const {reviewedPriceSQL} = require('../services/venue-facts');
+const {EVENT_TODAY_SQL} = require('../services/event-calendar');
+const {PUBLIC_EVENT} = require('./events');
 const NIGHTLIFE = ['bar','nightclub','lounge','cocktail_bar','brewery','beer_hall','dive_bar','rooftop_bar','pub','wine_bar','club','music'];
 const ALIASES = {southie:'south boston',rooftops:'rooftop',cocktails:'cocktail',restaurants:'restaurant',bars:'bar'};
 const CARD = `v.id,v.slug,v.name,v.type,v.category,v.cuisine,v.neighborhood,v.city,v.state,v.address,v.price_level,v.price_label,to_jsonb(v)->'field_provenance' AS field_provenance,
@@ -88,15 +90,22 @@ function install({router,pool,auth}) {
   router.get('/venues/:identifier',H.wrap(detail));
   router.get('/search/universal',auth.optionalAuth,H.noStore,H.wrap(async(req,res)=>{
     const q=H.text(req.query.q,'search',160),limit=H.integer(req.query.limit,6,1,20),me=req.user?.id||null;
-    if(q.length<2) return res.json({venues:[],users:[],neighborhoods:[],categories:[]});
+    if(q.length<2) return res.json({venues:[],events:[],users:[],neighborhoods:[],categories:[]});
     const f=build({q}), pattern='%'+H.like(q)+'%';
-    const [v,u,n,c]=await Promise.all([
+    const [v,u,n,c,events]=await Promise.all([
       pool.query(`SELECT ${CARD} FROM venues v WHERE ${f.where} ORDER BY ${f.order} LIMIT $${f.values.length+1}`,[...f.values,limit]),
       require('./people').searchPeople(pool,me,q,limit).then(rows=>({rows})),
       pool.query(`SELECT DISTINCT neighborhood AS name FROM venues WHERE ${availableVenueSQL('')} AND ${visibleDiscoveryVenueSQL('venues')} AND neighborhood ILIKE $1 ORDER BY neighborhood LIMIT $2`,[pattern,limit]),
-      pool.query(`SELECT DISTINCT type AS name FROM venues WHERE ${availableVenueSQL('')} AND ${visibleDiscoveryVenueSQL('venues')} AND type ILIKE $1 ORDER BY type LIMIT $2`,[pattern,limit])
+      pool.query(`SELECT DISTINCT type AS name FROM venues WHERE ${availableVenueSQL('')} AND ${visibleDiscoveryVenueSQL('venues')} AND type ILIKE $1 ORDER BY type LIMIT $2`,[pattern,limit]),
+      pool.query(`SELECT e.id,e.title,to_char(e.date,'YYYY-MM-DD') AS date,
+                    CASE WHEN e.venue_id IS NOT NULL THEN v.name ELSE e.venue_name END AS venue_name
+                  FROM events e LEFT JOIN venues v ON v.id=e.venue_id
+                  WHERE ${PUBLIC_EVENT()} AND e.date>=${EVENT_TODAY_SQL}
+                    AND concat_ws(' ',e.title,e.category,CASE WHEN e.venue_id IS NOT NULL THEN v.name ELSE e.venue_name END) ILIKE $1
+                  ORDER BY CASE WHEN lower(e.title)=lower($2) THEN 0 ELSE 1 END,e.date,e.start_time NULLS LAST,e.id
+                  LIMIT $3`,[pattern,q,Math.min(limit,6)])
     ]);
-    res.json({query:q,venues:v.rows.map(publicVenue),users:u.rows,neighborhoods:n.rows,categories:c.rows});
+    res.json({query:q,venues:v.rows.map(publicVenue),events:events.rows,users:u.rows,neighborhoods:n.rows,categories:c.rows});
   }));
 }
 module.exports={install,build,CARD,DETAIL,NIGHTLIFE};
