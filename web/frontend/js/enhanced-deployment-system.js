@@ -14,14 +14,14 @@ class EnhancedDeploymentSystem {
         ];
         
         this.requiredCSS = [
-            'css/universal-enhanced-header.css?v=connected-20261128-profile-invite',
-            'css/page-header-consistent.css?v=connected-20261128-profile-invite',
-            'css/openstreet-map-integration.css?v=connected-20261128-profile-invite'
+            'css/universal-enhanced-header.css?v=connected-20261128-real-social-search',
+            'css/page-header-consistent.css?v=connected-20261128-real-social-search',
+            'css/openstreet-map-integration.css?v=connected-20261128-real-social-search'
         ];
         
         this.requiredJS = [
-            'js/universal-header-consistency.js?v=connected-20261128-profile-invite',
-            'js/openstreet-map-integration.js?v=connected-20261128-profile-invite'
+            'js/universal-header-consistency.js?v=connected-20261128-real-social-search',
+            'js/openstreet-map-integration.js?v=connected-20261128-real-social-search'
         ];
         
         this.init();
@@ -45,10 +45,10 @@ class EnhancedDeploymentSystem {
 
     applyUniversalEnhancements() {
         // Apply universal header CSS if not already present
-        this.ensureCSSLoaded('css/universal-enhanced-header.css?v=connected-20261128-profile-invite');
+        this.ensureCSSLoaded('css/universal-enhanced-header.css?v=connected-20261128-real-social-search');
         
         // Apply universal header JavaScript
-        this.ensureJSLoaded('js/universal-header-consistency.js?v=connected-20261128-profile-invite');
+        this.ensureJSLoaded('js/universal-header-consistency.js?v=connected-20261128-real-social-search');
         
         // Apply consistent footer
         this.updateFooterBrand();
@@ -153,8 +153,8 @@ class EnhancedDeploymentSystem {
 
     setupExplorePageFeatures() {
         // Add map integration to explore page
-        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-profile-invite');
-        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-profile-invite');
+        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-real-social-search');
+        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-real-social-search');
         
         // Add map container if not present
         if (!document.querySelector('.map-container')) {
@@ -167,8 +167,8 @@ class EnhancedDeploymentSystem {
 
     setupEventsPageFeatures() {
         // Add map integration to events page
-        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-profile-invite');
-        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-profile-invite');
+        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-real-social-search');
+        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-real-social-search');
         
         // Add map container if not present
         if (!document.querySelector('.map-container')) {
@@ -178,8 +178,8 @@ class EnhancedDeploymentSystem {
 
     setupNightlifePageFeatures() {
         // Add map integration to nightlife page
-        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-profile-invite');
-        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-profile-invite');
+        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-real-social-search');
+        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-real-social-search');
         
         // Add map container if not present
         if (!document.querySelector('.map-container')) {
@@ -257,8 +257,8 @@ class EnhancedDeploymentSystem {
                 console.log('Enhanced filters added');
                 
                 // Load enhanced filters CSS and JS
-                this.ensureCSSLoaded('css/tonights-picks-enhanced-filters.css?v=connected-20261128-profile-invite');
-                this.ensureJSLoaded('js/enhanced-filters-interactive.js?v=connected-20261128-profile-invite');
+                this.ensureCSSLoaded('css/tonights-picks-enhanced-filters.css?v=connected-20261128-real-social-search');
+                this.ensureJSLoaded('js/enhanced-filters-interactive.js?v=connected-20261128-real-social-search');
             }
         }
     }
@@ -297,8 +297,8 @@ class EnhancedDeploymentSystem {
             
             heroSection.insertAdjacentHTML('afterend', mapPreviewHTML);
             
-            this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-profile-invite');
-            this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-profile-invite');
+            this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-real-social-search');
+            this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-real-social-search');
             
             console.log('Home page map integration added');
         }

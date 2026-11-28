@@ -279,65 +279,82 @@ function brandedLayout({ title, bodyHtml, ctaUrl, ctaLabel }) {
 
 // ── Templates ───────────────────────────────────────────────────────────────
 function welcomeEmail(user = {}) {
-  // Unverified signup fields must not become attacker-supplied email content.
-  const name = user.email_verified === true ? String(user.display_name || '').trim().slice(0, 80) : '';
-  const greeting = name ? `Welcome, ${name}.` : 'Welcome to SceneLink.';
-  const verification = user.email_verified === true
-    ? '' : 'To post, connect with friends and send messages, sign in and verify your email first. Use the verification option in your account to request a separate confirmation link.';
+  const verified = user.email_verified === true;
+  // Until the address is verified, never use any signup-supplied name.
+  const name = verified ? String(user.display_name || '').trim().slice(0, 80) : '';
   const origin = new URL(APP_BASE_URL);
   if (origin.username || origin.password || (origin.protocol !== 'https:' && !(process.env.NODE_ENV !== 'production' && origin.protocol === 'http:' && ['127.0.0.1','[::1]','localhost'].includes(origin.hostname)))) throw new Error('Welcome email origin is misconfigured');
-  const exploreUrl = new URL('/explore.html', origin).href;
-  const profileUrl = new URL('/profile', origin).href;
-  const contactUrl = new URL('/contact.html', origin).href;
-  const privacyUrl = new URL('/privacy.html', origin).href;
-  const termsUrl = new URL('/terms.html', origin).href;
-  const logoUrl = new URL('/images/brand/scenelink-full.png', origin).href;
-  const introduction = 'Thanks for signing up for SceneLink. Find your next dinner spot, discover places to go out in Boston, and save ideas for plans with friends.';
-  const profileCopy = 'Add a name and bio, then choose how people can find and message you.';
-  // Welcome has its own email-safe layout; other transactional templates and
-  // the signup-only dispatcher retain their existing behavior.
+  const url = path => new URL(path, origin).href;
+  const exploreUrl = url('/explore.html');
+  const profileUrl = url('/profile.html');
+  const contactUrl = url('/contact.html');
+  const privacyUrl = url('/privacy.html');
+  const termsUrl = url('/terms.html');
+  const logoUrl = url('/images/brand/welcome-scenelink-logo.png');
+
+  const title = 'Welcome to SceneLink';
+  const preheader = verified
+    ? 'Explore Boston by neighborhood and make your profile yours.'
+    : 'Explore Boston now. Verify your email when you’re ready to connect.';
+  const intro = 'A new dinner spot, a favorite neighborhood, a place to go after the show. Start with the Boston directory and see what catches your eye.';
+  const profileHeading = verified ? 'Make it yours' : 'One step before you connect';
+  const profileCopy = verified
+    ? 'Set up your profile with a name and bio, then choose how people can find and message you.'
+    : 'You can browse now. To post, connect with friends or send messages, sign in and verify your email first. From the banner in your account, select “Resend verification email,” then use the separate verification message to confirm.';
+  const profileAction = verified ? 'Set up your profile' : 'Open your profile';
+  const notice = 'This is a welcome email, not a verification link.';
+  const footer = 'You received this because a SceneLink account was created with your email address. If that wasn’t you, you can ignore this message.';
+  const html = escapeHtml;
+  const muted = '#c9c6be';
+  const light = '#fff8e8';
+  const gold = '#f2d17b';
+  const linkStyle = `color:${gold};text-decoration:underline;font-weight:700`;
+
   return {
-    subject: 'Welcome to SceneLink',
+    subject: title,
     replyTo: SUPPORT_EMAIL,
-    text: `${greeting}\n\n${introduction}\n\nExplore Boston: ${exploreUrl}\n\n${verification ? verification + '\n\n' : ''}Make SceneLink yours. ${profileCopy}\nComplete your profile: ${profileUrl}\n\nNeed a hand? Contact ${SUPPORT_EMAIL} or visit ${contactUrl}\n\nPrivacy: ${privacyUrl}\nTerms: ${termsUrl}\n\nSceneLink · Boston, MA\nYou are receiving this because a SceneLink account was created with your email address. If you did not create this account, you can ignore this email.`,
+    text: `${title}\n\n${name ? 'Hi ' + name + ',\n\n' : ''}${intro}\n\nExplore Boston: ${exploreUrl}\n\n${profileHeading}\n${profileCopy}\n${profileAction}: ${profileUrl}\n${verified ? '' : notice + '\n'}\nQuestions? Reply to ${SUPPORT_EMAIL} or visit ${contactUrl}.\n\nPrivacy: ${privacyUrl}\nTerms: ${termsUrl}\n\nSceneLink · Boston, MA\n${footer}`,
     html: `<!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="x-apple-disable-message-reformatting"><title>Welcome to SceneLink</title></head>
-<body style="margin:0;padding:0;width:100%;background-color:#f4f1e8;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%">
-  <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all">Discover Boston, save your next stop, and make SceneLink your own.</div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f1e8" style="width:100%;border-collapse:collapse">
-    <tr><td align="center" style="padding:24px 12px">
-      <!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#1a1d1e" style="width:100%;max-width:600px;border-collapse:separate;border-spacing:0;border:1px solid #42484a;border-radius:16px;color:#f5f2e8">
-        <tr><td align="center" style="padding:16px 28px 0">
-          <a href="${escapeHtml(exploreUrl)}" style="color:#e3bc54;text-decoration:none"><img src="${escapeHtml(logoUrl)}" width="184" height="184" alt="SceneLink — Eat. Drink. Discover." style="display:block;width:184px;max-width:100%;height:auto;border:0;color:#e3bc54;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:bold"></a>
-        </td></tr>
-        <tr><td style="padding:0 28px 28px;overflow-wrap:break-word;word-break:break-word">
-          <h1 style="margin:0 0 16px;color:#f5f2e8;font-family:Arial,Helvetica,sans-serif;font-size:32px;font-weight:700;line-height:1.2">${escapeHtml(greeting)}</h1>
-          <p style="margin:0;color:#c4c9cc;font-size:16px;line-height:26px">${introduction}</p>
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;margin:26px 0 0">
-            <tr><td align="center" bgcolor="#e3bc54" style="border-radius:9px;mso-padding-alt:15px 24px"><a href="${escapeHtml(exploreUrl)}" style="display:inline-block;padding:15px 24px;border:1px solid #e3bc54;border-radius:9px;color:#18150d;font-size:16px;font-weight:bold;line-height:20px;text-align:center;text-decoration:none;mso-padding-alt:0">Explore Boston</a></td></tr>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="x-apple-disable-message-reformatting"><title>${title}</title></head>
+<body style="margin:0;padding:0;width:100%;background:#171713;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%">
+  <div aria-hidden="true" style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all">${html(preheader)}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#171713" style="width:100%;border-collapse:collapse">
+    <tr><td align="center" style="padding:20px 12px">
+      <!--[if mso]><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#211f1a" style="width:100%;max-width:580px;border-collapse:separate;border-spacing:0;border:1px solid #494438;border-top:4px solid ${gold};border-radius:14px;color:${light}">
+        <tr><td style="padding:16px 22px 12px;border-bottom:1px solid #494438">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">
+            <tr>
+              <td valign="middle" style="padding-right:10px">
+                <p style="margin:0;color:${gold};font-size:25px;font-weight:700;line-height:29px">SceneLink</p>
+                <p style="margin:2px 0 0;color:${muted};font-size:12px;line-height:18px">Eat. Drink. Discover.</p>
+              </td>
+              <td width="52" valign="middle" align="right"><img src="${html(logoUrl)}" width="52" height="52" alt="" role="presentation" aria-hidden="true" style="display:block;width:52px;height:52px;border:0;border-radius:6px"></td>
+            </tr>
           </table>
         </td></tr>
-        ${verification ? `<tr><td style="padding:0 28px 26px">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#252a2c" style="width:100%;border-collapse:separate;border-left:3px solid #e3bc54;border-radius:0 8px 8px 0">
-            <tr><td style="padding:18px 20px"><h2 style="margin:0 0 8px;color:#f5f2e8;font-size:17px;line-height:24px">Before you connect</h2><p style="margin:0;color:#c4c9cc;font-size:14px;line-height:23px">${escapeHtml(verification)}</p></td></tr>
+        <tr><td style="padding:18px 22px 24px;overflow-wrap:anywhere;word-break:break-word">
+          <p style="margin:0 0 8px;color:${gold};font-size:12px;font-weight:bold;letter-spacing:1.6px;line-height:18px;text-transform:uppercase">The Boston going-out guide</p>
+          <h1 style="margin:0 0 10px;color:${light};font-size:30px;font-weight:700;line-height:1.17">${title}</h1>
+          ${name ? `<p style="margin:0 0 8px;color:${light};font-size:16px;line-height:26px">Hi ${html(name)},</p>` : ''}<p style="margin:0;color:${muted};font-size:16px;line-height:26px">${intro}</p>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;margin:18px 0 0">
+            <tr><td align="center" bgcolor="${gold}" style="border-radius:8px;mso-padding-alt:14px 23px"><a href="${html(exploreUrl)}" style="display:inline-block;padding:14px 23px;border:1px solid ${gold};border-radius:8px;color:#20180c;font-size:16px;font-weight:bold;line-height:20px;text-align:center;text-decoration:none;mso-padding-alt:0">Explore Boston</a></td></tr>
           </table>
-        </td></tr>` : ''}
-        <tr><td style="padding:0 28px 28px">
-          <h2 style="margin:0 0 8px;color:#f5f2e8;font-size:20px;line-height:27px">Make SceneLink yours</h2>
-          <p style="margin:0 0 12px;color:#c4c9cc;font-size:15px;line-height:24px">${profileCopy}</p>
-          <a href="${escapeHtml(profileUrl)}" style="display:inline-block;padding:8px 0;color:#e3bc54;font-size:15px;font-weight:bold;line-height:24px;text-decoration:underline">Complete your profile</a>
         </td></tr>
-        <tr><td style="padding:24px 28px;border-top:1px solid #42484a">
-          <p style="margin:0 0 8px;color:#f5f2e8;font-size:16px;font-weight:bold;line-height:24px">Need a hand?</p>
-          <p style="margin:0;color:#c4c9cc;font-size:14px;line-height:23px">Visit <a href="${escapeHtml(contactUrl)}" style="color:#e3bc54;text-decoration:underline">SceneLink support</a> or reply to this email. We are here to help.</p>
-          <p style="margin:8px 0 0;font-size:14px;line-height:23px;overflow-wrap:break-word"><a href="mailto:${escapeHtml(SUPPORT_EMAIL)}" style="color:#e3bc54;text-decoration:underline">${escapeHtml(SUPPORT_EMAIL)}</a></p>
+        <tr><td style="padding:0 22px 22px">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#2b271e" style="width:100%;border-collapse:separate;border:1px solid #655638;border-radius:10px">
+            <tr><td style="padding:16px 16px 14px">
+              <h2 style="margin:0 0 6px;color:${light};font-size:18px;line-height:25px">${profileHeading}</h2>
+              <p style="margin:0;color:${muted};font-size:15px;line-height:24px">${html(profileCopy)}</p>
+              <a href="${html(profileUrl)}" style="display:inline-block;padding:12px 0;min-height:20px;font-size:15px;line-height:20px;${linkStyle}">${profileAction}</a>${verified ? '' : `<p style="margin:0;color:${muted};font-size:13px;line-height:20px">${notice}</p>`}
+            </td></tr>
+          </table>
         </td></tr>
-        <tr><td style="padding:0 28px 28px;color:#b9c1ca;font-size:12px;line-height:20px">
-          <p style="margin:0 0 12px"><a href="${escapeHtml(privacyUrl)}" style="color:#c4c9cc;text-decoration:underline">Privacy</a><span aria-hidden="true"> &nbsp;·&nbsp; </span><a href="${escapeHtml(termsUrl)}" style="color:#c4c9cc;text-decoration:underline">Terms</a></p>
-          <p style="margin:0 0 8px">SceneLink · Boston, MA</p>
-          <p style="margin:0">You are receiving this because a SceneLink account was created with your email address. If you did not create this account, you can ignore this email.</p>
+        <tr><td style="padding:17px 22px 20px;border-top:1px solid #494438;color:${muted};font-size:13px;line-height:21px">
+          <p style="margin:0 0 8px"><strong style="color:${light}">Questions?</strong> Reply to this email or visit <a href="${html(contactUrl)}" style="${linkStyle}">SceneLink support</a>.</p>
+          <p style="margin:0 0 8px">SceneLink · Boston, MA<br><a href="${html(privacyUrl)}" style="${linkStyle}">Privacy</a> &nbsp; <a href="${html(termsUrl)}" style="${linkStyle}">Terms</a></p>
+          <p style="margin:0">${footer}</p>
         </td></tr>
       </table>
       <!--[if mso]></td></tr></table><![endif]-->

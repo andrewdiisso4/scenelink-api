@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const pending = new Map();
-  const token = () => { try { return root.localStorage.getItem('sl_jwt_token') || ''; } catch (_) { return ''; } };
+  const token = () => { try { return typeof root.SLAuth?.token === 'function' ? root.SLAuth.token() : (root.localStorage.getItem('sl_jwt_token') || ''); } catch (_) { return ''; } };
   function esc(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function safeUrl(value, local) {
     if (typeof value !== 'string' || /[\x00-\x20\\]/.test(value)) return null;

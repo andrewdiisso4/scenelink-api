@@ -135,6 +135,21 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
     await page.locator('#slspEdit').evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));await shot(page,'profile-editor-mobile');
     await page.locator('[data-action=cancel-edit]').click();await page.setViewportSize({width:1440,height:1100});
   });
+  await stage('A single real consumer session carries across discovery, social, RSVP and business header',async()=>{
+    for(const route of ['/explore.html','/events.html','/messages.html','/social-feed.html','/my-lists.html','/plan-with-friends.html','/business.html','/contact.html']){
+      const verifiedSession=page.waitForResponse(r=>r.request().method()==='GET'&&new URL(r.url()).pathname==='/api/auth/me'&&r.status()===200);
+      await page.goto(origin+route,{waitUntil:'domcontentloaded'});
+      assert.equal((await (await verifiedSession).json()).user.id,memberID,route+' real session');
+      await page.waitForFunction(id=>window.SLAuth?.user()?.id===id,memberID);
+      assert.equal(await page.evaluate(()=>!!window.SLAuth.token()),true,route);
+      await page.locator('.slus-input').waitFor({state:'visible'});
+      assert.equal(await page.locator('.slus-input').count(),1,route);
+      assert.equal(await page.locator('.sl-auth-overlay.open').count(),0,route);
+    }
+    await page.goto(origin+'/profile.html',{waitUntil:'domcontentloaded'});
+    await page.locator('#slSocialProfile .slsp-hero h1').waitFor();
+    assert.equal(await page.locator('#slSocialProfile .slsp-hero h1').textContent(),'Casey · QA member');
+  });
   const friend=await context();
   await stage('Search, request, recipient acceptance and shared friendship state',async()=>{
     await login(friend.p,'qa.admin@example.invalid');await search(page,'qa_admin');
@@ -210,7 +225,7 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
     const emailCtx=await browser.newContext({viewport:{width:900,height:1150},reducedMotion:'reduce'});const emailPage=await emailCtx.newPage();
     await emailCtx.route('**/*',route=>{
       const url=route.request().url();
-      if(url==='https://scenelink.app/images/brand/scenelink-full.png')return route.fulfill({contentType:'image/png',body:fs.readFileSync(path.join(ROOT,'web/frontend/images/brand/scenelink-full.png'))});
+      if(url==='https://scenelink.app/images/brand/welcome-scenelink-logo.png')return route.fulfill({contentType:'image/png',body:fs.readFileSync(path.join(ROOT,'web/frontend/images/brand/welcome-scenelink-logo.png'))});
       if(url.startsWith(origin+'/__welcome-preview/')){const variant=url.endsWith('/verified')?'verified':'unverified';return route.fulfill({contentType:'text/html',body:fs.readFileSync(path.join(ROOT,'evidence/welcome-email',variant+'.html'))});}
       return route.abort('blockedbyclient');
     });
@@ -218,6 +233,15 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
       await emailPage.goto(origin+'/__welcome-preview/'+variant);await emailPage.locator('img').first().waitFor();await emailPage.waitForFunction(()=>[...document.images].every(i=>i.complete&&i.naturalWidth>0));
       await emailPage.setViewportSize({width:900,height:1150});await shot(emailPage,'welcome-'+variant+'-desktop',true);
       await emailPage.setViewportSize({width:390,height:1100});await shot(emailPage,'welcome-'+variant+'-mobile',true);
+      await emailPage.route('**/welcome-scenelink-logo.png', route=>route.abort('blockedbyclient'));
+      await emailPage.reload();
+      await emailPage.getByText('Eat. Drink. Discover.',{exact:true}).waitFor({state:'visible'});
+      await emailPage.getByRole('heading',{name:'Welcome to SceneLink',exact:true}).waitFor({state:'visible'});
+      assert.equal(await emailPage.getByRole('link',{name:'Explore Boston',exact:true}).getAttribute('href'),'https://scenelink.app/explore.html');
+      assert.equal(await emailPage.getByRole('link',{name:variant==='verified'?'Set up your profile':'Open your profile',exact:true}).getAttribute('href'),'https://scenelink.app/profile.html');
+      assert(await emailPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'welcome must fit without its remote image');
+      await shot(emailPage,'welcome-'+variant+'-images-blocked',true);
+      await emailPage.unroute('**/welcome-scenelink-logo.png');
     }
     const newsletter=require('../src/services/mailer').newsletterConfirmEmail('T'.repeat(43));
     for(const width of [320,390,900]){
