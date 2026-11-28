@@ -91,3 +91,39 @@ test('universal search distinguishes an outage from zero results and keeps a dra
  assert.equal(calls.length,2);assert.equal(h.w.localStorage.getItem('sl_recent_searches_v1'),null);}
  finally{h.w.close();}
 });
+
+
+test('event suggestions link to exact reviewed detail IDs and do not accept unsafe or empty IDs',async()=>{
+ const id='12abcdef-1234-5678-9012-123456789abc';
+ const h=await harness(async()=>reply({events:[{id,title:'<Harbor> Session',date:'2026-11-28',venue_name:'Harbor Test Room'},{id:'//example.test',title:'Do not render'}]}));
+ try{await h.search('harbor');const row=h.w.document.querySelector('a.slus-item');
+ assert.equal(row.getAttribute('href'),'/events.html?event='+id);
+ assert.match(row.textContent,/<Harbor> Session/);
+ assert.match(row.textContent,/Nov 28 · Harbor Test Room/);
+ assert.doesNotMatch(h.w.document.body.textContent,/Do not render/);
+ assert.equal(h.w.document.querySelectorAll('a.slus-item').length,1);
+ }finally{h.w.close();}
+});
+test('a legacy token cannot become the header search identity',async()=>{
+ const requests=[];const h=await harness(async(url,options)=>{requests.push({url,options});return reply({});});
+ try{h.w.localStorage.setItem('sl_auth_token','expired-legacy');await h.search('venue');
+ assert.equal(requests[0].options.headers.Authorization,undefined);
+ h.w.SLAuth={token:()=> 'canonical-fixture'};await h.search('concert');
+ assert.equal(requests[1].options.headers.Authorization,'Bearer canonical-fixture');
+ assert.equal(requests[1].options.cache,'no-store');
+ }finally{h.w.close();}
+});
+test('venue-only fallback is not described as a complete search',async()=>{
+ const h=await harness(async url=>url.includes('/search/universal')?{ok:false,status:503,text:async()=>''}:reply({venues:[{id:'v',name:'Fallback Venue'}]}));
+ try{await h.search('venue');assert.match(h.w.document.body.textContent,/Only venue results are available/);
+ assert.match(h.w.document.body.textContent,/Fallback Venue/);
+ }finally{h.w.close();}
+});
+test('homepage search button and chips reuse the canonical input with no duplicate forms or requests',async()=>{
+ const calls=[],h=await harness(async url=>{calls.push(url);return reply({});});
+ try{const w=h.w;const a=w.document.createElement('a');a.setAttribute('data-sl-open-search','live music');a.href='/events.html';a.textContent='Live music';w.document.body.appendChild(a);a.click();await tick(190);
+ assert.equal(h.input.value,'live music');assert.equal(w.document.activeElement,h.input);
+ assert.equal(calls.length,1);
+ assert.match(calls[0],/live%20music/);
+ }finally{h.w.close();}
+});

@@ -79,8 +79,9 @@ body { background: var(--sl-bg); }
 .sl-phase8-section-title { margin:0; font-size:clamp(2rem,4vw,3.25rem); letter-spacing:-.035em; line-height:1.04; }
 .sl-phase8-section-copy { color:var(--sl-muted); line-height:1.6; max-width:620px; margin:12px 0 0; }
 .sl-phase8-search-card { margin-top:-48px; position:relative; z-index:5; background:rgba(15,15,17,.92); border:1px solid var(--sl-line-strong); border-radius:22px; padding:16px; box-shadow:0 22px 72px rgba(0,0,0,.35); }
-.sl-phase8-search-row { display:flex; gap:10px; }
-.sl-phase8-search-row input { flex:1; min-height:52px; border:1px solid rgba(255,255,255,.12); border-radius:14px; background:#08080a; color:#fff; padding:0 16px; font-size:16px; outline:none; }
+.sl-phase8-search-row { display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; }
+.sl-phase8-search-row .sl-phase8-btn { min-height:48px; justify-content:center; }
+.sl-phase8-search-row .sl-phase8-section-copy { margin:0; }
 .sl-phase8-chip-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
 .sl-phase8-chip { border:1px solid rgba(212,175,55,.20); color:rgba(255,255,255,.76); background:rgba(212,175,55,.07); padding:8px 11px; border-radius:999px; font-size:13px; cursor:pointer; }
 .sl-phase8-card-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
