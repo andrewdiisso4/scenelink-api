@@ -1,0 +1,142 @@
+/* Shared social workspace, separate from site navigation and account gates. */
+.sl-community-nav {
+  --sw-text: var(--sl-ui-text, #f5f6f7);
+  --sw-muted: var(--sl-ui-muted, #b9c1ca);
+  --sw-gold: var(--sl-ui-gold, #e3bc54);
+  width: min(calc(100% - 48px), 1112px);
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin: 112px auto 0;
+  padding: 5px;
+  border: 1px solid var(--sl-ui-divider, #303841);
+  border-radius: 16px;
+  background: var(--sl-ui-bg, #101316);
+}
+.sl-community-nav a {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  min-height: 44px;
+  min-width: 0;
+  text-align: center;
+  padding: 8px 5px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  color: var(--sw-muted);
+  font-size: .875rem;
+  font-weight: 650;
+}
+.sl-community-nav svg { width: 20px; height: 20px; flex: none; }
+.sl-community-nav a:hover { background: var(--sl-ui-surface, #191e23); color: var(--sw-text); }
+.sl-community-nav a[aria-current="page"] { background: #302a1b; border-color: #655536; color: #f3d783; }
+.sl-community-nav a:focus-visible { outline: 2px solid var(--sw-gold); outline-offset: -2px; }
+.sl-community-nav + .slsp { padding-top: 22px; }
+.sl-community-nav + #slMessagesWorkspace { margin-top: 0; }
+#slSocialWorkspace .social-landing .sl-social-hero { padding-top: clamp(45px, 7vw, 100px); }
+#slSocialWorkspace #socialFeed { background: transparent; }
+
+/* Keep the surface hierarchy consistent without overriding hidden state or guards. */
+.slsp .slsp-hero {
+  align-items: flex-start;
+  border-color: var(--sl-ui-divider, #303841);
+  background: radial-gradient(ellipse at 15% 0%, #352d22 0%, transparent 55%), var(--sl-ui-surface, #191e23);
+  border-radius: 22px;
+  padding: clamp(18px, 3.5vw, 34px);
+  gap: clamp(15px, 3vw, 28px);
+}
+.slsp .slsp-hero h1 { font-size: clamp(1.85rem, 4vw, 3.1rem); line-height: 1.1; letter-spacing: -.045em; }
+.slsp .slsp-hero .slsp-avatar { box-shadow: 0 0 0 1px #856e42, 0 0 0 5px rgb(16 19 22 / .65); }
+.slsp .slsp-card:not(.slsp-hero) { border-color: var(--sl-ui-divider, #303841); background: var(--sl-ui-surface, #191e23); }
+.slsp .slsp-row { gap: 8px; }
+
+#socialFeed .sf-main { min-width: 0; }
+#socialFeed .sf-layout {
+  max-width: 1160px;
+  grid-template-columns: minmax(0, 1fr) minmax(270px, 315px);
+  padding-inline: 24px;
+  gap: 22px;
+}
+#socialFeed .sf-workspace-intro { padding: 0 0 20px; }
+#socialFeed .sf-page-title { margin: 4px 0 6px; font-size: clamp(2rem, 4vw, 3.1rem); letter-spacing: -.045em; line-height: 1.1; }
+#socialFeed .sf-workspace-intro p { margin: 0; color: var(--sl-ui-muted, #b9c1ca); line-height: 1.5; }
+#socialFeed .sf-workspace-intro .sf-workspace-kicker {
+  font-size: .72rem; font-weight: 700; letter-spacing: .12em; color: var(--sl-ui-gold, #e3bc54);
+}
+#socialFeed .sf-stories[hidden] { display: none; }
+#socialFeed :is(.sf-create, .sf-sidebar-card, article.sf-card, article.sf-post) {
+  border: 1px solid var(--sl-ui-divider, #303841);
+  border-radius: 18px;
+  background: var(--sl-ui-surface, #191e23);
+}
+#socialFeed .sf-create-top { align-items: flex-start; }
+#socialFeed .sf-create-input { width: 100%; min-width: 0; min-height: 76px !important; }
+#socialFeed .sf-create-bottom, #socialFeed .sf-create-actions { flex-wrap: wrap; gap: 8px; }
+#socialFeed .sf-create-action { padding-inline: 10px; }
+#socialFeed .sf-comment-byline { font-size: .82rem; }
+#socialFeed .sf-comment-byline a { color: var(--sl-ui-text, #f5f6f7); font-weight: 700; text-underline-offset: 3px; }
+#socialFeed .sf-inbox-preview {
+  display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 7px 6px;
+  border-radius: 10px; color: var(--sl-ui-text, #f5f6f7); text-decoration: none;
+}
+#socialFeed .sf-inbox-preview:hover { background: var(--sl-ui-raised, #222930); }
+#socialFeed .sf-inbox-unread {
+  background: var(--sl-ui-gold, #e3bc54); color: #18150d; border-radius: 999px;
+  flex: none; padding: 2px 6px; min-width: 20px; font-size: .7rem; text-align: center; font-weight: 750;
+}
+#socialFeed .sf-preview-note { color: var(--sl-ui-muted, #b9c1ca); line-height: 1.5; padding: 6px 0; }
+#socialFeed .sf-preview-note a { color: var(--sl-ui-gold, #e3bc54); }
+#socialFeed #sfPostStatus:empty { display: none; }
+
+/* Desktop preserves the split-view; narrow screens show a focused conversation. */
+#slMessagesWorkspace { max-width: 1160px; }
+#slMessagesWorkspace :is(.slm-layout,.slm-inbox,.slm-thread-head,.slm-composer,.slm-capabilities) { border-color: var(--sl-ui-divider, #303841); }
+#slMessagesWorkspace .slm-layout { background: var(--sl-ui-bg, #101316); border-radius: 20px; }
+#slMessagesWorkspace :is(.slm-inbox,.slm-composer,.slm-capabilities) { background: var(--sl-ui-surface, #191e23); }
+#slMessagesWorkspace .slm-capabilities { margin-top: 12px; }
+#slMessagesWorkspace .slm-bubble { background: var(--sl-ui-raised, #222930); border-color: var(--sl-ui-divider, #303841); }
+#slMessagesWorkspace .is-mine .slm-bubble { background: #352c1c; border-color: #604f2c; }
+#slMessagesWorkspace .slm-conversation { border-color: transparent; background: transparent; }
+#slMessagesWorkspace .slm-conversation:hover { background: var(--sl-ui-raised, #222930); }
+#slMessagesWorkspace .slm-conversation.is-active { background: #302a1b; border-color: #655536; }
+#slMessagesWorkspace [data-inbox-status]:empty { min-height: 0; margin: 0; }
+#slMessagesWorkspace .slm-recipient { padding: clamp(16px, 4vw, 34px); }
+#slMessagesWorkspace .slm-recipient h2 { margin-block: 12px; }
+#slMessagesWorkspace .slm-recipient :is([data-cancel-recipient], [data-close-thread]) { display: inline-flex; align-items: center; }
+#slMessagesWorkspace .slm-recipient-person { display: flex; gap: 10px; align-items: center; margin: 14px 0; overflow-wrap: anywhere; }
+#slMessagesWorkspace .slm-recipient-person a { font-weight: 700; color: var(--sl-ui-text, #f5f6f7); }
+#slMessagesWorkspace .slm-recipient-person p { margin: 2px 0 0; }
+#slMessagesWorkspace .slm-thread-head h2 { overflow-wrap: anywhere; }
+#slMessagesWorkspace .slm-thread-head h2:focus-visible { outline-offset: 4px; }
+
+@media (max-width: 900px) {
+  .sl-community-nav { width: calc(100% - 32px); margin-top: 12px; }
+  #socialFeed .sf-layout { grid-template-columns: minmax(0, 1fr); padding-inline: 16px; }
+}
+@media (max-width: 750px) {
+  .sl-community-nav + #slMessagesWorkspace { padding-inline: 16px; }
+  .sl-community-nav a { font-size: .75rem; gap: 5px; }
+  .sl-community-nav svg { width: 16px; height: 16px; }
+  #slMessagesWorkspace .slm-heading { align-items: flex-start; gap: 8px; }
+  #slMessagesWorkspace .slm-inbox { max-height: none; border-bottom: 0; }
+  #slMessagesWorkspace .slm-layout[data-view="inbox"] .slm-thread,
+  #slMessagesWorkspace .slm-layout:not([data-view="inbox"]) .slm-inbox { display: none; }
+  #slMessagesWorkspace .slm-layout[data-view="review"] .slm-thread { min-height: 0; }
+  #slMessagesWorkspace .slm-thread-head { flex-wrap: wrap; }
+  #slMessagesWorkspace .slm-thread-head > .slm-row { justify-content: flex-start; gap: 4px; }
+}
+@media (max-width: 360px) {
+  .sl-community-nav a { flex-direction: column; font-size: .72rem; line-height: 1.25; }
+  #socialFeed .sf-create-actions { flex: 1 1 100%; }
+  #slMessagesWorkspace .slm-heading { flex-wrap: wrap; }
+}
+#socialFeed .sf-post-audience {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin: 6px 0 12px;
+  color: var(--sl-ui-muted, #b9c1ca); font-size: .82rem;
+}
+#socialFeed .sf-post-audience select { min-height: 44px !important; padding-block: 8px !important; }
+#slMessagesWorkspace .slm-initial { overflow: hidden; }
+#slMessagesWorkspace .slm-initial img { width: 100%; height: 100%; object-fit: cover; display: block; }

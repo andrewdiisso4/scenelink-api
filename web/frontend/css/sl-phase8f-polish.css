@@ -513,3 +513,13 @@ footer .footer-logo-img {
     bottom: calc(158px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
+
+/* The lightweight Concierge launcher reserves the same clearance as the legacy control. */
+body:has(iframe#nl-badge-frame) .sl-concierge-launcher {
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+}
+@media (max-width: 860px) {
+  body.sl-has-tabs:has(iframe#nl-badge-frame) .sl-concierge-launcher {
+    bottom: calc(158px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
