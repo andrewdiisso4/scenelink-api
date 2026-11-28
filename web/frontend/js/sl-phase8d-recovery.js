@@ -3,8 +3,8 @@
   'use strict';
   if (window.__SL_PHASE8D_RECOVERY__) return;
   window.__SL_PHASE8D_RECOVERY__ = true;
-  var AI_SCRIPT = 'js/ai-concierge-v5.js?v=connected-20261124-account-social';
-  var AI_CSS = ['css/ai-concierge.css?v=connected-20261124-account-social','css/ai-concierge-v5.css?v=connected-20261124-account-social'];
+  var AI_SCRIPT = 'js/ai-concierge-v5.js?v=connected-20261127-signup-newsletter';
+  var AI_CSS = ['css/ai-concierge.css?v=connected-20261127-signup-newsletter','css/ai-concierge-v5.css?v=connected-20261127-signup-newsletter'];
   function qs(s,r){ return (r||document).querySelector(s); }
   function qsa(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); }
   function loadCss(href){

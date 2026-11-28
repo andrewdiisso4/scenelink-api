@@ -1,12 +1,12 @@
 {
   "phase": "release-acceptance",
-  "sw_version": "sl-connected-20261124-account-social",
-  "timestamp": "2026-11-24T08:00:00+00:00",
+  "sw_version": "sl-connected-20261127-signup-newsletter",
+  "timestamp": "2026-11-28T00:15:00+00:00",
   "status": "versioned_build",
   "requires_paired_backend": true,
-  "required_migration": "018_account_deletion_receipts.sql",
+  "required_migration": "019_newsletter_opt_in.sql",
   "rollout_order": "paired_backend_then_frontend",
-  "summary": "Account and social release candidate: consistent sign-in and recovery, verified profile persistence, consent-aware people actions, recent-provider account deletion and branded welcome email. Includes the prior admin, business and Concierge fixes. Requires the paired API candidate. External provider cleanup and native App Store acceptance remain release gates; AI and provider pilots remain off.",
+  "summary": "Account and social release candidate: consistent sign-in and recovery, verified profile persistence, consent-aware people actions, recent-provider account deletion and branded welcome email. This build adds a confirmable footer newsletter and optional scoped signup email transport. Includes the prior admin, business and Concierge fixes. Requires the paired API candidate. External provider cleanup and native App Store acceptance remain release gates; AI and provider pilots remain off.",
   "admin_auth_hotfix": {
     "id": "connected-20261124-admin-access",
     "source_frontend_base": "db579dbca96d57edcca5a36cb3d009c1724f2262",
@@ -15,6 +15,6 @@
     "pull_request": 40,
     "scope": "administrator authentication and session handling"
   },
-  "admin_controller_cache_key": "connected-20261124-account-social",
-  "business_controller_cache_key": "connected-20261124-account-social"
+  "admin_controller_cache_key": "connected-20261127-signup-newsletter",
+  "business_controller_cache_key": "connected-20261127-signup-newsletter"
 }

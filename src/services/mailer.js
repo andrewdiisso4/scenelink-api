@@ -74,6 +74,7 @@ function buildTransportOptions() {
   };
 }
 
+const signupResend = require('./resend-signup').create();
 let transport = null;
 let transportReady = false;
 let transportError = null;
@@ -158,6 +159,11 @@ initTransport();
 
 // ── Public API ──────────────────────────────────────────────────────────────
 function isReady() { return transportReady && !!transport; }
+
+function isReadyFor(purpose) {
+  if (signupResend.selects(purpose)) return signupResend.ready(purpose);
+  return !isolatedVerification && isReady();
+}
 
 async function verify() {
   if (!transport) return { ok: false, error: 'transport not initialized' };
@@ -280,7 +286,7 @@ function welcomeEmail(user = {}) {
   const privacyUrl = new URL('/privacy.html', origin).href;
   const termsUrl = new URL('/terms.html', origin).href;
   const logoUrl = new URL('/images/brand/scenelink-full.png', origin).href;
-  const introduction = 'Find your next dinner spot, discover places to go out in Boston, and save ideas for plans with friends.';
+  const introduction = 'Thanks for signing up for SceneLink. Find your next dinner spot, discover places to go out in Boston, and save ideas for plans with friends.';
   const profileCopy = 'Add a name and bio, then choose how people can find and message you.';
   // Welcome has its own email-safe layout; other transactional templates and
   // the signup-only dispatcher retain their existing behavior.
@@ -336,18 +342,27 @@ function welcomeEmail(user = {}) {
   };
 }
 
-function newsletterConfirmEmail(email) {
+function newsletterConfirmEmail(token) {
+  const origin = new URL(APP_BASE_URL);
+  if (origin.username || origin.password || (origin.protocol !== 'https:' &&
+      !(process.env.NODE_ENV !== 'production' && origin.protocol === 'http:' && ['127.0.0.1','localhost','[::1]'].includes(origin.hostname))))
+    throw new Error('Newsletter origin is misconfigured');
+  const url = mode => {
+    const link = new URL('/newsletter-email.html',origin);
+    link.hash = new URLSearchParams({mode,token}).toString();
+    return link.href;
+  };
+  const confirmUrl = url('confirm');
+  const unsubscribeUrl = url('unsubscribe');
   return {
-    subject: "You're on the list — SceneLink",
-    html: brandedLayout({
-      title: "You're on the list.",
-      bodyHtml: `
-        <p>Thanks for joining the SceneLink newsletter.</p>
-        <p>You'll get a short, curated email when we drop something worth your night out — new venues, picks for the weekend, AI-powered guides, and the occasional invite.</p>
-        <p style="color:#888;font-size:13px">No spam, ever. Unsubscribe by replying to any email.</p>`,
-      ctaUrl: APP_BASE_URL,
-      ctaLabel: 'Visit SceneLink',
-    }),
+    subject:'Confirm your SceneLink newsletter signup',
+    text:`Confirm within 24 hours: ${confirmUrl}
+
+If you did not request this, ignore this email or cancel here: ${unsubscribeUrl}`,
+    html:brandedLayout({title:'Confirm your newsletter signup',
+      bodyHtml:`<p>Get Boston venue picks and SceneLink updates. Confirm within 24 hours to join.</p>
+        <p>If you didn’t request this, ignore this email or <a href="${escapeHtml(unsubscribeUrl)}">cancel this signup or unsubscribe</a>.</p>`,
+      ctaUrl:confirmUrl,ctaLabel:'Confirm newsletter signup'}),
   };
 }
 
