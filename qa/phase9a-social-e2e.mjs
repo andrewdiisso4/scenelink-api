@@ -39,8 +39,11 @@ async function req(method, path, token, body) {
 }
 
 async function signup(tag) {
+  // Historical runs used qa9e_[ab]_<13 digits>@scenelink.test. Those persisted
+  // fixtures are excluded from consumer social surfaces; new loopback-only QA
+  // uses example.invalid so it exercises the ordinary participation policy.
   return req('POST', '/auth/signup', null, {
-    email: `qa9e_${tag}_${TS}@scenelink.test`,
+    email: `qa9e_${tag}_${TS}@example.invalid`,
     password: 'TestPass123!',
     display_name: `E2E ${tag.toUpperCase()} ${TS}`,
     username: `qa9e_${tag}_${TS}`,
