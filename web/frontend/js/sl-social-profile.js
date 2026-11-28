@@ -43,7 +43,7 @@
   }
   function renderHero() {
     const u = state.user, p = state.public || {}, own = state.own;
-    return '<section class="slsp-card slsp-hero">' + avatar(u) + '<div class="slsp-grow"><div class="slsp-hero-identity"><p class="slsp-kicker">' + (own ? 'Your SceneLink' : 'SceneLink member') + '</p><h1>' + E(name(u)) + '</h1><p class="slsp-muted">' + E(u.username ? '@' + u.username : 'Username not set') + '</p></div><div class="slsp-hero-details">' + ((own || p.can_view === true) && u.bio ? '<p class="slsp-bio">' + E(u.bio) + '</p>' : '') + ((own || p.can_view === true) && (u.neighborhood || u.city) ? '<p class="slsp-muted slsp-small">' + E([u.neighborhood,u.city].filter(Boolean).join(' · ')) + '</p>' : '') + '<div class="slsp-row">' + (own ? action('edit','Edit profile',null,null,' class="slsp-primary"') + '<a class="slsp-button" href="/messages">Open messages</a>' : C().token() ? relationshipActions(u,p.friendship_status,p.can_message === true) + action('block','Block',u.id) + action('report','Report',u.id) : '<button type="button" class="sl-auth-trigger slsp-primary">Sign in to connect</button>') + '</div>' + (!own && C().token() && p.can_message !== true ? '<p class="slsp-muted slsp-small slsp-actions">Messaging is unavailable under the current privacy settings.</p>' : '') + '</div></div></section>';
+    return '<section class="slsp-card slsp-hero">' + avatar(u) + '<div class="slsp-grow"><div class="slsp-hero-identity"><p class="slsp-kicker">' + (own ? 'Your SceneLink' : 'SceneLink member') + '</p><h1>' + E(name(u)) + '</h1><p class="slsp-muted">' + E(u.username ? '@' + u.username : 'Username not set') + '</p></div><div class="slsp-hero-details">' + ((own || p.can_view === true) && u.bio ? '<p class="slsp-bio">' + E(u.bio) + '</p>' : '') + ((own || p.can_view === true) && (u.neighborhood || u.city) ? '<p class="slsp-muted slsp-small">' + E([u.neighborhood,u.city].filter(Boolean).join(' · ')) + '</p>' : '') + '<div class="slsp-row">' + (own ? action('edit','Edit profile',null,null,' class="slsp-primary"') + '<a class="slsp-button" href="/messages">Open inbox</a>' : C().token() ? relationshipActions(u,p.friendship_status,p.can_message === true) + action('block','Block',u.id) + action('report','Report',u.id) : '<button type="button" class="sl-auth-trigger slsp-primary">Sign in to connect</button>') + '</div>' + (!own && C().token() && p.can_message !== true ? '<p class="slsp-muted slsp-small slsp-actions">Messaging is unavailable under the current privacy settings.</p>' : '') + '</div></div></section>';
   }
   function editForm() {
     const u = state.user, links = Object.fromEntries((u.social_links || []).map(l => [l.provider,l.url]));
@@ -75,10 +75,18 @@
     try { const d = await C().request('/users/me/achievements'); if (valid(epoch,session) && target.isConnected) renderAchievements(d,target,true); }
     catch (e) { if (valid(epoch,session) && target.isConnected) target.innerHTML = '<p class="slsp-status" data-kind="error">' + E(errorText(e)) + '</p>' + action('achievements','Retry achievements'); }
   }
+  function highlightWorkspace(tab) {
+    document.querySelectorAll('.sl-community-nav [data-sl-workspace]').forEach(link => {
+      if (link.dataset.slWorkspace === tab) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
+    });
+  }
+  if (who()) highlightWorkspace(null);
   function selectTab(tab, history) {
     if (!state.own) return;
     if(tab==='privacy')tab='settings';
     tab = ['profile','friends','settings'].includes(tab) ? tab : 'profile';
+    highlightWorkspace(tab === 'friends' ? 'friends' : 'profile');
     host.querySelectorAll('[data-tab]').forEach(b => { const active = b.dataset.tab === tab; b.setAttribute('aria-selected',String(active)); b.tabIndex = active ? 0 : -1; });
     ['profile','friends','settings'].forEach(t => { const el = $('slspPanel' + t[0].toUpperCase() + t.slice(1)); if (el) el.hidden = t !== tab; });
     if (history) window.history.pushState(null,'',location.pathname + location.search + '#' + tab);

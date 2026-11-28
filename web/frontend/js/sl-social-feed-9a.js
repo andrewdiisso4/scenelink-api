@@ -171,9 +171,9 @@
     var postBtn=$('sfPostBtn');
     var composer=document.querySelector('.sf-create');
     if(composer&&!$('sfAudience')){
-      var label=document.createElement('label');label.style.cssText='display:block;margin:12px 0;color:#ccc;font-size:13px';
-      label.innerHTML='Post audience <select id="sfAudience" style="margin-left:8px;padding:7px;background:#181818;color:#fff;border:1px solid #D4AF37;border-radius:6px"><option value="friends">Friends</option><option value="public">Public</option><option value="private">Only me</option></select>';
-      composer.appendChild(label);
+      var label=document.createElement('label');label.className='sf-post-audience';
+      label.innerHTML='Post audience <select id="sfAudience"><option value="friends">Friends</option><option value="public">Public</option><option value="private">Only me</option></select>';
+      composer.insertBefore(label,composer.querySelector('.sf-create-bottom'));
     }
     if(composer&&!$('sfPostStatus')){var postStatus=document.createElement('p');postStatus.id='sfPostStatus';postStatus.setAttribute('role','status');postStatus.style.cssText='font-size:13px;color:#ccc';composer.appendChild(postStatus);}
     var actions=document.querySelectorAll('.sf-create-action');
@@ -181,6 +181,7 @@
     if(postBtn && input){
       postBtn.addEventListener('click', submitPost);
       input.addEventListener('keydown', function(e){
+        if(e.isComposing)return;
         if((e.key==='Enter') && (e.metaKey||e.ctrlKey)){ e.preventDefault(); submitPost(); }
       });
     }
@@ -490,7 +491,7 @@
       return '<div style="display:flex;gap:8px;margin-bottom:8px;">'+
         avatarHtml(c.avatar_url, c.display_name||c.username, 28)+
         '<div style="flex:1;background:#0c0c0c;border-radius:10px;padding:8px 10px;">'+
-          '<div style="font-size:12px;color:#fff;"><b>'+esc(c.display_name||c.username||'user')+'</b> <span style="color:rgba(255,255,255,.4);font-weight:400;">· '+timeAgo(c.created_at)+'</span></div>'+
+          '<div class="sf-comment-byline">'+((c.user_id||c.username)?'<a href="/profile?u='+encodeURIComponent(c.user_id||c.username)+'">'+esc(c.display_name||c.username||'SceneLink member')+'</a>':'<strong>'+esc(c.display_name||'SceneLink member')+'</strong>')+' <span style="color:rgba(255,255,255,.4);font-weight:400;">· '+timeAgo(c.created_at)+'</span></div>'+
           '<div style="font-size:13px;color:rgba(255,255,255,.85);margin-top:2px;white-space:pre-wrap;word-wrap:break-word;">'+esc(c.body)+'</div>'+
         '</div></div>';
     }).join('') || '<div style="color:rgba(255,255,255,.4);font-size:12px;margin-bottom:8px;">Be the first to comment.</div>';
@@ -649,22 +650,23 @@
       card=document.createElement('div'); card.className='sf-sidebar-card'; card.id='sfMessagesCard';
       sidebar.insertBefore(card, sidebar.firstChild);
     }
-    card.innerHTML='<div class="sf-sidebar-title">Messages <a href="messages.html" class="sf-see-all">Open</a></div><div id="sfMsgList" style="color:rgba(255,255,255,.3);font-size:12px;padding:8px 0;">Loading…</div>';
+    card.innerHTML='<div class="sf-sidebar-title">Messages <a href="/messages" class="sf-see-all">Open inbox</a></div><div id="sfMsgList" style="color:rgba(255,255,255,.3);font-size:12px;padding:8px 0;">Loading…</div>';
     social().getConversations().then(forSession(function(r){
-      var list=(r.ok&&r.data&&r.data.conversations)||[];
       var host=$('sfMsgList'); if(!host) return;
-      if(!list.length){ host.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:12px;">No conversations yet. <a href="messages.html" style="color:#D4AF37;">Start one</a>.</div>'; return; }
+      var list=r.ok&&r.data&&r.data.conversations;
+      if(!Array.isArray(list)){host.innerHTML='<p class="sf-preview-note">Inbox preview is unavailable. <a href="/messages">Open inbox</a></p>';return;}
+      if(!list.length){ host.innerHTML='<p class="sf-preview-note">No conversations yet. <a href="/messages?compose=1">Start one</a></p>'; return; }
       host.innerHTML=list.slice(0,4).map(function(c){
         var peers=(c.participants||[]).filter(function(p){return !STATE.me||p.id!==STATE.me.id;});
         var peer=peers.length===1?peers[0]:null;
         var name=c.title||peers.map(function(p){return p.display_name||p.username||'SceneLink member';}).join(', ')||'Conversation';
         var preview=c.last_message_deleted?'Message deleted':typeof c.last_message==='string'?c.last_message:c.last_message&&c.last_message.body||'';
         var unread=c.unread_count||0;
-        return '<a href="/messages?conversation='+encodeURIComponent(c.id||c.conversation_id)+'" style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);text-decoration:none;">'+
+        return '<a href="/messages?conversation='+encodeURIComponent(c.id||c.conversation_id)+'" class="sf-inbox-preview">'+
           avatarHtml(peer&&peer.avatar_url,name,34)+
           '<div style="flex:1;min-width:0;"><div style="font-size:13px;color:#fff;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(name)+'</div>'+
             '<div style="font-size:11px;color:rgba(255,255,255,.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(preview)+'</div></div>'+
-          (unread?'<span style="background:#D4AF37;color:#000;border-radius:10px;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;padding:0 5px;">'+unread+'</span>':'')+
+          (Number.isSafeInteger(Number(unread))&&Number(unread)>0?'<span class="sf-inbox-unread" aria-label="'+Number(unread)+' unread">'+Math.min(99,Number(unread))+(Number(unread)>99?'+':'')+'</span>':'')+
         '</a>';
       }).join('');
     }));

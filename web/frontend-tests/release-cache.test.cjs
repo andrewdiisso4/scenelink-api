@@ -10,7 +10,7 @@ const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '../frontend');
-const tag = 'connected-20261127-signup-newsletter';
+const tag = 'connected-20261128-discovery-polish';
 const version = 'sl-' + tag;
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 

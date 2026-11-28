@@ -9,10 +9,19 @@
   const enc = encodeURIComponent;
   let session = '', epoch = 0, me, active = null, conversationOffset = 0, moreConversations = false;
   let conversations = new Map(), threads = new Map(), listBusy = false, listVersion = 0, searchSeq = 0, searchTimer, listStamp = 0, startBusy = false;
-  let pollTimer, started = false;
+  let pollTimer, started = false, selection = 0;
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const $ = s => host.querySelector(s);
   const current = gen => gen === epoch && C().token() === session;
   function name(u) { return u.display_name || u.username || 'SceneLink member'; }
+  function avatar(person,label) {
+    const image=person&&C().safeUrl(person.avatar_url,true), initial=label.trim().charAt(0).toUpperCase()||'·';
+    return '<span class="slm-initial" aria-hidden="true">'+(image?'<img src="'+E(image)+'" alt="" referrerpolicy="no-referrer" data-message-avatar="'+E(initial)+'">':E(initial))+'</span>';
+  }
+  host.addEventListener('error', event=>{
+    const el=event.target;
+    if(el?.matches?.('img[data-message-avatar]'))el.replaceWith(document.createTextNode(el.dataset.messageAvatar));
+  },true);
   function time(iso) { const date = new Date(iso); return iso && Number.isFinite(date.getTime()) ? date.toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : ''; }
   function uuid() {
     if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
@@ -53,23 +62,30 @@
   function status(text, isError) { const el=$('[data-inbox-status]'); if(el){el.textContent=text;el.classList.toggle('slm-error',!!isError);} }
   function renderShell() {
     host.innerHTML = '<div class="slm-heading"><div><p class="slm-eyebrow">YOUR PEOPLE, YOUR PLANS</p><h1>Messages</h1><p class="slm-muted">Keep the conversation with your plans, right here.</p></div><a class="slm-button slm-secondary" href="/profile#privacy">Privacy settings</a></div>'+
-      '<details class="slm-capabilities"><summary>How messaging works</summary><p>Direct text conversations are stored on SceneLink. Updates are checked while this tab is visible. Read receipts appear only when a participant chooses to share them. “Sent” means the server saved the message, not that a device received it. Creating group chats, sending photos, voice/video calls, disappearing messages and end-to-end encryption are not available in this build.</p></details>'+
-      '<p data-inbox-status class="slm-status" role="status" aria-live="polite"></p><div class="slm-layout"><aside class="slm-inbox" aria-label="Conversations"><div class="slm-inbox-head"><h2>Inbox</h2><button type="button" data-new-message class="slm-button">New message</button></div>'+
-      '<form data-search-form hidden class="slm-search"><label for="slMessageSearch">Find someone</label><div class="slm-row"><input id="slMessageSearch" name="query" type="search" maxlength="80" placeholder="Name or @username" autocomplete="off"><button class="slm-button slm-secondary" type="submit">Search</button></div><p class="slm-muted">Private accounts may require an exact @username. Their messaging preferences still apply.</p><div data-search-results aria-live="polite"></div></form>'+
+      '<p data-inbox-status class="slm-status" role="status" aria-live="polite"></p><div class="slm-layout" data-view="inbox"><aside class="slm-inbox" aria-label="Conversations"><div class="slm-inbox-head"><h2>Inbox</h2><button type="button" data-new-message class="slm-button" aria-expanded="false" aria-controls="slmFindPerson">New message</button></div>'+
+      '<form id="slmFindPerson" data-search-form hidden class="slm-search"><label for="slMessageSearch">Find someone</label><div class="slm-row"><input id="slMessageSearch" name="query" type="search" maxlength="80" placeholder="Name or @username" autocomplete="off"><button class="slm-button slm-secondary" type="submit">Search</button></div><p class="slm-muted">Private accounts may require an exact @username. Their messaging preferences still apply.</p><div data-search-results aria-live="polite"></div></form>'+
       '<div data-conversations><p class="slm-empty">Loading conversations…</p></div><button type="button" data-more-conversations class="slm-button slm-secondary slm-wide" hidden>Load more conversations</button><button type="button" data-refresh-inbox class="slm-text-button slm-wide">Refresh inbox</button></aside>'+
-      '<section class="slm-thread" data-thread aria-label="Message thread"><div class="slm-empty"><h2>A conversation starts here</h2><p>Choose a conversation, or find someone to message.</p><a href="/profile#friends">Find and manage friends</a></div></section></div>';
-    $('[data-new-message]').onclick = () => { const form=$('[data-search-form]'); form.hidden=!form.hidden;if(!form.hidden)form.querySelector('input').focus(); };
+      '<section class="slm-thread" data-thread aria-label="Message thread"><div class="slm-empty"><h2>A conversation starts here</h2><p>Choose a conversation, or find someone to message.</p><a href="/profile#friends">Find and manage friends</a></div></section></div>'+
+      '<details class="slm-capabilities"><summary>About messages and privacy</summary><p>SceneLink stores direct text messages and checks for updates while this tab is visible. Read receipts respect each person’s settings. “Sent” means SceneLink saved the message, not that a device received it. Messages are not end-to-end encrypted. New group chats, media messages and calls are not available.</p></details>';
+    $('[data-new-message]').onclick = () => showSearch($('[data-search-form]').hidden,true);
     $('[data-search-form]').onsubmit = e => {e.preventDefault();clearTimeout(searchTimer);search();};
     $('#slMessageSearch').oninput = () => {++searchSeq;clearTimeout(searchTimer);if($('#slMessageSearch').value.trim().length<2){$('[data-search-results]').textContent='Enter at least two characters.';return;}searchTimer=setTimeout(search,300);};
     $('[data-more-conversations]').onclick=()=>loadConversations(true);
     $('[data-refresh-inbox]').onclick=()=>loadConversations(false);
   }
+  function showSearch(visible, focus) {
+    const form=$('[data-search-form]'), button=$('[data-new-message]');
+    form.hidden=!visible;button.setAttribute('aria-expanded',String(visible));
+    if(visible&&focus)form.querySelector('input').focus();
+  }
+  function setView(view){host.querySelector('.slm-layout').dataset.view=view;}
+  function focusThread(){const heading=$('[data-thread] h2');if(heading){heading.tabIndex=-1;heading.focus();}}
   function renderList() {
     const el=$('[data-conversations]');if(!el)return;
     const rows=Array.from(conversations.values()).sort((a,b)=>String(b.last_message_at||'').localeCompare(String(a.last_message_at||''))||String(b.id).localeCompare(String(a.id)));
     el.innerHTML=rows.length?rows.map(c=>{const people=(c.participants||[]).filter(p=>!me||p.id!==me.id),title=c.title||people.map(name).join(', ')||'Conversation';
       const text=c.last_message_deleted?'Message deleted':typeof c.last_message==='string'?c.last_message:c.last_message&&c.last_message.body;
-      return '<button class="slm-conversation '+(c.id===active?'is-active':'')+'" type="button" data-open-conversation="'+E(c.id)+'" aria-pressed="'+(c.id===active)+'"><span class="slm-initial" aria-hidden="true">'+E(title.charAt(0).toUpperCase())+'</span><span class="slm-conversation-copy"><strong>'+E(title)+'</strong><span>'+E(text||'No visible message preview')+'</span></span>'+(Number(c.unread_count)>0?'<span class="slm-unread">'+E(c.unread_count)+' unread</span>':'')+'</button>';}).join(''):'<div class="slm-empty"><h3>No conversations yet</h3><p>Find a friend and start talking.</p></div>';
+      return '<button class="slm-conversation '+(c.id===active?'is-active':'')+'" type="button" data-open-conversation="'+E(c.id)+'" aria-pressed="'+(c.id===active)+'">'+avatar(people.length===1?people[0]:null,title)+'<span class="slm-conversation-copy"><strong>'+E(title)+'</strong><span>'+E(text||'No visible message preview')+'</span></span>'+(Number(c.unread_count)>0?'<span class="slm-unread">'+E(c.unread_count)+' unread</span>':'')+'</button>';}).join(''):'<div class="slm-empty"><h3>No conversations yet</h3><p>Find a friend and start talking.</p></div>';
     el.querySelectorAll('[data-open-conversation]').forEach(b=>b.onclick=()=>open(b.dataset.openConversation));
     $('[data-more-conversations]').hidden=!moreConversations;
     $('[data-more-conversations]').disabled=listBusy;
@@ -105,30 +121,74 @@
     }catch(e){if(current(gen)&&seq===searchSeq)target.textContent=errorText(e);}
   }
   async function startConversation(userId,button) {
-    if(startBusy)return;startBusy=true;if(button)button.disabled=true;const gen=epoch;status('Opening conversation…');
+    if(startBusy||!uuidPattern.test(userId))return;
+    startBusy=true;if(button)button.disabled=true;const gen=epoch, selected=selection;status('Opening conversation…');
     try{
-      if(!/^[0-9a-f-]{36}$/i.test(userId)){const resolved=await api('/users/'+enc(userId));userId=resolved.user.id;}
-      const data=await api('/conversations',{method:'POST',body:{user_id:userId}});if(!current(gen))return;
-      if(!data.conversation||!data.conversation.id)throw new Error('The service did not confirm the conversation.');
-      await loadConversations(false,true);if(!current(gen))return;
-      $('[data-search-form]').hidden=true;status('Conversation ready.');open(data.conversation.id);
-    }catch(e){if(current(gen))status(errorText(e),true);}finally{if(current(gen)){startBusy=false;if(button)button.disabled=false;}}
+      const data=await api('/conversations',{method:'POST',body:{user_id:userId}});if(!current(gen)||selected!==selection)return;
+      if(!data.conversation||!uuidPattern.test(data.conversation.id))throw new Error('The service did not confirm the conversation.');
+      await loadConversations(false,true);if(!current(gen)||selected!==selection)return;
+      showSearch(false);status('Conversation ready.');open(data.conversation.id);
+    }catch(e){if(current(gen)&&selected===selection)status(errorText(e),true);}
+    finally{if(current(gen)){startBusy=false;if(button?.isConnected)button.disabled=false;}}
   }
-  function updateLocation(id,replace) {const url=new URL(location.href);url.searchParams.delete('user');url.searchParams.delete('to');if(id)url.searchParams.set('conversation',id);else url.searchParams.delete('conversation');history[replace?'replaceState':'pushState']({slConversation:id},'',url.pathname+url.search+url.hash);}
+  async function reviewRecipient(identifier, fromHistory) {
+    const selected=++selection, gen=epoch;
+    preserveDraft();active=null;renderList();setView('review');
+    const pane=$('[data-thread]');
+    function reviewMarkup(content){return '<div class="slm-recipient"><button type="button" class="slm-text-button" data-cancel-recipient>‹ Inbox</button><h2>New conversation</h2>'+content+'</div>';}
+    function bindCancel(){pane.querySelector('[data-cancel-recipient]').onclick=()=>closeThread(false,true);}
+    pane.innerHTML=reviewMarkup('<p class="slm-muted" role="status">Checking who can receive this message…</p>');bindCancel();
+    try{
+      const value=String(identifier||'').trim().replace(/^@/,'');
+      if(!value||value.length>80)throw new Error('Member unavailable');
+      const result=await api('/users/'+enc(value));
+      if(!current(gen)||selected!==selection)return;
+      const member=result.user;
+      if(!member||!uuidPattern.test(member.id)||member.id===me.id||result.can_message!==true)throw new Error('Member unavailable');
+      pane.innerHTML=reviewMarkup('<div class="slm-recipient-person">'+avatar(member,name(member))+'<div><a href="/profile?u='+enc(member.id)+'">'+E(name(member))+'</a><p class="slm-muted">'+E(member.username?'@'+member.username:'SceneLink member')+'</p></div></div><p>Open this conversation to write your message. Nothing will be sent yet.</p><button class="slm-button" type="button" data-confirm-recipient>Continue to conversation</button>');
+      bindCancel();const button=$('[data-confirm-recipient]');
+      button.onclick=()=>startConversation(member.id,button);
+    }catch(_){
+      if(!current(gen)||selected!==selection)return;
+      pane.innerHTML=reviewMarkup('<p role="status">This member is unavailable or not accepting messages from you.</p><a class="slm-button slm-secondary" href="/profile#friends">Find friends</a>');bindCancel();
+    }
+    if(!fromHistory&&document.activeElement===document.body)focusThread();
+  }
+  function updateLocation(id,replace) {
+    const url=new URL(location.href);['user','to','conv','compose'].forEach(key=>url.searchParams.delete(key));
+    if(id)url.searchParams.set('conversation',id);else url.searchParams.delete('conversation');
+    const next=url.pathname+url.search+url.hash;
+    if(next!==location.pathname+location.search+location.hash)history[replace?'replaceState':'pushState']({slConversation:id},'',next);
+  }
+  function route() {
+    const params=new URLSearchParams(location.search),id=params.get('conversation')||params.get('conv'),user=params.get('user')||params.get('to');
+    if(id&&uuidPattern.test(id))open(id,true);
+    else if(user)reviewRecipient(user,true);
+    else {closeThread(true);if(params.get('compose')==='1')showSearch(true,false);}
+  }
   function preserveDraft() {if(!active)return;const t=thread(active),input=$('[data-compose]');if(input)t.draft=input.value;const edit=$('[data-edit-body]');if(edit&&t.edit)t.edit.body=edit.value;}
   async function open(id,fromHistory) {
-    if(!id)return;preserveDraft();active=id;const t=thread(id);if(!fromHistory)updateLocation(id,false);renderList();renderThread(t);if(!t.loaded&&!t.loading)await loadThread(t);else if(t.loaded)await sync(t);if(active===id)markRead(t);
+    if(!id)return;
+    preserveDraft();const selected=++selection;active=id;setView('thread');
+    const t=thread(id);
+    if(!fromHistory)updateLocation(id,false);
+    renderList();renderThread(t);
+    if(!t.loaded&&!t.loading)await loadThread(t);else if(t.loaded)await sync(t);
+    if(active===id&&selected===selection){
+      markRead(t);
+      if(!fromHistory&&document.activeElement===document.body)focusThread();
+    }
   }
   function renderThread(t) {
     if(active!==t.id)return;
     const box=$('[data-thread]');if(!box)return;
     const c=t.conversation||conversations.get(t.id)||{},people=(t.participants||c.participants||[]).filter(p=>p.id!==me.id),title=c.title||people.map(name).join(', ')||'Conversation';
     const peer=people.length===1?people[0]:null;
-    box.innerHTML='<div class="slm-thread-head"><div><h2>'+E(title)+'</h2><p class="slm-muted">'+(c.is_group?'Existing group conversation':'Direct conversation')+'</p></div><div class="slm-row">'+(peer?'<a class="slm-text-button" href="/profile?u='+enc(peer.id)+'">View profile</a><button type="button" class="slm-text-button" data-block-person="'+E(peer.id)+'">Block</button>':'')+'<button type="button" class="slm-text-button" data-close-thread>Close</button></div></div>'+
+    box.innerHTML='<div class="slm-thread-head"><div><h2>'+E(title)+'</h2><p class="slm-muted">'+(c.is_group?'Existing group conversation':'Direct conversation')+'</p></div><div class="slm-row">'+(peer?'<a class="slm-text-button" href="/profile?u='+enc(peer.id)+'">View profile</a><button type="button" class="slm-text-button" data-block-person="'+E(peer.id)+'">Block</button>':'')+'<button type="button" class="slm-text-button" data-close-thread>‹ Inbox</button></div></div>'+
       '<div data-thread-status class="slm-status '+(t.error?'slm-error':'')+'" role="status" aria-live="polite">'+E(t.error)+'</div><div data-thread-tools></div>'+
       '<div class="slm-history" data-history tabindex="0" aria-label="Messages"><button type="button" class="slm-text-button slm-wide" data-older '+(!t.more?'hidden':'')+' '+(t.olderBusy?'disabled':'')+'>Load older messages</button><div data-message-list></div></div>'+
       '<div data-outbox></div><div data-message-editor></div><form data-compose-form class="slm-composer"><label for="slMessageCompose">Message</label><textarea id="slMessageCompose" data-compose rows="2" maxlength="5000" placeholder="Write a message…" '+(!t.loaded||!t.allowed?'disabled':'')+'>'+E(t.draft)+'</textarea><div class="slm-row slm-compose-bottom"><span class="slm-muted">Enter for a new line · Ctrl/⌘ + Enter to send</span><button type="submit" class="slm-button" data-send '+(!t.loaded||!t.allowed?'disabled':'')+'>Send</button></div><p class="slm-muted slm-draft-note">Unsent text stays in this tab only. Closing or signing out clears it.</p></form>';
-    $('[data-close-thread]').onclick=()=>closeThread();
+    $('[data-close-thread]').onclick=()=>closeThread(false,true);
     $('[data-older]').onclick=()=>loadThread(t,true);
     if(peer)$('[data-block-person]').onclick=()=>blockPrompt(t,peer);
     $('[data-compose-form]').onsubmit=e=>{e.preventDefault();send(t);};
@@ -246,18 +306,25 @@
     $('[data-cancel-block]').onclick=()=>{tools.innerHTML='';};
     $('[data-confirm-block]').onclick=async function(){this.disabled=true;const gen=epoch;try{await api('/users/'+enc(peer.id)+'/block',{method:'POST'});if(!current(gen))return;threads.delete(t.id);conversations.delete(t.id);closeThread();renderList();status('Account blocked.');}catch(e){if(current(gen)){tools.querySelector('[role=status]').textContent=errorText(e);this.disabled=false;}}};
   }
-  function closeThread(fromHistory) {preserveDraft();active=null;if(!fromHistory)updateLocation(null,false);renderList();$('[data-thread]').innerHTML='<div class="slm-empty"><h2>Choose a conversation</h2><p>Your unsent text stays in this tab while you browse conversations.</p></div>';}
+  function closeThread(fromHistory, restoreFocus) {
+    const previous=active;
+    preserveDraft();++selection;active=null;setView('inbox');
+    if(!fromHistory)updateLocation(null,false);
+    renderList();
+    $('[data-thread]').innerHTML='<div class="slm-empty"><h2>A conversation starts here</h2><p>Choose a conversation, or find someone to message.</p><a href="/profile#friends">Find friends</a></div>';
+    if(restoreFocus){const target=[...host.querySelectorAll('[data-open-conversation]')].find(b=>b.dataset.openConversation===previous)||$('[data-new-message]');target?.focus();}
+  }
   async function boot() {
     if(!C())return;const next=C().token();if(started&&next===session)return;started=true;session=next;++epoch;const gen=epoch;
     clearInterval(pollTimer);clearTimeout(searchTimer);++searchSeq;active=null;me=null;threads.clear();conversations.clear();listBusy=false;startBusy=false;conversationOffset=0;moreConversations=false;
     if(!session){host.innerHTML='<div class="slm-empty slm-signin"><h1>Your conversations, together</h1><p>Sign in to message people and manage your privacy.</p><button type="button" class="slm-button sl-auth-trigger">Sign in</button><p><a href="/">Keep exploring Boston</a></p></div>';return;}
     renderShell();status('Loading your account…');
     try{const data=await api('/users/me');if(!current(gen))return;me=data.user||data;if(!me.id)throw new Error('Your account could not be loaded.');await loadConversations(false,true);if(!current(gen))return;status('');
-      const params=new URLSearchParams(location.search),cid=params.get('conversation')||params.get('conv'),user=params.get('user')||params.get('to');if(cid)open(cid,true);else if(user)startConversation(user);
+      route();
       pollTimer=setInterval(()=>{if(C().token()!==session){boot();return;}if(document.hidden||!me)return;if(active)sync(thread(active));if(Date.now()-listStamp>15000)loadConversations(false,true);},5000);
     }catch(e){if(current(gen)){status(errorText(e),true);const retry=document.createElement('button');retry.type='button';retry.className='slm-button';retry.textContent='Retry account';retry.onclick=()=>{started=false;boot();};$('[data-inbox-status]').after(retry);}}
   }
-  window.addEventListener('popstate',()=>{if(!me)return;const id=new URLSearchParams(location.search).get('conversation');if(id)open(id,true);else closeThread(true);});
+  window.addEventListener('popstate',()=>{if(me)route();});
   window.addEventListener('online',()=>{if(me){if(active)sync(thread(active));loadConversations(false,true);}});
   document.addEventListener('visibilitychange',()=>{if(C()&&C().token()!==session)boot();else if(!document.hidden&&active)sync(thread(active));});
   ['sl-auth-change','sl-auth-changed','sl-auth-ready'].forEach(event=>{window.addEventListener(event,boot);document.addEventListener(event,boot);});
