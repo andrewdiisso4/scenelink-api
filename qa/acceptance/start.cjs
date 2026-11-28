@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 const {validateEnvironment, disableExternalServices, fenceOutboundHttp, claimDatabase} = require('./guard.cjs');
+const {build:buildNewsletterLanding}=require('./newsletter-landing.cjs');
 const {configure:configureSignupInbox}=require('./signup-inbox.cjs');
 const {installGate, shell, escape} = require('./gate.cjs');
 const {USERS, OWNERS, VENUES, seedFixtures} = require('./fixtures.cjs');
@@ -16,6 +17,12 @@ const ALIASES = {social:'social-feed',feed:'social-feed',saved:'my-lists',favori
   'plan-night':'plan-with-friends',friends:'profile',concierge:'contact',ai:'contact','ai-concierge':'contact'};
 
 function installFrontend(app, config) {
+  const newsletterLanding=buildNewsletterLanding(
+    fs.readFileSync(path.join(FRONTEND,'newsletter-email.html'),'utf8'),
+    fs.readFileSync(path.join(FRONTEND,'js/sl-newsletter-email.js'),'utf8'));
+  // Behind the existing gate, keep the exact audited script paired with its
+  // document and send only the origin (not paths or fragment) on the POST.
+  app.get('/newsletter-email.html',(req,res)=>res.type('html').send(newsletterLanding));
   app.get('/__acceptance/', (req, res) => {
     const rows = [...USERS.map(user => [user.role,user.email]), ...OWNERS.map(owner => ['business: '+owner.status,owner.email])];
     // The overview contains a native POST form for locking the gate.
