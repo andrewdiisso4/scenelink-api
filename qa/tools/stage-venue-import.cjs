@@ -7,6 +7,13 @@ const TYPES=new Set(['restaurant','cafe','bar','club','music']);
 const UNKNOWN=['rating','review_count','buzz_score','going_count','friends_going','price_level','image_url','cover_image_url','hours_display','hours_json','is_open_now','reservation_url'];
 function fail(message){throw new Error(message);}
 function string(v,name,max=255){if(typeof v!=='string'||!v.trim()||v.length>max||v.includes('\0'))fail('Invalid '+name);return v.trim();}
+function validateSourceProperty(source){
+ const value=source.property;
+ // Overture follows RFC 6901: "" identifies the whole feature, while "/"
+ // identifies a member with an empty name. Preserve meaningful space/escapes.
+ if(!Object.hasOwn(source,'property')||typeof value!=='string'||value.length>255||value.includes('\0')
+   ||(value!==''&&(!value.startsWith('/')||/~(?![01])/u.test(value))))fail('Invalid source property');
+}
 function validate(bundle,provenance,report){
  if(!bundle||bundle.ifExists!=='skip'||!Array.isArray(bundle.rows)||!bundle.rows.length||bundle.rows.length>5000)fail('Require 1–5000 rows and ifExists=skip');
  if(!report||report.production_import_ready!==false||report.candidate_count!==bundle.rows.length)fail('Require matching offline report, not a production-ready claim');
@@ -29,7 +36,7 @@ function validate(bundle,provenance,report){
    if(!source||typeof source!=='object'||Array.isArray(source))fail('Invalid source entry');
    string(source.dataset,'source dataset',255);
    if(source.record_id!=null)string(source.record_id,'source record ID',2048);
-   if(source.property!=null)string(source.property,'source property',255);
+   validateSourceProperty(source);
    if(source.update_time!=null&&(typeof source.update_time!=='string'||!Number.isFinite(Date.parse(source.update_time))))fail('Invalid source update timestamp');
    if(source.confidence!=null&&(!Number.isFinite(source.confidence)||source.confidence<0||source.confidence>1))fail('Invalid source confidence');
   }
