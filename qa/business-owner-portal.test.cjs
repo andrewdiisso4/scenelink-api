@@ -41,7 +41,7 @@ test('owner claim, session, reporting, listing edit and emailed recovery use the
         if (authenticated && token) headers.Authorization='Bearer '+token;
         const res = await fetch('http://127.0.0.1:'+server.address().port+'/api/business'+path,
             {method,headers,body:body&&JSON.stringify(body)});
-        return {status:res.status,data:await res.json()};
+        return {status:res.status,data:await res.json(),cache:res.headers.get('cache-control')};
     }
     const credentials = {email:'owner@example.test',password:' fixture password '};
     const claim=await api('/claim','POST',{...credentials,email:'  OWNER@example.test ',venue_name:'Fixture Dining'});
@@ -84,11 +84,34 @@ test('owner claim, session, reporting, listing edit and emailed recovery use the
     await db.query("INSERT INTO analytics_events(action,venue_id) VALUES ('view',$1)",[venueId]);
     assert.equal((await api(report(venueId))).data.counts.view,1);
 
-    assert.equal((await api('/venues/switch','POST',{venue_id:unrelated})).status,403);
-    assert.equal((await api('/venues/switch','POST',{venue_id:second})).status,200);
-    assert.equal((await api('/me')).data.user.venue_id,second);
-    assert.equal((await api('/venues/switch','POST',{venue_id:venueId})).status,200);
+    const switchTo = (venue_id, expected_active_venue_id) => api('/venues/switch','POST',{venue_id,expected_active_venue_id});
+    assert.equal((await switchTo('not-a-location',venueId)).status,400);
+    assert.equal((await switchTo(second,'not-a-location')).status,400);
+    assert.equal((await switchTo(unrelated,venueId)).status,403);
     assert.equal((await api('/me')).data.user.venue_id,venueId);
+
+    const switched=await switchTo(second,venueId);
+    assert.equal(switched.status,200);
+    assert.equal(switched.cache,'private, no-store');
+    assert.deepEqual(switched.data,{ok:true,active_venue_id:second});
+    const afterSwitch=(await api('/me')).data.user;
+    assert.equal(afterSwitch.venue_id,second);
+    assert.equal(afterSwitch.venue.hours_display,null);
+    assert.equal((await api('/photos')).data.photos.length,0);
+    assert.equal((await switchTo(venueId,venueId)).status,409);
+    assert.equal((await api('/me')).data.user.venue_id,second);
+
+    const renameOther=await api('/venue?venue_id='+venueId,'PATCH',{name:'Renamed first location'});
+    assert.equal(renameOther.status,200);
+    const afterRename=(await api('/me')).data.user;
+    assert.equal(afterRename.venue_name,'Fixture Annex');
+    assert.equal(afterRename.venue_id,second);
+    assert.equal((await switchTo(venueId,second)).status,200);
+    const returnToFirst=(await api('/me')).data.user;
+    assert.equal(returnToFirst.venue_id,venueId);
+    assert.equal(returnToFirst.venue.hours_display,'Thu–Sun 4–10');
+    assert.equal(returnToFirst.venue_name,'Renamed first location');
+    assert.equal((await api('/photos')).data.photos[0].id,photo.data.photo.id);
 
     assert.equal((await api('/forgot-password','POST',{email:credentials.email})).status,202);
     const mailed=new URL(inboxLink);
