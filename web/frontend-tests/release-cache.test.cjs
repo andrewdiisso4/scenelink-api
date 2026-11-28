@@ -10,7 +10,7 @@ const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '../frontend');
-const tag = 'connected-20261124-account-social';
+const tag = 'connected-20261127-signup-newsletter';
 const version = 'sl-' + tag;
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 
@@ -26,7 +26,7 @@ test('release marker, service-worker shell and every published asset hash agree'
   assert.equal(metadata.sw_version, version);
   assert.equal(metadata.status, 'versioned_build');
   assert.equal(metadata.requires_paired_backend, true);
-  assert.equal(metadata.required_migration, '018_account_deletion_receipts.sql');
+  assert.equal(metadata.required_migration, '019_newsletter_opt_in.sql');
   assert.equal(metadata.rollout_order, 'paired_backend_then_frontend');
   assert.equal(metadata.phase, 'release-acceptance');
   assert(read('js/sl-version-marker.js').includes("backend_change: 'paired-release-candidate'"));
@@ -65,7 +65,7 @@ test('release marker, service-worker shell and every published asset hash agree'
 test('service-worker install and activation evict the previous release without removing unrelated caches', async () => {
   const listeners = {}, deleted = [], fetched = [], cached = [], messages = [];
   const current = 'sl-shell-' + version;
-  const previous = 'sl-shell-sl-connected-20261122-concierge-directory';
+  const previous = 'sl-shell-sl-connected-20261124-account-social';
   const names = new Set([current, previous, 'unrelated-app-cache']);
   let claimed = 0, skipped = 0;
   const context = {

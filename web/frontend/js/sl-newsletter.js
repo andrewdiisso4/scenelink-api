@@ -34,11 +34,11 @@
         .then(function (r) { return r.json(); })
         .then(function (data) {
           if (data.ok) {
-            if (btn) { btn.textContent = 'Subscribed ✓'; btn.style.background = '#22c55e'; }
+            if (btn) { btn.textContent = 'Check your inbox'; btn.style.background = '#22c55e'; }
             emailInput.disabled = true;
             emailInput.value = email;
             // Show toast
-            showToast('🎉 You\'re subscribed! Check your inbox.', 'success');
+            showToast(data.message || 'Check your inbox to finish joining.', 'success');
           } else {
             if (btn) { btn.textContent = origText; btn.disabled = false; }
             showToast(data.error || 'Subscription failed. Please try again.', 'error');

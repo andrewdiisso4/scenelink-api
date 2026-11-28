@@ -1,0 +1,36 @@
+'use strict';
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const {JSDOM}=require('jsdom');
+const root=path.join(__dirname,'../frontend');
+const read=file=>fs.readFileSync(path.join(root,file),'utf8');
+test('homepage newsletter is part of the footer, labelled and separate from account signup',()=>{
+ const dom=new JSDOM(read('index.html'));
+ const form=dom.window.document.querySelector('footer form[data-sl-newsletter-source=footer]');
+ assert(form);
+ assert.equal(form.querySelector('label').htmlFor,form.querySelector('input[type=email]').id);
+ assert.equal(form.querySelector('[role=status]').getAttribute('aria-live'),'polite');
+ assert.equal(dom.window.document.querySelectorAll('form[data-sl-newsletter]').length,1);
+ dom.window.close();
+});
+for (const mode of ['confirm','unsubscribe']) test(mode+' removes token from address bar, waits for an explicit click, then posts once',async()=>{
+ const token='R'.repeat(43), calls=[];
+ const dom=new JSDOM(read('newsletter-email.html'),{url:'https://scenelink.test/newsletter-email.html#mode='+mode+'&token='+token,runScripts:'outside-only'});
+ const win=dom.window;
+ win.fetch=async(url,init)=>{calls.push([url,init]);return {ok:true,json:async()=>({ok:true})};};
+ win.eval(read('js/sl-newsletter-email.js'));
+ assert.equal(win.location.hash,'');
+ await new Promise(resolve=>win.addEventListener('DOMContentLoaded',resolve,{once:true}));
+ const button=win.document.getElementById('newsletterAction');
+ assert.equal(calls.length,0); assert.equal(button.disabled,false);
+ button.click();button.click();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(calls.length,1);assert.equal(calls[0][0],'/api/newsletter/'+mode);
+ assert.equal(calls[0][1].method,'POST');assert.equal(calls[0][1].credentials,'same-origin');
+ assert.deepEqual(JSON.parse(calls[0][1].body),{token});
+ assert.match(win.document.getElementById('newsletterStatus').textContent,mode==='confirm'?/on the SceneLink newsletter list/:/unsubscribed/);
+ assert.equal(button.disabled,true);
+ dom.window.close();
+});

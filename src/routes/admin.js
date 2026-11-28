@@ -426,7 +426,7 @@ router.get('/stats', requireAdmin, async (req, res) => {
             safeCount('SELECT COUNT(*) as total FROM business_users'),
             safeCount('SELECT COUNT(*) as total FROM checkins'),
             safeCount('SELECT COUNT(*) as total FROM favorites'),
-            safeCount("SELECT COUNT(*) as total FROM newsletter_subscribers WHERE status='active'"),
+            safeCount("SELECT COUNT(*) as total FROM newsletter_subscribers WHERE status='active' AND opt_in_confirmed_at IS NOT NULL"),
         ]);
 
         res.json({

@@ -75,7 +75,7 @@ test('newsletter deduplicates repeated submissions and only confirms explicit AP
     h.input.value='fixture@example.invalid';h.submit();h.submit();
     assert.equal(calls,1);assert(h.button.disabled);assert.equal(h.form.getAttribute('aria-busy'),'true');
     finish(reply({ok:true}));await tick();
-    assert.match(h.form.textContent,/You're on the SceneLink email list/);assert(!h.form.textContent.includes('inbox'));
+    assert.match(h.form.textContent,/check your inbox/i);
     assert.equal(h.input.value,'');assert(!h.button.disabled);assert(!h.form.hasAttribute('aria-busy'));
   } finally {h.dom.window.close();}
 });
@@ -107,7 +107,7 @@ for (const order of [['sl-newsletter','sl-phase8-completion'],['sl-phase8-comple
       await tick();const form=dom.window.document.querySelector('form'),input=form.querySelector('input');
       input.value='fixture@example.invalid';form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));await tick();
       assert.equal(calls.length,1);assert.equal(calls[0].url,'/api/newsletter/subscribe');
-      assert(!input.disabled);assert.match(form.textContent,/You're on the SceneLink email list/);
+      assert(!input.disabled);assert.match(form.textContent,/check your inbox/i);
     } finally {dom.window.close();}
   });
 }
