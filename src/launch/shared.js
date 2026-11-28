@@ -35,8 +35,19 @@ function https(value) {
   try { const u = new URL(value); if (u.protocol !== 'https:' || u.username || u.password || /[\s\\]/.test(value)) throw Error(); return u.href; }
   catch (_) { throw new HttpError(400, 'Invalid image URL'); }
 }
+function nonFixtureSQL(alias = 'u') {
+  // Exact accounts created by src/seeds/seed.js and src/routes/demo.js, plus the
+  // historical seed-reviewer namespace and qa/phase9a-social-{api-smoke,e2e}.mjs.
+  // Names, whole test domains and example.invalid are not fixture markers.
+  // Regex keeps underscores literal; SQL LIKE treated them as any character.
+  const email = `lower(COALESCE(${alias}.email, ''))`;
+  return `(${email} NOT IN ('demo@scenelink.app', 'reviewer@scenelink.app', 'reviewer-friend@scenelink.app')
+    AND ${email} !~ '^seed_reviewer_.*@scenelink[.]app$'
+    AND ${email} !~ '^qa9[ae]_[ab]_[0-9]{13}@scenelink[.]test$')`;
+}
 function actorSQL(alias = 'u', viewer = '$1') {
   return `(${alias}.is_active IS TRUE AND COALESCE(${alias}.is_suspended, false) = false
+    AND ${nonFixtureSQL(alias)}
     AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE
       (b.blocker_id = ${viewer}::uuid AND b.blocked_id = ${alias}.id) OR
       (b.blocked_id = ${viewer}::uuid AND b.blocker_id = ${alias}.id)))`;
@@ -93,7 +104,8 @@ async function relation(db, me, target, { lock = false } = {}) {
   const r = await db.query(`SELECT u.id,u.username,u.display_name,u.avatar_url,u.is_private,u.allow_messages,
     ${friendSQL('u.id')} AS is_friend,
     EXISTS (SELECT 1 FROM user_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=u.id) OR (b.blocked_id=$1 AND b.blocker_id=u.id)) AS blocked
-    FROM users u WHERE u.id=$2 AND u.is_active IS TRUE AND COALESCE(u.is_suspended,false)=false`, [me,target]);
+    FROM users u WHERE u.id=$2 AND u.is_active IS TRUE AND COALESCE(u.is_suspended,false)=false
+    AND ${nonFixtureSQL()} AND EXISTS(SELECT 1 FROM users actor WHERE actor.id=$1 AND ${nonFixtureSQL('actor')})`, [me,target]);
   if (!r.rows.length || r.rows[0].blocked) throw new HttpError(404, 'User unavailable');
   return r.rows[0];
 }
@@ -114,4 +126,4 @@ function wrap(fn) { return async (req,res,next) => {
 }; }
 function noStore(req,res,next) { res.setHeader('Cache-Control','private, no-store'); res.vary('Authorization'); next(); }
 function newId(value) { return value === undefined ? crypto.randomUUID() : id(value, 'client_id'); }
-module.exports = { UUID,HttpError,id,text,integer,audience,like,https,actorSQL,friendSQL,profileSQL,audienceSQL,postSQL,cursor,encodeCursor,page,timeSQL,transaction,lockPair,relation,notify,wrap,noStore,newId };
+module.exports = { UUID,HttpError,id,text,integer,audience,like,https,nonFixtureSQL,actorSQL,friendSQL,profileSQL,audienceSQL,postSQL,cursor,encodeCursor,page,timeSQL,transaction,lockPair,relation,notify,wrap,noStore,newId };
