@@ -150,3 +150,42 @@ test('legacy login tokens never authenticate Concierge and a rotated canonical t
  w.localStorage.setItem('sl_jwt_token','next-canonical');w.dispatchEvent(new w.Event('sl-auth-changed'));await tick(30);
  assert.equal(input.value,'');assert.equal(w.SLConciergeDraft.read(),null);
 });
+test('keyboard search hands a directory query to Concierge, then returns to the closed search input',async t=>{
+ const {w,d,calls}=setup(t,'profile.html');
+ const reportFetch=w.fetch;
+ w.fetch=async (url,options)=>{
+  const response=await reportFetch(url,options);
+  if(url.startsWith('/api/search/universal'))return new Response(JSON.stringify({venues:[{id:'sample',slug:'sample-bistro',name:'Sample Bistro'}]}));
+  return response;
+ };
+ w.eval(read('js/sl-phase8d-recovery.js'));w.eval(read('js/sl-universal-search.js'));await tick(0);
+ const search=d.querySelector('.slus-input'),launcher=d.querySelector('.sl-concierge-launcher');
+ const key=(target,value)=>target.dispatchEvent(new w.KeyboardEvent('keydown',{key:value,bubbles:true,cancelable:true}));
+ search.focus();search.value='quiet dinner in Back Bay';search.dispatchEvent(new w.Event('input'));
+ await tick(200);
+ assert(calls.some(c=>c.url==='/api/search/universal?q=quiet%20dinner%20in%20Back%20Bay&limit=6'));
+ assert.equal(key(search,'Escape'),false);
+ assert.equal(d.activeElement,search);
+ assert.equal(search.value,'quiet dinner in Back Bay');
+ assert.equal(search.getAttribute('aria-expanded'),'false');
+ key(search,'ArrowUp');
+ assert.equal(d.querySelector('a.slus-item').getAttribute('href'),'/explore.html?venue=sample-bistro');
+ const selected=d.getElementById(search.getAttribute('aria-activedescendant'));
+ assert(selected?.hasAttribute('data-slus-ask-ai'));
+ // Tab/pointer users may activate the result itself, which will be hidden when
+ // Concierge opens. It must not become the dialog's return-focus target.
+ selected.focus();selected.click();
+ assert.equal(d.activeElement,search);
+ assert.equal(search.getAttribute('aria-expanded'),'false');
+ w.eval(read('js/ai-concierge-v5.js'));d.querySelector('script[src*="ai-concierge-v5.js"]').dispatchEvent(new w.Event('load'));
+ await tick(330);
+ const draft=d.querySelector('.slc-input');
+ assert.equal(d.activeElement,draft);
+ assert.equal(draft.value,search.value);
+ assert.equal(launcher.getAttribute('aria-expanded'),'true');
+ key(draft,'Escape');
+ assert.equal(launcher.getAttribute('aria-expanded'),'false');
+ assert.equal(d.activeElement,search);
+ assert.equal(search.getAttribute('aria-expanded'),'false');
+ assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);
+});

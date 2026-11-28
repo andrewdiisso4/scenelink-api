@@ -138,7 +138,13 @@
       if(!img||img.tagName!=='IMG'||!thumb||!thumb.hasAttribute('data-slus-fallback'))return;
       thumb.textContent=thumb.getAttribute('data-slus-fallback')||'⌖';
     },true);
-    function open(){ setOpen(root,true); if(!input.value.trim()) renderDefault(root); }
+    function open(){
+      // Concierge restores focus before removing its open class. Do not reopen
+      // suggestions behind the dialog or when focus returns after dismissing it.
+      if(document.body.classList.contains('slc-open')) return;
+      setOpen(root,true); if(!input.value.trim()) renderDefault(root);
+    }
+    window.addEventListener('sl:concierge-opened',function(){setOpen(root,false);});
     function close(){ setTimeout(function(){ if(!root.contains(document.activeElement)) setOpen(root,false); }, 0); }
     function resetSession(){searchGeneration++;lastQuery='';clearTimeout(debounceTimer);cancelRequest();input.value='';if(clear)clear.hidden=true;root.classList.remove('slus-has-query');renderDefault(root);setOpen(root,false);}
     ['sl-auth-change','sl-auth-changed','sl-auth-ready'].forEach(function(type){window.addEventListener(type,resetSession);document.addEventListener(type,resetSession);});
@@ -162,10 +168,12 @@
     input.addEventListener('compositionstart',function(){composing=true;});
     input.addEventListener('compositionend',function(){composing=false;update();});
     if(clear) clear.addEventListener('click',function(){input.value='';input.focus();update();});
-    input.addEventListener('keydown',function(e){ if(e.isComposing||composing)return; var items=qsa('[data-slus-item]',root); if(e.key==='ArrowDown'){ e.preventDefault(); if(!root.classList.contains('open')) {open();items=qsa('[data-slus-item]',root);} setActive(root,Math.min(activeIndex+1,items.length-1)); } else if(e.key==='ArrowUp'){ e.preventDefault(); if(!root.classList.contains('open')) open(); setActive(root,Math.max(activeIndex-1,0)); } else if(e.key==='Enter'){ e.preventDefault(); if(activeIndex>=0&&items[activeIndex]){ var label=items[activeIndex].getAttribute('data-slus-label'); if(label) saveRecent(input.value); items[activeIndex].click(); } else goSearch(input.value); } else if(e.key==='Escape'){ setOpen(root,false); input.blur(); } });
+    input.addEventListener('keydown',function(e){ if(e.isComposing||composing)return; var items=qsa('[data-slus-item]',root); if(e.key==='ArrowDown'){ e.preventDefault(); if(!root.classList.contains('open')) {open();items=qsa('[data-slus-item]',root);} setActive(root,Math.min(activeIndex+1,items.length-1)); } else if(e.key==='ArrowUp'){ e.preventDefault(); if(!root.classList.contains('open')){open();items=qsa('[data-slus-item]',root);} setActive(root,activeIndex<0?items.length-1:Math.max(activeIndex-1,0)); } else if(e.key==='Enter'){ e.preventDefault(); if(activeIndex>=0&&items[activeIndex]){ var label=items[activeIndex].getAttribute('data-slus-label'); if(label) saveRecent(input.value); items[activeIndex].click(); } else goSearch(input.value); } else if(e.key==='Escape'&&root.classList.contains('open')){ e.preventDefault(); e.stopPropagation(); setOpen(root,false); } });
     // Keep pointer focus in the search until click; activate equally for keyboard and touch.
     root.addEventListener('mousedown',function(e){if(e.target.closest('[data-slus-chip],[data-slus-ask-ai]'))e.preventDefault();});
-    root.addEventListener('click',function(e){ var chip=e.target.closest('[data-slus-chip]'); if(chip){ e.preventDefault(); input.value=chip.getAttribute('data-slus-chip')||chip.textContent; input.dispatchEvent(new Event('input')); input.focus(); } var selected=e.target.closest('a[data-slus-label]'); if(selected) saveRecent(input.value); var ask=e.target.closest('[data-slus-ask-ai]'); if(ask){ e.preventDefault(); var q=ask.getAttribute('data-slus-ask-ai')||input.value; setOpen(root,false); openConcierge(q); } });
+    root.addEventListener('click',function(e){ var chip=e.target.closest('[data-slus-chip]'); if(chip){ e.preventDefault(); input.value=chip.getAttribute('data-slus-chip')||chip.textContent; input.dispatchEvent(new Event('input')); input.focus(); } var selected=e.target.closest('a[data-slus-label]'); if(selected) saveRecent(input.value); var ask=e.target.closest('[data-slus-ask-ai]'); if(ask){ e.preventDefault(); var q=ask.getAttribute('data-slus-ask-ai')||input.value;
+      // The result itself is hidden on activation; return to its visible combobox.
+      input.focus(); setOpen(root,false); openConcierge(q); } });
     if(ai) ai.addEventListener('click',function(){ setOpen(root,false); openConcierge(input.value); });
   }
   function hotkeys(){ document.addEventListener('keydown',function(e){ if((e.metaKey||e.ctrlKey)&&String(e.key).toLowerCase()==='k'){ var i=qs('.slus-input'); if(i){ e.preventDefault(); i.focus(); i.select(); } } }); }

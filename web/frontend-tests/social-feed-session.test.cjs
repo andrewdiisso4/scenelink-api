@@ -3,9 +3,9 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {JSDOM}=require('jsdom');const root=path.resolve(__dirname,'../frontend');
 const tick=()=>new Promise(r=>setTimeout(r,30));
 const ME='10000000-0000-4000-8000-000000000001',PEER='10000000-0000-4000-8000-000000000002',CID='20000000-0000-4000-8000-000000000001';
-async function make(t,{token='session-a',handle}={}){
- const d=new JSDOM('<!doctype html><html><head></head><body><div id="socialLanding">Guest landing</div><div id="socialFeed"><button class="sf-tab active" data-tab="all" aria-pressed="true">All Activity</button><button class="sf-tab" data-tab="friends" aria-pressed="false">Friends &amp; You</button><div class="sf-create"><button class="sf-create-action" data-act="visit">Log a visit</button><div id="sfUserAvatar"></div><input id="sfCreateInput"><button id="sfPostBtn">Post</button></div><div id="sfFeedContent"></div><aside class="sf-sidebar"><div class="sf-sidebar-card"><div class="sf-sidebar-title">People</div><div id="sfSuggestions"></div></div><div id="sfTrending"></div><span id="sfStatCheckins"></span><span id="sfStatReviews"></span><span id="sfStatSaved"></span><span id="sfStatScene"></span></aside></div></body></html>',{url:'https://scenelink.test/social-feed',runScripts:'outside-only',pretendToBeVisual:true}),w=d.window;t.after(()=>w.close());if(token)w.localStorage.setItem('sl_jwt_token',token);w.AbortController=AbortController;
- const calls=[];w.fetch=async(url,opts={})=>{const call={url:String(url),token:opts.headers?.Authorization,method:opts.method,body:opts.body?JSON.parse(opts.body):null};calls.push(call);const reply=handle&&await handle(call);if(reply&&reply.networkFailure)throw Error('Simulated isolated connection loss');let data=reply;
+async function make(t,{token='session-a',handle,search=''}={}){
+ const d=new JSDOM('<!doctype html><html><head></head><body><div id="socialLanding">Guest landing</div><div id="socialFeed"><button class="sf-tab active" data-tab="all" aria-pressed="true">All Activity</button><button class="sf-tab" data-tab="friends" aria-pressed="false">Friends &amp; You</button><div class="sf-create"><button class="sf-create-action" data-act="visit">Log a visit</button><div id="sfUserAvatar"></div><input id="sfCreateInput"><button id="sfPostBtn">Post</button></div><div id="sfFeedContent"></div><aside class="sf-sidebar"><div class="sf-sidebar-card"><div class="sf-sidebar-title">People</div><div id="sfSuggestions"></div></div><div id="sfTrending"></div><span id="sfStatCheckins"></span><span id="sfStatReviews"></span><span id="sfStatSaved"></span><span id="sfStatScene"></span></aside></div></body></html>',{url:'https://scenelink.test/social-feed'+search,runScripts:'outside-only',pretendToBeVisual:true}),w=d.window;t.after(()=>w.close());if(token)w.localStorage.setItem('sl_jwt_token',token);w.AbortController=AbortController;
+ const calls=[];w.fetch=async(url,opts={})=>{const call={url:String(url),token:opts.headers?.Authorization,method:opts.method,body:opts.body?JSON.parse(opts.body):null};calls.push(call);const reply=handle&&await handle(call);if(reply&&reply.networkFailure)throw Error('Simulated isolated connection loss');if(reply&&reply.httpStatus)return new Response(JSON.stringify(reply.data||{}),{status:reply.httpStatus});let data=reply;
  if(!data){if(call.url==='/api/posts'&&call.method==='POST')data={post:{id:call.body.client_id}};else if(call.url.includes('/users/me'))data={user:{id:ME,display_name:call.token==='Bearer session-b'?'NEW ACCOUNT':'OLD ACCOUNT'}};else if(call.url.includes('/posts/feed'))data={items:[{id:'post1',kind:'post',user_id:PEER,body:call.token==='Bearer session-b'?'NEW PRIVATE POST':'OLD PRIVATE POST',display_name:'Peer',created_at:'2026-11-08T00:00:00Z'}]};else if(call.url.includes('/conversations'))data={conversations:[{id:CID,participants:[{id:ME,display_name:'Me'},{id:PEER,display_name:'Named Peer'}],last_message:'PRIVATE PREVIEW',unread_count:1}]};else if(call.url.includes('/friends/pending'))data={incoming:[]};else if(call.url.includes('/suggestions'))data={suggestions:[]};else if(call.url.includes('/media/capability'))data={enabled:false};else data={};}
  return new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json'}});
  };
@@ -83,4 +83,66 @@ test('confirmed visit event refreshes the same scoped feed only for the active s
  assert(m.calls.filter(c=>c.url.includes('/posts/feed')).at(-1).url.includes('scope=friends'));
  m.change(null);m.w.dispatchEvent(new m.w.Event('sl-checkins-changed'));await tick();
  assert.equal(m.calls.filter(c=>c.url.includes('/posts/feed')).length,n+1);
+});
+
+
+const POST='30000000-0000-4000-8000-000000000001',OTHER='30000000-0000-4000-8000-000000000002';
+const post=(id=POST,audience='public',extra={})=>({id,kind:'post',audience,user_id:PEER,display_name:'Fictional poster',body:'Fictional post',like_count:2,comment_count:0,created_at:'2026-11-18T23:00:00Z',...extra});
+test('share copies only the canonical URL for ordinary public posts; restricted and reference posts never offer sharing',async t=>{
+ const m=await make(t,{handle:c=>c.url.includes('/posts/feed')?{items:[post(),post(OTHER,'friends'),post(CID,'public',{ref_type:'list_share'}),post(ME,'private')]}:null});
+ const buttons=m.$('sfFeedContent').querySelectorAll('.sf-share');assert.equal(buttons.length,1);
+ let captured;Object.defineProperty(m.w.navigator,'clipboard',{value:{writeText(url){captured=url;return Promise.resolve();}}});
+ buttons[0].click();await tick();
+ assert.equal(captured,'https://scenelink.test/social-feed?post='+POST);assert.doesNotMatch(captured,/Fictional|session/);
+ assert.match(m.$('sfFeedContent').querySelector('.sf-action-status').textContent,/Link copied.*sign in/);
+ assert(!m.calls.some(c=>c.method==='POST'));
+});
+test('clipboard denial provides manual copy without claiming success',async t=>{
+ const m=await make(t,{handle:c=>c.url.includes('/posts/feed')?{items:[post()]}:null});
+ Object.defineProperty(m.w.navigator,'clipboard',{value:{writeText(){return Promise.reject(Error('denied'));}}});
+ m.$('sfFeedContent').querySelector('.sf-share').click();await tick();
+ const input=m.$('sfFeedContent').querySelector('.sf-share-fallback input');
+ assert.equal(input.value,'https://scenelink.test/social-feed?post='+POST);
+ assert(input.readOnly);assert(!input.parentElement.hidden);
+ assert.doesNotMatch(m.$('sfFeedContent').querySelector('.sf-action-status').textContent,/copied/i);
+});
+test('a shared link requests its exact post under viewer authorization and opens likes and comments',async t=>{
+ let release;
+ const m=await make(t,{search:'?post='+POST,handle:c=>{
+  if(c.url==='/api/posts/'+POST)return {post:post()};
+  if(c.url==='/api/posts/'+POST+'/like')return new Promise(r=>release=r);
+  if(c.url==='/api/posts/'+POST+'/comments')return {comments:[{body:'Fictional comment',display_name:'Fictional friend'}]};
+ }});
+ const content=m.$('sfFeedContent');assert.match(content.textContent,/Fictional post/);
+ assert(m.calls.some(c=>c.url==='/api/posts/'+POST&&c.token==='Bearer session-a'));
+ assert(!m.calls.some(c=>c.url.includes('/posts/feed')));
+ const like=content.querySelector('.sf-like');like.click();like.click();
+ assert.deepEqual(m.calls.filter(c=>c.url.endsWith('/like')).map(c=>[c.method,c.body]),[['PUT',{liked:true}]]);
+ release({liked:true,like_count:3});await tick();
+ assert.equal(like.getAttribute('aria-pressed'),'true');assert.equal(like.querySelector('span').textContent,'3');
+ const comments=content.querySelector('.sf-comment-toggle');comments.click();await tick();
+ assert.equal(comments.getAttribute('aria-expanded'),'true');
+ assert.match(content.textContent,/Fictional comment/);
+});
+test('a guest sees sign-in hint and a denied recipient sees unavailable, never another post',async t=>{
+ const m=await make(t,{token:null,search:'?post='+POST,handle:c=>c.url==='/api/posts/'+POST?{httpStatus:404,data:{error:'Hidden body not for the DOM'}}:null});
+ assert.match(m.$('socialLanding').textContent,/Sign in to view this shared post/);
+ assert(!m.calls.some(c=>c.url.startsWith('/api/posts')));
+ m.change('session-b');await tick();
+ assert.match(m.$('sfFeedContent').textContent,/unavailable or is not shared/);
+ assert.doesNotMatch(m.$('sfFeedContent').textContent,/Hidden body/);
+ assert(!m.calls.some(c=>c.url.includes('/posts/feed')));
+});
+test('invalid or ambiguous post IDs never reach API and show the back link',async t=>{
+ const m=await make(t,{search:'?post='+POST+'&post='+OTHER});
+ assert.match(m.$('sfFeedContent').textContent,/invalid/);
+ assert(m.$('sfFeedContent').querySelector('a[href="/social-feed"]'));
+ assert(!m.calls.some(c=>c.url.startsWith('/api/posts')));
+});
+test('a slow prior-account permalink response cannot appear after an account switch',async t=>{
+ let release;
+ const m=await make(t,{search:'?post='+POST,handle:c=>c.url==='/api/posts/'+POST?(c.token==='Bearer session-a'?new Promise(r=>release=r):{httpStatus:404}):null});
+ m.change('session-b','storage');await tick();release({post:post(POST,'private',{body:'SECRET prior-account text'})});await tick();
+ assert.match(m.$('sfFeedContent').textContent,/unavailable/);
+ assert.doesNotMatch(m.w.document.body.textContent,/SECRET prior-account/);
 });
