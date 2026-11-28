@@ -171,8 +171,8 @@ test('friend and search pagination only exposes load more when server confirms a
  }});m.click('[data-tab=friends]');await tick();assert(m.w.document.querySelector('[data-action=friends-more]'));m.click('[data-action=friends-more]');await tick();assert.equal(m.$('slspFriends').querySelectorAll('li').length,2);assert(!m.w.document.querySelector('[data-action=friends-more]'));
  m.$('slspSearchInput').value='find';m.submit('slspSearchForm');await tick();m.click('[data-action=search-more]');await tick();assert.equal(m.$('slspSearchResults').querySelectorAll('li').length,2);assert(!m.w.document.querySelector('[data-action=search-more]'));
 });
-test('privacy hash alias selects settings and keyboard tabs work with Back history',async t=>{
- const m=await make(t,{url:'https://scenelink.test/profile#privacy'});assert(!m.$('slspPanelSettings').hidden);const tab=m.$('slspTabSettings');tab.dispatchEvent(new m.w.KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));assert(!m.$('slspPanelFriends').hidden);assert.equal(m.w.document.activeElement.id,'slspTabFriends');m.w.history.back();await tick();assert(!m.$('slspPanelSettings').hidden);
+test('privacy hash alias selects settings and keyboard tabs work with Back history',{timeout:5000},async t=>{
+ const m=await make(t,{url:'https://scenelink.test/profile#privacy'});assert(!m.$('slspPanelSettings').hidden);const tab=m.$('slspTabSettings');tab.dispatchEvent(new m.w.KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));assert(!m.$('slspPanelFriends').hidden);assert.equal(m.w.document.activeElement.id,'slspTabFriends');const navigation=new Promise(resolve=>m.w.addEventListener('popstate',resolve,{once:true}));m.w.history.back();await navigation;assert.equal(m.w.location.hash,'#privacy');assert(!m.$('slspPanelSettings').hidden);
 });
 test('enabled server-upload capability attaches only a confirmed avatar and preserves unrelated draft revision safely',async t=>{
  let upload;const m=await make(t,{handle:(r,ctx)=>{

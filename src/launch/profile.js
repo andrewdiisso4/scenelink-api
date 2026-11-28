@@ -37,7 +37,7 @@ async function update(pool,me,b,settings=false){
  for(const key of Object.keys(b))if(key!=='revision'&&!allowed.includes(key))throw new H.HttpError(400,'Unsupported profile field: '+key);
  const revision=expectedRevision(b.revision),changes={};
  for(const [key,max] of [['display_name',80],['bio',500],['neighborhood',80],['city',80]])if(b[key]!==undefined)changes[key]=H.text(b[key],key,max,{required:key==='display_name'});
- if(b.username!==undefined)changes.username=require('./identity').username(b.username);
+ if(b.username!==undefined)changes.username=b.username;
  if(b.avatar_url!==undefined)changes.avatar_url=H.https(b.avatar_url);
  if(b.social_links!==undefined)changes.social_links=socialLinks(b.social_links);
  for(const key of SETTINGS)if(b[key]!==undefined){if(key==='allow_messages'){if(!['everyone','friends','none'].includes(b[key]))throw new H.HttpError(400,'Invalid message permission');}else if(typeof b[key]!=='boolean')throw new H.HttpError(400,key+' must be true or false');changes[key]=b[key];}
@@ -45,6 +45,9 @@ async function update(pool,me,b,settings=false){
  return H.transaction(pool,async db=>{
   const old=(await db.query('SELECT '+require('./identity').SELF+' FROM users WHERE id=$1 FOR UPDATE',[me])).rows[0];
   if(!old)throw new H.HttpError(401,'Account unavailable');
+  // Older OAuth accounts can have names outside today's policy. Preserve only
+  // the exact unchanged name from this locked account; validate every rename.
+  if(b.username!==undefined&&!(typeof b.username==='string'&&b.username===old.username))changes.username=require('./identity').username(b.username);
   if(changes.avatar_url){const owned=await db.query("SELECT id FROM media_assets WHERE owner_id=$1 AND url=$2 AND kind='avatar' LIMIT 1",[me,changes.avatar_url]);if(!owned.rows.length)throw new H.HttpError(400,'Upload an avatar to your account first');}
   const same=Object.entries(changes).every(([k,v])=>isDeepStrictEqual(old[k]??null,v));
   if(same)return{user:old,replayed:true};

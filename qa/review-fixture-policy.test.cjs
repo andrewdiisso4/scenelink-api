@@ -24,7 +24,7 @@ test('mounted review routes exclude documented fixtures while preserving real us
             email_verified_at timestamptz, verified_email text,
             created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
         );
-        CREATE TABLE venues (id uuid PRIMARY KEY, name text, rating numeric DEFAULT 0,
+        CREATE TABLE venues (id uuid PRIMARY KEY, name text, is_active boolean DEFAULT true, business_status text, rating numeric DEFAULT 0,
             review_count int DEFAULT 0, updated_at timestamptz DEFAULT '2026-01-01');
         CREATE TABLE reviews (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid REFERENCES users(id),
             venue_id uuid REFERENCES venues(id), rating int, content text, created_at timestamptz DEFAULT now());

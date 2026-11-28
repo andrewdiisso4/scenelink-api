@@ -1,7 +1,7 @@
 {
   "phase": "release-acceptance",
-  "sw_version": "sl-connected-20261128-social-plan-share",
-  "timestamp": "2026-11-28T05:24:43.354945+00:00",
+  "sw_version": "sl-connected-20261128-integrated-pilot-fixes",
+  "timestamp": "2026-11-28T07:59:39.493778+00:00",
   "status": "versioned_build",
   "requires_paired_backend": true,
   "required_migration": "019_newsletter_opt_in.sql",
@@ -15,6 +15,6 @@
     "pull_request": 40,
     "scope": "administrator authentication and session handling"
   },
-  "admin_controller_cache_key": "connected-20261128-social-plan-share",
-  "business_controller_cache_key": "connected-20261128-social-plan-share"
+  "admin_controller_cache_key": "connected-20261128-integrated-pilot-fixes",
+  "business_controller_cache_key": "connected-20261128-integrated-pilot-fixes"
 }

@@ -6,11 +6,11 @@
 // Load the new concierge modules in the correct order
 function loadConciergeModules() {
     const modules = [
-        'js/mockVenues.js?v=connected-20261128-social-plan-share',
-        'js/conciergeRecommender.js?v=connected-20261128-social-plan-share',
-        'js/conciergeState.js?v=connected-20261128-social-plan-share',
-        'js/conciergeWidget.js?v=connected-20261128-social-plan-share',
-        'js/conciergeLogic.js?v=connected-20261128-social-plan-share'
+        'js/mockVenues.js?v=connected-20261128-integrated-pilot-fixes',
+        'js/conciergeRecommender.js?v=connected-20261128-integrated-pilot-fixes',
+        'js/conciergeState.js?v=connected-20261128-integrated-pilot-fixes',
+        'js/conciergeWidget.js?v=connected-20261128-integrated-pilot-fixes',
+        'js/conciergeLogic.js?v=connected-20261128-integrated-pilot-fixes'
     ];
 
     modules.forEach((src, index) => {
@@ -34,7 +34,7 @@ function loadConciergeModules() {
 function loadConciergeStyles() {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'css/concierge-styles.css?v=connected-20261128-social-plan-share';
+    link.href = 'css/concierge-styles.css?v=connected-20261128-integrated-pilot-fixes';
     link.onload = () => {
         console.log('✅ Concierge styles loaded');
     };

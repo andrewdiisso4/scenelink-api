@@ -107,9 +107,20 @@ function install({router,pool,auth,write}) {
   }));
   router.delete('/posts/:postId/comments/:commentId',...secured,write,H.wrap(async(req,res)=>{
     const me=req.user.id,pid=H.id(req.params.postId,'post'),cid=H.id(req.params.commentId,'comment');
-    const result=await H.transaction(pool,async db=>{const p=await visiblePost(db,me,pid,true);
-      const del=await db.query('DELETE FROM post_comments WHERE id=$1 AND post_id=$2 AND (user_id=$3 OR $4::boolean) RETURNING id',[cid,pid,me,p.user_id===me]);if(!del.rows.length)throw new H.HttpError(404,'Comment unavailable');
-      const count=await db.query(`UPDATE posts SET comment_count=(SELECT count(*) FROM post_comments WHERE post_id=$1) WHERE id=$1 RETURNING ${engagementCountSQL('post_comments','$1','$2')} AS comment_count`,[pid,me]);return{removed:true,id:cid,comment_count:count.rows[0].comment_count};});res.json(result);
+    const result=await H.transaction(pool,async db=>{
+      await assertParticipant(db,me);
+      const owner=(await db.query('SELECT user_id FROM posts WHERE id=$1',[pid])).rows[0];
+      if(!owner)throw new H.HttpError(404,'Comment unavailable');
+      await H.lockPair(db,me,owner.user_id);
+      const p=(await db.query(`SELECT p.user_id,${H.postSQL()} AS can_view FROM posts p JOIN users u ON u.id=p.user_id
+        WHERE p.id=$2 FOR UPDATE OF p`,[me,pid])).rows[0];
+      if(!p)throw new H.HttpError(404,'Comment unavailable');
+      // An author can withdraw their own words after a block or privacy change.
+      // Moderating somebody else's comment still requires a visible, owned post.
+      const del=await db.query('DELETE FROM post_comments WHERE id=$1 AND post_id=$2 AND (user_id=$3 OR $4::boolean) RETURNING id',[cid,pid,me,p.can_view===true&&p.user_id===me]);if(!del.rows.length)throw new H.HttpError(404,'Comment unavailable');
+      const count=await db.query(`UPDATE posts SET comment_count=(SELECT count(*) FROM post_comments WHERE post_id=$1) WHERE id=$1 RETURNING ${engagementCountSQL('post_comments','$1','$2')} AS comment_count`,[pid,me]);
+      return{removed:true,id:cid,...(p.can_view===true?{comment_count:count.rows[0].comment_count}:{})};
+    });res.json(result);
   }));
   router.post('/checkins',...secured,write,H.wrap(async(req,res)=>{
     const me=req.user.id,b=req.body||{},vid=H.id(b.venue_id,'venue'),cid=H.newId(b.client_id),note=H.text(b.note,'note',500),aud=H.audience(b.audience,'private');

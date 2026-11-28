@@ -188,12 +188,10 @@
        CONVERSATION ENGINE
        ═══════════════════════════════════════════════════════ */
     // ═══════════════════════════════════════════════════════════════
-    //  Backend-first generateResponse
-    //  Tries POST /api/concierge (real intent + DB queries), falls back to
-    //  the local client-side classifier if backend is unreachable.
+    //  Canonical Concierge requests preserve server-owned search constraints.
+    //  A failed request is never replayed or replaced with weaker client results.
     // ═══════════════════════════════════════════════════════════════
     var _conciergeSession = 'sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
-    var _backendAvailable = null;
     var sessionGeneration = 0;
     var _typedPlan = null;
     var _convoHistory = []; // last few turns for multi-turn context
@@ -213,7 +211,7 @@
     }
 
     async function getPilotAvailability(token) {
-        if (!token || _backendAvailable === false) return false;
+        if (!token) return false;
         var controller = new AbortController();
         var timeout = setTimeout(function () { controller.abort(); }, 1200);
         try {
@@ -241,95 +239,90 @@
     async function requestConciergeResponse(query, optIn, tok) {
         var generation = sessionGeneration;
 
-        if (_backendAvailable !== false) {
-            try {
-                var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
-                if (tok) headers['Authorization'] = 'Bearer ' + tok;
+        try {
+            var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+            if (tok) headers['Authorization'] = 'Bearer ' + tok;
 
-                // Build pageContext from current page (no PII)
-                var pageContext = { pageId: (location.pathname.split('/').pop() || 'index').replace(/\.html$/, '') };
-                if (_searchContext !== null) pageContext.search = _searchContext;
-                if (optIn && _typedPlan !== null) pageContext.typedPlan = _typedPlan;
-                _typedPlan = null;
+            // Build pageContext from current page (no PII)
+            var pageContext = { pageId: (location.pathname.split('/').pop() || 'index').replace(/\.html$/, '') };
+            if (_searchContext !== null) pageContext.search = _searchContext;
+            if (optIn && _typedPlan !== null) pageContext.typedPlan = _typedPlan;
+            _typedPlan = null;
 
-                var res = await fetch(API_BASE + '/concierge', {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify({
-                        message: query,
-                        ai: optIn,
-                        session_id: _conciergeSession,
-                        history: _convoHistory.slice(-6),
-                        context: pageContext
-                    })
-                });
+            var res = await fetch(API_BASE + '/concierge', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    message: query,
+                    ai: optIn,
+                    session_id: _conciergeSession,
+                    history: _convoHistory.slice(-6),
+                    context: pageContext
+                })
+            });
+            if (!isCurrentSession(generation, tok)) return null;
+            if (res.status === 429) {
+                var rd = await res.json().catch(function(){ return {}; });
                 if (!isCurrentSession(generation, tok)) return null;
-                if (res.status === 429) {
-                    _backendAvailable = true;
-                    var rd = await res.json().catch(function(){ return {}; });
-                    if (!isCurrentSession(generation, tok)) return null;
-                    return {
-                        text: rd.reply || 'Whoa — slow down for a moment. Try again in a few seconds.',
-                        plan: null, venueCards: [], quickReplies: [], requiresLogin: false, isLoggedIn: !!tok, notice: null
-                    };
-                }
-                if (res.ok) {
-                    _backendAvailable = true;
-                    var data = await res.json();
-                    if (!isCurrentSession(generation, tok)) return null;
-                    if (data.ok) {
-                        _searchContext = data.search_context || null;
-                        if (optIn && data.source === 'openai') _typedPlan = data.typed_plan || null;
-                        // Track conversation for context
-                        _convoHistory.push({ role: 'user', content: query });
-                        var reply = typeof data.response === 'string' ? data.response : (data.reply || '');
-                        if (reply) _convoHistory.push({ role: 'assistant', content: reply });
-                        if (_convoHistory.length > 10) _convoHistory = _convoHistory.slice(-10);
-
-                        return {
-                            text: reply,
-                            plan: data.itinerary || data.recommendedPlan || null,
-                            venueCards: Array.isArray(data.venues) ? data.venues : (data.venueCards || []),
-                            recommendedVenues: data.recommendedVenues || [],
-                            recommendedEvents: Array.isArray(data.events) ? data.events : (data.recommendedEvents || []),
-                            quickReplies: data.quickReplies || [],
-                            notice: data.notice || null,
-                            isLoggedIn: !!tok,
-                            requiresLogin: !!data.requiresLogin,
-                            source: optIn && data.source === 'openai' ? 'openai' : data.source === 'openai' ? null : data.source,
-                            intent: data.intent
-                        };
-                    }
-                }
-                if (res.status >= 400 && res.status < 500) {
-                    var ed = await res.json().catch(function(){ return {}; });
-                    if (!isCurrentSession(generation, tok)) return null;
-                    return {
-                        text: ed.error || 'That message didn\u2019t work — try rephrasing?',
-                        plan: null, venueCards: [], quickReplies: [], requiresLogin: false, isLoggedIn: !!tok, notice: null
-                    };
-                }
-                _backendAvailable = false;
-            } catch (err) {
-                if (!isCurrentSession(generation, tok)) return null;
-                console.warn('[concierge] backend unavailable, using client fallback');
-                _backendAvailable = false;
+                return {
+                    text: rd.reply || 'Whoa — slow down for a moment. Try again in a few seconds.',
+                    plan: null, venueCards: [], quickReplies: [], requiresLogin: false, isLoggedIn: !!tok, notice: null
+                };
             }
+            if (res.ok) {
+                var data = await res.json();
+                if (!isCurrentSession(generation, tok)) return null;
+                if (data.ok) {
+                    _searchContext = data.search_context || null;
+                    if (optIn && data.source === 'openai') _typedPlan = data.typed_plan || null;
+                    // Only successful canonical replies advance retained search context.
+                    _convoHistory.push({ role: 'user', content: query });
+                    var reply = typeof data.response === 'string' ? data.response : (data.reply || '');
+                    if (reply) _convoHistory.push({ role: 'assistant', content: reply });
+                    if (_convoHistory.length > 10) _convoHistory = _convoHistory.slice(-10);
+
+                    return {
+                        text: reply,
+                        plan: data.itinerary || data.recommendedPlan || null,
+                        venueCards: Array.isArray(data.venues) ? data.venues : (data.venueCards || []),
+                        recommendedVenues: data.recommendedVenues || [],
+                        recommendedEvents: Array.isArray(data.events) ? data.events : (data.recommendedEvents || []),
+                        quickReplies: data.quickReplies || [],
+                        notice: data.notice || null,
+                        isLoggedIn: !!tok,
+                        requiresLogin: !!data.requiresLogin,
+                        source: optIn && data.source === 'openai' ? 'openai' : data.source === 'openai' ? null : data.source,
+                        intent: data.intent
+                    };
+                }
+            }
+            if (res.status >= 400 && res.status < 500) {
+                var ed = await res.json().catch(function(){ return {}; });
+                if (!isCurrentSession(generation, tok)) return null;
+                return {
+                    text: ed.error || 'That message didn\u2019t work — try rephrasing?',
+                    plan: null, venueCards: [], quickReplies: [], requiresLogin: false, isLoggedIn: !!tok, notice: null
+                };
+            }
+        } catch (err) {
+            if (!isCurrentSession(generation, tok)) return null;
+            console.warn('[concierge] request unavailable');
         }
 
-        // Last-resort client-side fallback (should rarely hit — backend has its own fallback)
-        var cs = await generateResponseClientSide(query);
+        // Keep the last successful search context. The next explicit prompt can
+        // try again with fresh consent; the server owns any model-to-directory fallback.
         if (!isCurrentSession(generation, tok)) return null;
         return {
-            text: cs.text,
+            text: 'Concierge is temporarily unavailable. Please try your request again.',
             plan: null,
-            venueCards: cs.venues || [],
+            venueCards: [],
             recommendedVenues: [],
+            recommendedEvents: [],
             quickReplies: [],
             notice: null,
-            isLoggedIn: !!getAuthToken(),
-            requiresLogin: true,
-            source: 'client-fallback'
+            isLoggedIn: !!tok,
+            requiresLogin: false,
+            source: 'unavailable'
         };
     }
 
@@ -782,7 +775,7 @@
 
             if (resp.source === 'openai') {
                 addMessage('<span class="slc-notice">AI-ranked SceneLink venues</span>', 'bot');
-            } else if (optIn && resp.source) {
+            } else if (optIn && resp.source && resp.source !== 'unavailable') {
                 addMessage('<span class="slc-notice">AI wasn’t used for these results. Showing SceneLink directory results.</span>', 'bot');
             }
 
@@ -1138,8 +1131,8 @@
                 }
                 var seen = new Set();
                 var stops = responses.map(function (response) {
-                    // Broad directory fallback does not establish a match for a plan segment.
-                    var unavailable = !response || response.source === 'client-fallback';
+                    // Unavailable segments must not use unrelated directory cards.
+                    var unavailable = !response || response.source === 'unavailable' || response.source === 'client-fallback';
                     var cards = !unavailable && Array.isArray(response.venueCards) ? response.venueCards : [];
                     var valid = cards.filter(function (card) {
                         return card && typeof card.id === 'string' && card.id.trim() &&
@@ -1315,7 +1308,6 @@
             _convoHistory = [];
             _searchContext = null;
             _typedPlan = null;
-            _backendAvailable = null;
             _requestQueue = Promise.resolve();
             messages.textContent = '';
             state.greeted = false;

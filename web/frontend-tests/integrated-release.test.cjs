@@ -27,8 +27,8 @@ test('integrated cache contains both design resources and the paired list runtim
   const sw = read('sw.js');
   const shell = sw.match(/const SHELL_URLS = \[([\s\S]*?)\];/)[1];
   for (const asset of [
-    '/js/sl-connected-lists.js?v=connected-20261128-social-plan-share',
-    '/css/sl-design-system.css?v=connected-20261128-social-plan-share',
+    '/js/sl-connected-lists.js?v=connected-20261128-integrated-pilot-fixes',
+    '/css/sl-design-system.css?v=connected-20261128-integrated-pilot-fixes',
     '/images/brand/scenelink-wordmark.png',
     '/images/brand/scenelink-full.png',
   ]) assert(shell.includes("'" + asset + "'"), asset);

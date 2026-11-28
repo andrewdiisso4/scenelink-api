@@ -15,10 +15,18 @@ test('a venue deep link loads its canonical slug without needing a directory rec
  w.SLVenueDetail.close();await tick();assert.equal(w.location.pathname+w.location.search+w.location.hash,'/explore?q=dinner');assert(!w.document.querySelector('.sl-vd-overlay').classList.contains('sl-open'));
  }finally{d.window.close();}
 });
-test('Back and Forward reopen canonical details and malformed external hashes do not throw',async()=>{
+test('Back and Forward reopen canonical details and malformed external hashes do not throw',{timeout:5000},async()=>{
  const d=dom(async url=>reply(url.includes('/reviews')?{reviews:[]}:fixture('contessa'))),w=d.window;
- try{await tick();await w.SLVenueDetail.open('contessa');w.history.back();await tick();assert(!w.document.querySelector('.sl-vd-overlay').classList.contains('sl-open'));
- w.history.forward();await tick();assert(w.document.querySelector('.sl-vd-overlay').classList.contains('sl-open'));assert.match(w.document.querySelector('.sl-vd-content').textContent,/Venue contessa/);
+ const nextNavigation=()=>new Promise(resolve=>w.addEventListener('popstate',resolve,{once:true}));
+ try{await w.SLVenueDetail.open('contessa');const back=nextNavigation();w.history.back();await back;
+ assert(!w.document.querySelector('.sl-vd-overlay').classList.contains('sl-open'));
+ const forward=nextNavigation();const rendered=new Promise(resolve=>{
+  const observer=new w.MutationObserver(()=>{
+   if(w.document.querySelector('.sl-vd-content')?.textContent.includes('Venue contessa')){observer.disconnect();resolve();}
+  });
+  observer.observe(w.document.body,{childList:true,subtree:true,characterData:true});
+ });w.history.forward();await Promise.all([forward,rendered]);
+ assert(w.document.querySelector('.sl-vd-overlay').classList.contains('sl-open'));assert.match(w.document.querySelector('.sl-vd-content').textContent,/Venue contessa/);
  w.history.replaceState(null,'','/explore#venue=%E0%A4%A');w.dispatchEvent(new w.HashChangeEvent('hashchange'));assert(!w.document.querySelector('.sl-vd-overlay').classList.contains('sl-open'));
  }finally{d.window.close();}
 });
