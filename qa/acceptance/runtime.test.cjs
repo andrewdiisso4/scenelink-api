@@ -254,3 +254,70 @@ test('gate form responses use strict-origin while recovery documents keep no-ref
   assert.equal(staticPage.status,200);
   assert.equal(staticPage.headers.get('referrer-policy'),'no-referrer');
 });
+
+test('cross-site inbox navigation exposes only the verification landing; confirmation still requires the gate', async t => {
+  const nav = require('./test-request.cjs');
+  const {makeVerificationLanding}=require('./verification-landing.cjs');
+  const {JSDOM}=require('../../web/node_modules/jsdom');
+  const canonical=fs.readFileSync(path.join(root,'web/frontend/js/sl-email-verification.js'),'utf8');
+  const config=validateEnvironment(environment(),root),app=express();
+  let verified=0, outbound=0, hadGate=false, adapterError, outgoingStatus;
+  const landing=makeVerificationLanding(canonical);
+  installGate(app,config,{verificationLanding:landing});
+  app.get('/other.html',(req,res)=>res.type('html').send('protected-fixtures'));
+  app.post('/api/auth/verification/confirm',express.json(),(req,res)=>{
+    assert.equal(req.body.token,'b'.repeat(64));
+    if(verified) return res.status(400).json({error:'Already consumed'});
+    verified++;
+    res.json({ok:true});
+  });
+  const base=await listen(t,app,config);
+  const inbound={'Sec-Fetch-Site':'cross-site','Sec-Fetch-Mode':'navigate','Sec-Fetch-Dest':'document'};
+  const response=await nav(base+'/verify-email.html',inbound);
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get('referrer-policy'),'no-referrer');
+  assert.match(response.headers.get('cache-control'),/no-store/);
+  assert.equal(response.headers.has('set-cookie'),false);
+  const document=await response.text();
+  assert(!document.includes(config.accessSecret));
+  assert(!document.includes('protected-fixtures'));
+  assert(!document.includes('.example.invalid'));
+  for(const route of ['/other.html','/verify-email.html?token=server-should-not-receive-token','/api/auth/me']) {
+    assert.equal((await nav(base+route,inbound)).status,403);
+  }
+  assert.equal((await nav(base+'/verify-email.html',{...inbound,'Sec-Fetch-Mode':'cors'})).status,403);
+  assert.equal((await nav(base+'/verify-email.html',{...inbound,Origin:'https://inbox.example.invalid'})).status,403);
+  const raw='b'.repeat(64); // Fictional and only used in this loopback test.
+  const cookie=COOKIE+'='+issueCookie(config);
+  const crossAttempt=await fetch(base+'/api/auth/verification/confirm',{method:'POST',headers:{Cookie:cookie,Origin:'https://inbox.example.invalid','Sec-Fetch-Site':'cross-site'}});
+  assert.equal(crossAttempt.status,403);assert.equal(verified,0);
+  const dom=new JSDOM(document,{url:base+'/verify-email.html#token='+raw,runScripts:'dangerously',
+    beforeParse(window) {
+      window.fetch=async (input,opts)=>{
+        outbound++;
+        try {
+        assert.equal(window.location.hash,'');
+        assert.equal(opts.referrerPolicy,'strict-origin');
+        assert.equal(opts.mode,'same-origin');assert.equal(opts.credentials,'same-origin');
+        assert.equal(opts.redirect,'error');
+        assert.equal(input,'/api/auth/verification/confirm');
+        const response=await fetch(base+input,{...opts,signal:undefined,headers:{...opts.headers,Origin:base,'Sec-Fetch-Site':'same-origin',...(hadGate?{Cookie:cookie}:{})}});
+        outgoingStatus=response.status;return response;
+        } catch (err) { adapterError=err;throw err; }
+      };
+    }});
+  t.after(()=>dom.window.close());
+  await new Promise(resolve=>dom.window.addEventListener('DOMContentLoaded',resolve,{once:true}));
+  const html=dom.window.document, button=html.getElementById('verifySubmit'), status=html.getElementById('verifyStatus');
+  const unlock=html.getElementById('qaUnlockRecovery');
+  assert.equal(outbound,0);assert.equal(unlock.hidden,true);
+  const wait=async predicate=>{for(let i=0;i<50;i++){if(predicate())return;await new Promise(r=>setTimeout(r,20));}assert.fail('DOM condition timed out');};
+  button.click();await wait(()=>!button.disabled);
+  assert.ifError(adapterError);assert.equal(outgoingStatus,401);assert.equal(verified,0);assert.equal(unlock.hidden,false);assert.equal(outbound,1);
+  assert.equal(unlock.querySelector('a').getAttribute('href'),'/__acceptance/');
+  hadGate=true;button.click();await wait(()=>status.getAttribute('data-kind')==='success');
+  assert.equal(verified,1);assert.equal(outbound,2);assert.equal(unlock.hidden,true);
+  const replay=await fetch(base+'/api/auth/verification/confirm',{method:'POST',headers:{Origin:base,Cookie:cookie,
+    'Sec-Fetch-Site':'same-origin','Content-Type':'application/json'},body:JSON.stringify({token:raw})});
+  assert.equal(replay.status,400);
+});

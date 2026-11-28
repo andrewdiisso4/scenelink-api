@@ -37,7 +37,7 @@ function sendUnlock(res, next, status = 200, message = '') {
   // HTTPS origin without putting a locked deep link's path/query in Referer.
   return res.status(status).set('Referrer-Policy','strict-origin').type('html').send(unlockPage(next, message));
 }
-function installGate(app, config, {health = async () => true} = {}) {
+function installGate(app, config, {health = async () => true, verificationLanding} = {}) {
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
   app.use(async (req, res, next) => {
@@ -49,6 +49,14 @@ function installGate(app, config, {health = async () => true} = {}) {
       return res.status(503).json({status:'unavailable'});
     }
     const origin = req.get('origin');
+    // The exact inbox landing document is public, static, token-free on the
+    // network, and contains no fixture information. Confirmation remains
+    // behind the same-origin + access-cookie checks below.
+    if (verificationLanding && req.method === 'GET' && req.originalUrl === '/verify-email.html' &&
+        !origin && (req.get('sec-fetch-site') !== 'cross-site' ||
+          (req.get('sec-fetch-mode') === 'navigate' && req.get('sec-fetch-dest') === 'document'))) {
+      return res.type('html').send(verificationLanding);
+    }
     if ((origin && origin !== config.origin) || req.get('sec-fetch-site') === 'cross-site'
         || (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && origin !== config.origin)) return res.status(403).json({error:'Same-origin acceptance request required'});
     next();

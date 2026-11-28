@@ -8,6 +8,7 @@ const crypto=require('node:crypto');
 const net=require('node:net');
 const {spawn}=require('node:child_process');
 const {Pool}=require('pg');
+const nav=require('./test-request.cjs');
 const {DATABASE_PATTERN,ENVIRONMENT_ID}=require('./guard.cjs');
 
 const root=path.resolve(__dirname,'../..');
@@ -105,6 +106,27 @@ async function main(){
   assert.equal((await api('/business/login','POST',{email:'qa.pending@example.invalid',password})).status,403);
   assert.equal((await api('/business/forgot-password','POST',{email:'qa.owner@example.invalid'})).status,503);
   console.log('PASS real synthetic admin, member, approved owner and pending owner account boundaries');
+  // Prove cross-site inbox navigation is public only for the static document,
+  // then exercise the real persisted ownership token with the gate still on.
+  const inboxHeaders={'Sec-Fetch-Site':'cross-site','Sec-Fetch-Mode':'navigate','Sec-Fetch-Dest':'document'};
+  r=await nav(origin+'/verify-email.html',inboxHeaders);
+  assert.equal(r.status,200);assert.equal(r.headers.get('referrer-policy'),'no-referrer');
+  assert.match(await r.text(),/qaUnlockRecovery/);
+  assert.equal((await nav(origin+'/profile.html',inboxHeaders)).status,403);
+  const email='qa.member@example.invalid', raw=crypto.randomBytes(32).toString('hex');
+  const hash=crypto.createHash('sha256').update(raw).digest('hex');
+  const userId=member.data.user.id;
+  await pool.query('UPDATE users SET email_verified_at=NULL,verified_email=NULL WHERE id=$1',[userId]);
+  await pool.query(`INSERT INTO email_verification_tokens(token_hash,user_id,email,expires_at)
+    VALUES ($1,$2,$3,NOW()+INTERVAL '1 hour')`,[hash,userId,email]);
+  r=await request('/api/auth/verification/confirm',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({token:raw})});
+  assert.equal(r.status,401);
+  const confirm=await api('/auth/verification/confirm','POST',{token:raw});
+  assert.equal(confirm.status,200);assert.equal(confirm.data.ok,true);
+  assert.equal((await api('/auth/verification/confirm','POST',{token:raw})).status,400);
+  const ownerCheck=await pool.query('SELECT email_verified_at,verified_email FROM users WHERE id=$1',[userId]);
+  assert(ownerCheck.rows[0].email_verified_at);assert.equal(ownerCheck.rows[0].verified_email,email);
+  console.log('PASS QA inbox landing leads to gated, one-use email ownership confirmation');
   const venue='b532045e-1a5f-4d78-950a-4daa0c802001';
   assert.equal((await api('/business/venue?venue_id='+venue,'PATCH',{hours_display:'QA edited hours'},owner.data.token)).status,200);
   const counts=(await pool.query('SELECT (SELECT count(*) FROM users)::int users,(SELECT count(*) FROM business_users)::int owners,(SELECT count(*) FROM venues)::int venues')).rows[0];
@@ -126,6 +148,6 @@ async function main(){
   assert.equal(await new Promise(resolve=>child.once('exit',resolve)),1);child=null;assert(logs.join('').includes('foreign or malformed'));
   assert.equal((await pool.query('SELECT hours_display FROM venues WHERE id=$1',[venue])).rows[0].hours_display,'QA edited hours');
   console.log('PASS foreign environment marker refuses restart without overwriting fixture edits');
-  console.log('ACCEPTANCE_HOST_SMOKE '+JSON.stringify({engine:'native PostgreSQL',fictionalOnly:true,groups:6,externalProviders:false,realMail:false,physicalDevice:false}));
+  console.log('ACCEPTANCE_HOST_SMOKE '+JSON.stringify({engine:'native PostgreSQL',fictionalOnly:true,groups:7,externalProviders:false,realMail:false,physicalDevice:false}));
 }
 main().catch(error=>{console.error(error.message);process.exitCode=1;}).finally(async()=>{await stop();if(pool)await pool.end();});
