@@ -64,3 +64,11 @@ test('reopening while initial comments load cannot start a competing stale read'
  m.click('.sf-comment-toggle');m.click('.sf-comment-toggle');await tick();assert.equal(m.reads(),1);
  release({ok:true,data:{comments:[]}});await tick();m.input().value='New draft';assert.equal(m.reads(),1);
 });
+
+test('visible comment authors link to the canonical member profile without changing the comment draft',async t=>{
+ const person='10000000-0000-4000-8000-000000000001';
+ const m=await make(t,{comments:()=>({ok:true,data:{comments:[{user_id:person,display_name:'Visible person',body:'A local comment'},{display_name:'No profile reference',body:'An unlinked comment'}]}})});
+ const links=[...m.w.document.querySelectorAll('.sf-comment-byline a')];
+ assert.equal(links.length,1);assert.equal(links[0].getAttribute('href'),'/profile?u='+person);
+ assert.equal(links[0].textContent,'Visible person');assert.equal(m.calls.length,0);
+});
