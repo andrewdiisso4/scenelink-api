@@ -407,17 +407,9 @@ if (typeof module !== 'undefined' && module.exports) {
     },
   };
 
-  // Fire once-on-load auth check
-  if (getToken()) {
-    window.SLApi.me().then(function(d){
-      if (d && d.user) {
-        window.SL_USER = d.user;
-        window.dispatchEvent(new CustomEvent('sl-auth-ready', { detail:{ user: d.user }}));
-      } else {
-        clearToken();
-      }
-    }).catch(function(){ clearToken(); });
-  }
+  // SLAuth owns startup validation and the legacy sl-auth-ready announcement.
+  // A second unowned probe here could erase a newer login or treat a transient
+  // account-read failure as an invalid session.
 })();
 
 /* === js/sl-auth-core.js === */
@@ -756,9 +748,16 @@ if (typeof module !== 'undefined' && module.exports) {
     openLogin: openLogin
   };
 
-  // Initial refresh on boot (quietly)
+  // One owned startup refresh also preserves the legacy account-ready contract.
   if (isAuthed()) {
-    setTimeout(function(){ refresh(); }, 0);
+    setTimeout(function(){
+      var initialSession = { epoch: sessionEpoch, token: readToken() };
+      refresh().then(function(user){
+        if (!user || !ownsSession(initialSession)) return;
+        window.SL_USER = user;
+        window.dispatchEvent(new CustomEvent('sl-auth-ready', { detail: { user: user } }));
+      });
+    }, 0);
   }
 
   // Cross-tab sync

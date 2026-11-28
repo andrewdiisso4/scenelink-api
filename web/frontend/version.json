@@ -1,7 +1,7 @@
 {
   "phase": "release-acceptance",
-  "sw_version": "sl-connected-20261128-real-social-search",
-  "timestamp": "2026-11-28T04:24:13+00:00",
+  "sw_version": "sl-connected-20261128-real-social-session",
+  "timestamp": "2026-11-28T04:49:04+00:00",
   "status": "versioned_build",
   "requires_paired_backend": true,
   "required_migration": "019_newsletter_opt_in.sql",
@@ -15,6 +15,6 @@
     "pull_request": 40,
     "scope": "administrator authentication and session handling"
   },
-  "admin_controller_cache_key": "connected-20261128-real-social-search",
-  "business_controller_cache_key": "connected-20261128-real-social-search"
+  "admin_controller_cache_key": "connected-20261128-real-social-session",
+  "business_controller_cache_key": "connected-20261128-real-social-session"
 }
