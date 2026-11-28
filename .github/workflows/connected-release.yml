@@ -181,6 +181,8 @@ jobs:
         run: SCENELINK_BROWSER_MODULE_ROOT="$RUNNER_TEMP/scenelink-browser/node_modules" node --unhandled-rejections=strict qa/account-browser-native.cjs
       - name: Browser search and floating Concierge across phone, tablet and desktop widths
         run: SCENELINK_BROWSER_MODULE_ROOT="$RUNNER_TEMP/scenelink-browser/node_modules" node --unhandled-rejections=strict qa/discovery-chrome.cjs
+      - name: Mobile-width owner sign-in and cross-location persistence in Chromium
+        run: SCENELINK_BROWSER_MODULE_ROOT="$RUNNER_TEMP/scenelink-browser/node_modules" node --test qa/business-owner-portal.test.cjs
       - name: Preserve screenshots and acceptance receipt
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

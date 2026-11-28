@@ -283,7 +283,7 @@ router.post('/logout', requireAuth, H.noStore, H.wrap(async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════
 // GET /api/business/me — current business user + linked venue
 // ═══════════════════════════════════════════════════════════════════
-router.get('/me', requireAuth, requireBusiness, async (req, res) => {
+router.get('/me', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT id, email, venue_name, venue_id, tier, status, phone, website, created_at, last_login
@@ -310,13 +310,11 @@ router.get('/me', requireAuth, requireBusiness, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════
 // GET /api/business/venue — fetch the claimed venue
 // ═══════════════════════════════════════════════════════════════════
-router.get('/venue', requireAuth, requireBusiness, async (req, res) => {
+router.get('/venue', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
-        const bu = await pool.query('SELECT venue_id FROM business_users WHERE id=$1', [req.user.id]);
-        if (!bu.rows.length || !bu.rows[0].venue_id) {
-            return res.status(404).json({ error: 'No linked venue', linked: false });
-        }
-        const v = await pool.query('SELECT * FROM venues WHERE id=$1', [bu.rows[0].venue_id]);
+        const venueId = await resolveActiveVenueId(req);
+        if (!venueId) return res.status(404).json({ error: 'No linked venue', linked: false });
+        const v = await pool.query('SELECT * FROM venues WHERE id=$1', [venueId]);
         if (!v.rows.length) return res.status(404).json({ error: 'Venue not found' });
         res.json({ ok: true, venue: businessVenue(v.rows[0]) });
     } catch (err) {
@@ -330,7 +328,7 @@ router.get('/venue', requireAuth, requireBusiness, async (req, res) => {
 // POST /api/business/venue — CREATE a new venue listing and link it
 // Used when user has no matched venue yet
 // ═══════════════════════════════════════════════════════════════════
-router.post('/venue', requireAuth, requireBusiness, async (req, res) => {
+router.post('/venue', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
         const {
             name, description, address, neighborhood, city,
@@ -400,11 +398,7 @@ router.post('/venue', requireAuth, requireBusiness, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════
 async function handleVenueUpdate(req, res) {
     try {
-        const bu = await pool.query('SELECT venue_id FROM business_users WHERE id=$1', [req.user.id]);
-        if (!bu.rows.length || !bu.rows[0].venue_id) {
-            return res.status(404).json({ error: 'No linked venue. Use POST /api/business/venue to create one.' });
-        }
-        const venue_id = await resolveActiveVenueId(req);
+        const expected = expectedActiveVenueId(req);
 
         const allowed = [
             'name', 'description', 'address', 'neighborhood', 'city',
@@ -438,76 +432,50 @@ async function handleVenueUpdate(req, res) {
             }
         }
         if (!updates.length) return res.status(400).json({ error: 'No valid fields to update' });
-        values.push(venue_id);
-
-        const result = await pool.query(
-            `UPDATE venues SET ${updates.join(', ')}, updated_at=NOW() WHERE id=$${idx} RETURNING *`,
-            values
-        );
-
-        // Keep business_users.venue_name in sync if name changed
-        if (req.body.name) {
-            pool.query('UPDATE business_users SET venue_name=$1 WHERE id=$2', [req.body.name, req.user.id]).catch(()=>{});
-        }
-
-        res.json({ ok: true, venue: businessVenue(result.rows[0]) });
+        const venue = await H.transaction(pool, async db => {
+            const owner = await lockBusinessOwner(db, req.user.id);
+            requireExpectedLocation(owner.venue_id, expected);
+            const venueId = await resolveActiveVenueId(req, db);
+            if (!venueId) throw new H.HttpError(404, 'No linked venue. Create a listing first.');
+            if (expected !== undefined && venueId !== expected) {
+                throw new H.HttpError(409, 'The listing is not in the active location. Reload before editing.');
+            }
+            const result = await db.query(
+                `UPDATE venues SET ${updates.join(', ')}, updated_at=NOW() WHERE id=$${idx} RETURNING *`,
+                [...values, venueId]
+            );
+            const updated = result.rows[0];
+            if (!updated) throw new H.HttpError(404, 'Location not found');
+            if (Object.hasOwn(req.body, 'name') && owner.venue_id === venueId) {
+                await db.query('UPDATE business_users SET venue_name=$1 WHERE id=$2', [updated.name, req.user.id]);
+            }
+            return updated;
+        });
+        res.json({ ok: true, venue: businessVenue(venue) });
     } catch (err) {
         if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venue UPDATE]', err);
-        res.status(500).json({ error: 'Failed to update venue', detail: err.message });
+        res.status(500).json({ error: 'Failed to update venue' });
     }
 }
-router.patch('/venue', requireAuth, requireBusiness, handleVenueUpdate);
-router.put('/venue', requireAuth, requireBusiness, handleVenueUpdate);
+router.patch('/venue', H.noStore, requireAuth, requireBusiness, handleVenueUpdate);
+router.put('/venue', H.noStore, requireAuth, requireBusiness, handleVenueUpdate);
 
 // ═══════════════════════════════════════════════════════════════════
-// GET /api/business/analytics — real analytics for linked venue
-// ═══════════════════════════════════════════════════════════════════
-router.get('/analytics', requireAuth, requireBusiness, async (req, res) => {
+// GET /api/business/analytics — compatibility endpoint for the active listing.
+router.get('/analytics', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
-        const bu = await pool.query('SELECT venue_id FROM business_users WHERE id=$1', [req.user.id]);
-        if (!bu.rows.length || !bu.rows[0].venue_id) {
-            return res.json({
-                views: 0, saves: 0, checkins: 0, engagement: 0, rating: 0,
-                linked: false,
-                message: 'Link or create a venue to see analytics'
-            });
-        }
-        const venue_id = bu.rows[0].venue_id;
-
-        const [saves, checkinsAll, checkinsDay, plans, reviews, venueRow] = await Promise.all([
-            pool.query('SELECT COUNT(*)::int AS n FROM favorites WHERE venue_id=$1', [venue_id]).catch(()=>({rows:[{n:0}]})),
-            pool.query('SELECT COUNT(*)::int AS n FROM checkins WHERE venue_id=$1', [venue_id]).catch(()=>({rows:[{n:0}]})),
-            pool.query("SELECT COUNT(*)::int AS n FROM checkins WHERE venue_id=$1 AND created_at > NOW() - INTERVAL '1 day'", [venue_id]).catch(()=>({rows:[{n:0}]})),
-            pool.query('SELECT COUNT(*)::int AS n FROM plan_venues WHERE venue_id=$1', [venue_id]).catch(()=>({rows:[{n:0}]})),
-            pool.query('SELECT COUNT(*)::int AS n, COALESCE(AVG(rating),0)::float AS avg FROM reviews WHERE venue_id=$1', [venue_id]).catch(()=>({rows:[{n:0,avg:0}]})),
-            pool.query('SELECT rating, review_count, going_count FROM venues WHERE id=$1', [venue_id]).catch(()=>({rows:[{rating:0,review_count:0,going_count:0}]}))
-        ]);
-
-        const savesN = saves.rows[0].n;
-        const checkinsAllN = checkinsAll.rows[0].n;
-        const checkinsDayN = checkinsDay.rows[0].n;
-        const plansN = plans.rows[0].n;
-        const reviewsN = reviews.rows[0].n;
-        const reviewAvg = reviews.rows[0].avg || 0;
-        const storedRating = parseFloat(venueRow.rows[0]?.rating || 0);
-        const displayRating = reviewAvg || storedRating;
-
-        // Views derived: saves × 8 + checkins × 3 + plans × 4 (until real view tracking)
-        const viewsN = savesN * 8 + checkinsAllN * 3 + plansN * 4;
-        const engagement = viewsN ? Math.round((savesN + checkinsAllN) / viewsN * 1000) / 10 : 0;
-
+        const venueId = await resolveActiveVenueId(req);
+        if (!venueId) return res.json({linked:false, views:null, saves:null, checkins:null, plans:null, engagement:null});
+        const activity = await listingActivity(venueId, H.integer(req.query.days, 30, 1, 90, 'days'));
         res.json({
-            views: viewsN,
-            saves: savesN,
-            checkins: checkinsAllN,
-            checkins_today: checkinsDayN,
-            plans: plansN,
-            reviews: reviewsN,
-            rating: Math.round(displayRating * 10) / 10,
-            engagement,
-            linked: true,
-            venue_id
+            ...activity,
+            linked:true,
+            views:activity.counts.view ?? null,
+            saves:activity.counts.save ?? null,
+            checkins:activity.counts.checkin ?? null,
+            plans:activity.counts.plan_add ?? null,
+            engagement:null,
         });
     } catch (err) {
         if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
@@ -519,14 +487,11 @@ router.get('/analytics', requireAuth, requireBusiness, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════
 // GET /api/business/reviews — reviews for the linked venue
 // ═══════════════════════════════════════════════════════════════════
-router.get('/reviews', requireAuth, requireBusiness, async (req, res) => {
+router.get('/reviews', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
-        const bu = await pool.query('SELECT venue_id FROM business_users WHERE id=$1', [req.user.id]);
-        if (!bu.rows.length || !bu.rows[0].venue_id) {
-            return res.json({ reviews: [], linked: false });
-        }
-        const venue_id = bu.rows[0].venue_id;
-        const limit = Math.min(50, parseInt(req.query.limit) || 20);
+        const venue_id = await resolveActiveVenueId(req);
+        if (!venue_id) return res.json({reviews:[], linked:false});
+        const limit = H.integer(req.query.limit, 20, 1, 50, 'limit');
         const result = await pool.query(
             `SELECT r.id, r.rating, r.content, r.created_at,
                     u.display_name AS user_display_name, u.username
@@ -537,7 +502,7 @@ router.get('/reviews', requireAuth, requireBusiness, async (req, res) => {
              LIMIT $2`,
             [venue_id, limit]
         );
-        res.json({ reviews: result.rows, linked: true });
+        res.json({ reviews: result.rows, linked: true, venue_id });
     } catch (err) {
         if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/reviews]', err);
@@ -560,25 +525,32 @@ router.get('/health', async (req, res) => {
 
 // ─── Helper: resolve the "active" venue for this business user ─────
 // Priority: explicit ?venue_id= query param (must be owned) → business_users.venue_id → first business_venues row
-async function resolveActiveVenueId(req) {
-    const reqId = (req.query && req.query.venue_id) || (req.body && req.body.venue_id);
-    // All venues this business owns
-    const owned = await pool.query(
-        `SELECT venue_id FROM business_users WHERE id=$1
-         UNION
-         SELECT venue_id FROM business_venues WHERE business_user_id=$1`,
-        [req.user.id]
-    );
-    const ids = owned.rows.map(r => r.venue_id).filter(Boolean);
-    if (!ids.length) return null;
-    if (reqId) {
-        if (!ids.includes(reqId)) throw new H.HttpError(403,'You do not own this venue');
-        return reqId;
+function expectedActiveVenueId(req) {
+    const value = req.body?.expected_active_venue_id;
+    return value === undefined || value === null ? value : H.id(value, 'expected_active_venue_id');
+}
+
+function requireExpectedLocation(current, expected) {
+    if (expected !== undefined && current !== expected) {
+        throw new H.HttpError(409, 'The active location changed in another tab. Reload your dashboard before continuing.');
     }
-    // Prefer the primary/business_users.venue_id
-    const primary = await pool.query('SELECT venue_id FROM business_users WHERE id=$1', [req.user.id]);
-    if (primary.rows[0] && primary.rows[0].venue_id) return primary.rows[0].venue_id;
-    return ids[0];
+}
+
+async function resolveActiveVenueId(req, db = pool) {
+    const raw = req.query?.venue_id ?? req.body?.venue_id;
+    const requested = raw === undefined ? undefined : H.id(raw, 'venue_id');
+    const owned = await db.query(
+        `SELECT venue_id, 0 AS rank FROM business_users WHERE id=$1 AND venue_id IS NOT NULL
+         UNION ALL
+         SELECT venue_id, 1 AS rank FROM business_venues WHERE business_user_id=$1 AND venue_id IS NOT NULL
+         ORDER BY rank, venue_id`, [req.user.id]
+    );
+    const ids = owned.rows.map(row => row.venue_id);
+    if (requested !== undefined) {
+        if (!ids.includes(requested)) throw new H.HttpError(403, 'You do not own this venue');
+        return requested;
+    }
+    return ids[0] ?? null;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -586,7 +558,7 @@ async function resolveActiveVenueId(req) {
 // ═══════════════════════════════════════════════════════════════════
 
 // GET /api/business/venues — list all venues this business owns
-router.get('/venues', requireAuth, requireBusiness, async (req, res) => {
+router.get('/venues', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
         const r = await pool.query(
             `WITH all_ids AS (
@@ -611,7 +583,7 @@ router.get('/venues', requireAuth, requireBusiness, async (req, res) => {
 });
 
 // POST /api/business/venues/add — Enterprise tier: claim/create an additional venue
-router.post('/venues/add', requireAuth, requireBusiness, async (req, res) => {
+router.post('/venues/add', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
         const { name, description, address, neighborhood, city, type, price_level, phone, website, cover_image_url, image_url, existing_venue_id } = req.body || {};
         const venueName = existing_venue_id ? null : H.text(name, 'name', 255, {required: true});
@@ -678,14 +650,14 @@ router.post('/venues/add', requireAuth, requireBusiness, async (req, res) => {
 });
 
 // POST /api/business/venues/switch — change primary/active venue
-router.post('/venues/switch', requireAuth, requireBusiness, async (req, res) => {
+router.post('/venues/switch', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
-        const { venue_id } = req.body || {};
-        if (!venue_id) return res.status(400).json({ error: 'venue_id required' });
-
-        await H.transaction(pool, async db => {
-            const current = await db.query('SELECT venue_id FROM business_users WHERE id=$1 FOR UPDATE',[req.user.id]);
-            const previous = current.rows[0]?.venue_id;
+        const venue_id = H.id(req.body?.venue_id, 'venue_id');
+        const expected = expectedActiveVenueId(req);
+        const activeVenueId = await H.transaction(pool, async db => {
+            const owner = await lockBusinessOwner(db, req.user.id);
+            const previous = owner.venue_id;
+            requireExpectedLocation(previous, expected);
             if (previous !== venue_id) {
                 const owned = await db.query('SELECT 1 FROM business_venues WHERE business_user_id=$1 AND venue_id=$2',[req.user.id,venue_id]);
                 if (!owned.rows.length) throw new H.HttpError(403,'You do not own this venue');
@@ -696,10 +668,12 @@ router.post('/venues/switch', requireAuth, requireBusiness, async (req, res) => 
             }
             await db.query('UPDATE business_venues SET is_primary=false WHERE business_user_id=$1 AND is_primary',[req.user.id]);
             await db.query('INSERT INTO business_venues(business_user_id,venue_id,is_primary) VALUES($1,$2,true) ON CONFLICT(business_user_id,venue_id) DO UPDATE SET is_primary=true',[req.user.id,venue_id]);
-            await db.query('UPDATE business_users SET venue_id=v.id,venue_name=v.name FROM venues v WHERE business_users.id=$1 AND v.id=$2',[req.user.id,venue_id]);
+            const updated = await db.query('UPDATE business_users SET venue_id=v.id,venue_name=v.name FROM venues v WHERE business_users.id=$1 AND v.id=$2 RETURNING business_users.venue_id',[req.user.id,venue_id]);
+            if (updated.rows[0]?.venue_id !== venue_id) throw new H.HttpError(404, 'Location not found');
+            return updated.rows[0].venue_id;
         });
 
-        res.json({ ok: true, active_venue_id: venue_id });
+        res.json({ ok: true, active_venue_id: activeVenueId });
     } catch (err) {
         if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/venues switch]', err);
@@ -712,7 +686,7 @@ router.post('/venues/switch', requireAuth, requireBusiness, async (req, res) => 
 // ═══════════════════════════════════════════════════════════════════
 
 // GET /api/business/photos — list photos for active venue
-router.get('/photos', requireAuth, requireBusiness, async (req, res) => {
+router.get('/photos', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
         const venue_id = await resolveActiveVenueId(req);
         if (!venue_id) return res.json({ photos: [], linked: false });
@@ -731,7 +705,7 @@ router.get('/photos', requireAuth, requireBusiness, async (req, res) => {
 });
 
 // POST /api/business/photos — add a photo (by URL)
-router.post('/photos', requireAuth, requireBusiness, async (req, res) => {
+router.post('/photos', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
         const venue_id = await resolveActiveVenueId(req);
         if (!venue_id) return res.status(404).json({ error: 'No linked venue' });
@@ -760,7 +734,7 @@ router.post('/photos', requireAuth, requireBusiness, async (req, res) => {
 });
 
 // PATCH /api/business/photos/:id — update caption or sort_order
-router.patch('/photos/:id', requireAuth, requireBusiness, async (req, res) => {
+router.patch('/photos/:id', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
         const { id } = req.params;
         const venue_id = await resolveActiveVenueId(req);
@@ -789,7 +763,7 @@ router.patch('/photos/:id', requireAuth, requireBusiness, async (req, res) => {
 });
 
 // DELETE /api/business/photos/:id
-router.delete('/photos/:id', requireAuth, requireBusiness, async (req, res) => {
+router.delete('/photos/:id', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
         const { id } = req.params;
         const venue_id = await resolveActiveVenueId(req);
@@ -812,7 +786,7 @@ router.delete('/photos/:id', requireAuth, requireBusiness, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════
 
 // GET /api/business/promos — list promos for active venue
-router.get('/promos', requireAuth, requireBusiness, async (req, res) => {
+router.get('/promos', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
         const venue_id = await resolveActiveVenueId(req);
         if (!venue_id) return res.json({ promos: [], linked: false });
@@ -829,7 +803,7 @@ router.get('/promos', requireAuth, requireBusiness, async (req, res) => {
 });
 
 // POST /api/business/promos
-router.post('/promos', requireAuth, requireBusiness, async (req, res) => {
+router.post('/promos', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
         const venue_id = await resolveActiveVenueId(req);
         if (!venue_id) return res.status(404).json({ error: 'No linked venue' });
@@ -853,7 +827,7 @@ router.post('/promos', requireAuth, requireBusiness, async (req, res) => {
 });
 
 // PATCH /api/business/promos/:id
-router.patch('/promos/:id', requireAuth, requireBusiness, async (req, res) => {
+router.patch('/promos/:id', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
         const { id } = req.params;
         const venue_id = await resolveActiveVenueId(req);
@@ -880,7 +854,7 @@ router.patch('/promos/:id', requireAuth, requireBusiness, async (req, res) => {
 });
 
 // DELETE /api/business/promos/:id
-router.delete('/promos/:id', requireAuth, requireBusiness, async (req, res) => {
+router.delete('/promos/:id', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
         const { id } = req.params;
         const venue_id = await resolveActiveVenueId(req);
@@ -1047,10 +1021,10 @@ router.post('/upgrade-interest', contactLimiter, async (req, res) => {
 // Returns real event counts from analytics_events table for owned listing.
 // Uses honest empty state when no events recorded yet.
 // ══════════════════════════════════════════════════════════════════════════
-router.get('/listings/:id/analytics', requireAuth, requireBusiness, H.noStore, async (req, res) => {
+router.get('/listings/:id/analytics', H.noStore, requireAuth, requireBusiness, async (req, res) => {
     try {
         // Verify ownership FIRST (before any analytics work)
-        const venueId = req.params.id;
+        const venueId = H.id(req.params.id, 'venue_id');
         const owned = await pool.query(
             'SELECT 1 FROM business_users WHERE id=$1 AND venue_id=$2 UNION SELECT 1 FROM business_venues WHERE business_user_id=$1 AND venue_id=$2',
             [req.user.id, venueId]
@@ -1059,64 +1033,70 @@ router.get('/listings/:id/analytics', requireAuth, requireBusiness, H.noStore, a
 
         const days = Math.min(90, Math.max(1, parseInt(req.query.days) || 30));
 
-        // Determine if analytics_events exists and what shape it has.
-        // We support two known shapes:
-        //   (a) (venue_id, event_type, created_at)
-        //   (b) (venue_id, action, created_at)  — older shape
-        // Unavailable tracking is a distinct state from a measured zero.
-        const colCheck = await pool.query(`
-            SELECT column_name
-              FROM information_schema.columns
-             WHERE table_schema='public' AND table_name='analytics_events'
-        `);
-        const cols = new Set(colCheck.rows.map(r => r.column_name));
-
-        const counts = {view:0, save:0, call_click:0, website_click:0, direction_click:0, plan_add:0};
-        let metrics = ['view','save','plan_add','website_click'];
-        const windowSQL = "created_at >= NOW() - ($2 || ' days')::interval";
-        const args = [venueId, String(days)];
-        let result;
-        if (cols.has('event') && cols.has('properties') && cols.has('created_at')) {
-            // The current collector records these venue-specific events with a venue_id in JSON.
-            // Page views and generic plan creations do not identify a venue reliably.
-            const names = {venue_save:'save',checkin:'checkin',review_post:'review_post',booking_click:'booking_click'};
-            metrics = Object.values(names);
-            for (const key of metrics) counts[key] = 0;
-            result = await pool.query(
-                `SELECT event, COUNT(*)::int AS count FROM analytics_events
-                 WHERE properties->>'venue_id'=$1 AND ${windowSQL} AND event=ANY($3::text[])
-                 GROUP BY event`, [...args,Object.keys(names)]);
-            for (const row of result.rows) counts[names[row.event]] = row.count;
-        } else {
-            const eventCol = cols.has('event_type') ? 'event_type' : cols.has('action') ? 'action' : null;
-            if (!eventCol || !cols.has('venue_id') || !cols.has('created_at')) {
-                return res.status(503).json({error:'Venue activity tracking is unavailable'});
-            }
-            result = await pool.query(
-                `SELECT ${eventCol} AS event_type, COUNT(*)::int AS count FROM analytics_events
-                 WHERE venue_id=$1 AND ${windowSQL} GROUP BY ${eventCol}`, args);
-            for (const row of result.rows) {
-                if (Object.hasOwn(counts,row.event_type)) counts[row.event_type] = row.count;
-            }
-        }
-        const total = Object.values(counts).reduce((a, b) => a + b, 0);
-
-        res.json({
-            ok: true,
-            venue_id: venueId,
-            window_days: days,
-            metrics,
-            counts,
-            total,
-            empty_state: total === 0
-                ? 'Analytics begin once your listing is approved and viewed.'
-                : null,
-        });
+        res.json(await listingActivity(venueId, days));
     } catch (err) {
         if (err instanceof H.HttpError) return res.status(err.status).json({error:err.message});
         console.error('[business/listings/:id/analytics]', err);
         res.status(500).json({ error: 'Failed to load analytics' });
     }
 });
+
+async function listingActivity(venueId, days) {
+    // Determine if analytics_events exists and what shape it has.
+    // We support two known shapes:
+    //   (a) (venue_id, event_type, created_at)
+    //   (b) (venue_id, action, created_at)  — older shape
+    // Unavailable tracking is a distinct state from a measured zero.
+    const colCheck = await pool.query(`
+        SELECT column_name
+          FROM information_schema.columns
+         WHERE table_schema='public' AND table_name='analytics_events'
+    `);
+    const cols = new Set(colCheck.rows.map(r => r.column_name));
+
+    let counts;
+    let metrics = ['view','save','plan_add','website_click'];
+    const windowSQL = "created_at >= NOW() - ($2 || ' days')::interval";
+    const args = [venueId, String(days)];
+    let result;
+    if (cols.has('event') && cols.has('properties') && cols.has('created_at')) {
+        // The current collector records these venue-specific events with a venue_id in JSON.
+        // Page views and generic plan creations do not identify a venue reliably.
+        const names = {venue_save:'save',checkin:'checkin',review_post:'review_post',booking_click:'booking_click'};
+        metrics = Object.values(names);
+        counts = Object.fromEntries(metrics.map(key => [key, 0]));
+        result = await pool.query(
+            `SELECT event, COUNT(*)::int AS count FROM analytics_events
+             WHERE properties->>'venue_id'=$1 AND ${windowSQL} AND event=ANY($3::text[])
+             GROUP BY event`, [...args,Object.keys(names)]);
+        for (const row of result.rows) counts[names[row.event]] = row.count;
+    } else {
+        const eventCol = cols.has('event_type') ? 'event_type' : cols.has('action') ? 'action' : null;
+        if (!eventCol || !cols.has('venue_id') || !cols.has('created_at')) {
+            throw new H.HttpError(503, 'Venue activity tracking is unavailable');
+        }
+        metrics = [...metrics, 'call_click', 'direction_click'];
+        counts = Object.fromEntries(metrics.map(key => [key, 0]));
+        result = await pool.query(
+            `SELECT ${eventCol} AS event_type, COUNT(*)::int AS count FROM analytics_events
+             WHERE venue_id=$1 AND ${windowSQL} GROUP BY ${eventCol}`, args);
+        for (const row of result.rows) {
+            if (Object.hasOwn(counts,row.event_type)) counts[row.event_type] = row.count;
+        }
+    }
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+
+    return {
+        ok: true,
+        venue_id: venueId,
+        window_days: days,
+        metrics,
+        counts,
+        total,
+        empty_state: total === 0
+            ? 'No tracked activity was recorded in this period.'
+            : null,
+    };
+}
 
 module.exports = router;

@@ -21,6 +21,10 @@
     let operator = {};
     let originalFields = null;
     let reportGeneration = 0;
+    let switchInFlight = false;
+    let switchNeedsReload = false;
+    let venueListGeneration = 0;
+    let listingSaveInFlight = false;
     const getToken = access.token;
     const getLocalUser = () => operator;
     const setLocalUser = value => { operator = value; };
@@ -29,7 +33,7 @@
     async function businessFetch(url, options) {
         const token = getToken();
         if (!token) throw Error('Business sign-in required.');
-        if (operator.venue_id && /\/(?:photos|promos)(?:\/|$)/.test(url) && !url.includes('?')) {
+        if (operator.venue_id && /\/(?:photos|promos|reviews)(?:\/|$)/.test(url) && !url.includes('?')) {
             url += '?venue_id=' + encodeURIComponent(operator.venue_id);
         }
         const response = await window.fetch(url, {...options,cache:'no-store'});
@@ -109,6 +113,14 @@
     function showAccount(user) {
         operator = {email:user.email, venueName:user.venue_name, venue_id:user.venue_id, tier:user.tier};
         _activeVenueId = user.venue_id;
+        switchInFlight = false;
+        switchNeedsReload = false;
+        listingSaveInFlight = false;
+        $('bdVenueSelect').value = '';
+        $('bdSwitchConfirmation').hidden = true;
+        $('bdSwitchStatus').textContent = '';
+        setText('bdCurrentLocation', user.venue ? 'Now managing '+user.venue.name : 'No active location');
+        applyLocationControlState();
         originalFields = null;
         if (user.venue) prefillFromVenue(user.venue);
         if (!user.venue_id) injectCreateListingUI();
@@ -277,24 +289,30 @@
                 toast('No linked listing. Use "Create Listing" above.', true);
                 return;
             }
-            if (newBtn.disabled || !originalFields) return;
+            if (newBtn.disabled || !originalFields || switchInFlight || switchNeedsReload) return;
             const allFields = collectFormPayload();
             const payload = Object.fromEntries(Object.entries(allFields).filter(([key,value]) => originalFields[key] !== value));
             if (!Object.keys(payload).length) { toast('No changes to save.'); return; }
             if ('name' in payload && !payload.name) { toast('Enter a venue name.',true); return; }
             const venueId = u.venue_id;
             newBtn.disabled = true;
+            listingSaveInFlight = true;
+            applyLocationControlState();
             var orig = newBtn.innerHTML;
             newBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
             businessFetch(API + '/venue?venue_id=' + encodeURIComponent(venueId), {
                 method: 'PATCH',
                 headers: authHeaders(),
-                body: JSON.stringify(payload)
+                body: JSON.stringify({...payload, expected_active_venue_id:venueId})
             })
-                .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+                .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, data: d }; }); })
                 .then(function (res) {
                     newBtn.disabled = false; newBtn.innerHTML = orig;
                     if (!res.ok) {
+                        if (res.status === 409) {
+                            switchNeedsReload = true;
+                            setText('bdSwitchStatus', 'The active location changed in another tab. Copy any unsaved edits before reloading.');
+                        }
                         toast(res.data.error || 'Save failed', true);
                         return;
                     }
@@ -316,7 +334,7 @@
                 .catch(function () {
                     newBtn.disabled = false; newBtn.innerHTML = orig;
                     toast('Save could not be confirmed. Reload the listing to check.', true);
-                });
+                }).finally(function () { listingSaveInFlight = false; applyLocationControlState(); });
         });
     }
 
@@ -324,10 +342,12 @@
     function loadReviews() {
         var token = getToken();
         if (!token) return;
+        const venueId = operator.venue_id;
         businessFetch(API + '/reviews', { headers: authHeaders() })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (d) {
-                if (!Array.isArray(d?.reviews)) throw Error();
+                if (token !== getToken() || venueId !== operator.venue_id) return;
+                if (!Array.isArray(d?.reviews) || (venueId && d.venue_id !== venueId)) throw Error();
                 var c = $('bdReviewsList'); if (!c) return;
                 var reviews = d.reviews || [];
                 const sort = $('bdReviewSort').selectedIndex;
@@ -354,7 +374,10 @@
                         '</div>';
                 }).join('');
             })
-            .catch(function () { setText('bdReviewsList','Reviews unavailable. Reopen Reviews to retry.'); });
+            .catch(function () {
+                if (token === getToken() && venueId === operator.venue_id)
+                    setText('bdReviewsList','Reviews unavailable. Reopen Reviews to retry.');
+            });
     }
 
     function timeAgo(ts) {
@@ -610,61 +633,99 @@
     // ═══════════════════════════════════════════════════════════════
 
     function loadVenueList() {
-        var token = getToken();
+        const token = getToken();
+        const sequence = ++venueListGeneration;
         if (!token) return;
+        const relevant = () => token === getToken() && sequence === venueListGeneration && !switchInFlight;
         businessFetch(API + '/venues', { headers: authHeaders() })
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (d) {
-                if (!d) return;
-                var venues = d.venues || [];
+            .then(r => r.ok ? r.json() : null)
+            .then(function (data) {
+                if (!relevant()) return;
+                if (!Array.isArray(data?.venues)) throw Error('Unable to load locations.');
+                const venues = data.venues;
+                const shouldShow = venues.length > 1 || operator.tier === 'enterprise' || operator.tier === 'pro';
+                $('bdVenueSwitcher').hidden = !shouldShow;
                 populateVenueSwitcher(venues);
-                // Show multi-venue UI if user has >1 venue OR is pro/enterprise
-                var u = getLocalUser() || {};
-                var shouldShow = venues.length > 1 || u.tier === 'enterprise' || u.tier === 'pro';
-                var switcher = $('bdVenueSwitcher');
-                if (switcher) switcher.style.display = shouldShow ? 'flex' : 'none';
-                // If there is a primary, store it as active
-                var primary = venues.filter(function (v) { return v.is_primary; })[0] || venues[0];
-                if (primary) _activeVenueId = primary.id;
-                injectAddVenueButton(u, venues.length);
+                injectAddVenueButton(operator, venues.length);
             })
-            .catch(function () { /* silent */ });
+            .catch(function () {
+                if (!relevant() || !['enterprise','pro'].includes(operator.tier)) return;
+                $('bdVenueSwitcher').hidden = false;
+                $('bdVenueSelect').replaceChildren(new Option('Locations unavailable', ''));
+                setText('bdSwitchStatus', 'Could not load locations. Reload the dashboard to retry.');
+                applyLocationControlState();
+            });
     }
 
     function populateVenueSwitcher(venues) {
-        var sel = $('bdVenueSelect');
-        if (!sel) return;
-        if (!venues.length) {
-            sel.innerHTML = '<option value="">No venues yet</option>';
+        const select = $('bdVenueSelect');
+        const pending = select.value;
+        select.replaceChildren(...venues.map(v => new Option([v.name, v.neighborhood || v.city].filter(Boolean).join(' · '), v.id)));
+        if (!venues.length) select.append(new Option('No locations yet', ''));
+        select.value = venues.some(v => v.id === pending) ? pending : operator.venue_id || '';
+        if (select.selectedIndex < 0) select.prepend(new Option('Choose a location', '', true, true));
+        applyLocationControlState();
+    }
+
+    function applyLocationControlState() {
+        const select = $('bdVenueSelect');
+        select.disabled = switchInFlight || switchNeedsReload;
+        $('bdVenueSwitcher').setAttribute('aria-busy', String(switchInFlight));
+        $('panel-listing').toggleAttribute('inert', switchInFlight);
+        $('bdDiscardAndSwitch').disabled = switchInFlight || listingSaveInFlight || switchNeedsReload;
+        $('bdSwitchLocation').disabled = select.disabled || listingSaveInFlight || !select.value || select.value === operator.venue_id;
+        if (switchInFlight || switchNeedsReload) $('bdSaveListing').disabled = true;
+    }
+
+    async function switchLocation(discard) {
+        const select = $('bdVenueSelect');
+        const status = $('bdSwitchStatus');
+        const confirm = $('bdSwitchConfirmation');
+        const venue_id = select.value;
+        if (switchInFlight || switchNeedsReload || listingSaveInFlight || !getToken() || !venue_id || venue_id === operator.venue_id) return;
+        const fields = collectFormPayload();
+        if (!discard && originalFields && Object.keys(fields).some(key => fields[key] !== originalFields[key])) {
+            confirm.hidden = false;
+            $('bdKeepEditing').focus();
             return;
         }
-        sel.innerHTML = venues.map(function (v) {
-            var label = v.name + (v.neighborhood ? ' — ' + v.neighborhood : '');
-            return '<option value="' + esc(v.id) + '"' + (v.is_primary ? ' selected' : '') + '>' + esc(label) + '</option>';
-        }).join('');
-        // Override the inline onchange with a real switch handler
-        sel.onchange = function () {
-            var venue_id = sel.value;
-            if (!venue_id) return;
-            sel.disabled = true;
-            businessFetch(API + '/venues/switch', {
-                method: 'POST', headers: authHeaders(),
-                body: JSON.stringify({ venue_id: venue_id })
-            }).then(function (r) { return r.ok ? r.json() : null; })
-              .then(function (d) {
-                  if (d && d.ok && d.active_venue_id === venue_id) {
-                      _activeVenueId = venue_id;
-                      toast('Switched venue.');
-                      window.location.reload();
-                  } else {
-                      sel.value = _activeVenueId || '';
-                      toast('Switch failed', true);
-                  }
-              }).catch(function() {
-                  sel.value = _activeVenueId || '';
-                  toast('Could not confirm the active venue. Reload to check.', true);
-              }).finally(function() { sel.disabled = false; });
-        };
+        const token = getToken();
+        switchInFlight = true;
+        confirm.hidden = true;
+        applyLocationControlState();
+        status.textContent = 'Opening location…';
+        try {
+            const response = await businessFetch(API + '/venues/switch', {
+                method:'POST', headers:authHeaders(),
+                body:JSON.stringify({venue_id, expected_active_venue_id:operator.venue_id ?? null})
+            });
+            const data = await response.json().catch(() => null);
+            if (token !== getToken()) return;
+            if (response.status === 409) {
+                switchNeedsReload = true;
+                status.textContent = 'The active location changed in another tab. Your draft is still here. Copy any unsaved edits before reloading.';
+                return;
+            }
+            if (!response.ok || !data?.ok || data.active_venue_id !== venue_id) {
+                status.textContent = 'The switch wasn’t confirmed. You are still viewing the original dashboard and your edits have been kept.';
+                return;
+            }
+            status.textContent = 'Location confirmed. Loading its dashboard…';
+            switchNeedsReload = true;
+            // A fresh authenticated dashboard fetches every location-scoped view.
+            window.location.reload();
+        } catch (_) {
+            if (token === getToken()) status.textContent = 'The switch wasn’t confirmed. Your edits have been kept.';
+        } finally {
+            if (token !== getToken()) return;
+            switchInFlight = false;
+            if (!switchNeedsReload) {
+                select.value = operator.venue_id || '';
+                $('bdSaveListing').disabled = !originalFields;
+                select.focus();
+            }
+            applyLocationControlState();
+        }
     }
 
     function injectAddVenueButton(u, existingCount) {
@@ -719,6 +780,20 @@
         $('bdPhotoForm').addEventListener('submit',savePhoto);
         $('bdPhotoCancel').addEventListener('click',closePhotoForm);
         $('bdLogout').addEventListener('click', access.logout);
+        $('bdVenueSelect').addEventListener('change', () => {
+            $('bdSwitchConfirmation').hidden = true;
+            setText('bdSwitchStatus','');
+            applyLocationControlState();
+        });
+        $('bdSwitchLocation').addEventListener('click', () => switchLocation(false));
+        $('bdDiscardAndSwitch').addEventListener('click', () => switchLocation(true));
+        $('bdKeepEditing').addEventListener('click', () => {
+            $('bdSwitchConfirmation').hidden = true;
+            $('bdVenueSelect').value = operator.venue_id || '';
+            document.querySelector('[data-panel="listing"]').click();
+            $('bdEditName').focus();
+            applyLocationControlState();
+        });
         for (const [panel,load] of Object.entries({photos:loadPhotos,reviews:loadReviews,promotions:loadPromos})) {
             document.querySelector('[data-panel="'+panel+'"]').addEventListener('click',load);
         }
