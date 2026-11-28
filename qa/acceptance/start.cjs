@@ -8,6 +8,7 @@ const {installGate, shell, escape} = require('./gate.cjs');
 const {USERS, OWNERS, VENUES, seedFixtures} = require('./fixtures.cjs');
 const {script:browserScript} = require('./browser-bootstrap.cjs');
 const {configure:configureVerificationMail} = require('./resend-verification.cjs');
+const {makeVerificationLanding} = require('./verification-landing.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const FRONTEND = path.join(ROOT, 'web/frontend');
@@ -63,7 +64,9 @@ async function start() {
     await client.query("SELECT pg_advisory_unlock(hashtext('scenelink_acceptance_bootstrap_v1'))");
     client.release();
     const app = express();
-    installGate(app, config, {health: async () => {
+    installGate(app, config, {
+      verificationLanding: makeVerificationLanding(fs.readFileSync(path.join(FRONTEND,'js/sl-email-verification.js'),'utf8')),
+      health: async () => {
       let timer;
       try { return await Promise.race([pool.query({text:'SELECT 1',query_timeout:1500}).then(()=>true),
         new Promise(resolve=>{timer=setTimeout(()=>resolve(false),2000);})]); }
