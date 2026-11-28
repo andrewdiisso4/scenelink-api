@@ -28,7 +28,7 @@ for (const mode of ['confirm','unsubscribe']) test(mode+' removes token from add
  button.click();button.click();
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(calls.length,1);assert.equal(calls[0][0],'/api/newsletter/'+mode);
- assert.equal(calls[0][1].method,'POST');assert.equal(calls[0][1].credentials,'omit');
+ assert.equal(calls[0][1].method,'POST');assert.equal(calls[0][1].credentials,'same-origin');
  assert.deepEqual(JSON.parse(calls[0][1].body),{token});
  assert.match(win.document.getElementById('newsletterStatus').textContent,mode==='confirm'?/on the SceneLink newsletter list/:/unsubscribed/);
  assert.equal(button.disabled,true);
