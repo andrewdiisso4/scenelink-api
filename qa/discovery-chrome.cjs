@@ -49,9 +49,10 @@ const server=http.createServer((req,res)=>{
     await page.locator('#slConciergePanel').waitFor({state:'visible',timeout:6000});
     assert.equal(await page.locator('.slc-input').inputValue(),'');
     await page.locator('.slc-close').click();
+    await page.locator('#slConciergePanel').waitFor({state:'hidden',timeout:3000});
     assert.equal(await launcher.evaluate(el=>el===document.activeElement),true);
     await search.fill('Dinner in Back Bay');
-    await page.locator('.slus-ai').click();
+    await page.locator('.slus-ai').click({timeout:6000});
     await page.locator('#slConciergePanel').waitFor({state:'visible',timeout:6000});
     assert.equal(await page.locator('.slc-input').inputValue(),'Dinner in Back Bay');
     assert.equal(posts.filter(url=>url.includes('concierge')).length,0);

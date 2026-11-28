@@ -633,3 +633,6 @@ html[data-sl-design] body.sl-has-concierge-launcher .sl-concierge-fab-v5 { displ
   }
   html[data-sl-design] body .sl-explore-header.sl-search-ready .slus-box { flex: 0 1 min(520px, 75%); }
 }
+
+/* An invisible dialog must not intercept taps or remain in the tab order. */
+html[data-sl-design] body #slConciergePanel[hidden] { display: none !important; }

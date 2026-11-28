@@ -115,8 +115,10 @@ for (const route of ['index.html','events.html','profile.html','messages.html','
  assert.equal(launcher.getAttribute('aria-expanded'),'true');
  assert.equal(launcher.getAttribute('aria-controls'),'slConciergePanel');
  assert.equal(d.querySelector('.slc-input').value,'');
+ assert.equal(d.querySelector('#slConciergePanel').hidden,false);
  assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);
  launcher.click();
+ assert.equal(d.querySelector('#slConciergePanel').hidden,true);
  assert.equal(launcher.getAttribute('aria-expanded'),'false');
  assert.equal(d.activeElement,launcher);
 });

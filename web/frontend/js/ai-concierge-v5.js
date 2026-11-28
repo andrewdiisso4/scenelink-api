@@ -573,6 +573,7 @@
         var draftStore = window.SLConciergeDraft;
         input.addEventListener('input',function(){clearChoice();if(draftStore)draftStore.save(input.value);});
         panel.id = 'slConciergePanel';
+        panel.hidden = true;
         panel.setAttribute('role','dialog');
         panel.setAttribute('aria-label','SceneLink Concierge');
 
@@ -1239,6 +1240,7 @@
             fab.style.display = '';
             fab.style.pointerEvents = 'auto';
             fab.style.opacity = '';
+            panel.hidden = false;
             panel.style.display = '';
             panel.classList.add('slc-panel-visible');
             fab.classList.add('slc-fab-open');
@@ -1260,6 +1262,7 @@
             if (draftStore) draftStore.clear();
             if (opener && opener.isConnected) { try { opener.focus(); } catch(_){} }
             panel.classList.remove('slc-panel-visible');
+            panel.hidden = true;
             fab.classList.remove('slc-fab-open');
             document.body.classList.remove('slc-open');
             // Force-clear any inline style leftover so fab is clickable next time
