@@ -204,6 +204,32 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
     newUser=(await db("SELECT id FROM users WHERE email='qa.signup@example.invalid'"))[0];assert(newUser);
     const queued=await db('SELECT status FROM signup_welcome_emails WHERE user_id=$1',[newUser.id]);assert.deepEqual(queued,[{status:'pending'}]);
   });
+  await stage('Newly signed-up member can sign out and sign back in with the same credentials',async()=>{
+    const logoutResponse=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname==='/api/auth/logout');
+    await page.locator('#slAcctLogout').click();
+    assert.equal((await logoutResponse).status(),200);
+    await page.waitForURL(origin+'/');
+    await page.waitForFunction(()=>window.SLAuth && !window.SLAuth.token());
+    await page.goto(origin+'/profile.html',{waitUntil:'domcontentloaded'});
+    const entry=page.locator('header .sl-auth-trigger:visible').first();
+    await entry.click();
+    const signInResponse=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname==='/api/auth/login');
+    await page.locator('#slLoginEmail').fill('qa.signup@example.invalid');
+    await page.locator('#slLoginPassword').fill(password);
+    await page.locator('#slLoginForm .sl-auth-submit').click();
+    const loggedIn=await signInResponse;
+    assert.equal(loggedIn.status(),200);
+    const account=(await loggedIn.json()).user;
+    assert.equal(account.id,newUser.id);
+    assert.equal(account.email_verified,false);
+    await page.locator('#slSocialProfile .slsp-hero h1').waitFor();
+    assert.equal(await page.locator('#slSocialProfile .slsp-hero h1').textContent(),'Morgan · QA signup');
+    await page.reload();
+    await page.locator('#slSocialProfile .slsp-hero h1').waitFor();
+    await page.waitForFunction(id=>window.SLAuth?.user()?.id===id,newUser.id);
+    await page.locator('#slspTabSettings').click();
+    await page.locator('#slAcctDeleteBtn').waitFor();
+  });
   await stage('In-app permanent deletion clears the account, queue and current session',async()=>{
     await page.locator('#slAcctDeleteBtn').click();await page.locator('#slAcctPw').waitFor();
     await page.setViewportSize({width:390,height:844});await shot(page,'delete-mobile');
