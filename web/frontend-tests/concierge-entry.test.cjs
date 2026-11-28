@@ -102,3 +102,21 @@ test('header AI opens an unsent draft and bundle uses the same draft bridge',asy
  const section=s=>s.slice(s.indexOf('    function openConciergeWith(query) {'),s.indexOf('    function injectAIChip'));
  assert.equal(section(read('js/sl-bundle-7d-ui.js')),section(read('js/sl-search-ai-bridge.js')));
 });
+
+for (const route of ['index.html','events.html','profile.html','messages.html','business.html']) test(route+' has one independent floating Concierge entry; opening is not an AI request',async t=>{
+ const {w,d,calls}=setup(t,route);
+ w.eval(read('js/sl-phase8d-recovery.js')); w.eval(read('js/sl-universal-search.js')); await tick(0);
+ const launcher=d.querySelector('.sl-concierge-launcher');
+ assert(launcher); assert.equal(d.querySelectorAll('.sl-concierge-launcher').length,1);
+ assert.equal(d.querySelectorAll('script[src*="ai-concierge-v5.js"]').length,0);
+ launcher.focus(); launcher.click();
+ const script=d.querySelector('script[src*="ai-concierge-v5.js"]'); assert(script);
+ w.eval(read('js/ai-concierge-v5.js')); script.dispatchEvent(new w.Event('load')); await tick(340);
+ assert.equal(launcher.getAttribute('aria-expanded'),'true');
+ assert.equal(launcher.getAttribute('aria-controls'),'slConciergePanel');
+ assert.equal(d.querySelector('.slc-input').value,'');
+ assert.equal(calls.filter(c=>c.opts.method==='POST').length,0);
+ launcher.click();
+ assert.equal(launcher.getAttribute('aria-expanded'),'false');
+ assert.equal(d.activeElement,launcher);
+});

@@ -572,6 +572,7 @@
         }
         var draftStore = window.SLConciergeDraft;
         input.addEventListener('input',function(){clearChoice();if(draftStore)draftStore.save(input.value);});
+        panel.id = 'slConciergePanel';
         panel.setAttribute('role','dialog');
         panel.setAttribute('aria-label','SceneLink Concierge');
 
@@ -1293,7 +1294,7 @@
             if (!state.open) return;
             if (panel.contains(e.target) || fab.contains(e.target)) return;
             // Don't close when clicking the nav "Ask AI" link
-            if (e.target.closest && e.target.closest('[data-ai-concierge-nav]')) return;
+            if (e.target.closest && e.target.closest('[data-ai-concierge-nav], .slus-ai, .sl-concierge-launcher, [data-slus-ask-ai]')) return;
             closePanel();
         });
         send.addEventListener('click', function () { handleMessage(input.value); });
