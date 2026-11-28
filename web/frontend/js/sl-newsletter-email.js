@@ -23,7 +23,7 @@
       status.textContent = 'Saving…';
       try {
         const response = await fetch('/api/newsletter/' + mode, {
-          method:'POST', credentials:'omit', cache:'no-store',
+          method:'POST', credentials:'same-origin', cache:'no-store',
           headers:{'Content-Type':'application/json'},body:JSON.stringify({token})
         });
         const result = await response.json();
