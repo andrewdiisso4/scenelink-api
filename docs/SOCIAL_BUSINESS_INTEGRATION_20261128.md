@@ -22,9 +22,9 @@ The remaining behavior change consists of the narrow source-proven fixture polic
 - Retain PR #48's request-order and identity protections alongside current-main workspace navigation. A stale activity response cannot overwrite newer counts; a confirmed own profile/avatar change updates the header without allowing stale fetches or account changes to restore older identity.
 - Keep fixture handling narrow: exact source-defined demo accounts and documented generator patterns. Similar addresses, ordinary users, account recovery, and admin inventory remain available. The mounted legacy review POST rejects documented fixtures before review/rating writes; public and owner reads use the same policy.
 - Preserve live core support, mailer, newsletter, privacy and provider-control behavior. No account/content deletion, historical aggregate rewrite, schema migration, venue import or activation is introduced.
-- Use the fresh frontend revision `connected-20261128-profile-social-qa`. The existing finalizer runs with `SOURCE_DATE_EPOCH=1795837113`, regenerates named bundles and execution references, and writes the complete asset manifest. Existing release assertions are retained with their expected cache revision updated.
+- The reconciliation at `5808ef1` used frontend revision `connected-20261128-profile-social-qa` and `SOURCE_DATE_EPOCH=1795837113`. The existing finalizer regenerated named bundles and execution references and wrote the complete asset manifest. The authentication follow-up below supersedes that revision.
 
-## Validation evidence
+## Reconciliation validation evidence at `5808ef1`
 
 Local validation on the reconciled source passed **800 frontend tests**, **40 social VM checks**, and **32 targeted backend checks** across the final runs. The backend scope includes the mounted review policy, current-main owner portal, business publication and DTO, friendship/privacy, support-off, mailer dispatch wiring, and welcome-mailer tests. The owner API test was rerun separately after correcting its minimal fixture schema; all API assertions passed. Syntax and whitespace checks also passed. Earlier passing PR #55 and component-branch runs remain historical evidence and do not certify this new tree.
 
@@ -33,6 +33,20 @@ All **475 frontend files** match the regenerated manifest. All **764 inspected l
 The review-policy regression exercises the real server mount order and JWT middleware with disposable embedded PostgreSQL: seven documented fixture variants are rejected before any write, eight similar legitimate addresses can publish normally, owner/public reads exclude fixture rows without mutating them, and admin inventory retains every account. No production data or external mail transport is involved.
 
 The current-main owner test also covers a stale save after another tab switches location, explicit owned-venue reviews, separate authorized owners, and one-time mocked recovery. Its optional phone-width browser journey remains wired into CI. A local Chromium attempt was blocked before opening a page: the Playwright executable is absent, and `/usr/bin/chromium` exits 127 because its target `/usr/lib/chromium/chromium` is missing. No local browser acceptance is claimed; the exact-head CI browser gate and hosted QA remain required.
+
+## QA authentication follow-up
+
+The separately approved QA service `srv-dc554oc9v7es7397jsu0` deployed source `5808ef197792fec6dfe371f1f9f1f202b41897f3` successfully. Its health endpoint returned OK, the protected overview confirmed the expected source, and the unlocked frontend returned QA Harbor Table for a real API search and transferred that search into an unsent Concierge draft. Those checks are hosted evidence for that source; signed-in journeys have not passed.
+
+Member login returned 401 with the generic invalid-credentials message, including a manual attempt at 2026-11-27 23:20:00 America/New_York. No accompanying application exception or 5xx was observed. The rejection occurs before session creation. The origin's outer gate cookie is distinct from the consumer's shared localStorage session.
+
+Source review also found a separate sign-in reliability defect: the older API client's initial current-user probe could clear shared authentication after a newer login or a transient failure. The focused follow-up gives the probe session ownership and limits invalidation to a current explicit authentication rejection. This fixes a real later-session risk; it is not claimed to explain the login POST's 401.
+
+A protected, read-only fixture-health diagnostic checks only the fixed fictional accounts. It compares the already configured fixture password with stored hashes inside the server and returns safe status fields. It does not return credentials or hashes, accept arbitrary account/password input, reset passwords, reseed data, open database networking, or mount in the production API. The result will distinguish fixture eligibility/configuration mismatches from rejected submitted credentials.
+
+The authentication patch passed 100 focused session/UI/recovery checks. Fifteen of its sixteen new regressions failed against the previous source and passed with the fix. Independent source review confirmed ownership, transient-response handling, current invalid-session clearing, and compatibility with the legacy ready event. The diagnostic passed seven new contract/security tests and two existing gate regressions; its real PostgreSQL assertions are included in the native acceptance CI job.
+
+This follow-up uses frontend revision `connected-20261128-auth-session-qa`. The finalizer ran with `SOURCE_DATE_EPOCH=1795840313`, regenerated the bundles and manifest, and the combined auth/cache/static-release checks passed 35/35. Record the final published/deployed SHA and the new exact-source CI run in PR #55 before treating the newer source as accepted. The existing QA resource plans, branch configuration and database remain unchanged; freeze the QA branch at the newly checked commit for the next manual code deploy.
 
 ## Hosted QA and publication boundary
 

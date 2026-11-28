@@ -1,12 +1,12 @@
 {
   "phase": "release-acceptance",
-  "sw_version": "sl-connected-20261128-profile-social-qa",
-  "timestamp": "2026-11-28T03:38:33+00:00",
+  "sw_version": "sl-connected-20261128-auth-session-qa",
+  "timestamp": "2026-11-28T04:31:53+00:00",
   "status": "versioned_build",
   "requires_paired_backend": true,
   "required_migration": "019_newsletter_opt_in.sql",
   "rollout_order": "paired_backend_then_frontend",
-  "summary": "Account and social release candidate: consistent sign-in and recovery, verified profile persistence, consent-aware people actions, recent-provider account deletion and branded welcome email. This build adds a confirmable footer newsletter and optional scoped signup email transport. Preserves unified discovery, high-contrast social links, the floating Concierge entry, and multi-location owner integrity with measured activity only. Adds current profile counts, confirmed profile/header identity synchronization, and narrow documented fixture exclusions including review writes and owner review reads. Requires the paired API candidate. External provider cleanup and native App Store acceptance remain release gates; AI and provider pilots remain off.",
+  "summary": "Account and social release candidate: consistent sign-in and recovery, verified profile persistence, consent-aware people actions, recent-provider account deletion and branded welcome email. This build adds a confirmable footer newsletter and optional scoped signup email transport. Preserves unified discovery, high-contrast social links, the floating Concierge entry, and multi-location owner integrity with measured activity only. Adds current profile counts, confirmed profile/header identity synchronization, and narrow documented fixture exclusions including review writes and owner review reads. Preserves current sign-in when an older session probe fails and keeps transient probe failures from clearing authentication. Requires the paired API candidate. External provider cleanup and native App Store acceptance remain release gates; AI and provider pilots remain off.",
   "admin_auth_hotfix": {
     "id": "connected-20261124-admin-access",
     "source_frontend_base": "db579dbca96d57edcca5a36cb3d009c1724f2262",
@@ -15,6 +15,6 @@
     "pull_request": 40,
     "scope": "administrator authentication and session handling"
   },
-  "admin_controller_cache_key": "connected-20261128-profile-social-qa",
-  "business_controller_cache_key": "connected-20261128-profile-social-qa"
+  "admin_controller_cache_key": "connected-20261128-auth-session-qa",
+  "business_controller_cache_key": "connected-20261128-auth-session-qa"
 }

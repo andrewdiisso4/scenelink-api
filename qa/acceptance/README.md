@@ -54,6 +54,30 @@ Subsequent starts require the exact marker binding and never reseed completed fi
 
 The startup process is not claimed to be atomic across every application migration. A failure may leave a marked partial QA schema; a matching restart may rerun the idempotent application initializer. A nonempty schema with no marker, a foreign marker, or a malformed marker fails closed before application initialization. Production data is never a source for this environment.
 
+## Read-only fixture health
+
+After unlocking the outer gate, open `GET /__acceptance/fixture-health` without
+query parameters or a request body. The acceptance launcher checks only the four
+fixed seed IDs. The response contains fixed fixture names/roles, expected owner
+statuses, and boolean checks for existence, expected email/role, account state,
+verification, hash availability, and whether the configured fixture password
+matches the stored hash. Passwords, hashes, tokens, row identifiers, stored email
+addresses, configuration values, and database errors are never returned.
+
+`configuredPasswordMatches: false` with `hashUsable: true` indicates that the
+configured fixture password differs from that account's stored password.
+`hashUsable` accepts structurally valid bcrypt hashes with costs 4–12, bounding
+diagnostic work; the seed and password-change paths use cost 12. Consumer
+`verified` is separate from sign-in eligibility. For **QA Pending Owner**,
+`expectedStatus: "pending"`, `statusMatches: true`, and `active: false` are expected;
+normal business sign-in must still return 403. A false `statusMatches` is unexpected.
+
+Responses are `private, no-store`. The endpoint permits three admitted requests
+per minute across the process and accepts GET only. It performs fixed SELECTs and
+server-side comparisons without issuing sessions, changing passwords, reseeding,
+or altering accounts. A generic 503 means the diagnostic could not complete;
+429 means its rate limit was reached. Restarting still preserves fixture changes.
+
 ## Explicit acceptance boundaries
 
 The launcher forces outbound mail, model/provider calls, seed jobs, imports, upload credentials, push-provider credentials and telemetry off. No welcome-mail worker or scheduled importer is started. Outbound server HTTP is fenced. Password-email and unsupported external/import operations return an explicit unavailable response rather than claiming delivery or completion. Real-model quality, real inbox delivery, OAuth, third-party maps, direct device uploads, production backup restoration and venue import/activation remain separate gates.

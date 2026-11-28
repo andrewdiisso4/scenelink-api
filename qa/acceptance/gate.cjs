@@ -62,7 +62,8 @@ function installGate(app, config, {health = async () => true} = {}) {
     });
   app.use((req, res, next) => {
     if (validCookie(config, req.headers.cookie)) return next();
-    if (req.path.startsWith('/api/') || !['GET','HEAD'].includes(req.method)) return res.status(401).json({error:'Unlock the isolated acceptance environment first',code:'ACCEPTANCE_LOCKED'});
+    if (req.path.startsWith('/api/') || /^\/__acceptance\/fixture-health\/?$/i.test(req.path)
+        || !['GET','HEAD'].includes(req.method)) return res.status(401).json({error:'Unlock the isolated acceptance environment first',code:'ACCEPTANCE_LOCKED'});
     sendUnlock(res, req.originalUrl, 401);
   });
   app.post('/__acceptance/lock', (req, res) => {
