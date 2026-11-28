@@ -14,14 +14,14 @@ class EnhancedDeploymentSystem {
         ];
         
         this.requiredCSS = [
-            'css/universal-enhanced-header.css?v=connected-20261128-owner-integrity',
-            'css/page-header-consistent.css?v=connected-20261128-owner-integrity',
-            'css/openstreet-map-integration.css?v=connected-20261128-owner-integrity'
+            'css/universal-enhanced-header.css?v=connected-20261128-auth-session-qa',
+            'css/page-header-consistent.css?v=connected-20261128-auth-session-qa',
+            'css/openstreet-map-integration.css?v=connected-20261128-auth-session-qa'
         ];
         
         this.requiredJS = [
-            'js/universal-header-consistency.js?v=connected-20261128-owner-integrity',
-            'js/openstreet-map-integration.js?v=connected-20261128-owner-integrity'
+            'js/universal-header-consistency.js?v=connected-20261128-auth-session-qa',
+            'js/openstreet-map-integration.js?v=connected-20261128-auth-session-qa'
         ];
         
         this.init();
@@ -45,10 +45,10 @@ class EnhancedDeploymentSystem {
 
     applyUniversalEnhancements() {
         // Apply universal header CSS if not already present
-        this.ensureCSSLoaded('css/universal-enhanced-header.css?v=connected-20261128-owner-integrity');
+        this.ensureCSSLoaded('css/universal-enhanced-header.css?v=connected-20261128-auth-session-qa');
         
         // Apply universal header JavaScript
-        this.ensureJSLoaded('js/universal-header-consistency.js?v=connected-20261128-owner-integrity');
+        this.ensureJSLoaded('js/universal-header-consistency.js?v=connected-20261128-auth-session-qa');
         
         // Apply consistent footer
         this.updateFooterBrand();
@@ -153,8 +153,8 @@ class EnhancedDeploymentSystem {
 
     setupExplorePageFeatures() {
         // Add map integration to explore page
-        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-owner-integrity');
-        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-owner-integrity');
+        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-auth-session-qa');
+        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-auth-session-qa');
         
         // Add map container if not present
         if (!document.querySelector('.map-container')) {
@@ -167,8 +167,8 @@ class EnhancedDeploymentSystem {
 
     setupEventsPageFeatures() {
         // Add map integration to events page
-        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-owner-integrity');
-        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-owner-integrity');
+        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-auth-session-qa');
+        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-auth-session-qa');
         
         // Add map container if not present
         if (!document.querySelector('.map-container')) {
@@ -178,8 +178,8 @@ class EnhancedDeploymentSystem {
 
     setupNightlifePageFeatures() {
         // Add map integration to nightlife page
-        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-owner-integrity');
-        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-owner-integrity');
+        this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-auth-session-qa');
+        this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-auth-session-qa');
         
         // Add map container if not present
         if (!document.querySelector('.map-container')) {
@@ -257,8 +257,8 @@ class EnhancedDeploymentSystem {
                 console.log('Enhanced filters added');
                 
                 // Load enhanced filters CSS and JS
-                this.ensureCSSLoaded('css/tonights-picks-enhanced-filters.css?v=connected-20261128-owner-integrity');
-                this.ensureJSLoaded('js/enhanced-filters-interactive.js?v=connected-20261128-owner-integrity');
+                this.ensureCSSLoaded('css/tonights-picks-enhanced-filters.css?v=connected-20261128-auth-session-qa');
+                this.ensureJSLoaded('js/enhanced-filters-interactive.js?v=connected-20261128-auth-session-qa');
             }
         }
     }
@@ -297,8 +297,8 @@ class EnhancedDeploymentSystem {
             
             heroSection.insertAdjacentHTML('afterend', mapPreviewHTML);
             
-            this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-owner-integrity');
-            this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-owner-integrity');
+            this.ensureCSSLoaded('css/openstreet-map-integration.css?v=connected-20261128-auth-session-qa');
+            this.ensureJSLoaded('js/openstreet-map-integration.js?v=connected-20261128-auth-session-qa');
             
             console.log('Home page map integration added');
         }

@@ -69,7 +69,7 @@ test('owner claim, session, reporting, listing edit and emailed recovery use the
     assert.equal((await api('/venue?venue_id='+second)).data.venue.id,second);
     assert.equal((await api('/venue?venue_id='+unrelated)).status,403);
     assert.equal((await api('/venue?venue_id='+unrelated,'PATCH',{hours_display:'Do not save'})).status,403);
-    await db.exec('CREATE TABLE users(id uuid PRIMARY KEY, display_name text, username text); CREATE TABLE reviews(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, venue_id uuid, rating int, content text, created_at timestamptz DEFAULT now())');
+    await db.exec('CREATE TABLE users(id uuid PRIMARY KEY, email text, display_name text, username text); CREATE TABLE reviews(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, venue_id uuid, rating int, content text, created_at timestamptz DEFAULT now())');
     await db.query("INSERT INTO reviews(venue_id,rating,content) VALUES ($1,5,'Review for dining'),($2,4,'Review for annex')",[venueId,second]);
     const saved=await api('/venue?venue_id='+venueId,'PATCH',{hours_display:'Thu–Sun 4–10',expected_active_venue_id:venueId});
     assert.equal(saved.status,200);assert.equal(saved.data.venue.hours_display,'Thu–Sun 4–10');

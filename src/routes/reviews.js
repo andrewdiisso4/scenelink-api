@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../config/database');
 const { requireAuth, optionalAuth } = require('../middleware/auth');
+const H = require('../launch/shared');
 
 const router = express.Router();
 
@@ -35,6 +36,14 @@ router.post('/', requireAuth, async (req, res) => {
     if (!venue_id || !rating) return res.status(400).json({ error: 'venue_id and rating are required' });
     if (!UUID_RE.test(venue_id)) return res.status(400).json({ error: 'Invalid venue_id format' });
     if (rating < 1 || rating > 5) return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+
+    // This legacy POST remains mounted after the canonical review read route.
+    // Apply the same narrow fixture policy before either review or rating writes.
+    const participant = await pool.query(
+      `SELECT u.id FROM users u WHERE u.id = $1 AND ${H.nonFixtureSQL()}`,
+      [req.user.id]
+    );
+    if (!participant.rows.length) return res.status(403).json({ error: 'Social participation unavailable' });
 
     const result = await pool.query(
       `INSERT INTO reviews (user_id, venue_id, rating, content) VALUES ($1, $2, $3, $4)

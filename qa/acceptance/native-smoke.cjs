@@ -56,6 +56,9 @@ async function main(){
     ['/reset-password.html?token=synthetic-test-token',401]
   ]) await formResponse(await request(route),status,'/__acceptance/unlock');
   let r;
+  r=await request('/__acceptance/fixture-health');assert.equal(r.status,401);
+  assert.match(r.headers.get('cache-control'),/no-store/);
+  assert.equal((await r.json()).code,'ACCEPTANCE_LOCKED');
   r=await request('/api/auth/login',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({email:'qa.admin@example.invalid',password})});assert.equal(r.status,401);
   assert.equal(r.headers.get('referrer-policy'),'no-referrer');
   r=await request('/__acceptance/unlock',{method:'POST',headers:{Origin:origin,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({secret:'incorrect'})});
@@ -63,6 +66,19 @@ async function main(){
   await formResponse(r,401,'/__acceptance/unlock');
   const unlock=()=>request('/__acceptance/unlock',{method:'POST',headers:{Origin:origin,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({secret:access})});
   r=await unlock();assert.equal(r.status,303);let cookie=r.headers.get('set-cookie').split(';')[0];
+  r=await request('/__acceptance/fixture-health',{headers:{Cookie:cookie}});assert.equal(r.status,200);
+  assert.match(r.headers.get('cache-control'),/no-store/);
+  const fixtureHealthText=await r.text(), fixtureHealth=JSON.parse(fixtureHealthText).fixtures;
+  assert(!fixtureHealthText.includes(password));assert(!fixtureHealthText.includes(access));
+  assert(!fixtureHealthText.includes('$2'));assert(!fixtureHealthText.includes('@'));
+  assert.deepEqual(fixtureHealth.map(fixture=>fixture.name),['QA Admin','QA Member','QA Owner','QA Pending Owner']);
+  for(const fixture of fixtureHealth)for(const key of ['exists','emailMatches','hashPresent','hashUsable','configuredPasswordMatches'])assert.equal(fixture[key],true,fixture.name+' '+key);
+  for(const fixture of fixtureHealth.slice(0,2)) {
+    assert.equal(fixture.roleMatches,true);assert.equal(fixture.active,true);assert.equal(fixture.suspended,false);assert.equal(fixture.verified,true);
+  }
+  for(const fixture of fixtureHealth.slice(2))assert.equal(fixture.statusMatches,true);
+  assert.equal(fixtureHealth[2].active,true);assert.equal(fixtureHealth[3].expectedStatus,'pending');assert.equal(fixtureHealth[3].active,false);
+  console.log('PASS gated read-only fixture health matches real seeded credentials and expected account states');
   await formResponse(await request('/__acceptance/',{headers:{Cookie:cookie}}),200,'/__acceptance/lock');
   const rejectedOrigins=[
     ['missing',{Referer:origin+'/__acceptance/','Sec-Fetch-Site':'same-origin'}],
@@ -126,6 +142,6 @@ async function main(){
   assert.equal(await new Promise(resolve=>child.once('exit',resolve)),1);child=null;assert(logs.join('').includes('foreign or malformed'));
   assert.equal((await pool.query('SELECT hours_display FROM venues WHERE id=$1',[venue])).rows[0].hours_display,'QA edited hours');
   console.log('PASS foreign environment marker refuses restart without overwriting fixture edits');
-  console.log('ACCEPTANCE_HOST_SMOKE '+JSON.stringify({engine:'native PostgreSQL',fictionalOnly:true,groups:6,externalProviders:false,realMail:false,physicalDevice:false}));
+  console.log('ACCEPTANCE_HOST_SMOKE '+JSON.stringify({engine:'native PostgreSQL',fictionalOnly:true,groups:7,externalProviders:false,realMail:false,physicalDevice:false}));
 }
 main().catch(error=>{console.error(error.message);process.exitCode=1;}).finally(async()=>{await stop();if(pool)await pool.end();});

@@ -497,7 +497,7 @@ router.get('/reviews', H.noStore, requireAuth, requireBusiness, async (req, res)
                     u.display_name AS user_display_name, u.username
              FROM reviews r
              LEFT JOIN users u ON u.id = r.user_id
-             WHERE r.venue_id = $1
+             WHERE r.venue_id = $1 AND ${H.nonFixtureSQL()}
              ORDER BY r.created_at DESC
              LIMIT $2`,
             [venue_id, limit]

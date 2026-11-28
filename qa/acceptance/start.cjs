@@ -6,6 +6,7 @@ const express = require('express');
 const {validateEnvironment, disableExternalServices, fenceOutboundHttp, claimDatabase} = require('./guard.cjs');
 const {installGate, shell, escape} = require('./gate.cjs');
 const {USERS, OWNERS, VENUES, seedFixtures} = require('./fixtures.cjs');
+const {installFixtureHealth} = require('./fixture-health.cjs');
 const {script:browserScript} = require('./browser-bootstrap.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
@@ -65,6 +66,7 @@ async function start() {
       catch { return false; }
       finally { clearTimeout(timer); }
     }});
+    installFixtureHealth(app, config, pool);
     app.use('/api', (req, res, next) => {
       if (/\/(?:forgot-password|verification\/request)$/.test(req.path)) return res.status(503).json({error:'Email delivery is disabled in this isolated acceptance environment',code:'ACCEPTANCE_MAIL_DISABLED'});
       if (/^\/(?:auth\/(?:google|apple)|photo(?:\/|$)|media\/(?:upload|sign)|admin\/(?:reseed|seed-demo|.*import|.*source-review))/.test(req.path)) return res.status(503).json({error:'This external or import capability is disabled in isolated acceptance',code:'ACCEPTANCE_CAPABILITY_DISABLED'});

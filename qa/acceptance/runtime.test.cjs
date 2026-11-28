@@ -10,6 +10,8 @@ const {validateEnvironment, disableExternalServices, ENVIRONMENT_ID} = require('
 const {installGate, issueCookie, validCookie, COOKIE, TTL, CSP, destination} = require('./gate.cjs');
 const {script:browserScript} = require('./browser-bootstrap.cjs');
 const {installFrontend} = require('./start.cjs');
+const {installFixtureHealth} = require('./fixture-health.cjs');
+const {USERS, OWNERS} = require('./fixtures.cjs');
 const root = path.resolve(__dirname,'../..');
 function environment() {
   return {NODE_ENV:'test',ACCEPTANCE_MODE:'isolated-synthetic',ACCEPTANCE_ENVIRONMENT_ID:ENVIRONMENT_ID,
@@ -253,4 +255,140 @@ test('gate form responses use strict-origin while recovery documents keep no-ref
   const staticPage=await request('/admin.html',{headers:{Cookie:cookie}});
   assert.equal(staticPage.status,200);
   assert.equal(staticPage.headers.get('referrer-policy'),'no-referrer');
+});
+
+async function fixtureHealthHarness(t) {
+  const env=environment(), config=validateEnvironment(env,root), app=express();
+  const hash=await require('bcryptjs').hash(config.fixturePassword,4), calls=[];
+  const rows={users:USERS.map(user=>({...user,password_hash:hash,is_active:true,is_suspended:false,
+    email_verified_at:new Date(),verified_email:user.email,token:'synthetic-must-not-return-token'})),
+    owners:OWNERS.map(owner=>({...owner,password_hash:hash}))};
+  const state={error:null};
+  installGate(app,config);
+  installFixtureHealth(app,config,{query:async query=>{
+    calls.push(query);
+    assert.match(query.text,/^SELECT /);
+    assert.doesNotMatch(query.text,/\b(?:INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE|COPY|CALL|DO|LOCK)\b|;/i);
+    const users=query.text.includes('FROM public.users');
+    assert.match(query.text,users ? /FROM public\.users WHERE id = ANY\(\$1::uuid\[\]\)$/ : /FROM public\.business_users WHERE id = ANY\(\$1::uuid\[\]\)$/);
+    assert.deepEqual(query.values,[(users?USERS:OWNERS).map(fixture=>fixture.id)]);
+    assert.equal(query.query_timeout,1500);
+    if(state.error)throw state.error;
+    return {rows:users?rows.users:rows.owners};
+  }});
+  const base=await listen(t,app,config), cookie=COOKIE+'='+issueCookie(config);
+  const request=(suffix='',options={})=>fetch(base+'/__acceptance/fixture-health'+suffix,
+    {...options,headers:{Cookie:cookie,...options.headers}});
+  return {base,config,rows,calls,state,cookie,request,
+    secrets:[env.JWT_SECRET,env.ACCEPTANCE_ACCESS_SECRET,env.ACCEPTANCE_FIXTURE_PASSWORD,hash,'synthetic-must-not-return-token']};
+}
+
+test('fixture health denies locked, invalid and expired cookies without reflecting inputs or reading rows', async t => {
+  const h=await fixtureHealthHarness(t);
+  for(const cookie of ['',COOKIE+'=invalid',COOKIE+'='+issueCookie(h.config,Date.now()-(TTL+1)*1000)]) {
+    const response=await h.request('?password=synthetic-query-secret',{headers:{Cookie:cookie}});
+    assert.equal(response.status,401);assert.match(response.headers.get('cache-control'),/no-store/);
+    const body=await response.text();assert(!body.includes('synthetic-query-secret'));
+    assert.equal(JSON.parse(body).code,'ACCEPTANCE_LOCKED');
+  }
+  const variant=await fetch(h.base+'/__ACCEPTANCE/fixture-health/?password=synthetic-query-secret');
+  assert.equal(variant.status,401);assert(!(await variant.text()).includes('synthetic-query-secret'));
+  assert.equal(h.calls.length,0);
+});
+
+test('fixture health returns only fixed identities and booleans from fixed read-only SQL', async t => {
+  const h=await fixtureHealthHarness(t), response=await h.request();
+  assert.equal(response.status,200);assert.match(response.headers.get('cache-control'),/no-store/);
+  const text=await response.text();
+  for(const secret of h.secrets)assert(!text.includes(secret),'Diagnostic leaked synthetic secret material');
+  assert(!text.includes('@'));assert(!text.includes('b532045e'));
+  const credentials={hashPresent:true,hashUsable:true,configuredPasswordMatches:true};
+  assert.deepEqual(JSON.parse(text),{fixtures:[
+    ...USERS.map(user=>({name:user.name,role:user.role,exists:true,emailMatches:true,roleMatches:true,
+      active:true,suspended:false,verified:true,...credentials})),
+    ...OWNERS.map((owner,index)=>({name:['QA Owner','QA Pending Owner'][index],role:'business',exists:true,
+      emailMatches:true,expectedStatus:owner.status,statusMatches:true,active:owner.status==='active',...credentials}))
+  ]});
+  assert.equal(h.calls.length,2);
+});
+
+test('fixture health distinguishes inactive, suspended, unverified, mismatched and missing fixtures', async t => {
+  const h=await fixtureHealthHarness(t);
+  Object.assign(h.rows.users[0],{is_active:false,is_suspended:true,verified_email:'unexpected-verified@example.invalid'});
+  Object.assign(h.rows.users[1],{email:'unexpected-email@example.invalid',role:'unexpected-role',email_verified_at:null});
+  h.rows.owners[0].status='unexpected-owner-status';h.rows.owners.pop();
+  let response=await h.request(), body=await response.text();
+  assert.equal(response.status,200);assert(!body.includes('unexpected-'));
+  let [admin,member,owner,pending]=JSON.parse(body).fixtures;
+  assert.equal(admin.active,false);assert.equal(admin.suspended,true);assert.equal(admin.verified,false);
+  assert.equal(member.exists,true);assert.equal(member.emailMatches,false);assert.equal(member.roleMatches,false);assert.equal(member.verified,false);
+  assert.equal(owner.statusMatches,false);assert.equal(owner.active,false);
+  assert.equal(pending.exists,false);assert.equal(pending.statusMatches,false);assert.equal(pending.hashPresent,false);assert.equal(pending.configuredPasswordMatches,false);
+  h.rows.users=[];
+  response=await h.request();[admin,member]=(await response.json()).fixtures;
+  for(const user of [admin,member])for(const [key,value] of Object.entries(user))if(!['name','role'].includes(key))assert.equal(value,false);
+});
+
+test('fixture health compares only the configured password and safely reports absent or unusable hashes', async t => {
+  const h=await fixtureHealthHarness(t), bcrypt=require('bcryptjs');
+  h.config.fixturePassword=crypto.randomBytes(24).toString('hex');
+  let response=await h.request();
+  for(const fixture of (await response.json()).fixtures) {
+    assert.equal(fixture.hashUsable,true);assert.equal(fixture.configuredPasswordMatches,false);
+  }
+  h.rows.users[0].password_hash=await bcrypt.hash(h.config.fixturePassword,4);
+  h.rows.users[1].password_hash=null;
+  h.rows.owners[0].password_hash='synthetic-malformed-secret-hash';
+  h.rows.owners[1].password_hash='$2a$31$'+'a'.repeat(53);
+  response=await h.request();const body=await response.text();assert(!body.includes('synthetic-malformed-secret-hash'));
+  const [admin,member,owner,pending]=JSON.parse(body).fixtures;
+  assert.equal(admin.configuredPasswordMatches,true);
+  assert.equal(member.hashPresent,false);assert.equal(member.hashUsable,false);assert.equal(member.configuredPasswordMatches,false);
+  for(const fixture of [owner,pending]) {
+    assert.equal(fixture.hashPresent,true);assert.equal(fixture.hashUsable,false);assert.equal(fixture.configuredPasswordMatches,false);
+  }
+});
+
+test('fixture health rejects query, password-body, POST and HEAD inputs before database work', async t => {
+  const h=await fixtureHealthHarness(t);
+  for(const [suffix,options,status] of [
+    ['?email=other@example.invalid&password=synthetic-input&sql=UPDATE',{},400],
+    ['',{method:'POST',headers:{Origin:h.base,'Content-Type':'application/json'},body:JSON.stringify({password:'synthetic-input'})},405],
+    ['',{method:'HEAD'},405]
+  ]) {
+    const response=await h.request(suffix,options);assert.equal(response.status,status);
+    assert.match(response.headers.get('cache-control'),/no-store/);
+    assert(!(await response.text()).includes('synthetic-input'));
+  }
+  const input='password=synthetic-input';
+  const bodyResponse=await new Promise((resolve,reject)=>{
+    const request=require('node:http').request(h.base+'/__acceptance/fixture-health',
+      {method:'GET',headers:{Cookie:h.cookie,'Content-Length':Buffer.byteLength(input)}},response=>{
+        let body='';response.on('data',chunk=>body+=chunk);response.on('end',()=>resolve({status:response.statusCode,body}));
+      });
+    request.on('error',reject);request.end(input);
+  });
+  assert.equal(bodyResponse.status,400);assert.deepEqual(JSON.parse(bodyResponse.body),{error:'Fixture diagnostic unavailable'});
+  assert.equal(h.calls.length,0);
+});
+
+test('fixture health limits authenticated work globally and leaves rejected requests read-only', async t => {
+  const h=await fixtureHealthHarness(t);
+  for(let i=0;i<3;i++)assert.equal((await h.request('',{headers:{'X-Forwarded-For':'192.0.2.'+(i+1)}})).status,200);
+  const response=await h.request('',{headers:{'X-Forwarded-For':'192.0.2.99'}});
+  assert.equal(response.status,429);assert.match(response.headers.get('cache-control'),/no-store/);
+  assert.deepEqual(await response.json(),{error:'Fixture diagnostic unavailable'});
+  assert.equal(h.calls.length,6,'Limited requests must not execute another query');
+});
+
+test('fixture health redacts database and bcrypt failures', async t => {
+  const h=await fixtureHealthHarness(t);
+  h.state.error=Error('synthetic database error '+h.secrets.join(' '));
+  let response=await h.request();assert.equal(response.status,503);
+  assert.match(response.headers.get('cache-control'),/no-store/);
+  assert.deepEqual(await response.json(),{error:'Fixture diagnostic unavailable'});
+  h.state.error=null;
+  t.mock.method(require('bcryptjs'),'compare',async()=>{throw Error('synthetic bcrypt error '+h.secrets.join(' '));});
+  response=await h.request();assert.equal(response.status,503);
+  assert.deepEqual(await response.json(),{error:'Fixture diagnostic unavailable'});
 });
