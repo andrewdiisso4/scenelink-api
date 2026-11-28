@@ -11,7 +11,7 @@ module.exports = async function reviewIntegrityIntegration({api, pool, check, cr
         const actor = crypto.randomUUID(), venue = crypto.randomUUID(), suffix = crypto.randomBytes(4).toString('hex');
         const email = 'review-order-' + suffix + '@example.invalid';
         await pool.query(`INSERT INTO users(id,email,username,display_name,email_verified_at,verified_email)
-            VALUES($1,$2,$3,'Fictional review ordering author',NOW(),$2)`, [actor, email, 'review_order_' + suffix]);
+            VALUES($1,$2::text,$3,'Fictional review ordering author',NOW(),$2::text)`, [actor, email, 'review_order_' + suffix]);
         await pool.query(`INSERT INTO venues(id,name,slug,type,is_active,rating,review_count)
             VALUES($1,'Fictional review ordering venue',$2,'restaurant',true,0,0)`, [venue, 'review-order-' + suffix]);
         const token = req('./src/middleware/auth').generateToken({id:actor, role:'user', auth_version:0});
