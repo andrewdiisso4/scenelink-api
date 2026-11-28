@@ -219,6 +219,15 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
       await emailPage.setViewportSize({width:900,height:1150});await shot(emailPage,'welcome-'+variant+'-desktop',true);
       await emailPage.setViewportSize({width:390,height:1100});await shot(emailPage,'welcome-'+variant+'-mobile',true);
     }
+    const newsletter=require('../src/services/mailer').newsletterConfirmEmail('T'.repeat(43));
+    for(const width of [320,390,900]){
+      await emailPage.setViewportSize({width,height:800});
+      await emailPage.setContent(newsletter.html);
+      const cancel=emailPage.getByRole('link',{name:'cancel this signup or unsubscribe',exact:true});
+      assert.equal(await cancel.evaluate(link=>getComputedStyle(link).color),'rgb(247, 215, 134)');
+      assert(await emailPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'newsletter must fit without horizontal scrolling');
+      await shot(emailPage,'newsletter-'+width,true);
+    }
     await emailCtx.close();
   });
   assert.deepEqual(errors,[],'No uncaught JavaScript errors in tested real pages');

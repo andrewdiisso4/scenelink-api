@@ -365,11 +365,40 @@ function newsletterConfirmEmail(token) {
     text:`Confirm within 24 hours: ${confirmUrl}
 
 If you did not request this, ignore this email or cancel here: ${unsubscribeUrl}`,
-    html:brandedLayout({title:'Confirm your newsletter signup',
-      bodyHtml:`<p>Get Boston venue picks and SceneLink updates. Confirm within 24 hours to join.</p>
-        <p>If you didn’t request this, ignore this email or <a href="${escapeHtml(unsubscribeUrl)}">cancel this signup or unsubscribe</a>.</p>`,
-      ctaUrl:confirmUrl,ctaLabel:'Confirm newsletter signup'}),
+    html:newsletterConfirmationLayout({ origin, confirmUrl, unsubscribeUrl }),
   };
+}
+
+// Inline styles and a font-color fallback keep Outlook from using its default
+// blue on the dark background. The email does not depend on a stylesheet.
+function newsletterConfirmationLayout({ origin, confirmUrl, unsubscribeUrl }) {
+  const publicLink = (path, label) =>
+    `<a href="${escapeHtml(new URL(path,origin).href)}" style="color:#F7D786;text-decoration:underline"><font color="#F7D786">${label}</font></a>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>Confirm your SceneLink newsletter signup</title></head>
+<body style="margin:0;padding:0;background-color:#0B0B10">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#0B0B10" style="background-color:#0B0B10;font-family:Arial,Helvetica,sans-serif">
+<tr><td align="center" style="padding:24px 12px">
+<!--[if mso]><table role="presentation" width="560" align="center" cellpadding="0" cellspacing="0"><tr><td><![endif]-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#15151C" style="max-width:560px;background-color:#15151C;border:1px solid #34333E;border-radius:16px;text-align:left">
+<tr><td style="padding:28px 24px 24px">
+  <p style="margin:0 0 4px;color:#F7D786;font-size:23px;font-weight:700;line-height:1.2">SceneLink</p>
+  <p style="margin:0 0 24px;color:#C9C6CF;font-size:12px;letter-spacing:1.1px;line-height:1.5">BOSTON NIGHTLIFE &amp; DINING</p>
+  <h1 style="margin:0 0 12px;color:#FAF9FC;font-size:26px;font-weight:700;line-height:1.25">Confirm your newsletter signup</h1>
+  <p style="margin:0 0 22px;color:#ECEAF0;font-size:16px;line-height:1.6">Get Boston venue picks and SceneLink updates. Your confirmation link expires in 24 hours.</p>
+  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px"><tr>
+    <td bgcolor="#F7D786" style="background-color:#F7D786;border-radius:8px">
+      <a href="${escapeHtml(confirmUrl)}" style="display:inline-block;border:1px solid #F7D786;padding:13px 18px;border-radius:8px;color:#21170B;text-decoration:none;font-size:16px;font-weight:700;line-height:1.2"><font color="#21170B">Confirm newsletter signup</font></a>
+    </td>
+  </tr></table>
+  <p style="margin:0;color:#D7D4DE;font-size:15px;line-height:1.6">Didn’t request this? You can ignore this email or <a href="${escapeHtml(unsubscribeUrl)}" style="color:#F7D786;text-decoration:underline;font-weight:700"><font color="#F7D786">cancel this signup or unsubscribe</font></a>.</p>
+</td></tr>
+<tr><td style="padding:16px 24px 20px;border-top:1px solid #34333E;color:#C9C6CF;font-size:13px;line-height:1.8">
+  ${publicLink('/privacy.html','Privacy')} &nbsp;·&nbsp; ${publicLink('/terms.html','Terms')} &nbsp;·&nbsp; ${publicLink('/contact.html','Contact')}
+  <br>SceneLink · Boston, MA
+</td></tr>
+</table>
+<!--[if mso]></td></tr></table><![endif]-->
+</td></tr></table></body></html>`;
 }
 
 function contactNotifyAdminEmail({ name, email, message, subject }) {
