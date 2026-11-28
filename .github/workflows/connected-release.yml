@@ -20,7 +20,13 @@ jobs:
           node-version-file: .node-version
       - run: npm ci --ignore-scripts
       - run: npm run check && npm test
+      - name: Validate the reviewed Boston venue packet
+        run: node src/operations/inactive-venue-intake.cjs validate --packet data/venue-intake/boston-20261120 --packet-sha cbc0d3e4c93748d8feef25ad496e01125494eba15c8c3034e5080cf0aef6b008
+      - name: Offline venue preparation regression
+        run: python3 qa/prepare-real-venues.test.py
       - run: npm ci --ignore-scripts --prefix web
+      - name: Isolated acceptance host guard and gate regressions
+        run: node --test qa/acceptance/runtime.test.cjs
       - run: npm test --prefix web && npm run test:social --prefix web
   postgres:
     runs-on: ubuntu-latest
@@ -28,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [api, ingestion, upgrade, welcome]
+        suite: [api, ingestion, upgrade, welcome, venue-intake, concierge]
     services:
       postgres:
         image: postgres:18.3
@@ -73,3 +79,111 @@ jobs:
         env:
           TEST_WELCOME_DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
         run: node --test qa/welcome-email.test.cjs
+      - name: Native inactive venue intake acceptance
+        if: matrix.suite == 'venue-intake'
+        run: node --unhandled-rejections=strict qa/inactive-venue-intake-native.cjs
+      - name: Native Concierge conversation acceptance
+        if: matrix.suite == 'concierge'
+        run: node --unhandled-rejections=strict qa/concierge-conversation-native.cjs
+
+  acceptance_host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18.3
+        env:
+          POSTGRES_DB: scenelink_release_qa_20261123
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: scenelink_ci_disposable_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d scenelink_release_qa_20261123"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      ACCEPTANCE_SMOKE_DATABASE_URL: postgresql://postgres:scenelink_ci_disposable_only@127.0.0.1:5432/scenelink_release_qa_20261123
+      SCENELINK_ACCEPTANCE_NATIVE_SMOKE: 'yes'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .node-version
+      - run: npm ci --ignore-scripts
+      - run: npm ci --ignore-scripts --prefix web
+      - name: Native isolated acceptance host lifecycle
+        run: node --unhandled-rejections=strict qa/acceptance/native-smoke.cjs
+
+  account_analytics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18.3
+        env:
+          POSTGRES_DB: scenelink_test_account_analytics
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: scenelink_ci_disposable_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d scenelink_test_account_analytics"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:scenelink_ci_disposable_only@127.0.0.1:5432/scenelink_test_account_analytics
+      SCENELINK_TEST_ALLOW_SCHEMA_INIT: 'yes'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .node-version
+      - run: npm ci --ignore-scripts
+      - name: Native concurrent analytics and account deletion
+        run: node --unhandled-rejections=strict --test --test-reporter=spec qa/analytics-account-deletion-native.cjs
+
+  account_browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18.3
+        env:
+          POSTGRES_DB: scenelink_release_qa_20261123_browser
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: scenelink_ci_disposable_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d scenelink_release_qa_20261123_browser"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      TEST_DATABASE_URL: postgresql://postgres:scenelink_ci_disposable_only@127.0.0.1:5432/scenelink_release_qa_20261123_browser
+      SCENELINK_TEST_ALLOW_SCHEMA_INIT: 'yes'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .node-version
+      - run: npm ci --ignore-scripts
+      - name: Install pinned isolated browser QA runtime
+        timeout-minutes: 5
+        run: |
+          npm install --prefix "$RUNNER_TEMP/scenelink-browser" --no-save --ignore-scripts --package-lock=false playwright@1.62.1
+          node "$RUNNER_TEMP/scenelink-browser/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Real account and social browser journey with fictional fixtures
+        run: SCENELINK_BROWSER_MODULE_ROOT="$RUNNER_TEMP/scenelink-browser/node_modules" node --unhandled-rejections=strict qa/account-browser-native.cjs
+      - name: Preserve screenshots and acceptance receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: account-social-browser-${{ github.sha }}
+          path: evidence/account-social
+          if-no-files-found: warn
+          retention-days: 14

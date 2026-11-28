@@ -1,0 +1,146 @@
+{
+  "at": "2026-11-20T11:19:37.518Z",
+  "native_postgres": "18.3",
+  "fixture_venue_count": 17,
+  "fixture_event_count": 7,
+  "real_http_transport": true,
+  "external_network_attempts": 0,
+  "in_memory_model_requests": 5,
+  "production_access": false,
+  "private_baseline_unchanged": true,
+  "source_hashes": {
+    "src/routes/concierge.js": "be08cdf43caa5ab32eeecd717df3713dfee2b9418003d83771af72937b180777",
+    "src/routes/conciergeAI.js": "b95e21df6f1d4f26a1504a72cd7b54d105f1aff3c6736cb338a43c474edee742",
+    "src/services/concierge-conversation.js": "d2e905203767765b2740d75d0a42faf6aeadc21eafd275b4a8b50019763d63d1",
+    "src/services/concierge-constraints.js": "a65d905fd5f0aa802af4635c3680dd4152004d667b890a49c02cdd6c7c2f1eaf",
+    "src/services/concierge-intent.js": "26f7f00c2a736354f6f1b575411a0964f1c1c7eb7fd7f8a63c7e576cedacd537",
+    "src/services/concierge-query-constraints.js": "48a1d1b1ea4df5bacf6d1d68e1b0410a7a138b2dd2f03ded34722ff255753427",
+    "src/services/concierge-event-search.js": "5d8c1eb370fe00c8ef37693452e5c80720684f2e07c5afd819464f6001ea9daa",
+    "qa/concierge-conversation-native.cjs": "115cf287fb322774eeb53fa7807ad36a4a70b9c82d8710b6eb8a5493a5de4188"
+  },
+  "checks": [
+    {
+      "name": "initial exact filters and inactive/closed/duplicate visibility",
+      "passed": true
+    },
+    {
+      "name": "area follow-up preserves Italian restaurant and replaces Back Bay",
+      "passed": true
+    },
+    {
+      "name": "cheaper follow-up retains area/type/cuisine and excludes unreviewed cheap defaults",
+      "passed": true
+    },
+    {
+      "name": "bounded search_context preserves constraints after original request leaves six-turn history",
+      "passed": true
+    },
+    {
+      "name": "cocktail-bar switch clears incompatible cuisine and retains current area/budget",
+      "passed": true
+    },
+    {
+      "name": "fresh named lookup does not inherit prior area/cuisine/price",
+      "passed": true
+    },
+    {
+      "name": "start over clears prior constraints including price and cuisine",
+      "passed": true
+    },
+    {
+      "name": "explicit exclusions are enforced by native SQL results",
+      "passed": true
+    },
+    {
+      "name": "page neighborhood is a fallback only and never broadens explicit area",
+      "passed": true
+    },
+    {
+      "name": "negative cuisine follow-up keeps area/type and removes the inherited positive cuisine",
+      "passed": true
+    },
+    {
+      "name": "excluded page area is never restored as an implicit positive location",
+      "passed": true
+    },
+    {
+      "name": "assistant/system history cannot silently become user filter instructions",
+      "passed": true
+    },
+    {
+      "name": "Anywhere removes location without clearing cuisine/type or restoring page area",
+      "passed": true
+    },
+    {
+      "name": "No location preference is a refinement rather than unsupported exclusion",
+      "passed": true
+    },
+    {
+      "name": "named lookup honors explicit outside constraints instead of dropping them",
+      "passed": true
+    },
+    {
+      "name": "named alternative clears the exact name and excludes the prior venue",
+      "passed": true
+    },
+    {
+      "name": "tonight returns only the reviewed current-date Cambridge concert",
+      "passed": true
+    },
+    {
+      "name": "explicit event ISO date selects the requested date only",
+      "passed": true
+    },
+    {
+      "name": "event follow-up changes area while retaining tonight and concert kind",
+      "passed": true
+    },
+    {
+      "name": "empty event results do not silently fall back to unrelated venue cards",
+      "passed": true
+    },
+    {
+      "name": "unsupported relative event date asks for clarification without model or unrelated results",
+      "passed": true
+    },
+    {
+      "name": "model area follow-up uses the same constrained native candidates as fallback",
+      "passed": true
+    },
+    {
+      "name": "model budget follow-up uses the same constrained native candidates as fallback",
+      "passed": true
+    },
+    {
+      "name": "model type switch uses the same constrained native candidates as fallback",
+      "passed": true
+    },
+    {
+      "name": "model explicit area overrides context uses the same constrained native candidates as fallback",
+      "passed": true
+    },
+    {
+      "name": "forged account IDs and reused session ID cannot read private account data",
+      "passed": true
+    },
+    {
+      "name": "unsupported preference-state keys are ignored and cannot reach SQL or private data",
+      "passed": true
+    },
+    {
+      "name": "invalid and revoked bearer sessions fail closed rather than becoming guests",
+      "passed": true
+    },
+    {
+      "name": "current verified-participation policy is explicit for unverified account",
+      "passed": true
+    },
+    {
+      "name": "private fixtures, unknown public facts, and disabled providers remain intact",
+      "passed": true
+    }
+  ],
+  "full_scratch_report_sha256": "9fb2ad4b5ccbb37dfb6a5291debca25e2408d6b0c7c7f25610a7f277ce825a72",
+  "baseline_commit": "fe27f4f4151e39c0c83c7b29811a57a449d3f3e5",
+  "scope": "Fictional disposable data; native Express/PostgreSQL acceptance, provider adapter mocked in memory; no production access or deployment."
+}

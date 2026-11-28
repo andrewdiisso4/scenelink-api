@@ -39,7 +39,7 @@ async function setup(t, options={}) {
     if(call.path==='/api/admin/venues/summary')return response({total:17,active:16,missing_website:1});
     if(call.path==='/api/admin/stats')return response({users:{total:2,this_week:1,today:1},venues:{total:17,active:16,featured:1,trending:1}});
     if(call.path==='/api/admin/contacts')return response({messages:[],total:0});
-    if(call.path==='/api/admin/users')return response({users:[{id:'one',display_name:'Private Admin Fixture'}],total:1,page:1,limit:25,pages:1});
+    if(call.path==='/api/admin/users')return response({users:[{id:'one',display_name:'Private Admin Fixture'}],total:1,page:1,limit:25,pages:1,search_supported:true});
     return response({});
   };
   w.eval(authSource);
@@ -179,6 +179,28 @@ test('secret fallback is verified by the API and logout removes it',async t=>{
   h.click('#sbLogout');await wait();
   assert.equal(h.$('#sl-admin-gate').style.display,'flex');
   assert.equal(h.w.localStorage.getItem('sl_admin_secret'),null);
+});
+
+test('a delayed save from the prior session cannot unlock a new pending venue save',async t=>{
+  const saves=[];
+  const entry={id:'venue-fixture',name:'Fixture Cafe',is_active:false,is_featured:false,is_trending:false};
+  const h=await setup(t,{token:'admin-token',fetch:c=>{
+    if(c.path==='/api/admin/venues/list')return response({venues:[entry],total:1,limit:25,offset:0});
+    if(c.method==='PATCH')return new Promise(resolve=>{saves.push({resolve,body:c.body});});
+  }});
+  async function beginSave(){
+    h.click('[data-section=venues]');await wait();
+    h.click('[data-edit-index]');h.$('[data-venue-flag=featured]').checked=true;h.click('#venueModalSave');await wait();
+  }
+  await beginSave();assert.equal(saves.length,1);
+  h.click('#sbLogout');await wait();await login(h);await beginSave();
+  assert.equal(saves.length,2);assert.equal(h.$('#venueModalSave').disabled,true);
+  saves[0].resolve(response({venue:{id:entry.id,featured:true}}));await wait();
+  assert.equal(h.$('#venueModalSave').disabled,true,'old completion must leave the new save locked');
+  h.click('#venueModalSave');await wait();assert.equal(saves.length,2);
+  saves[1].resolve(response({venue:{id:entry.id,featured:true}}));await wait();
+  assert.equal(h.$('#venueModalSave').disabled,false);
+  assert.match(h.$('#toastStack .success').textContent,/Venue flags updated/);
 });
 
 test('an invalid admin secret cannot open the portal and is removed',async t=>{

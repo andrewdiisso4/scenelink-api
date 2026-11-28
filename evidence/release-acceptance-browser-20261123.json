@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-23T21:27:02.160951+00:00",
+  "status": "blocked",
+  "scope": "Local browser acceptance attempt for the isolated synthetic SceneLink launcher. No hosted service or production application was tested.",
+  "runtimeVersions": {
+    "nativeChromium": "156.0.8078.79 (Debian)",
+    "node": "24.22.3",
+    "nativePostgreSQL": "18.3"
+  },
+  "sourceSha256": {
+    "qa/acceptance/start.cjs": "3d51b1c450d357b679a82ec637d255a693c3434401a5d0452a517ff6244454f7",
+    "qa/acceptance/gate.cjs": "fa89f373c2e5d42dfc5a24ea47c32be02aa6427ba90e925bea6abe17bf475f32",
+    "qa/acceptance/guard.cjs": "22976c97e8120bf846e8f23cae17aa181e07b344a503318e7368a95f53dfb3b8",
+    "qa/acceptance/fixtures.cjs": "8e5af21cd882887dfb3a9a9d9a4f30c0b597ae9a3bf5d4b97abfb67bbe2fdd30"
+  },
+  "sourceSnapshotUnchangedAtCleanup": true,
+  "browserAttempts": [
+    {
+      "surface": "Local Chromium CLI",
+      "result": "blocked_before_browser_control",
+      "errorCategory": "environment_permission",
+      "detail": "Chromium exited 134 before exposing DevTools: process_singleton_posix.cc socket() failed: Operation not permitted (EPERM). No gate or signed-in browser flow executed."
+    },
+    {
+      "surface": "Supported CUA browser",
+      "result": "blocked_before_application_access",
+      "detail": "The local URL http://127.0.0.1:38745 returned ERR_CONNECTION_REFUSED in the browser. Inspection of the resulting error tab was then rejected by browser URL security policy; control stopped immediately. This is a local environment reachability/policy limitation and does not establish an application outage."
+    }
+  ],
+  "browserAcceptance": {
+    "verifiedFlows": [],
+    "screenshot": null,
+    "cspEnforcement": "not_verified",
+    "networkEgress": "not_verified",
+    "physicalDevice": "not_tested",
+    "hostedEnvironment": "not_tested"
+  },
+  "separateCodeLevelVerification": [
+    {
+      "test": "qa/acceptance/runtime.test.cjs",
+      "reportedResult": "7 passing unit checks",
+      "evidenceSource": "runtime-author verification",
+      "scope": "Configuration and boundary tests; not browser evidence"
+    },
+    {
+      "test": "qa/acceptance/native-smoke.cjs",
+      "reportedResult": "6 passing native smoke groups",
+      "evidenceSource": "runtime-author verification",
+      "scope": "Local HTTP/API/native database tests; not browser evidence"
+    }
+  ],
+  "cleanup": {
+    "localExecutionSessionTerminated": true,
+    "ownedDisposableDatabaseDirectoryRemoved": true,
+    "ephemeralCredentialFileRemoved": true
+  }
+}

@@ -1,103 +1,108 @@
-/**
- * SceneLink — Newsletter / Email Signup (Phase 5D-C1)
- * POST /api/newsletter/subscribe — adds email to subscribers table + sends confirmation
- * GET  /api/newsletter/subscribers — admin: list subscribers
- *
- * Email: uses centralized /services/mailer.js (GoDaddy/M365 SMTP via env).
- * Sender: info@scenelink.app
- */
+'use strict';
 
+const { createHash, randomBytes, timingSafeEqual } = require('node:crypto');
 const express = require('express');
-const pool = require('../config/database');
-const { optionalAuth } = require('../middleware/auth');
-const mailer = require('../services/mailer');
-const router = express.Router();
-const { contactLimiter } = require('../middleware/rateLimits');
+const { contactLimiter, writeLimiter } = require('../middleware/rateLimits');
 
-// Ensure subscribers table exists
-async function ensureTable() {
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS newsletter_subscribers (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-            email VARCHAR(255) UNIQUE NOT NULL,
-            name VARCHAR(255),
-            source VARCHAR(100) DEFAULT 'footer',
-            user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-            status VARCHAR(32) DEFAULT 'active',
-            subscribed_at TIMESTAMPTZ DEFAULT NOW()
-        )
-    `).catch(() => {});
-}
-ensureTable();
+const tokenHash = (token) => createHash('sha256').update(token).digest('hex');
+const emailPattern = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,63}$/;
+const tokenPattern = /^[A-Za-z0-9_-]{43}$/;
+const generic = { ok: true, message: 'If confirmation is needed, check your inbox for a link to join.' };
+const unavailable = { error: 'Email signup is temporarily unavailable. Please try again later.' };
 
-// POST /api/newsletter/subscribe
-router.post('/subscribe', contactLimiter, optionalAuth, async (req, res) => {
-    try {
-        const { email, name, source } = req.body || {};
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
-            return res.status(400).json({ error: 'A valid email is required' });
-        }
-
-        const cleanEmail = String(email).trim().toLowerCase();
-        const cleanName = String(name || '').trim().slice(0, 255) || null;
-
-        const result = await pool.query(
-            `INSERT INTO newsletter_subscribers (email, name, source, user_id)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT (email) DO UPDATE SET status='active', subscribed_at=NOW()
-             RETURNING id, subscribed_at`,
-            [cleanEmail, cleanName, String(source || 'footer').slice(0, 100), req.user ? req.user.id : null]
-        );
-
-        console.log(`[newsletter] subscriber id=${result.rows[0].id} source=${source || 'footer'}`);
-
-        // Send confirmation + admin notify (non-blocking)
-        setImmediate(async () => {
+function createRouter({ pool, mailer, logger = console, sendTimeoutMs = 12000 }) {
+    const router = express.Router();
+    router.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+    router.post('/subscribe', contactLimiter, async (req, res) => {
+        const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+        if (email.length > 254 || !emailPattern.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
+        // Backward-compatible endpoint for the legacy native waitlist modal.
+        const waitlistPlatforms = {app_waitlist_ios:'ios',app_waitlist_android:'android',app_waitlist_web:'other',
+          'app-waitlist':'other','ios-app-waitlist':'ios'};
+        const requestedSource = req.body?.source;
+        if (typeof requestedSource === 'string' && Object.hasOwn(waitlistPlatforms,requestedSource)) {
             try {
-                const tpl = mailer.newsletterConfirmEmail(cleanEmail);
-                await mailer.sendMail({ to: cleanEmail, ...tpl });
-
-                if (process.env.ADMIN_NOTIFY_EMAIL || mailer.SUPPORT_EMAIL) {
-                    await mailer.sendMail({
-                        to: process.env.ADMIN_NOTIFY_EMAIL || mailer.SUPPORT_EMAIL,
-                        subject: `[SceneLink] New newsletter subscriber: ${cleanEmail}`,
-                        html: `<div style="font-family:sans-serif;padding:20px;background:#111;color:#fff;border-radius:8px">
-                            <h3 style="color:#D4AF37;margin:0 0 12px">New newsletter subscriber</h3>
-                            <p style="color:#ccc;font-size:14px;margin:6px 0"><strong>Email:</strong> ${cleanEmail}</p>
-                            <p style="color:#ccc;font-size:14px;margin:6px 0"><strong>Source:</strong> ${source || 'footer'}</p>
-                            ${cleanName ? `<p style="color:#ccc;font-size:14px;margin:6px 0"><strong>Name:</strong> ${cleanName}</p>` : ''}
-                          </div>`,
-                    });
-                }
-            } catch (err) {
-                console.warn('[newsletter] confirm email failed:', err.message);
+                await pool.query(`INSERT INTO app_launch_waitlist (email,platform) VALUES ($1,$2)
+                    ON CONFLICT (email) DO NOTHING`, [email,waitlistPlatforms[requestedSource]]);
+                return res.json({ok:true,message:'Your request for native app launch news was saved.'});
+            } catch (_) { return res.status(503).json(unavailable); }
+        }
+        if (!(mailer.isReadyFor ? mailer.isReadyFor('newsletter-confirm') : mailer.isReady())) return res.status(503).json(unavailable);
+        const source = 'footer';
+        const token = randomBytes(32).toString('base64url');
+        let timeout;
+        try {
+            const template = mailer.newsletterConfirmEmail(token);
+            // Atomic claim across instances. An active, confirmed address is not
+            // contacted again. An expired or opted-out address must reconfirm.
+            const claimed = await pool.query(`
+              INSERT INTO newsletter_subscribers (email,source,status,opt_in_hash,opt_in_requested_at)
+              SELECT COALESCE((
+                SELECT email FROM newsletter_subscribers WHERE LOWER(email)=$1
+                ORDER BY (status='active' AND opt_in_confirmed_at IS NOT NULL) DESC NULLS LAST, (email=$1) DESC, id LIMIT 1
+              ), $1),$2,'pending',$3,NOW()
+              ON CONFLICT (email) DO UPDATE SET status='pending',source=EXCLUDED.source,
+                opt_in_hash=EXCLUDED.opt_in_hash,opt_in_requested_at=NOW(),opt_in_confirmed_at=NULL
+              WHERE (newsletter_subscribers.status IS DISTINCT FROM 'active' OR newsletter_subscribers.opt_in_confirmed_at IS NULL)
+                AND (newsletter_subscribers.opt_in_requested_at IS NULL OR newsletter_subscribers.opt_in_requested_at < NOW()-INTERVAL '30 minutes')
+              RETURNING id
+            `, [email, source, tokenHash(token)]);
+            if (!claimed.rows.length) return res.status(202).json(generic);
+            const outcome = await Promise.race([
+                mailer.sendMail({ to: {address:email}, ...template, retry:false, privateLog:true, purpose:'newsletter-confirm' }),
+                new Promise(resolve => { timeout = setTimeout(() => resolve(null), sendTimeoutMs); }),
+            ]);
+            if (!outcome?.ok) {
+                // Do not retry ambiguous sends automatically or claim delivery.
+                logger.warn('[newsletter] confirmation not accepted or unknown');
+                return res.status(503).json(unavailable);
             }
-        });
+            return res.status(202).json(generic);
+        } catch (_) {
+            logger.warn('[newsletter] signup unavailable');
+            return res.status(503).json(unavailable);
+        } finally { clearTimeout(timeout); }
+    });
 
-        res.json({ ok: true, message: "You're subscribed! Check your inbox for a confirmation email." });
-    } catch (err) {
-        console.error('[newsletter/subscribe]', err);
-        res.status(500).json({ error: 'Subscription failed. Please try again.' });
-    }
-});
+    const tokenAction = action => async (req, res) => {
+        const token = req.body?.token;
+        if (typeof token !== 'string' || !tokenPattern.test(token)) return res.status(400).json({ error:'This link is invalid or has expired.' });
+        const hash = tokenHash(token);
+        try {
+            if (action === 'confirm') {
+                const result = await pool.query(`
+                  UPDATE newsletter_subscribers SET status='active',opt_in_confirmed_at=NOW(),subscribed_at=NOW()
+                  WHERE opt_in_hash=$1 AND status='pending' AND opt_in_requested_at >= NOW()-INTERVAL '24 hours'
+                  RETURNING id`, [hash]);
+                if (!result.rows.length) return res.status(400).json({ error:'This link is expired or already used. If needed, sign up again from the footer.' });
+            } else {
+                const result = await pool.query(`
+                  UPDATE newsletter_subscribers SET status='unsubscribed'
+                  WHERE opt_in_hash=$1 AND status IN ('pending','active','unsubscribed') RETURNING id`, [hash]);
+                if (!result.rows.length) return res.status(400).json({ error:'This link is invalid or has been replaced.' });
+            }
+            return res.json({ ok:true });
+        } catch (_) {
+            logger.warn('[newsletter] token action unavailable');
+            return res.status(503).json({ error:'Please try again later.' });
+        }
+    };
+    router.post('/confirm', writeLimiter, tokenAction('confirm'));
+    router.post('/unsubscribe', writeLimiter, tokenAction('unsubscribe'));
 
-// GET /api/newsletter/subscribers — admin only
-router.get('/subscribers', async (req, res) => {
-    const secret = req.headers['x-admin-secret'] || req.query.secret;
-    if (!process.env.ADMIN_SECRET || secret !== process.env.ADMIN_SECRET) {
-        return res.status(403).json({ error: 'Forbidden' });
-    }
-    try {
-        const limit = Math.min(500, parseInt(req.query.limit) || 100);
-        const result = await pool.query(
-            'SELECT id, email, name, source, status, subscribed_at FROM newsletter_subscribers ORDER BY subscribed_at DESC LIMIT $1',
-            [limit]
-        );
-        const count = await pool.query("SELECT COUNT(*) as total FROM newsletter_subscribers WHERE status='active'");
-        res.json({ subscribers: result.rows, total: parseInt(count.rows[0].total) });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-module.exports = router;
+    router.get('/subscribers', async (req, res) => {
+        const supplied = Buffer.from(req.get('x-admin-secret') || '');
+        const expected = Buffer.from(process.env.ADMIN_SECRET || '');
+        if (!expected.length || supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return res.status(403).json({ error:'Forbidden' });
+        try {
+            const limit = Math.max(1, Math.min(500, parseInt(req.query.limit,10) || 100));
+            const result = await pool.query(`SELECT id,email,name,source,status,subscribed_at FROM newsletter_subscribers
+              WHERE status='active' AND opt_in_confirmed_at IS NOT NULL ORDER BY subscribed_at DESC LIMIT $1`, [limit]);
+            const count = await pool.query("SELECT COUNT(*)::int AS total FROM newsletter_subscribers WHERE status='active' AND opt_in_confirmed_at IS NOT NULL");
+            return res.json({ subscribers:result.rows, total:count.rows[0].total });
+        } catch (_) { return res.status(500).json({ error:'Unable to load subscribers.' }); }
+    });
+    return router;
+}
+module.exports = createRouter({pool:require('../config/database'),mailer:require('../services/mailer')});
+module.exports.createRouter = createRouter;

@@ -1,0 +1,31 @@
+/* Isolated account links share the account-access visual language without
+   loading the application, analytics, or third-party authentication bundles. */
+body.sl-account-entry { margin: 0; min-height: 100vh; min-height: 100dvh; padding: 40px 20px; }
+.sl-account-entry * { box-sizing: border-box; }
+.sl-account-card { width: 100%; max-width: 460px; margin: 5vh auto; padding: 32px; background: var(--sl-ui-bg, #101316); border: 1px solid var(--sl-ui-border, #49535e); border-radius: 24px; box-shadow: 0 24px 70px rgb(0 0 0 / 22%); }
+.sl-account-brand { display: block; width: 88px; margin: 0 auto 22px; }
+.sl-account-brand img { display: block; width: 88px; height: 88px; object-fit: contain; border-radius: 18px; }
+.sl-account-kicker { text-align: center; color: var(--sl-ui-gold, #e3bc54); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 10px; }
+.sl-account-card h1 { font-size: 28px; line-height: 1.2; text-align: center; margin: 0 0 14px; }
+.sl-account-card p { font-size: 14px; line-height: 1.65; color: var(--sl-ui-muted, #b9c1ca); }
+.sl-account-card label { display: block; margin: 20px 0 8px; font-size: 13px; font-weight: 600; }
+.sl-account-card input { display: block; width: 100%; font: inherit; }
+.sl-account-password { position: relative; }
+html[data-sl-design] body .sl-account-password input { padding-right: 78px !important; }
+html[data-sl-design] body .sl-account-password button {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); min-width: 58px;
+  min-height: 44px !important; width: auto; margin: 0; padding: 8px; border-color: transparent;
+  background: transparent; color: var(--sl-ui-gold, #e3bc54); font-size: 13px;
+}
+.sl-account-card .sl-account-submit { width: 100%; min-height: 50px; padding: 13px 18px; margin-top: 24px; cursor: pointer; }
+.sl-account-card [role="status"] { padding: 14px; border: 1px solid var(--sl-ui-divider, #303841); border-radius: 12px; background: var(--sl-ui-surface, #191e23); min-height: 3em; }
+.sl-account-card [data-kind="error"] { color: #ffb4b4; border-color: #8d4e56; background: #2b1c21; }
+.sl-account-card [data-kind="success"] { color: #b9ebcc; border-color: #47795b; background: #16291f; }
+.sl-account-back { display: block; min-height: 44px; padding: 12px 0 4px; text-align: center; color: var(--sl-ui-gold, #e3bc54); text-decoration: none; font-size: 14px; }
+.sl-account-back:hover { text-decoration: underline; }
+.sl-account-entry [hidden] { display: none !important; }
+@media (max-width: 480px) {
+  body.sl-account-entry { padding: max(20px, env(safe-area-inset-top)) 12px max(20px, env(safe-area-inset-bottom)); }
+  .sl-account-card { padding: 28px 20px; margin: 2vh auto; border-radius: 22px; }
+  .sl-account-card h1 { font-size: 26px; }
+}

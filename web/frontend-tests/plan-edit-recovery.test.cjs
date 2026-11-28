@@ -33,6 +33,46 @@ async function harness(t,config={}){
  const submit=()=>{const form=el('#slEditRoom');assert(form);form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));};
  return{w,state,calls,el,click,input,submit,setConfirm:v=>confirm=v,change:async value=>{session=value;w.dispatchEvent(new w.CustomEvent('sl-auth-changed'));await tick();}};
 }
+test('a returning user can reopen a saved Concierge itinerary and read the revised stops in order', async t => {
+  const plans = [
+    {name: 'Seaport <dinner>', date: '2026-11-22T00:00:00.000Z',
+      stops: [{venue_name: 'Harbor Kitchen'}, {venue_name: 'New Drinks & Co', venue_available: false}],
+      legacy_venues: [{name: 'Older <café>'}]},
+    {name: 'Empty itinerary', stops: [], legacy_venues: []}
+  ];
+  const h = await harness(t, { intercept: call => call.path === '/plans' ? {plans} : undefined });
+  const before = h.calls.length;
+  await h.click('[data-act=legacy]');
+  const entries = h.w.document.querySelectorAll('#slLegacyPlans details');
+  assert.equal(entries.length, 2);
+  assert.equal(entries[0].open, false);
+  assert.equal(entries[0].querySelector('summary').textContent, 'Seaport <dinner>');
+  await h.click('#slLegacyPlans summary');
+  assert.equal(entries[0].open, true);
+  assert.deepEqual([...entries[0].querySelectorAll('ol li')].map(li => li.textContent),
+    ['Harbor Kitchen', 'New Drinks & Co · Currently unavailable']);
+  assert.equal(entries[0].querySelector('ul li').textContent, 'Older <café>');
+  assert.match(entries[0].textContent, /2026-11-22/);
+  assert.match(entries[1].textContent, /No stops saved yet/);
+  assert.deepEqual(h.calls.slice(before).map(call => [call.method, call.path]), [['GET', '/plans']]);
+});
+test('a pending owner itinerary load cannot populate the new account after an auth change', async t => {
+  const pending = defer();
+  const h = await harness(t, { intercept: call => {
+    if (call.path === '/plans') return call.session === 'FICTIONAL_A' ? pending.promise : {plans: []};
+  } });
+  await h.click('[data-act=legacy]');
+  const oldTarget = h.el('#slLegacyPlans');
+  await h.change('FICTIONAL_B');
+  assert.equal(oldTarget.isConnected, false);
+  pending.resolve({plans: [{name: 'MUST_NOT_SHOW_OLD_OWNER_PLAN', stops: [{venue_name: 'MUST_NOT_SHOW_OLD_OWNER_VENUE'}]}]});
+  await tick();
+  await h.click('[data-act=legacy]');
+  assert.match(h.el('#slLegacyPlans').textContent, /No saved itineraries yet/);
+  assert.doesNotMatch(h.el('main').textContent, /MUST_NOT_SHOW_OLD_OWNER/);
+  assert.deepEqual(h.calls.filter(call => call.path === '/plans').map(call => [call.method, call.session]),
+    [['GET', 'FICTIONAL_A'], ['GET', 'FICTIONAL_B']]);
+});
 test('owner can edit existing plan details and server readback survives refresh',async t=>{
  const h=await harness(t);await h.click('[data-act=edit-room]');h.input('name','  Friday with friends  ');h.input('description','Dinner and catch up');h.input('event_date','2026-11-15');h.submit();await tick();
  const writes=h.calls.filter(x=>x.path.endsWith('/details'));assert.equal(writes.length,1);assert.equal(writes[0].method,'PUT');assert.deepEqual(writes[0].body,{name:'Friday with friends',description:'Dinner and catch up',event_date:'2026-11-15',revision:3});

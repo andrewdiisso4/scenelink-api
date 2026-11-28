@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-11-24T03:27:05.102Z",
+  "subject": "SceneLink production admin access hotfix",
+  "status": "published; authenticated production acceptance remains open",
+  "pull_request": "https://github.com/andrewdiisso4/scenelink-api/pull/40",
+  "source": {
+    "base": "db579dbca96d57edcca5a36cb3d009c1724f2262",
+    "reviewed_local_commit": "b94fa09d0e44259262d8bf3912542fc9842dde7b",
+    "published_pr_head": "252da477e254e48416eb764b144e78e6544ed583",
+    "merged_main": "0741fc91105ce886984c9888b64b6f7a90864ff6",
+    "exact_tree": "c43370fced3874d2f5efebb94155a2221e9ea902",
+    "tree_equality_verified": true,
+    "changed_files": 7,
+    "changed_published_files": [
+      "web/frontend/admin.html",
+      "web/frontend/js/sl-admin-portal.js",
+      "web/frontend/version.json"
+    ]
+  },
+  "deployment": {
+    "provider": "Netlify",
+    "site_id": "3ddfad46-169e-437d-ba6d-d9d47474bacf",
+    "deploy_id": "6b04fe26fc45f94f82790ad4",
+    "context": "production",
+    "state": "ready/current",
+    "commit": "0741fc91105ce886984c9888b64b6f7a90864ff6",
+    "published_at_utc": "2026-11-24T03:02:14.618Z",
+    "published_at_eastern": "November 23, 2026, 10:02 p.m. Eastern",
+    "origin": "https://scenelink.app"
+  },
+  "validation": {
+    "independent_review": "No blockers",
+    "focused_checks": {
+      "passed": 32,
+      "failed": 0
+    },
+    "ci": {
+      "url": "https://github.com/andrewdiisso4/scenelink-api/actions/runs/45316323938",
+      "passed_jobs": 5,
+      "total_jobs": 5
+    },
+    "native_compatibility": {
+      "receipt": "admin-access-native-20261124.json",
+      "passed_groups": 5,
+      "total_groups": 5
+    },
+    "hosted_preview": {
+      "deploy_id": "6b04fd99facf739f250100a4",
+      "commit": "252da477e254e48416eb764b144e78e6544ed583",
+      "observed": "Signed-out page renders functional sign-in gate."
+    },
+    "production_browser": {
+      "url": "https://scenelink.app/admin.html",
+      "before": "Access Denied immediately upon navigation; existing browser-session state not inspected.",
+      "after": "Reload of the same tab shows Admin email, Password, Sign in, and use admin secret.",
+      "script_url": "js/sl-admin-portal.js?v=connected-20261124-admin-access",
+      "source_query_verified": true,
+      "authenticated_acceptance": "Not completed. The user-selected email/password sign-in returned Invalid email or password.",
+      "automatic_retry": false,
+      "credential_values_inspected": false
+    }
+  },
+  "backend": {
+    "service_id": "srv-d7aspskvjg8s73emqoo0",
+    "deploy_id": "dep-dbug852fngtc73cmslg0",
+    "commit": "7b11bc0cd4edd0b1f7ebb8b6af3f3df096b79b7a",
+    "status": "live",
+    "unchanged_after_frontend_publication": true,
+    "auto_deploy": "off"
+  },
+  "boundaries": {
+    "no_backend_deployment": true,
+    "no_schema_or_production_data_mutation": true,
+    "no_account_or_role_change": true,
+    "no_credential_reset": true,
+    "no_provider_activation": true,
+    "no_full_release_claim": true,
+    "no_full_admin_functionality_claim": true
+  },
+  "remaining": [
+    "Complete a successful production admin sign-in through the intended visible method.",
+    "Verify account email before protected account-based writes, as required by the existing backend.",
+    "Finish supported admin mutation acceptance and broader candidate release gates.",
+    "Reconcile the candidate with merged hotfix ancestry before a future production merge."
+  ]
+}

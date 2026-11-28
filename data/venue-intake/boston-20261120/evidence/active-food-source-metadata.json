@@ -1,0 +1,37 @@
+{
+  "retrieved_at": "2026-11-20T09:40:35.934003+00:00",
+  "source_url": "https://data.boston.gov/api/3/action/datastore_search?resource_id=f1e13724-284d-478c-b8bc-ef042aa5b70b&limit=5000&fields=_id%2Cbusinessname%2Cdbaname%2Caddress%2Ccity%2Cstate%2Czip%2Clicstatus%2Clicensecat%2Cdescript%2Clicense_add_dt_tm%2Cproperty_id%2Clatitude%2Clongitude",
+  "dataset_url": "https://data.boston.gov/dataset/active-food-establishment-licenses",
+  "metadata_source_url": "https://data.boston.gov/api/3/action/package_show?id=active-food-establishment-licenses",
+  "resource_id": "f1e13724-284d-478c-b8bc-ef042aa5b70b",
+  "last_modified": "2026-11-19T17:23:39.781602",
+  "license_id": "odc-pddl",
+  "license_title": "Open Data Commons Public Domain Dedication and License (PDDL)",
+  "license_url": "http://www.opendefinition.org/licenses/odc-pddl",
+  "record_count": 3355,
+  "total_reported": 3355,
+  "sha256": "c6d8c3896b3b1a9f3cd4799ef4aeb46fbfd78d2a44ce2bfe2ba6bc9f341f7562",
+  "raw_sha256": "64d02497e0f764c21e317d4961d412dd771b5846b39c5542b87348730c6d0fd4",
+  "included_fields": [
+    "_id",
+    "businessname",
+    "dbaname",
+    "address",
+    "city",
+    "state",
+    "zip",
+    "licstatus",
+    "licensecat",
+    "descript",
+    "license_add_dt_tm",
+    "property_id",
+    "latitude",
+    "longitude"
+  ],
+  "notes": "Requested and retained business-only fields; all applicant/manager contact and name fields excluded. Active licenses corroborate business identity, not current opening hours, operation, public accessibility or bookability.",
+  "production_writes": false,
+  "headers": {
+    "last_modified": null,
+    "etag": null
+  }
+}

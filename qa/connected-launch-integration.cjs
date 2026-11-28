@@ -18,7 +18,7 @@ if(!['127.0.0.1','[::1]'].includes(u.hostname)||!u.port||Number(u.port)<1
   ||u.search||u.hash||/[?#]/.test(connection))throw Error(refused);
 if(!fs.existsSync(path.join(root,'src/launch/router.js'))||fs.existsSync(path.join(root,'.env')))throw Error('Use the prepared backend with no .env file.');
 process.chdir(root);process.env.NODE_ENV='test';process.env.DATABASE_URL=connection;process.env.JWT_SECRET=crypto.randomBytes(48).toString('hex');process.env.ALLOW_DEMO_SEED='false';process.env.FORCE_RESEED='false';
-for(const name of ['SMTP_HOST','SMTP_USER','SMTP_PASS','CLOUDINARY_URL','CLOUDINARY_UPLOAD_PRESET','SENTRY_DSN','OPENAI_API_KEY','ADMIN_SECRET'])delete process.env[name];process.env.EMAIL_PROVIDER='disabled';
+for(const name of ['SMTP_HOST','SMTP_USER','SMTP_PASS','CLOUDINARY_URL','CLOUDINARY_UPLOAD_PRESET','SENTRY_DSN','OPENAI_API_KEY','CONCIERGE_AI_PILOT_ENABLED','CONCIERGE_AI_PILOT_USER_IDS','ADMIN_SECRET'])delete process.env[name];process.env.EMAIL_PROVIDER='disabled';
 const req=createRequire(path.join(root,'package.json'));
 const {EVENT_TODAY_SQL}=req('./src/services/event-calendar');
 let pool,server;const checks=[];
@@ -29,6 +29,7 @@ async function main(){
  delete process.env.RUN_ALL_SQL_MIGRATIONS;
  const app=req('./src/server');await app.locals.initializeDatabase();
  assert.equal((await pool.query("SELECT count(*)::int n FROM launch_schema_versions WHERE version='private-list-invitations-2026-11-09'")).rows[0].n,1,'Default startup must apply migration016 without opt-in');
+ assert.equal((await pool.query("SELECT count(*)::int n FROM launch_schema_versions WHERE version='account-deletion-receipts-2026-11-24'")).rows[0].n,1,'Default startup must apply migration018 without opt-in');
  // Repeating migration 007 must not reset privacy or duplicate schema objects.
  await pool.query(fs.readFileSync(path.join(root,'migrations/007_launch_social_integrity.sql'),'utf8'));
  await pool.query(fs.readFileSync(path.join(root,'migrations/008_connected_decision_rooms.sql'),'utf8'));
@@ -552,26 +553,46 @@ async function main(){
   const filtered=await api('GET','/venues?price_level=2');assert(filtered.venues.length>=2);assert(filtered.venues.every(v=>v.price_level===2&&v.price_status==='source_checked'));
   assert.equal((await ai.fetchCandidateVenues(ai.parseFilters('Japanese dinner in Southie'))).length,0);
  });
- await check('AI route invokes provider adapter and grounds cards in database facts',async()=>{
+ await check('explicitly opted-in AI route invokes the mock adapter and grounds cards in database facts',async()=>{
+  const pilot=await api('POST','/auth/login',{email:'maya@example.invalid',password});
+  assert.equal(pilot.user.email_verified,true);
   const realFetch=globalThis.fetch;let calls=0;
+  const pilotVariables=['OPENAI_API_KEY','CONCIERGE_AI_PILOT_ENABLED','CONCIERGE_AI_PILOT_USER_IDS'];
   process.env.OPENAI_API_KEY='isolated-provider-fixture';
-  globalThis.fetch=async(url,opts)=>{
-    if(String(url)==='https://api.openai.com/v1/responses'){
-      calls++;const body=JSON.parse(opts.body);assert(!JSON.stringify(body).includes('alex@example.invalid'));
-      return new Response(JSON.stringify({output_text:JSON.stringify({reply:'A suggested place; confirm details with the venue.',intent:'plan_night',
-        recommendedPlan:{title:'An evening',summary:'A suggestion',stops:[{venueId:venue,name:'Invented name',neighborhood:'Wrong area',category:'Wrong category',priceLevel:'$$$$',bestTime:'Guaranteed 7pm',vibeTags:['invented'],whyItFits:'Suggested stop'}]},
-        recommendedVenues:[{venueId:venue,whyItFits:'A suggestion'},{venueId:crypto.randomUUID(),whyItFits:'Invented'}],quickReplies:['Explore']})}),{status:200,headers:{'Content-Type':'application/json'}});
-    }
+  process.env.CONCIERGE_AI_PILOT_ENABLED='true';
+  process.env.CONCIERGE_AI_PILOT_USER_IDS=pilot.user.id;
+  const provider='https://api.openai.com/v1/responses';
+  const localFetch=(url,opts)=>{
+    assert.equal(new URL(String(url)).origin,new URL(base).origin,'No external egress allowed in the AI fixture');
     return realFetch(url,opts);
   };
+  globalThis.fetch=async(url,opts)=>{
+    if(String(url)===provider){
+      calls++;const body=JSON.parse(opts.body);
+      assert.equal(body.store,false);assert(!JSON.stringify(body).includes('maya@example.invalid'));
+      return new Response(JSON.stringify({output_text:JSON.stringify({reply:'A suggested place; confirm details with the venue.',intent:'plan_night',
+        recommendedPlan:{title:'An invented evening',summary:'A suggestion',stops:[{venueId:venue,name:'Invented name',neighborhood:'Wrong area',category:'Wrong category',priceLevel:'$$$$',bestTime:'Guaranteed 7pm',vibeTags:['invented'],whyItFits:'Suggested stop'}]},
+        recommendedVenues:[{venueId:venue,whyItFits:'A suggestion'},{venueId:crypto.randomUUID(),whyItFits:'Invented'}],quickReplies:['Explore']})}),{status:200,headers:{'Content-Type':'application/json'}});
+    }
+    return localFetch(url,opts);
+  };
   try{
-    const r=await api('POST','/concierge',{message:'cheap Italian dinner in Southie'});
+    const message='Plan an itinerary with cheap Italian dinner in Southie';
+    const declined=await api('POST','/concierge',{message,ai:false},pilot.token);
+    assert.equal(calls,0);assert.equal(declined.source,'rule-based');
+    const r=await api('POST','/concierge',{message,ai:true},pilot.token);
     assert.equal(calls,1);assert.equal(r.source,'openai');assert.equal(r.venues.length,1);assert.equal(r.venues[0].id,venue);
+    assert.equal(r.itinerary.title,'Your suggested plan');
     assert.equal(r.itinerary.stops[0].name,'Harbor & Pine');assert.equal(r.itinerary.stops[0].neighborhood,'South Boston');
     assert.equal(r.itinerary.stops[0].bestTime,null);assert.deepEqual(r.itinerary.stops[0].vibeTags,[]);
-    globalThis.fetch=async(url,opts)=>String(url)==='https://api.openai.com/v1/responses'?Promise.reject(new Error('fixture outage')):realFetch(url,opts);
-    const fallback=await api('POST','/concierge',{message:'cheap Italian dinner in Southie'});assert.equal(fallback.source,'rule-based');assert.equal(fallback.venues.length,2);
-  }finally{globalThis.fetch=realFetch;delete process.env.OPENAI_API_KEY;}
+    assert(!JSON.stringify(r).includes('Guaranteed 7pm'));
+    globalThis.fetch=async(url,opts)=>{
+      if(String(url)===provider){calls++;throw Error('fixture outage');}
+      return localFetch(url,opts);
+    };
+    const fallback=await api('POST','/concierge',{message,ai:true},pilot.token);
+    assert.equal(calls,2);assert.equal(fallback.source,'rule-based');assert.equal(fallback.venues.length,2);
+  }finally{globalThis.fetch=realFetch;for(const name of pilotVariables)delete process.env[name];}
  });
  await check('admin endpoints require current database role and reject revoked sessions',async()=>{
   await api('GET','/analytics/summary',undefined,null,401);
@@ -636,12 +657,12 @@ async function main(){
  await check('staging venue import preserves provenance, skips identities, and never activates listings',async()=>{
   const importer=req('./qa/tools/stage-venue-import.cjs');
   const rows=[1,2].map(n=>({name:'Fictional Same Brand QA',address:n+' Fictional Street',city:'Quincy',state:'MA',lat:42.25,lng:-71,type:'cafe',category:'cafe',source:'overture',external_id:'isolated-import-'+n}));
-  const provenance=Object.fromEntries(rows.map(r=>[r.external_id,{release:'isolated-fixture-release',sources:[{dataset:'fictional-only'}],verification_status:'provider_record_not_independently_verified',existence_confidence:0.9}]));
+  const provenance=Object.fromEntries(rows.map(r=>[r.external_id,{release:'isolated-fixture-release',sources:[{dataset:'fictional-only',property:''}],verification_status:'provider_record_not_independently_verified',existence_confidence:0.9}]));
   const bundle={rows,ifExists:'skip'},report={release:'isolated-fixture-release',candidate_count:2,production_import_ready:false,input_sha256:'d'.repeat(64)};
   const evidence={input_sha256:'a'.repeat(64),provenance_sha256:'b'.repeat(64),notices_sha256:'c'.repeat(64)};
   const first=await importer.apply(pool,bundle,provenance,report,evidence);assert.equal(first.inserted,2);assert.equal(first.skipped,0);
   const actual=(await pool.query("SELECT id,name,is_active,rating,review_count,price_level FROM venues WHERE source='overture' AND external_id LIKE 'isolated-import-%' ORDER BY external_id")).rows;assert.equal(actual.length,2);assert(actual.every(x=>x.is_active===false&&x.rating===null&&x.review_count===null&&x.price_level===null));
-  const saved=(await pool.query('SELECT provenance,source_release FROM venue_source_records WHERE import_batch_id=$1',[first.batch_id])).rows;assert.equal(saved.length,2);assert.equal(saved[0].provenance.sources[0].dataset,'fictional-only');
+  const saved=(await pool.query('SELECT provenance,source_release FROM venue_source_records WHERE import_batch_id=$1',[first.batch_id])).rows;assert.equal(saved.length,2);assert.equal(saved[0].provenance.sources[0].dataset,'fictional-only');assert.equal(saved[0].provenance.sources[0].property,'');
   const again=await importer.apply(pool,bundle,provenance,report,evidence);assert.equal(again.inserted,0);assert.equal(again.skipped,2);
   const addressMatch={...rows[0],external_id:'isolated-import-other-source-id'};
   const duplicate=await importer.apply(pool,{rows:[addressMatch],ifExists:'skip'},{[addressMatch.external_id]:provenance[rows[0].external_id]},{...report,candidate_count:1},evidence);assert.equal(duplicate.skipped,1);
@@ -660,6 +681,7 @@ async function main(){
  await req('./qa/integrated-ui-integration.cjs')({api,pool,check,crypto,req,root,base});
  await req('./qa/social-profile-integration.cjs')({api,pool,check,crypto,req,root});
  await req('./qa/event-ingestion-api-integration.cjs')({api,pool,check,crypto,req,root});
+ await req('./qa/admin-portal-dom-integration.cjs')({api,pool,check,crypto,req,root,base});
  console.log(JSON.stringify({scope:process.env.SCENELINK_TEST_ENGINE==='pglite'?'Real localhost HTTP/JWT/bcrypt and embedded PostgreSQL WASM; not native concurrency proof':'Real localhost HTTP and native PostgreSQL, fictional test data only',checks},null,2));
 }
 main().catch(e=>{console.error('INTEGRATION FAILED:',e.message);console.error(e.stack?.split('\n').slice(1).join('\n'));process.exitCode=1;}).finally(async()=>{if(server)await new Promise(r=>server.close(r));if(pool)await pool.end();});

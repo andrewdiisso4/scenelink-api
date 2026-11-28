@@ -118,7 +118,7 @@
           if (btn) { btn.disabled = true; btn.textContent = 'Joining…'; }
           var result = await api('/newsletter/subscribe', { method:'POST', body:{ email: email, source: form.getAttribute('data-sl-newsletter-source') || form.getAttribute('data-source') || document.body.getAttribute('data-page') || location.pathname } });
           if (!result || result.ok !== true) throw new Error('Your subscription was not confirmed. Please try again.');
-          setStatus(form, "You're on the SceneLink email list.", true);
+          setStatus(form, result.message || 'If confirmation is needed, check your inbox for a link to join.', true);
           if (input.value.trim() === email) input.value = '';
         } catch (err) { setStatus(form, err.message || 'We could not confirm your subscription. Your email is still here so you can try again.', false); }
         finally { pending = false; form.removeAttribute('aria-busy'); if (btn) { btn.disabled = false; btn.innerHTML = old || 'Join the list'; } }

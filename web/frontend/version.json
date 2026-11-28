@@ -1,16 +1,20 @@
 {
-  "phase": "been-with-friends",
-  "sw_version": "sl-connected-20261119-been-with-friends",
-  "timestamp": "2026-11-19T00:47:46.061546+00:00",
+  "phase": "release-acceptance",
+  "sw_version": "sl-connected-20261127-signup-newsletter",
+  "timestamp": "2026-11-28T00:15:00+00:00",
   "status": "versioned_build",
-  "requires_paired_backend": false,
-  "required_migration": "016_private_list_invitations.sql",
-  "rollout_order": "compatible_frontend_then_backend",
+  "requires_paired_backend": true,
+  "required_migration": "019_newsletter_opt_in.sql",
+  "rollout_order": "paired_backend_then_frontend",
+  "summary": "Account and social release candidate: consistent sign-in and recovery, verified profile persistence, consent-aware people actions, recent-provider account deletion and branded welcome email. This build adds a confirmable footer newsletter and optional scoped signup email transport. Includes the prior admin, business and Concierge fixes. Requires the paired API candidate. External provider cleanup and native App Store acceptance remain release gates; AI and provider pilots remain off.",
   "admin_auth_hotfix": {
     "id": "connected-20261124-admin-access",
-    "frontend_base": "db579dbca96d57edcca5a36cb3d009c1724f2262",
-    "compatible_backend": "7b11bc0cd4edd0b1f7ebb8b6af3f3df096b79b7a",
-    "requires_paired_backend": false
+    "source_frontend_base": "db579dbca96d57edcca5a36cb3d009c1724f2262",
+    "source_commit": "252da477e254e48416eb764b144e78e6544ed583",
+    "merged_main_commit": "0741fc91105ce886984c9888b64b6f7a90864ff6",
+    "pull_request": 40,
+    "scope": "administrator authentication and session handling"
   },
-  "summary": "Track Want to Try and Been separately, log private visits or explicitly share with friends, and show real friend-scoped activity. Uses existing backend; no venue imports or provider changes."
+  "admin_controller_cache_key": "connected-20261127-signup-newsletter",
+  "business_controller_cache_key": "connected-20261127-signup-newsletter"
 }

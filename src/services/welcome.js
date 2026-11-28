@@ -13,16 +13,18 @@ async function enqueue(db, user) {
 function createDispatcher({ pool, mailer, logger = console, sendTimeoutMs = 30000 }) {
   let running = null, scheduled = null, interval = null;
   const report = event => logger.warn('[welcome-email] ' + event); // No IDs, addresses, tokens or provider errors.
+  const isReady = () => mailer.isReadyFor ? mailer.isReadyFor('signup-welcome') : mailer.isReady();
   async function dispatch() {
-    if (!mailer.isReady()) return;
+    if (!isReady()) return;
     for (let i = 0; i < 10; i++) {
-      if (!mailer.isReady()) return;
+      if (!isReady()) return;
       // Single atomic claim across processes. No network I/O while a DB lock is held.
       const result = await pool.query(`WITH candidate AS (
         SELECT w.user_id FROM signup_welcome_emails w WHERE w.status='pending'
+        AND w.created_at >= COALESCE($1::timestamptz,'-infinity'::timestamptz)
         ORDER BY w.created_at,w.user_id FOR UPDATE SKIP LOCKED LIMIT 1
       ) UPDATE signup_welcome_emails w SET status='sending',claimed_at=NOW()
-        FROM candidate c WHERE w.user_id=c.user_id AND w.status='pending' RETURNING w.user_id,w.recipient_hash`);
+        FROM candidate c WHERE w.user_id=c.user_id AND w.status='pending' RETURNING w.user_id,w.recipient_hash`, [mailer.welcomeNotBefore || null]);
       const job = result.rows[0];
       if (!job) return;
       let timeout, sendStarted = false;
@@ -40,7 +42,7 @@ function createDispatcher({ pool, mailer, logger = console, sendTimeoutMs = 3000
         const outcome = await Promise.race([
           Promise.resolve().then(() => {
             sendStarted = true;
-            return mailer.sendMail({ to: {address:user.email}, ...template, retry: false, privateLog: true });
+            return mailer.sendMail({ to: {address:user.email}, ...template, retry: false, privateLog: true, purpose:'signup-welcome' });
           }),
           new Promise(resolve => { timeout = setTimeout(() => resolve({ unknown: true }), sendTimeoutMs); }),
         ]);

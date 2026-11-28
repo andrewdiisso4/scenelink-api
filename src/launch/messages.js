@@ -16,13 +16,18 @@ async function access(db,me,cid,send=false,{lock=false,cleanup=false,replayAware
     FROM conversations c JOIN conversation_participants p ON p.conversation_id=c.id JOIN users u ON u.id=p.user_id
     WHERE c.id=$1 AND EXISTS(SELECT 1 FROM conversation_participants mine WHERE mine.conversation_id=c.id AND mine.user_id=$2)
     ORDER BY u.id`,[cid,me]);
-  if(!members.rows.length)throw new H.HttpError(404,'Conversation unavailable');
+  if(!members.rows.length)throw new H.HttpError(404,'Conversation unavailable','CONVERSATION_UNAVAILABLE');
   const others=members.rows.filter(x=>x.user_id!==me);
+  // Account deletion cascades membership, not the survivor's messages. An orphan
+  // direct thread must disappear; existing groups retain their remaining members.
+  if(!members.rows[0].is_group&&!others.length)throw new H.HttpError(404,'Conversation unavailable','CONVERSATION_UNAVAILABLE');
   if(send||lock){const keys=others.map(x=>[me,x.user_id].sort().join(':')).sort();for(const pair of keys)await H.lockPair(db,...pair.split(':'));}
   let canSend=true;
   if(!cleanup)for(const other of others){
     if(send)await db.query('SELECT id FROM users WHERE id=$1 FOR SHARE',[other.user_id]);
-    const r=await H.relation(db,me,other.user_id);
+    let r;
+    try{r=await H.relation(db,me,other.user_id);}
+    catch(e){if(e instanceof H.HttpError&&e.status===404)throw new H.HttpError(404,'Conversation unavailable','CONVERSATION_UNAVAILABLE');throw e;}
     if(r.allow_messages==='none'||r.allow_messages==='friends'&&!r.is_friend){canSend=false;if(send&&!replayAware)throw new H.HttpError(403,'A participant is not accepting messages');}
   }
   return{can_send:canSend,conversation:{id:cid,is_group:members.rows[0].is_group,title:members.rows[0].title},participants:members.rows.map(({user_id,username,display_name,avatar_url})=>({id:user_id,username,display_name,avatar_url})),others};
@@ -38,7 +43,8 @@ async function lockConversation(db,cid){
 }
 async function nextVersion(db,cid){const r=await db.query('UPDATE conversations SET message_version=message_version+1 WHERE id=$1 RETURNING message_version',[cid]);return r.rows[0].message_version;}
 async function getMessage(db,cid,mid){const r=await db.query(`SELECT ${MESSAGE_FIELDS} FROM messages m WHERE m.conversation_id=$1 AND m.id=$2`,[cid,mid]);return r.rows[0];}
-const VISIBLE_CONVERSATION=`NOT EXISTS(SELECT 1 FROM conversation_participants hidden JOIN users hu ON hu.id=hidden.user_id
+const VISIBLE_CONVERSATION=`(c.is_group IS TRUE OR EXISTS(SELECT 1 FROM conversation_participants peer
+  WHERE peer.conversation_id=c.id AND peer.user_id<>$1)) AND NOT EXISTS(SELECT 1 FROM conversation_participants hidden JOIN users hu ON hu.id=hidden.user_id
   WHERE hidden.conversation_id=c.id AND hidden.user_id<>$1 AND NOT ${H.actorSQL('hu')})`;
 function install({router,pool,auth,write}) {
   const secured=[auth.requireAuth,H.noStore];
@@ -83,7 +89,9 @@ function install({router,pool,auth,write}) {
     const r=await pool.query(`SELECT ${MESSAGE_FIELDS},u.username,u.display_name,u.avatar_url FROM messages m JOIN users u ON u.id=m.sender_id
       WHERE m.conversation_id=$1 AND m.change_seq>$2::bigint AND m.change_seq<=$3::bigint ORDER BY m.change_seq ASC,m.id ASC LIMIT $4`,[cid,after,high,limit+1]);
     const messages=r.rows.slice(0,limit),has_more=r.rows.length>limit;
-    res.json({messages,has_more,can_send:permission.can_send,next_seq:has_more?String(messages.at(-1).change_seq):high,read_receipts:await receipts(pool,me,cid)});
+    // Cascaded author deletion does not create a message tombstone/sequence.
+    // The current membership lets an open group evict that author's cached rows.
+    res.json({messages,has_more,can_send:permission.can_send,participants:permission.participants,next_seq:has_more?String(messages.at(-1).change_seq):high,read_receipts:await receipts(pool,me,cid)});
   }));
   router.get('/conversations/:conversationId/messages',...secured,H.wrap(async(req,res)=>{
     const me=req.user.id,cid=H.id(req.params.conversationId,'conversation'),limit=H.integer(req.query.limit,40,1,100),scope='messages:'+cid,c=H.cursor(req.query.cursor,scope);
@@ -132,7 +140,7 @@ function install({router,pool,auth,write}) {
     const me=req.user.id,cid=H.id(req.params.conversationId,'conversation'),mid=H.id(req.params.messageId,'message'),body=H.text(req.body?.body,'message',5000,{required:true}),expected=revision(req.body?.revision);
     const result=await H.transaction(pool,async db=>{
       await access(db,me,cid,false,{lock:true});await lockConversation(db,cid);
-      const old=await getMessage(db,cid,mid);if(!old||old.sender_id!==me)throw new H.HttpError(404,'Message unavailable');
+      const old=await getMessage(db,cid,mid);if(!old||old.sender_id!==me)throw new H.HttpError(404,'Message unavailable','MESSAGE_UNAVAILABLE');
       if(old.deleted_at)throw new H.HttpError(409,'Deleted messages cannot be edited','MESSAGE_DELETED');
       if(old.body===body)return{message:old,replayed:true};
       if(old.revision!==expected)throw new H.HttpError(409,'Message changed. Refresh before editing.','STALE_MESSAGE');
@@ -146,7 +154,7 @@ function install({router,pool,auth,write}) {
     const result=await H.transaction(pool,async db=>{
       // Sender cleanup remains possible after a block. No other participant data is returned.
       await access(db,me,cid,false,{lock:true,cleanup:true});await lockConversation(db,cid);
-      const old=await getMessage(db,cid,mid);if(!old||old.sender_id!==me)throw new H.HttpError(404,'Message unavailable');
+      const old=await getMessage(db,cid,mid);if(!old||old.sender_id!==me)throw new H.HttpError(404,'Message unavailable','MESSAGE_UNAVAILABLE');
       if(old.deleted_at)return{message:old,replayed:true};
       if(old.revision!==expected)throw new H.HttpError(409,'Message changed. Refresh before deleting.','STALE_MESSAGE');
       const seq=await nextVersion(db,cid);
@@ -159,7 +167,7 @@ function install({router,pool,auth,write}) {
     const me=req.user.id,cid=H.id(req.params.conversationId,'conversation'),mid=H.id(req.body?.through_id,'last displayed message');
     const read=await H.transaction(pool,async db=>{
       await access(db,me,cid,false,{lock:true});
-      const r=await db.query('SELECT id FROM messages WHERE id=$1 AND conversation_id=$2',[mid,cid]);if(!r.rows.length)throw new H.HttpError(404,'Message unavailable');
+      const r=await db.query('SELECT id FROM messages WHERE id=$1 AND conversation_id=$2',[mid,cid]);if(!r.rows.length)throw new H.HttpError(404,'Message unavailable','MESSAGE_UNAVAILABLE');
       await db.query(`UPDATE conversation_participants cp SET last_read_at=m.created_at,last_read_message_id=m.id FROM messages m
         WHERE cp.user_id=$1 AND cp.conversation_id=$2 AND m.id=$3 AND m.conversation_id=cp.conversation_id
         AND (m.created_at,m.id)>(COALESCE(cp.last_read_at,'-infinity'::timestamptz),COALESCE(cp.last_read_message_id,'${ZERO}'::uuid))`,[me,cid,mid]);

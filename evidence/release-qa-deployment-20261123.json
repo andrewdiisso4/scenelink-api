@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "observedOn": "2026-11-23",
+  "scope": "Approved isolated synthetic QA deployment and first hosted browser unlock attempt. Production release remains unapproved.",
+  "deployment": {
+    "approvedCommit": "95eb322ecb75b4a7c2e57580e3273afeb7af3c36",
+    "workspaceId": "tea-d7aoksma2pns73dv3iog",
+    "blueprintId": "exs-dc2b6u6k1f9s73a5gsig",
+    "syncId": "exe-dc2b6umk1f9s73a5gtp0",
+    "serviceId": "srv-dc2b7nifngtc73bbu81g",
+    "deployId": "dep-dc2b7o2fngtc73bbuaag",
+    "status": "live",
+    "finishedAt": "2026-11-23T21:45:38.54696Z",
+    "origin": "https://scenelink-release-qa-20261123-smn6.onrender.com",
+    "webPlan": "free",
+    "region": "virginia",
+    "autoDeploy": false,
+    "autoSync": false,
+    "database": {
+      "id": "dpg-dc2b7eafngtc73bbt3g0-a",
+      "name": "scenelink_release_qa_20261123",
+      "plan": "free",
+      "version": "18",
+      "status": "available",
+      "publicIpAllowList": [],
+      "expiresAt": "2026-12-23T21:44:26.692529Z"
+    }
+  },
+  "publicHttpChecks": [
+    {
+      "path": "/__acceptance/health",
+      "status": 200,
+      "body": {
+        "status": "ok"
+      }
+    },
+    {
+      "path": "/",
+      "status": 401,
+      "gateForm": true
+    },
+    {
+      "path": "/api/admin/venues",
+      "status": 401,
+      "code": "ACCEPTANCE_LOCKED"
+    },
+    {
+      "path": "/__acceptance/status",
+      "status": 401,
+      "gateForm": true
+    }
+  ],
+  "hostedBrowser": {
+    "surface": "Supported cloud browser",
+    "gateRendered": true,
+    "secureCredentialSubmission": "submitted",
+    "unlockResult": {
+      "status": 403,
+      "error": "Same-origin acceptance request required"
+    },
+    "secretAccepted": "not_determined_origin_check_precedes_secret_validation",
+    "requestOriginHeader": "not_captured",
+    "signedInJourneys": [],
+    "gateCookieSession": "not_verified",
+    "cspEnforcement": "not_verified",
+    "networkEgress": "not_verified",
+    "physicalDevice": "not_tested",
+    "credentialValuesReadOrRecorded": false,
+    "furtherSignInAttempts": "stopped_after_origin_rejection"
+  },
+  "diagnosis": {
+    "evidence": "Deployed code applies no-referrer to a native POST form and rejects null Origin. Fetch specifies no-referrer serializes Origin to null for non-CORS POST. This is consistent with the observed rejection; the hosted request header was not captured.",
+    "references": [
+      "https://fetch.spec.whatwg.org/#append-a-request-origin-header",
+      "https://www.w3.org/TR/referrer-policy/#referrer-policy-strict-origin"
+    ]
+  },
+  "preparedRepair": {
+    "status": "prepared_not_deployed_requires_exact_revision_approval",
+    "change": "strict-origin only on rendered synthetic unlock forms and overview lock form",
+    "sourceSha256": {
+      "qa/acceptance/browser-bootstrap.cjs": "82eb607c80fc4823aa156fc227fdd66900bf7a5cd16a1bc1c60ec4b46f2d7208",
+      "qa/acceptance/fixtures.cjs": "8e5af21cd882887dfb3a9a9d9a4f30c0b597ae9a3bf5d4b97abfb67bbe2fdd30",
+      "qa/acceptance/gate.cjs": "c47026a63f6c4bd4c4ad9ab4c454701029078ed1a4c4f5a66b668befdd8554eb",
+      "qa/acceptance/guard.cjs": "22976c97e8120bf846e8f23cae17aa181e07b344a503318e7368a95f53dfb3b8",
+      "qa/acceptance/native-smoke.cjs": "91b2997deba7c0600df46662d69ff218ba5e6df51603e4e117271f90c66b521e",
+      "qa/acceptance/runtime.test.cjs": "0f5ce3ee787ab2e63c17562c11d3db1a75b5e991fc62e51f7a7077c1c49ed7a7",
+      "qa/acceptance/start.cjs": "39f59a4dba6cdb3e3b394ac9b359d47385e7e9b95c4ea5bf46f2705160cb6b8b"
+    },
+    "existingOriginAndFetchSiteChecksUnchanged": true,
+    "cookieAndSecretControlsUnchanged": true,
+    "actualRecoveryDocumentPolicy": "no-referrer",
+    "appApiPolicy": "existing Helmet behavior unchanged",
+    "localVerification": {
+      "newRegressionAgainstDeployedSources": {
+        "tests": 8,
+        "pass": 7,
+        "fail": 1,
+        "expectedFailure": "Gate form policy no-referrer instead of strict-origin"
+      },
+      "repairedRuntime": {
+        "tests": 8,
+        "pass": 8,
+        "fail": 0
+      },
+      "nativePostgres": {
+        "version": "18.3",
+        "exitCode": 0,
+        "groupsPassed": 6,
+        "sourcesUnchangedDuringTest": true,
+        "ownedDisposableClusterRemoved": true,
+        "startedAt": "2026-11-23T22:11:57.837956+00:00",
+        "finishedAt": "2026-11-23T22:12:01.412463+00:00",
+        "scope": "Local HTTP and native database checks, not hosted browser proof"
+      }
+    },
+    "hostedRetry": "not_performed"
+  },
+  "productionVerification": {
+    "checkedOn": "2026-11-23",
+    "netlifyDeployId": "6afe482a2eb9cb5bc8323d68",
+    "netlifyCommit": "db579dbca96d57edcca5a36cb3d009c1724f2262",
+    "renderDeployId": "dep-dbug852fngtc73cmslg0",
+    "renderCommit": "7b11bc0cd4edd0b1f7ebb8b6af3f3df096b79b7a",
+    "mainCommit": "db579dbca96d57edcca5a36cb3d009c1724f2262",
+    "productionMutationPerformed": false
+  },
+  "remainingAcceptance": [
+    "Hosted gate unlock/lock and signed-in admin/member/owner journeys",
+    "Private group-plan persistence",
+    "Positive legacy itinerary save/reopen: no saved itinerary fixture and model generation disabled",
+    "Physical iPhone/Safari",
+    "Real inbox and consented real-model acceptance",
+    "Production-equivalent cache and applicable migration/rollback evidence"
+  ]
+}

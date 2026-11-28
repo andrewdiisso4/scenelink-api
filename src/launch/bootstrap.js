@@ -18,6 +18,10 @@ async function start({app,pool,initialize,port,env=process.env}) {
   if(!welcome.rows.length)throw new Error('Required signup welcome migration 014 is missing');
   const lists=await pool.query("SELECT version FROM launch_schema_versions WHERE version='private-list-invitations-2026-11-09'");
   if(!lists.rows.length)throw new Error('Required private-list migration 016 is missing');
+  const deletionReceipts=await pool.query("SELECT version FROM launch_schema_versions WHERE version='account-deletion-receipts-2026-11-24'");
+  if(!deletionReceipts.rows.length)throw new Error('Required account deletion receipt migration 018 is missing');
+  const newsletter=await pool.query("SELECT version FROM launch_schema_versions WHERE version='newsletter-opt-in-2026-11-27'");
+  if(!newsletter.rows.length)throw new Error('Required newsletter opt-in migration 019 is missing');
   await pool.query('SELECT revision FROM lists LIMIT 0');
   await pool.query('SELECT auth_version FROM users LIMIT 0');
   await pool.query('SELECT audience FROM posts LIMIT 0');

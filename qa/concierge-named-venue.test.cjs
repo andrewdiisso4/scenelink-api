@@ -9,7 +9,7 @@ function queryFunction(file, start, end, pool, extra = {}) {
   return vm.runInNewContext(source.slice(source.indexOf(start), source.indexOf(end)) + '\n' + start.match(/function (\w+)/)[1], {
     pool, availableVenueSQL: () => 'is_active = true', visibleDiscoveryVenueSQL: () => 'hidden = false',
     reviewedPriceSQL: () => 'reviewed_price', publicVenue: v => v, MAX_CANDIDATE_VENUES: 20,
-    VENUE_SELECT: '*', ...extra
+    VENUE_SELECT: '*', ...require('../src/services/concierge-query-constraints'), ...extra
   });
 }
 test('explicit parsing isolates names including cuisine/category words and preserves constraints', () => {
@@ -50,10 +50,13 @@ for (const [file,start,end,filters] of [
   assert.equal((await query({...filters,venueName:'Missing'},5)).length,0);
 });
 test('both entry paths resolve names before interpreting name words as constraints',()=>{
+  const shared=fs.readFileSync(root+'/src/services/concierge-conversation.js','utf8');
+  assert.match(shared,/await resolveNamedVenue\(pool, constraints.positiveText\)/);
+  assert.match(shared,/const filterText = named \? named.filterText/);
+  assert.match(shared,/const parsed = parse\(filterText\)/);
   for(const file of ['concierge.js','conciergeAI.js']){
     const text=fs.readFileSync(root+'/src/routes/'+file,'utf8');
-    assert.match(text,/await resolveNamedVenue\(pool, message\)/);
-    assert.match(text,/named \? named.filterText : message/);
+    assert.match(text,/await resolveConversation\(/);
   }
 });
 test('real embedded PostgreSQL name lookup reaches beyond20 and excludes unavailable/reviewed duplicates',async()=>{

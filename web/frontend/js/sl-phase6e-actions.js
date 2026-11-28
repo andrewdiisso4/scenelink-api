@@ -339,7 +339,7 @@
     var modal = document.getElementById('slPublicProfile');
     if (!modal) return;
     var body = document.getElementById('slPPBody');
-    if (!body || body.getAttribute('data-p6e-decorating')) return;
+    if (!body || body.hasAttribute('data-sl-profile-managed') || body.getAttribute('data-p6e-decorating')) return;
 
     // The page exposes the loaded user via window-scoped state managed by
     // sl-user-search.js. We don't have a direct hook, so we read from the DOM:

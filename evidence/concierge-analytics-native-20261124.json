@@ -1,0 +1,3018 @@
+{
+  "at": "2026-11-24T06:41:44.110Z",
+  "native_postgres": "18.3",
+  "fixture_venue_count": 18,
+  "fixture_event_count": 7,
+  "real_http_transport": true,
+  "external_network_attempts": 0,
+  "in_memory_model_requests": 9,
+  "production_access": false,
+  "private_baseline_unchanged": true,
+  "source_hashes": {
+    "src/routes/concierge.js": "8c082c0278ec010ab78e9e1b8d7bd9bb519d16e3503317411815d33937aa14a9",
+    "src/routes/conciergeAI.js": "63d6016e0ec69327515ad748c82aada404b89f3bbd5d41131c5b0e647f8dd4e8",
+    "src/services/concierge-conversation.js": "d2e905203767765b2740d75d0a42faf6aeadc21eafd275b4a8b50019763d63d1",
+    "src/services/concierge-constraints.js": "a65d905fd5f0aa802af4635c3680dd4152004d667b890a49c02cdd6c7c2f1eaf",
+    "src/services/concierge-intent.js": "26f7f00c2a736354f6f1b575411a0964f1c1c7eb7fd7f8a63c7e576cedacd537",
+    "src/services/concierge-query-constraints.js": "89fa069a66e1d7200ee496a0fb7a5db0f1529e98ac76fa35fa363d2a47a1fc20",
+    "src/services/concierge-event-search.js": "5d8c1eb370fe00c8ef37693452e5c80720684f2e07c5afd819464f6001ea9daa",
+    "src/services/concierge-typed-plan.js": "bd31b488bef48946940395dd4bb0bdfb59fa75adc424b58d10158d582b8bea9c",
+    "qa/concierge-conversation-native.cjs": "b65f784b82e2f040702abd7f3837603c447d8e5071565beaaae0dd5fd6fb9a7b",
+    "qa/helpers/concierge-analytics-observer.cjs": "6747743757b13b26a58f088363782d16226eb373575c8ab071d5d5c72d500633"
+  },
+  "checks": [
+    {
+      "name": "initial exact filters and inactive/closed/duplicate visibility",
+      "passed": true
+    },
+    {
+      "name": "area follow-up preserves Italian restaurant and replaces Back Bay",
+      "passed": true
+    },
+    {
+      "name": "cheaper follow-up retains area/type/cuisine and excludes unreviewed cheap defaults",
+      "passed": true
+    },
+    {
+      "name": "bounded search_context preserves constraints after original request leaves six-turn history",
+      "passed": true
+    },
+    {
+      "name": "cocktail-bar switch clears incompatible cuisine and retains current area/budget",
+      "passed": true
+    },
+    {
+      "name": "fresh named lookup does not inherit prior area/cuisine/price",
+      "passed": true
+    },
+    {
+      "name": "start over clears prior constraints including price and cuisine",
+      "passed": true
+    },
+    {
+      "name": "explicit exclusions are enforced by native SQL results",
+      "passed": true
+    },
+    {
+      "name": "page neighborhood is a fallback only and never broadens explicit area",
+      "passed": true
+    },
+    {
+      "name": "negative cuisine follow-up keeps area/type and removes the inherited positive cuisine",
+      "passed": true
+    },
+    {
+      "name": "excluded page area is never restored as an implicit positive location",
+      "passed": true
+    },
+    {
+      "name": "assistant/system history cannot silently become user filter instructions",
+      "passed": true
+    },
+    {
+      "name": "Anywhere removes location without clearing cuisine/type or restoring page area",
+      "passed": true
+    },
+    {
+      "name": "No location preference is a refinement rather than unsupported exclusion",
+      "passed": true
+    },
+    {
+      "name": "named lookup honors explicit outside constraints instead of dropping them",
+      "passed": true
+    },
+    {
+      "name": "named alternative clears the exact name and excludes the prior venue",
+      "passed": true
+    },
+    {
+      "name": "tonight returns only the reviewed current-date Cambridge concert",
+      "passed": true
+    },
+    {
+      "name": "explicit event ISO date selects the requested date only",
+      "passed": true
+    },
+    {
+      "name": "event follow-up changes area while retaining tonight and concert kind",
+      "passed": true
+    },
+    {
+      "name": "empty event results do not silently fall back to unrelated venue cards",
+      "passed": true
+    },
+    {
+      "name": "unsupported relative event date asks for clarification without model or unrelated results",
+      "passed": true
+    },
+    {
+      "name": "pilot capability and explicit consent use authenticated server identity",
+      "passed": true
+    },
+    {
+      "name": "model area follow-up uses the same constrained native candidates as fallback",
+      "passed": true
+    },
+    {
+      "name": "model budget follow-up uses the same constrained native candidates as fallback",
+      "passed": true
+    },
+    {
+      "name": "model type switch uses the same constrained native candidates as fallback",
+      "passed": true
+    },
+    {
+      "name": "model explicit area overrides context uses the same constrained native candidates as fallback",
+      "passed": true
+    },
+    {
+      "name": "forged account IDs and reused session ID cannot read private account data",
+      "passed": true
+    },
+    {
+      "name": "unsupported preference-state keys are ignored and cannot reach SQL or private data",
+      "passed": true
+    },
+    {
+      "name": "typed pilot two-stop plan and drinks-only swap enforce role, location, budget, privacy and reread",
+      "passed": true
+    },
+    {
+      "name": "real plan service persists two fixture stops; save/list/reopen does not call the model; withdrawn add is 404",
+      "passed": true
+    },
+    {
+      "name": "invalid and revoked bearer sessions fail closed rather than becoming guests",
+      "passed": true
+    },
+    {
+      "name": "current verified-participation policy is explicit for unverified account",
+      "passed": true
+    },
+    {
+      "name": "private fixtures, unknown public facts, and disabled providers remain intact",
+      "passed": true
+    }
+  ],
+  "observations": [
+    {
+      "label": "initial explicit area/type/cuisine",
+      "request": {
+        "message": "Find Italian restaurants in Back Bay",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [
+          "italian"
+        ],
+        "vibes": [],
+        "neighborhoods": [
+          "Back Bay"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [
+          "italian"
+        ],
+        "neighborhoods": [
+          "Back Bay"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e8c39824-982c-45bd-84a3-c1454f86c397",
+          "name": "Aster House",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Back Bay",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "follow-up changes area only",
+      "request": {
+        "message": "What about Seaport?",
+        "history_turns": 2,
+        "has_search_context": true
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [
+          "italian"
+        ],
+        "vibes": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [
+          "italian"
+        ],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "14a20ad9-92e6-40dc-99a3-dc27fd350ad7",
+          "name": "Cedar Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "eb1e8513-9d83-4bdf-b322-ba605f525f3a",
+          "name": "Dahlia Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": null,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "follow-up adds reviewed budget",
+      "request": {
+        "message": "Make it cheaper",
+        "history_turns": 4,
+        "has_search_context": true
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [
+          "italian"
+        ],
+        "vibes": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [
+          "italian"
+        ],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": 2,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "fourth user turn keeps request state",
+      "request": {
+        "message": "For 4 people",
+        "history_turns": 6,
+        "has_search_context": true
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [
+          "italian"
+        ],
+        "vibes": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [
+          "italian"
+        ],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": 2,
+        "partySize": 4,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "fifth user turn exceeds original history horizon",
+      "request": {
+        "message": "Show me another option",
+        "history_turns": 6,
+        "has_search_context": true
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [
+          "italian"
+        ],
+        "vibes": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [
+          "italian"
+        ],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": 2,
+        "partySize": 4,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "explicit type switch",
+      "request": {
+        "message": "Show cocktail bars instead",
+        "history_turns": 6,
+        "has_search_context": true
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [],
+        "vibes": [
+          "cocktail"
+        ],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "vibes": [
+          "cocktail"
+        ],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": 2,
+        "partySize": 4,
+        "venueType": "cocktail_bar",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "4bc4c0ad-5e65-4ad7-ba3e-dc4f684fd772",
+          "name": "Fir Bar",
+          "type": "bar",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "c51d4189-11a8-4a99-93a7-c23640082772",
+          "name": "Garnet Bar",
+          "type": "bar",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "independent named lookup resets stale filters",
+      "request": {
+        "message": "Tell me about \"Iris Restaurant\"",
+        "history_turns": 6,
+        "has_search_context": true
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "search",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [
+          "Italian"
+        ],
+        "neighborhoods": [
+          "North End"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": "Iris Restaurant",
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "9c890f81-2544-4be5-b9d7-b7aca517e398",
+          "name": "Iris Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "explicit reset",
+      "request": {
+        "message": "start over",
+        "history_turns": 6,
+        "has_search_context": true
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "greet",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": null,
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [],
+      "events": []
+    },
+    {
+      "label": "new request after reset",
+      "request": {
+        "message": "Find restaurants in Back Bay",
+        "history_turns": 6,
+        "has_search_context": true
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [
+          "Back Bay"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [
+          "Back Bay"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e8c39824-982c-45bd-84a3-c1454f86c397",
+          "name": "Aster House",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Back Bay",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "a75dbbe6-9e5a-47ef-99f6-eba66a0daf50",
+          "name": "Opal Ramen",
+          "type": "restaurant",
+          "cuisine": "Japanese",
+          "neighborhood": "Back Bay",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "explicit negative cuisine",
+      "request": {
+        "message": "Japanese restaurants in Cambridge, not Italian",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [
+          "japanese"
+        ],
+        "vibes": [],
+        "neighborhoods": [
+          "Cambridge"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [
+          "japanese"
+        ],
+        "neighborhoods": [
+          "Cambridge"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [
+          "italian"
+        ],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "d6ff02c0-a4fa-4c03-bf9b-ba0c776b5f1d",
+          "name": "Maple Ramen",
+          "type": "restaurant",
+          "cuisine": "Japanese",
+          "neighborhood": "Cambridge",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "context fills missing area",
+      "request": {
+        "message": "Find restaurants",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [
+          "Back Bay"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [
+          "Back Bay"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e8c39824-982c-45bd-84a3-c1454f86c397",
+          "name": "Aster House",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Back Bay",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "a75dbbe6-9e5a-47ef-99f6-eba66a0daf50",
+          "name": "Opal Ramen",
+          "type": "restaurant",
+          "cuisine": "Japanese",
+          "neighborhood": "Back Bay",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "explicit area overrides context",
+      "request": {
+        "message": "Find restaurants in North End",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [
+          "North End"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [
+          "North End"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "9c890f81-2544-4be5-b9d7-b7aca517e398",
+          "name": "Iris Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "9500f63b-760d-4e16-8b59-9c1acd3cfb03",
+          "name": "Petunia Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "negative follow-up removes inherited included cuisine",
+      "request": {
+        "message": "Not Italian",
+        "history_turns": 2,
+        "has_search_context": true
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [
+          "Back Bay"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [
+          "Back Bay"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [
+          "italian"
+        ],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "a75dbbe6-9e5a-47ef-99f6-eba66a0daf50",
+          "name": "Opal Ramen",
+          "type": "restaurant",
+          "cuisine": "Japanese",
+          "neighborhood": "Back Bay",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "excluded page neighborhood cannot return through context",
+      "request": {
+        "message": "Find restaurants, not Back Bay",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "search",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [
+          "Back Bay"
+        ],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "14a20ad9-92e6-40dc-99a3-dc27fd350ad7",
+          "name": "Cedar Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "eb1e8513-9d83-4bdf-b322-ba605f525f3a",
+          "name": "Dahlia Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": null,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "7b3d3692-6db5-4329-94b6-bbf6a9739ea9",
+          "name": "Elm Sushi",
+          "type": "restaurant",
+          "cuisine": "Japanese",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "9c890f81-2544-4be5-b9d7-b7aca517e398",
+          "name": "Iris Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "d6ff02c0-a4fa-4c03-bf9b-ba0c776b5f1d",
+          "name": "Maple Ramen",
+          "type": "restaurant",
+          "cuisine": "Japanese",
+          "neighborhood": "Cambridge",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "03116eac-210c-4040-8dc4-83353d43196d",
+          "name": "Nettle Trattoria",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Cambridge",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "9500f63b-760d-4e16-8b59-9c1acd3cfb03",
+          "name": "Petunia Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "only real user history carries preferences",
+      "request": {
+        "message": "What about Seaport?",
+        "history_turns": 2,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": null,
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "14a20ad9-92e6-40dc-99a3-dc27fd350ad7",
+          "name": "Cedar Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "eb1e8513-9d83-4bdf-b322-ba605f525f3a",
+          "name": "Dahlia Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": null,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "7b3d3692-6db5-4329-94b6-bbf6a9739ea9",
+          "name": "Elm Sushi",
+          "type": "restaurant",
+          "cuisine": "Japanese",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "4bc4c0ad-5e65-4ad7-ba3e-dc4f684fd772",
+          "name": "Fir Bar",
+          "type": "bar",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "c51d4189-11a8-4a99-93a7-c23640082772",
+          "name": "Garnet Bar",
+          "type": "bar",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "4d9edebe-4c52-4abb-8cbb-42baf95ce965",
+          "name": "Grove Cafe",
+          "type": "cafe",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 1,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "e21de1ec-07dc-4cce-95a7-196f667d7759",
+          "name": "Hazel Music Hall",
+          "type": "music",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "d92c08f3-c759-4f92-8cbc-64bbf4dd4b69",
+          "name": "Juniper Brewery",
+          "type": "bar",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "remove area while preserving other preferences",
+      "request": {
+        "message": "Anywhere",
+        "history_turns": 2,
+        "has_search_context": true
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [
+          "italian"
+        ],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [
+          "italian"
+        ],
+        "neighborhoods": [],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e8c39824-982c-45bd-84a3-c1454f86c397",
+          "name": "Aster House",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Back Bay",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "14a20ad9-92e6-40dc-99a3-dc27fd350ad7",
+          "name": "Cedar Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "eb1e8513-9d83-4bdf-b322-ba605f525f3a",
+          "name": "Dahlia Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": null,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "9c890f81-2544-4be5-b9d7-b7aca517e398",
+          "name": "Iris Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "03116eac-210c-4040-8dc4-83353d43196d",
+          "name": "Nettle Trattoria",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Cambridge",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "9500f63b-760d-4e16-8b59-9c1acd3cfb03",
+          "name": "Petunia Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "explicit no location preference",
+      "request": {
+        "message": "No location preference",
+        "history_turns": 2,
+        "has_search_context": true
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [
+          "italian"
+        ],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [
+          "italian"
+        ],
+        "neighborhoods": [],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e8c39824-982c-45bd-84a3-c1454f86c397",
+          "name": "Aster House",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Back Bay",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "14a20ad9-92e6-40dc-99a3-dc27fd350ad7",
+          "name": "Cedar Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "eb1e8513-9d83-4bdf-b322-ba605f525f3a",
+          "name": "Dahlia Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": null,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "9c890f81-2544-4be5-b9d7-b7aca517e398",
+          "name": "Iris Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "03116eac-210c-4040-8dc4-83353d43196d",
+          "name": "Nettle Trattoria",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Cambridge",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "9500f63b-760d-4e16-8b59-9c1acd3cfb03",
+          "name": "Petunia Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "explicit named lookup with outside area",
+      "request": {
+        "message": "Tell me about \"Iris Restaurant\" in Seaport",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "search",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": null,
+      "venues": [],
+      "events": []
+    },
+    {
+      "label": "alternative after a named venue",
+      "request": {
+        "message": "Another one",
+        "history_turns": 2,
+        "has_search_context": true
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [
+          "Italian"
+        ],
+        "vibes": [],
+        "neighborhoods": [
+          "North End"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [
+          "Italian"
+        ],
+        "neighborhoods": [
+          "North End"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [
+          "Iris Restaurant"
+        ],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "9500f63b-760d-4e16-8b59-9c1acd3cfb03",
+          "name": "Petunia Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "current Boston date event window",
+      "request": {
+        "message": "concerts in Cambridge tonight",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "event",
+        "cuisines": [],
+        "vibes": [
+          "livemusic"
+        ],
+        "neighborhoods": [
+          "Cambridge"
+        ],
+        "times": [
+          "tonight"
+        ],
+        "is_booking": false,
+        "is_event": true
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [
+          "Cambridge"
+        ],
+        "vibes": [
+          "livemusic"
+        ],
+        "times": [
+          "tonight"
+        ],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": null,
+        "venueName": null,
+        "isEvent": true,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": {
+          "kind": "today"
+        },
+        "eventKinds": [
+          "concert"
+        ]
+      },
+      "venues": [],
+      "events": [
+        {
+          "id": "b02b6752-f310-47a3-8e42-936f9e721c1a",
+          "title": "Synthetic Cambridge Concert",
+          "category": "Concert",
+          "date": "2026-11-24",
+          "venue_neighborhood": "Cambridge",
+          "attending_count": 1
+        }
+      ]
+    },
+    {
+      "label": "exact ISO event date",
+      "request": {
+        "message": "concerts in Cambridge on 2026-11-25",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "event",
+        "cuisines": [],
+        "vibes": [
+          "livemusic"
+        ],
+        "neighborhoods": [
+          "Cambridge"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": true
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [
+          "Cambridge"
+        ],
+        "vibes": [
+          "livemusic"
+        ],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": null,
+        "venueName": null,
+        "isEvent": true,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": {
+          "kind": "date",
+          "date": "2026-11-25"
+        },
+        "eventKinds": [
+          "concert"
+        ]
+      },
+      "venues": [],
+      "events": [
+        {
+          "id": "ce877f40-f597-456d-8e23-50f92f15ccd0",
+          "title": "Synthetic Tomorrow Concert",
+          "category": "Concert",
+          "date": "2026-11-25",
+          "venue_neighborhood": "Cambridge",
+          "attending_count": 0
+        }
+      ]
+    },
+    {
+      "label": "event area follow-up retains kind and date window",
+      "request": {
+        "message": "What about Back Bay?",
+        "history_turns": 2,
+        "has_search_context": true
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "event",
+        "cuisines": [],
+        "vibes": [
+          "livemusic"
+        ],
+        "neighborhoods": [
+          "Back Bay"
+        ],
+        "times": [
+          "tonight"
+        ],
+        "is_booking": false,
+        "is_event": true
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [
+          "Back Bay"
+        ],
+        "vibes": [
+          "livemusic"
+        ],
+        "times": [
+          "tonight"
+        ],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": null,
+        "venueName": null,
+        "isEvent": true,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": {
+          "kind": "today"
+        },
+        "eventKinds": [
+          "concert"
+        ]
+      },
+      "venues": [],
+      "events": [
+        {
+          "id": "3bf4c482-2bb8-42b9-b64b-a1b4b685eb9c",
+          "title": "Synthetic Back Bay Concert",
+          "category": "Concert",
+          "date": "2026-11-24",
+          "venue_neighborhood": "Back Bay",
+          "attending_count": 0
+        }
+      ]
+    },
+    {
+      "label": "empty event search stays an event search",
+      "request": {
+        "message": "concerts in North End tonight",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "event",
+        "cuisines": [],
+        "vibes": [
+          "livemusic"
+        ],
+        "neighborhoods": [
+          "North End"
+        ],
+        "times": [
+          "tonight"
+        ],
+        "is_booking": false,
+        "is_event": true
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [
+          "North End"
+        ],
+        "vibes": [
+          "livemusic"
+        ],
+        "times": [
+          "tonight"
+        ],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": null,
+        "venueName": null,
+        "isEvent": true,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": {
+          "kind": "today"
+        },
+        "eventKinds": [
+          "concert"
+        ]
+      },
+      "venues": [],
+      "events": []
+    },
+    {
+      "label": "unsupported next weekday",
+      "request": {
+        "message": "concerts in Cambridge next Tuesday",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "clarify"
+      },
+      "search_context": null,
+      "venues": [],
+      "events": []
+    },
+    {
+      "label": "model area follow-up",
+      "request": {
+        "message": "What about Seaport?",
+        "history_turns": 2,
+        "has_search_context": false
+      },
+      "source": "openai",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [
+          "italian"
+        ],
+        "vibes": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [
+          "italian"
+        ],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "14a20ad9-92e6-40dc-99a3-dc27fd350ad7",
+          "name": "Cedar Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "eb1e8513-9d83-4bdf-b322-ba605f525f3a",
+          "name": "Dahlia Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": null,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "model budget follow-up",
+      "request": {
+        "message": "Make it cheaper",
+        "history_turns": 4,
+        "has_search_context": true
+      },
+      "source": "openai",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [
+          "italian"
+        ],
+        "vibes": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [
+          "italian"
+        ],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": 2,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "model type switch",
+      "request": {
+        "message": "Show cocktail bars instead",
+        "history_turns": 6,
+        "has_search_context": true
+      },
+      "source": "openai",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [],
+        "vibes": [
+          "cocktail"
+        ],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "vibes": [
+          "cocktail"
+        ],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": 2,
+        "partySize": null,
+        "venueType": "cocktail_bar",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "4bc4c0ad-5e65-4ad7-ba3e-dc4f684fd772",
+          "name": "Fir Bar",
+          "type": "bar",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "c51d4189-11a8-4a99-93a7-c23640082772",
+          "name": "Garnet Bar",
+          "type": "bar",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "model explicit area overrides context",
+      "request": {
+        "message": "Find restaurants in North End",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "openai",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [
+          "North End"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [
+          "North End"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "9c890f81-2544-4be5-b9d7-b7aca517e398",
+          "name": "Iris Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "9500f63b-760d-4e16-8b59-9c1acd3cfb03",
+          "name": "Petunia Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "Alice preference request",
+      "request": {
+        "message": "Find Italian restaurants in Back Bay",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [
+          "italian"
+        ],
+        "vibes": [],
+        "neighborhoods": [
+          "Back Bay"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [
+          "italian"
+        ],
+        "neighborhoods": [
+          "Back Bay"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e8c39824-982c-45bd-84a3-c1454f86c397",
+          "name": "Aster House",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Back Bay",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "Bob cannot adopt Alice account/session",
+      "request": {
+        "message": "Find restaurants",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "search",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e8c39824-982c-45bd-84a3-c1454f86c397",
+          "name": "Aster House",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Back Bay",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "14a20ad9-92e6-40dc-99a3-dc27fd350ad7",
+          "name": "Cedar Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "eb1e8513-9d83-4bdf-b322-ba605f525f3a",
+          "name": "Dahlia Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": null,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "7b3d3692-6db5-4329-94b6-bbf6a9739ea9",
+          "name": "Elm Sushi",
+          "type": "restaurant",
+          "cuisine": "Japanese",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "9c890f81-2544-4be5-b9d7-b7aca517e398",
+          "name": "Iris Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "d6ff02c0-a4fa-4c03-bf9b-ba0c776b5f1d",
+          "name": "Maple Ramen",
+          "type": "restaurant",
+          "cuisine": "Japanese",
+          "neighborhood": "Cambridge",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "03116eac-210c-4040-8dc4-83353d43196d",
+          "name": "Nettle Trattoria",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Cambridge",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "a75dbbe6-9e5a-47ef-99f6-eba66a0daf50",
+          "name": "Opal Ramen",
+          "type": "restaurant",
+          "cuisine": "Japanese",
+          "neighborhood": "Back Bay",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "9500f63b-760d-4e16-8b59-9c1acd3cfb03",
+          "name": "Petunia Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "Guest reused session is independent",
+      "request": {
+        "message": "Find restaurants",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "search",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e8c39824-982c-45bd-84a3-c1454f86c397",
+          "name": "Aster House",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Back Bay",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "14a20ad9-92e6-40dc-99a3-dc27fd350ad7",
+          "name": "Cedar Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "eb1e8513-9d83-4bdf-b322-ba605f525f3a",
+          "name": "Dahlia Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": null,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "7b3d3692-6db5-4329-94b6-bbf6a9739ea9",
+          "name": "Elm Sushi",
+          "type": "restaurant",
+          "cuisine": "Japanese",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "9c890f81-2544-4be5-b9d7-b7aca517e398",
+          "name": "Iris Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 4,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "d6ff02c0-a4fa-4c03-bf9b-ba0c776b5f1d",
+          "name": "Maple Ramen",
+          "type": "restaurant",
+          "cuisine": "Japanese",
+          "neighborhood": "Cambridge",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "03116eac-210c-4040-8dc4-83353d43196d",
+          "name": "Nettle Trattoria",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Cambridge",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "a75dbbe6-9e5a-47ef-99f6-eba66a0daf50",
+          "name": "Opal Ramen",
+          "type": "restaurant",
+          "cuisine": "Japanese",
+          "neighborhood": "Back Bay",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "9500f63b-760d-4e16-8b59-9c1acd3cfb03",
+          "name": "Petunia Restaurant",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "North End",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "authenticated model input excludes account data",
+      "request": {
+        "message": "Find Italian restaurants in Back Bay",
+        "history_turns": 1,
+        "has_search_context": false
+      },
+      "source": "openai",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [
+          "italian"
+        ],
+        "vibes": [],
+        "neighborhoods": [
+          "Back Bay"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [
+          "italian"
+        ],
+        "neighborhoods": [
+          "Back Bay"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e8c39824-982c-45bd-84a3-c1454f86c397",
+          "name": "Aster House",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Back Bay",
+          "price_level": 3,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "untrusted extra state keys",
+      "request": {
+        "message": "For 4 people",
+        "history_turns": 0,
+        "has_search_context": true
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [
+          "Italian"
+        ],
+        "vibes": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [
+          "Italian"
+        ],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": 2,
+        "partySize": 4,
+        "venueType": "restaurant",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "isolated dinner and drinks",
+      "request": {
+        "message": "Plan dinner then drinks in Seaport, budget $$",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "openai",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": 2,
+        "partySize": null,
+        "venueType": null,
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": true,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "4bc4c0ad-5e65-4ad7-ba3e-dc4f684fd772",
+          "name": "Fir Bar",
+          "type": "bar",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "isolated swap request",
+      "request": {
+        "message": "Swap the drinks stop",
+        "history_turns": 2,
+        "has_search_context": false
+      },
+      "source": "openai",
+      "intent": {
+        "primary": "search",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": null,
+        "partySize": null,
+        "venueType": "bar",
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": false,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "c51d4189-11a8-4a99-93a7-c23640082772",
+          "name": "Garnet Bar",
+          "type": "bar",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "swap without state",
+      "request": {
+        "message": "Swap the drinks stop",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "search",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": null,
+      "venues": [],
+      "events": []
+    },
+    {
+      "label": "expired envelope",
+      "request": {
+        "message": "Swap the drinks stop",
+        "history_turns": 2,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "search",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": null,
+      "venues": [],
+      "events": []
+    },
+    {
+      "label": "tampered envelope",
+      "request": {
+        "message": "Swap the drinks stop",
+        "history_turns": 2,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "search",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": null,
+      "venues": [],
+      "events": []
+    },
+    {
+      "label": "another allowed account cannot use envelope",
+      "request": {
+        "message": "Swap the drinks stop",
+        "history_turns": 2,
+        "has_search_context": true
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "search",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": null,
+      "venues": [],
+      "events": []
+    },
+    {
+      "label": "explicit directory choice",
+      "request": {
+        "message": "Swap the drinks stop",
+        "history_turns": 2,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "search",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": null,
+      "venues": [],
+      "events": []
+    },
+    {
+      "label": "key absent",
+      "request": {
+        "message": "Swap the drinks stop",
+        "history_turns": 2,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "search",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": null,
+      "venues": [],
+      "events": []
+    },
+    {
+      "label": "swap with withdrawn retained dinner",
+      "request": {
+        "message": "Swap the drinks stop",
+        "history_turns": 2,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "search",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": null,
+      "venues": [],
+      "events": []
+    },
+    {
+      "label": "model cannot make dinner a second drinks stop",
+      "request": {
+        "message": "Plan dinner then drinks in Seaport, budget $$",
+        "history_turns": 0,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "recommend",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": {
+        "version": 1,
+        "cuisines": [],
+        "neighborhoods": [
+          "Seaport"
+        ],
+        "vibes": [],
+        "times": [],
+        "excludedCuisines": [],
+        "excludedNeighborhoods": [],
+        "excludedVenueTypes": [],
+        "excludedVenueNames": [],
+        "priceMax": 2,
+        "partySize": null,
+        "venueType": null,
+        "venueName": null,
+        "isEvent": false,
+        "isPlan": true,
+        "isBooking": false,
+        "eventWindow": null,
+        "eventKinds": []
+      },
+      "venues": [
+        {
+          "id": "e22c1ede-fd89-4762-99ab-57d8fa0f34fc",
+          "name": "Birch Table",
+          "type": "restaurant",
+          "cuisine": "Italian",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "7b3d3692-6db5-4329-94b6-bbf6a9739ea9",
+          "name": "Elm Sushi",
+          "type": "restaurant",
+          "cuisine": "Japanese",
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "4bc4c0ad-5e65-4ad7-ba3e-dc4f684fd772",
+          "name": "Fir Bar",
+          "type": "bar",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "c51d4189-11a8-4a99-93a7-c23640082772",
+          "name": "Garnet Bar",
+          "type": "bar",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "4d9edebe-4c52-4abb-8cbb-42baf95ce965",
+          "name": "Grove Cafe",
+          "type": "cafe",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 1,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "e21de1ec-07dc-4cce-95a7-196f667d7759",
+          "name": "Hazel Music Hall",
+          "type": "music",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        },
+        {
+          "id": "d92c08f3-c759-4f92-8cbc-64bbf4dd4b69",
+          "name": "Juniper Brewery",
+          "type": "bar",
+          "cuisine": null,
+          "neighborhood": "Seaport",
+          "price_level": 2,
+          "rating": null,
+          "review_count": null,
+          "is_open_now": null
+        }
+      ],
+      "events": []
+    },
+    {
+      "label": "withdraw after swap model rank",
+      "request": {
+        "message": "Swap the drinks stop",
+        "history_turns": 2,
+        "has_search_context": false
+      },
+      "source": "rule-based",
+      "intent": {
+        "primary": "search",
+        "cuisines": [],
+        "vibes": [],
+        "neighborhoods": [],
+        "times": [],
+        "is_booking": false,
+        "is_event": false
+      },
+      "search_context": null,
+      "venues": [],
+      "events": []
+    }
+  ]
+}

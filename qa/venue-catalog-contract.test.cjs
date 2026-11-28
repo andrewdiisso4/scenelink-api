@@ -124,8 +124,8 @@ test('rule-based concierge shares venue booking semantics and reviewed-event sou
     assert.equal(events.events[0].title,event.title);assert.equal(events.events[0].rsvp_is_reservation,false);
     assert.equal(events.events[0].booking_status,'not_booked');
     const query=calls.find(call=>call.sql.includes('FROM events e'));
-    assert(query.sql.includes("source_review_status='reviewed'"));assert(query.sql.includes("e.date BETWEEN (CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')::date"));
-    assert.deepEqual(query.params,[1,5]);assert(!query.sql.includes('event_date'));
+    assert(query.sql.includes("source_review_status='reviewed'"));assert(query.sql.includes("e.date = (CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')::date"));
+    assert.deepEqual(query.params,[['concert','concerts','music','live music'],5]);assert(!query.sql.includes('event_date'));
   });
 });
 
@@ -147,15 +147,15 @@ test('known unavailable bare name returns no related catalog rows or hidden stat
     const candidate=calls.find(x=>x.sql.includes('SELECT id, slug, name'));
     assert(candidate.sql.includes('lower(name) = lower($1)'));
     assert.equal(candidate.params[0],secretName);
-    const result=await ai.runAIConcierge({message:secretName});
-    assert.equal(result.source,'empty');
-    assert.deepEqual(result.candidates,[]);
+    await assert.rejects(ai.runAIConcierge({message:secretName}),/pilot is not available/);
     const oldKey=process.env.OPENAI_API_KEY,oldFetch=global.fetch;
     try {
       process.env.OPENAI_API_KEY='test-only-no-provider-call';
       global.fetch=async()=>{throw Error('Provider calls forbidden in this test');};
       await handler({body:{message:secretName}}, {setHeader(){},status(code){assert.equal(code,200);return this;},json(body){output=body;return body;}});
-      assert.equal(output.source,'empty');
+      assert.equal(output.source,'rule-based');
+      assert.deepEqual(output.venues,[]);
+      assert.deepEqual(output.events,[]);
       assert(!JSON.stringify(output).includes(secretName));
       assert(!/business_status|duplicate_of|duplicate_review|CLOSED|inactive/.test(JSON.stringify(output)));
     } finally {
@@ -163,4 +163,50 @@ test('known unavailable bare name returns no related catalog rows or hidden stat
       global.fetch=oldFetch;
     }
   });
+});
+
+test('single explicit restaurant and cocktail-bar asks filter real catalog categories without narrowing generic or mixed asks',async()=>{
+  const {PGlite}=require('@electric-sql/pglite');
+  const db=await PGlite.create();
+  const venueRows=[
+    ['Equal Measure','bar','bar',true],
+    ['Long Live Roxbury','bar','brewery',true],
+    ["Maria's Kitchen",'restaurant','restaurant',true],
+    ['Viva Karaoke x Studios','music','music_venue',true],
+    ['Cocktail subtype fixture','nightlife','cocktail_bar',true],
+    ['Inactive bar fixture','bar','cocktail_bar',false]
+  ];
+  try{
+    await db.exec(`CREATE TABLE venues(
+      id uuid PRIMARY KEY, slug text, name text, type text, cuisine text, category text, neighborhood text, city text, address text,
+      source text, price_level int, pair_with text, short_desc text, description text, cover_image_url text, image_url text,
+      reservation_url text, opentable_url text, resy_url text, yelp_url text, google_maps_url text, lat numeric, lng numeric,
+      hours_display text, is_active boolean, business_status text);
+      CREATE TABLE analytics_events(event text,user_id text,anon boolean,session_id text,properties jsonb);`);
+    for(let i=0;i<venueRows.length;i++){
+      const [name,type,category,active]=venueRows[i];
+      await db.query("INSERT INTO venues(id,slug,name,type,category,city,source,is_active) VALUES ($1,$2,$3,$4,$5,'Boston','source-fixture',$6)",
+        ['00000000-0000-4000-8000-00000000000'+(i+1),'venue-'+i,name,type,category,active]);
+    }
+    await withConciergeFixture(db,async(_ai,router)=>{
+      const handler=router.stack.find(l=>l.route?.path==='/'&&l.route.methods.post).route.stack.at(-1).handle;
+      async function ask(message){
+        let result;
+        await handler({body:{message,ai:false,limit:10}},{setHeader(){},status(n){assert.equal(n,200);return this;},json(d){result=d;}});
+        assert.equal(result.source,'rule-based');return result;
+      }
+      const names=result=>result.venues.map(v=>v.name).sort();
+      const all=venueRows.filter(r=>r[3]).map(r=>r[0]).sort();
+      assert.deepEqual(names(await ask('Find restaurants in Boston')),["Maria's Kitchen"]);
+      assert.deepEqual(names(await ask('Find a restaurant in Boston')),["Maria's Kitchen"]);
+      const cocktails=await ask('Show me cocktail bars in Boston');
+      assert.deepEqual(names(cocktails),['Cocktail subtype fixture','Equal Measure']);
+      assert.match(cocktails.response,/Cocktail menus aren't verified/);
+      assert.deepEqual(names(await ask('Show me a cocktail-bar')),names(cocktails));
+      assert.deepEqual(names(await ask('Find me a place in Boston')),all);
+      assert.deepEqual(names(await ask('Find restaurants or bars in Boston')),all);
+      assert.deepEqual(names(await ask('Long Live Roxbury')),['Long Live Roxbury']);
+      assert.deepEqual(names(await ask('Find the bar called Long Live Roxbury')),['Long Live Roxbury']);
+    });
+  }finally{await db.close();}
 });

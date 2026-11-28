@@ -17,15 +17,26 @@
     window.__slBizApp = true;
 
     var API = '/api/business';
-    var TOKEN_KEY = 'sl_biz_token';
-    var USER_KEY = 'sl_business_user';
-    var LOCAL_USER_KEY = 'sl_business';   // inline script uses this key (BK) for UI state
-
-    function getToken() { return localStorage.getItem(TOKEN_KEY); }
-    function getLocalUser() {
-        try { return JSON.parse(localStorage.getItem(LOCAL_USER_KEY) || 'null'); } catch (_) { return null; }
+    const access = window.SLBizAccess;
+    let operator = {};
+    let originalFields = null;
+    let reportGeneration = 0;
+    const getToken = access.token;
+    const getLocalUser = () => operator;
+    const setLocalUser = value => { operator = value; };
+    const esc = value => String(value ?? '').replace(/[&<>"']/g,
+        c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
+    async function businessFetch(url, options) {
+        const token = getToken();
+        if (!token) throw Error('Business sign-in required.');
+        if (operator.venue_id && /\/(?:photos|promos)(?:\/|$)/.test(url) && !url.includes('?')) {
+            url += '?venue_id=' + encodeURIComponent(operator.venue_id);
+        }
+        const response = await window.fetch(url, {...options,cache:'no-store'});
+        if (token !== getToken()) throw Error('The business account changed.');
+        if (response.status === 401) { access.restore(); throw Error('Sign in again.'); }
+        return response;
     }
-    function setLocalUser(u) { localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(u)); }
     function authHeaders(extra) {
         var h = { 'Content-Type': 'application/json' };
         var t = getToken();
@@ -42,6 +53,7 @@
             ';border-radius:10px;padding:14px 20px;color:#fff;font-family:sans-serif;font-size:14px;' +
             'box-shadow:0 8px 32px rgba(0,0,0,0.5);max-width:340px;';
         el.textContent = msg;
+        el.setAttribute('role', isError ? 'alert' : 'status');
         document.body.appendChild(el);
         setTimeout(function () { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; }, 3600);
         setTimeout(function () { el.remove(); }, 4200);
@@ -58,6 +70,7 @@
         if (!v) return;
         setVal('bdEditName', v.name || '');
         setVal('bdEditDesc', v.description || '');
+        setVal('bdEditHours', v.hours_display || '');
         setVal('bdEditAddr', v.address || '');
         setVal('bdEditNhood', v.neighborhood || '');
         setVal('bdEditPhone', v.phone || '');
@@ -65,77 +78,92 @@
         setVal('bdEditResy', v.resy_url || '');
         setVal('bdEditOpentable', v.opentable_url || '');
         setVal('bdEditReservation', v.reservation_url || '');
-        // Category select
-        var catEl = $('bdEditCat');
-        if (catEl && v.type) {
-            var target = String(v.type).toLowerCase();
-            Array.prototype.slice.call(catEl.options).forEach(function (opt) {
-                if (opt.value.toLowerCase() === target || opt.textContent.toLowerCase() === target) {
-                    opt.selected = true;
-                }
-            });
+        // Show stored values, including legacy categories outside the standard options.
+        for (const [id,value] of [['bdEditCat',v.type],['bdEditDress',v.dress_code]]) {
+            const select = $(id);
+            const text = String(value || '');
+            let option = [...select.options].find(o => o.value.toLowerCase() === text.toLowerCase());
+            if (!option) { option = new Option(text,text); select.add(option); }
+            select.value = option.value;
         }
-        // Price select
-        var priceEl = $('bdEditPrice');
-        if (priceEl && v.price_level) {
-            var n = Number(v.price_level);
-            if (n >= 1 && n <= 4) priceEl.selectedIndex = n - 1;
-        }
-        // Dress code
-        var dressEl = $('bdEditDress');
-        if (dressEl && v.dress_code) {
-            Array.prototype.slice.call(dressEl.options).forEach(function (opt) {
-                if (opt.value === v.dress_code || opt.textContent === v.dress_code) opt.selected = true;
-            });
-        }
+        const price = Number(v.price_level);
+        $('bdEditPrice').value = Number.isInteger(price) && price >= 1 && price <= 4 ? '$'.repeat(price) : '';
+        originalFields = collectFormPayload();
         // Update the visible venue card
         setText('bdVName', v.name || 'Your Venue');
         var meta = [v.type, v.neighborhood].filter(Boolean).join(' · ');
         if (meta) setText('bdVMeta', meta);
         var rEl = $('bdVRating');
         if (rEl) {
-            if (v.rating && Number(v.rating) > 0) {
+            if (v.is_active !== true && v.needs_manual_review === true) {
+                rEl.textContent = 'Pending review · Not publicly visible';
+            } else if (v.rating && Number(v.rating) > 0) {
                 rEl.innerHTML = '<i class="fas fa-star" style="color:var(--gold)"></i> ' +
                     Number(v.rating).toFixed(1) + ' · ' + (v.review_count || 0) + ' reviews';
             } else {
-                rEl.innerHTML = '<i class="fas fa-info-circle"></i> No reviews yet · Listing live';
+                rEl.textContent = v.is_active === true ? 'Active listing' : (v.is_active === false ? 'Inactive listing' : 'Linked listing');
             }
         }
     }
 
-    // ── Validate token + fetch latest user on load ──────────────────
-    function hydrateOnLoad() {
-        var token = getToken();
-        if (!token) return;
-        fetch(API + '/me', { headers: authHeaders() })
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (d) {
-                if (!d || !d.user) {
-                    // Token invalid/expired → clear
-                    localStorage.removeItem(TOKEN_KEY);
-                    localStorage.removeItem(USER_KEY);
-                    return;
-                }
-                localStorage.setItem(USER_KEY, JSON.stringify(d.user));
-                // Sync local UI-state
-                var u = getLocalUser() || {};
-                u.email = d.user.email;
-                u.venueName = d.user.venue_name;
-                u.venue_id = d.user.venue_id;
-                u.tier = d.user.tier;
-                setLocalUser(u);
-                // Prefill form + cards with backend venue snapshot
-                if (d.user.venue) prefillFromVenue(d.user.venue);
-                // Update tier pill
-                var tierEl = $('bdTierName');
-                if (tierEl && d.user.tier) {
-                    tierEl.textContent = d.user.tier.charAt(0).toUpperCase() + d.user.tier.slice(1);
-                }
-                // If not yet linked, surface Create Listing button
-                if (!d.user.venue_id) injectCreateListingUI();
-            })
-            .catch(function () { /* silent */ });
+    function showAccount(user) {
+        operator = {email:user.email, venueName:user.venue_name, venue_id:user.venue_id, tier:user.tier};
+        _activeVenueId = user.venue_id;
+        originalFields = null;
+        if (user.venue) prefillFromVenue(user.venue);
+        if (!user.venue_id) injectCreateListingUI();
+        else $('bdCreateListingBtn')?.parentElement.remove();
+        $('bdSaveListing').disabled = !user.venue;
+        const view = $('bdViewListing');
+        view.hidden = !user.venue_id || user.venue?.is_active !== true;
+        if (!view.hidden) view.href = '/explore?venue=' + encodeURIComponent(user.venue_id);
+        loadReport(30, true);
+        loadReviews();
+        loadPhotos();
+        loadPromos();
+        loadVenueList();
     }
+
+    async function loadReport(days, overview) {
+        const venueId = operator.venue_id;
+        const token = getToken();
+        const sequence = overview ? 0 : ++reportGeneration;
+        const ids = overview ? ['bdStatViews','bdStatSaves','bdStatPlans','bdStatClicks']
+            : ['bdAnalViews','bdAnalSaves','bdAnalCheckins','bdAnalRating'];
+        const status = $(overview ? 'bdStatsStatus' : 'bdAnalEmpty');
+        const current = () => token === getToken() && venueId === operator.venue_id &&
+            (overview || sequence === reportGeneration);
+        ids.forEach(id => setText(id, '—'));
+        status.style.display = 'block';
+        status.textContent = venueId ? 'Loading recorded activity…' : 'A linked venue is needed for reporting.';
+        if (!venueId || !token) return;
+        try {
+            const response = await businessFetch(API+'/listings/'+encodeURIComponent(venueId)+'/analytics?days='+days, {headers:authHeaders()});
+            const data = await response.json();
+            if (!current()) return;
+            const labels = {view:'Listing views', save:'Save events', plan_add:'Plan adds', website_click:'Website clicks',
+                checkin:'Check-in events', review_post:'Review posts', booking_click:'Booking-link clicks'};
+            const keys = data.metrics;
+            if (!response.ok || !data.ok || data.venue_id !== venueId || data.window_days !== days ||
+                !Array.isArray(keys) || keys.length !== ids.length || !keys.every(key => Object.hasOwn(labels,key)) ||
+                !keys.every(key => Number.isInteger(data.counts?.[key]) && data.counts[key] >= 0)) throw Error();
+            keys.forEach((key,i) => {
+                const metric = $(ids[i]);
+                metric.previousElementSibling.textContent = labels[key];
+                metric.textContent = data.counts[key].toLocaleString();
+            });
+            status.textContent = data.total === 0 ? 'No activity recorded in this period.' : '';
+        } catch (_) {
+            if (current()) status.textContent = 'Activity is unavailable. Retry to check again.';
+        }
+    }
+    window.setAnalyticsRange = function(button, range) {
+        const days = {today:1, week:7, month:30, quarter:90}[range] || 30;
+        document.querySelectorAll('.bd-range-btn').forEach(b => b.classList.toggle('active',
+            button ? b === button : b.textContent.trim() === 'Month'));
+        setText('bdAnalTitle', days === 1 ? 'Last 24 hours' : 'Last '+days+' days');
+        loadReport(days, false);
+    };
 
     // ── Inject "Create Listing" button when business has no linked venue ─
     function injectCreateListingUI() {
@@ -148,10 +176,10 @@
             '<div style="color:var(--gold);font-weight:700;margin-bottom:6px;font-size:13px;">' +
             '<i class="fas fa-magic-wand-sparkles"></i> No listing linked yet</div>' +
             '<div style="color:var(--dim);font-size:12px;margin-bottom:10px;">' +
-            'Fill the form above and click below to create your live SceneLink listing. ' +
-            'Once created, you\'ll use "Save Changes" to edit it.</div>' +
+            'Fill the form above to submit your listing for review. It stays private until approved. ' +
+            'You can keep editing it with "Save Changes" while it is pending.</div>' +
             '<button class="bz-btn bz-btn-gold" id="bdCreateListingBtn" type="button">' +
-            '<i class="fas fa-plus-circle"></i> Create Listing</button>';
+            '<i class="fas fa-plus-circle"></i> Submit listing for review</button>';
         saveBtn.parentNode.insertBefore(wrap, saveBtn.nextSibling);
 
         $('bdCreateListingBtn').addEventListener('click', createListing);
@@ -179,7 +207,7 @@
             description: description.trim(),
             address: address.trim(),
             neighborhood: neighborhood.trim(),
-            city: 'Boston',
+            hours_display: $('bdEditHours').value.trim() || null,
             phone: phone.trim(),
             website: website.trim(),
             type: type,
@@ -198,8 +226,9 @@
         var payload = collectFormPayload();
         if (!payload.name) { toast('Please enter a venue name', true); return; }
         var btn = $('bdCreateListingBtn');
+        if (btn?.disabled) return;
         if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…'; }
-        fetch(API + '/venue', {
+        businessFetch(API + '/venue', {
             method: 'POST',
             headers: authHeaders(),
             body: JSON.stringify(payload)
@@ -208,27 +237,30 @@
             .then(function (res) {
                 if (!res.ok) {
                     toast(res.data.error || 'Failed to create listing', true);
-                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-plus-circle"></i> Create Listing'; }
+                    if (btn) { btn.disabled = false; btn.textContent = 'Submit listing for review'; }
                     return;
                 }
-                toast('Listing created! Live on SceneLink ✓');
+                if (!res.data.ok || res.data.pending_review !== true || !res.data.venue?.id ||
+                    res.data.venue.is_active !== false || res.data.venue.needs_manual_review !== true) {
+                    toast('Listing review status was not confirmed. Reload to check before retrying.', true);
+                    if (btn) { btn.disabled=false; btn.textContent='Submit listing for review'; }
+                    return;
+                }
+                toast('Listing saved for review. You can keep editing it.');
                 // Sync local state
                 var u = getLocalUser() || {};
                 u.venue_id = res.data.venue.id;
                 u.venueName = res.data.venue.name;
                 setLocalUser(u);
-                var su = JSON.parse(localStorage.getItem(USER_KEY) || '{}');
-                su.venue_id = res.data.venue.id;
-                su.venue_name = res.data.venue.name;
-                localStorage.setItem(USER_KEY, JSON.stringify(su));
                 prefillFromVenue(res.data.venue);
                 // Remove the create button, the inline save button now handles edits
                 var wrap = btn ? btn.parentNode : null;
                 if (wrap) wrap.remove();
+                access.restore();
             })
             .catch(function () {
                 toast('Network error. Please try again.', true);
-                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-plus-circle"></i> Create Listing'; }
+                if (btn) { btn.disabled = false; btn.textContent = 'Submit listing for review'; }
             });
     }
 
@@ -237,13 +269,7 @@
         var saveBtn = $('bdSaveListing');
         if (!saveBtn || saveBtn.__slEnhanced) return;
         saveBtn.__slEnhanced = true;
-        saveBtn.addEventListener('click', function (e) {
-            // Run AFTER inline handler (capture = false). Inline handler does PATCH with limited fields;
-            // we intercept first by using capture=true so we replace it.
-        }, false);
-        // Replace by cloning
-        var newBtn = saveBtn.cloneNode(true);
-        saveBtn.parentNode.replaceChild(newBtn, saveBtn);
+        var newBtn = saveBtn;
         newBtn.addEventListener('click', function () {
             var token = getToken();
             var u = getLocalUser() || {};
@@ -251,11 +277,16 @@
                 toast('No linked listing. Use "Create Listing" above.', true);
                 return;
             }
-            var payload = collectFormPayload();
+            if (newBtn.disabled || !originalFields) return;
+            const allFields = collectFormPayload();
+            const payload = Object.fromEntries(Object.entries(allFields).filter(([key,value]) => originalFields[key] !== value));
+            if (!Object.keys(payload).length) { toast('No changes to save.'); return; }
+            if ('name' in payload && !payload.name) { toast('Enter a venue name.',true); return; }
+            const venueId = u.venue_id;
             newBtn.disabled = true;
             var orig = newBtn.innerHTML;
             newBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
-            fetch(API + '/venue', {
+            businessFetch(API + '/venue?venue_id=' + encodeURIComponent(venueId), {
                 method: 'PATCH',
                 headers: authHeaders(),
                 body: JSON.stringify(payload)
@@ -267,16 +298,24 @@
                         toast(res.data.error || 'Save failed', true);
                         return;
                     }
-                    toast('Listing saved & live on SceneLink ✓');
+                    if (!res.data.ok || res.data.venue?.id !== venueId || !Object.entries(payload).every(([key,value]) =>
+                        String(res.data.venue[key] ?? '') === String(value ?? ''))) {
+                        toast('The server did not confirm these changes. Check the listing and retry.', true);
+                        return;
+                    }
+                    toast('Listing changes saved.');
                     // Sync local UI
                     u.venueName = payload.name || u.venueName;
                     setLocalUser(u);
                     setText('bdVName', u.venueName);
-                    prefillFromVenue(res.data.venue);
+                    const inProgress = collectFormPayload();
+                    const laterEdits = Object.keys(inProgress).some(key => inProgress[key] !== allFields[key]);
+                    if (laterEdits) originalFields = allFields;
+                    else prefillFromVenue(res.data.venue);
                 })
                 .catch(function () {
                     newBtn.disabled = false; newBtn.innerHTML = orig;
-                    toast('Network error. Changes not saved.', true);
+                    toast('Save could not be confirmed. Reload the listing to check.', true);
                 });
         });
     }
@@ -285,12 +324,14 @@
     function loadReviews() {
         var token = getToken();
         if (!token) return;
-        fetch(API + '/reviews', { headers: authHeaders() })
+        businessFetch(API + '/reviews', { headers: authHeaders() })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (d) {
-                if (!d) return;
+                if (!Array.isArray(d?.reviews)) throw Error();
                 var c = $('bdReviewsList'); if (!c) return;
                 var reviews = d.reviews || [];
+                const sort = $('bdReviewSort').selectedIndex;
+                if (sort) reviews.sort((a,b) => sort === 1 ? b.rating-a.rating : a.rating-b.rating);
                 if (!reviews.length) {
                     c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--dim);">' +
                         '<i class="fas fa-comment-dots" style="font-size:28px;color:var(--gold);margin-bottom:8px;display:block;"></i>' +
@@ -306,14 +347,14 @@
                     }
                     return '<div class="bd-review">' +
                         '<div class="bd-review-top">' +
-                        '<div><span class="bd-review-u">' + (r.user_display_name || r.username || 'Guest') + '</span> ' + stars + '</div>' +
+                        '<div><span class="bd-review-u">' + esc(r.user_display_name || r.username || 'Guest') + '</span> ' + stars + '</div>' +
                         '<div class="bd-review-t">' + timeAgo(r.created_at) + '</div>' +
                         '</div>' +
-                        '<div class="bd-review-txt">' + (r.content || r.text || '') + '</div>' +
+                        '<div class="bd-review-txt">' + esc(r.content || r.text || '') + '</div>' +
                         '</div>';
                 }).join('');
             })
-            .catch(function () { /* silent */ });
+            .catch(function () { setText('bdReviewsList','Reviews unavailable. Reopen Reviews to retry.'); });
     }
 
     function timeAgo(ts) {
@@ -325,28 +366,6 @@
         return Math.round(diff / 86400) + 'd ago';
     }
 
-    // ── Enhanced logout: calls backend + clears everything ─────────
-    function enhanceLogout() {
-        var btn = $('bdLogout');
-        if (!btn || btn.__slEnhanced) return;
-        btn.__slEnhanced = true;
-        var orig = btn.cloneNode(true);
-        btn.parentNode.replaceChild(orig, btn);
-        orig.addEventListener('click', function () {
-            var token = getToken();
-            // Fire-and-forget logout
-            if (token) {
-                fetch(API + '/logout', { method: 'POST', headers: authHeaders() }).catch(function () {});
-            }
-            localStorage.removeItem(TOKEN_KEY);
-            localStorage.removeItem(USER_KEY);
-            localStorage.removeItem(LOCAL_USER_KEY);
-            var dash = $('bizDashboard'); if (dash) dash.classList.remove('active');
-            var landing = $('bizLanding'); if (landing) landing.classList.remove('hidden');
-            toast('Signed out successfully');
-        });
-    }
-
     // ═══════════════════════════════════════════════════════════════
     // PHOTOS — real DB via /api/business/photos
     // ═══════════════════════════════════════════════════════════════
@@ -356,13 +375,13 @@
         var token = getToken();
         if (!token) return;
         var qs = _activeVenueId ? '?venue_id=' + encodeURIComponent(_activeVenueId) : '';
-        fetch(API + '/photos' + qs, { headers: authHeaders() })
+        businessFetch(API + '/photos' + qs, { headers: authHeaders() })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (d) {
-                if (!d) return;
-                renderPhotosFromBackend(d.photos || []);
+                if (!Array.isArray(d?.photos)) throw Error();
+                renderPhotosFromBackend(d.photos);
             })
-            .catch(function () { /* silent */ });
+            .catch(function () { setText('bdPhotosGrid','Gallery unavailable. Reopen Photos to retry.'); });
     }
 
     function renderPhotosFromBackend(photos) {
@@ -373,14 +392,14 @@
         if (countEl) countEl.textContent = '(' + photos.length + '/' + max + ')';
 
         var html = photos.map(function (p) {
-            return '<div class="bd-photo" data-photo-id="' + p.id + '">' +
-                '<img src="' + p.url + '" alt="' + (p.caption || 'Venue photo') + '">' +
-                '<button class="bd-photo-del sl-photo-del" data-id="' + p.id + '" title="Delete">' +
+            return '<div class="bd-photo" data-photo-id="' + esc(p.id) + '">' +
+                '<img src="' + esc(p.url) + '" alt="' + esc(p.caption || 'Venue photo') + '">' +
+                '<button class="bd-photo-del sl-photo-del" data-id="' + esc(p.id) + '" title="Delete">' +
                 '<i class="fas fa-times"></i></button>' +
                 '</div>';
         }).join('');
         if (photos.length < max) {
-            html += '<div class="bd-photo add" id="bdAddPhoto"><i class="fas fa-plus"></i></div>';
+            html += '<button type="button" class="bd-photo add" id="bdAddPhoto" aria-label="Add a venue photo"><i class="fas fa-plus"></i></button>';
         }
         c.innerHTML = html;
 
@@ -390,7 +409,7 @@
                 e.stopPropagation();
                 if (!confirm('Delete this photo? This cannot be undone.')) return;
                 var id = btn.dataset.id;
-                fetch(API + '/photos/' + encodeURIComponent(id), {
+                businessFetch(API + '/photos/' + encodeURIComponent(id), {
                     method: 'DELETE', headers: authHeaders()
                 }).then(function (r) { return r.ok ? r.json() : null; })
                   .then(function (d) {
@@ -407,19 +426,39 @@
     }
 
     function openAddPhoto() {
-        var url = prompt('Paste an image URL:\n(Supported: Unsplash, Pexels, Imgur, your own hosted images)');
-        if (!url) return;
-        url = String(url).trim();
-        if (!/^https?:\/\//i.test(url)) { toast('URL must start with http:// or https://', true); return; }
-        var caption = prompt('Caption (optional):') || '';
-        fetch(API + '/photos', {
-            method: 'POST', headers: authHeaders(),
-            body: JSON.stringify({ url: url, caption: caption.trim() || null })
-        }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
-          .then(function (res) {
-              if (res.ok) { toast('Photo added ✓'); loadPhotos(); }
-              else toast(res.data.error || 'Failed to add photo', true);
-          }).catch(function () { toast('Network error', true); });
+        $('bdPhotoForm').hidden = false;
+        setText('bdPhotoStatus','');
+        $('bdPhotoURL').focus();
+    }
+    function closePhotoForm() {
+        $('bdPhotoForm').reset();
+        $('bdPhotoForm').hidden = true;
+        $('bdAddPhoto')?.focus();
+    }
+    async function savePhoto(event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const button = form.querySelector('[type=submit]');
+        if (button.disabled || !form.reportValidity()) return;
+        const url = $('bdPhotoURL').value.trim();
+        if (new URL(url).protocol !== 'https:') {
+            setText('bdPhotoStatus','Enter an HTTPS photo URL.');
+            return;
+        }
+        button.disabled = true;
+        $('bdPhotoCancel').disabled = true;
+        try {
+            const response = await businessFetch(API+'/photos', {method:'POST',headers:authHeaders(),
+                body:JSON.stringify({url,caption:$('bdPhotoCaption').value.trim() || null})});
+            const result = await response.json();
+            if (!response.ok || !result.ok || !result.photo?.id || result.photo.url !== url) {
+                throw Error(result.error || 'The new photo could not be confirmed.');
+            }
+            closePhotoForm();
+            toast('Photo saved.');
+            loadPhotos();
+        } catch (error) { setText('bdPhotoStatus', error.message || 'Photo could not be confirmed.'); }
+        finally { button.disabled = false; $('bdPhotoCancel').disabled = false; }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -429,16 +468,16 @@
     function loadPromos() {
         var token = getToken();
         if (!token) return;
-        fetch(API + '/promos', { headers: authHeaders() })
+        businessFetch(API + '/promos', { headers: authHeaders() })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (d) {
-                if (!d) return;
-                renderPromosFromBackend(d.promos || []);
-            }).catch(function () { /* silent */ });
+                if (!Array.isArray(d?.promos)) throw Error();
+                renderPromosFromBackend(d.promos);
+            }).catch(function () { setText('bdPromoList','Promotions unavailable. Reopen Promotions to retry.'); });
     }
 
     function promoStatus(p) {
-        if (!p.is_active) return 'ended';
+        if (!p.is_active) return 'paused';
         var now = Date.now();
         var starts = p.starts_at ? new Date(p.starts_at).getTime() : null;
         var ends = p.ends_at ? new Date(p.ends_at).getTime() : null;
@@ -451,7 +490,7 @@
         if (!ts) return '';
         try {
             var d = new Date(ts);
-            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone:'America/New_York' });
         } catch (_) { return ''; }
     }
 
@@ -468,25 +507,44 @@
             var dates = (p.starts_at || p.ends_at)
                 ? (fmtDate(p.starts_at) + (p.ends_at ? ' – ' + fmtDate(p.ends_at) : ''))
                 : 'Ongoing';
-            return '<div class="bd-promo" data-promo-id="' + p.id + '">' +
+            return '<div class="bd-promo" data-promo-id="' + esc(p.id) + '">' +
                 '<div class="bd-promo-info">' +
-                '<h4>' + (p.title || '(untitled)') + '</h4>' +
-                '<p>' + (p.description || '') + (p.description ? ' · ' : '') + dates + '</p>' +
+                '<h4>' + esc(p.title || '(untitled)') + '</h4>' +
+                '<p>' + esc(p.description || '') + (p.description ? ' · ' : '') + dates + '</p>' +
                 '</div>' +
                 '<div style="display:flex;align-items:center;gap:8px;">' +
                 '<span class="bd-promo-status ' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span>' +
-                '<button class="sl-promo-del" data-id="' + p.id + '" style="background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;">' +
+                '<button class="bd-b bd-b-o sl-promo-state" type="button" data-id="' + esc(p.id) + '" data-active="' +
+                    Boolean(p.is_active) + '">' + (p.is_active ? 'Pause' : 'Resume') + '</button>' +
+                '<button class="sl-promo-del" data-id="' + esc(p.id) + '" style="background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;">' +
                 '<i class="fas fa-trash"></i></button>' +
                 '</div>' +
                 '</div>';
         }).join('');
         // Wire delete buttons
+        c.querySelectorAll('.sl-promo-state').forEach(button => button.addEventListener('click', async () => {
+            if (button.disabled) return;
+            button.disabled = true;
+            const active = button.dataset.active !== 'true';
+            try {
+                const response = await businessFetch(API+'/promos/'+encodeURIComponent(button.dataset.id), {
+                    method:'PATCH', headers:authHeaders(), body:JSON.stringify({is_active:active})
+                });
+                const data = await response.json();
+                if (!response.ok || !data.ok || data.promo?.id !== button.dataset.id || data.promo.is_active !== active)
+                    throw Error('Promotion status was not confirmed.');
+                toast(active ? 'Promotion resumed.' : 'Promotion paused.');
+                loadPromos();
+            } catch (error) { toast(error.message,true); }
+            finally { button.disabled = false; }
+        }));
+
         Array.prototype.slice.call(c.querySelectorAll('.sl-promo-del')).forEach(function (btn) {
             btn.addEventListener('click', function (e) {
                 e.stopPropagation();
                 if (!confirm('Delete this promotion?')) return;
                 var id = btn.dataset.id;
-                fetch(API + '/promos/' + encodeURIComponent(id), {
+                businessFetch(API + '/promos/' + encodeURIComponent(id), {
                     method: 'DELETE', headers: authHeaders()
                 }).then(function (r) { return r.ok ? r.json() : null; })
                   .then(function (d) {
@@ -510,25 +568,27 @@
             var start = ($('bdPromoStart') || {}).value || '';
             var end = ($('bdPromoEnd') || {}).value || '';
             var desc = ($('bdPromoDesc') || {}).value || '';
+            if (newBtn.disabled) return;
             if (!title.trim()) { toast('Please enter a title', true); return; }
+            if (start && end && end < start) { toast('End date must be on or after the start date.',true); return; }
 
             newBtn.disabled = true;
             var orig = newBtn.innerHTML;
             newBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…';
-            fetch(API + '/promos', {
+            businessFetch(API + '/promos', {
                 method: 'POST', headers: authHeaders(),
                 body: JSON.stringify({
                     title: title.trim(),
                     description: desc.trim() || null,
-                    starts_at: start ? (start + 'T00:00:00Z') : null,
-                    ends_at: end ? (end + 'T23:59:59Z') : null,
+                    starts_at: start ? (start + ' 00:00:00 America/New_York') : null,
+                    ends_at: end ? (end + ' 23:59:59.999999 America/New_York') : null,
                     is_active: true
                 })
             }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
               .then(function (res) {
                   newBtn.disabled = false; newBtn.innerHTML = orig;
-                  if (res.ok) {
-                      toast('Promotion created ✓');
+                  if (res.ok && res.data.ok && res.data.promo?.id) {
+                      toast('Promotion created.');
                       // Reset form + close
                       ['bdPromoTitle', 'bdPromoStart', 'bdPromoEnd', 'bdPromoDesc'].forEach(function (id) {
                           var el = $(id); if (el) el.value = '';
@@ -552,7 +612,7 @@
     function loadVenueList() {
         var token = getToken();
         if (!token) return;
-        fetch(API + '/venues', { headers: authHeaders() })
+        businessFetch(API + '/venues', { headers: authHeaders() })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (d) {
                 if (!d) return;
@@ -580,29 +640,30 @@
         }
         sel.innerHTML = venues.map(function (v) {
             var label = v.name + (v.neighborhood ? ' — ' + v.neighborhood : '');
-            return '<option value="' + v.id + '"' + (v.is_primary ? ' selected' : '') + '>' + label + '</option>';
+            return '<option value="' + esc(v.id) + '"' + (v.is_primary ? ' selected' : '') + '>' + esc(label) + '</option>';
         }).join('');
         // Override the inline onchange with a real switch handler
         sel.onchange = function () {
             var venue_id = sel.value;
             if (!venue_id) return;
-            fetch(API + '/venues/switch', {
+            sel.disabled = true;
+            businessFetch(API + '/venues/switch', {
                 method: 'POST', headers: authHeaders(),
                 body: JSON.stringify({ venue_id: venue_id })
             }).then(function (r) { return r.ok ? r.json() : null; })
               .then(function (d) {
-                  if (d && d.ok) {
+                  if (d && d.ok && d.active_venue_id === venue_id) {
                       _activeVenueId = venue_id;
-                      toast('Switched venue ✓');
-                      // Refresh everything for the new active venue
-                      hydrateOnLoad();
-                      loadPhotos();
-                      loadPromos();
-                      loadReviews();
+                      toast('Switched venue.');
+                      window.location.reload();
                   } else {
+                      sel.value = _activeVenueId || '';
                       toast('Switch failed', true);
                   }
-              });
+              }).catch(function() {
+                  sel.value = _activeVenueId || '';
+                  toast('Could not confirm the active venue. Reload to check.', true);
+              }).finally(function() { sel.disabled = false; });
         };
     }
 
@@ -629,7 +690,7 @@
             var address = prompt('Address (optional):') || '';
             var neighborhood = prompt('Neighborhood (optional):') || '';
             var type = prompt('Type (restaurant, bar, lounge, nightclub, etc.):') || 'restaurant';
-            fetch(API + '/venues/add', {
+            businessFetch(API + '/venues/add', {
                 method: 'POST', headers: authHeaders(),
                 body: JSON.stringify({
                     name: name.trim(),
@@ -640,50 +701,33 @@
                 })
             }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
               .then(function (res) {
-                  if (res.ok) {
-                      toast('Venue added ✓');
-                      loadVenueList();
+                  if (res.ok && res.data.ok && res.data.pending_review === true && res.data.venue?.id &&
+                      res.data.venue.is_active === false && res.data.venue.needs_manual_review === true) {
+                      toast('Venue saved for review. It is not publicly visible.');
+                      if (!operator.venue_id) access.restore();
+                      else loadVenueList();
                   } else {
-                      toast(res.data.error || 'Failed to add venue', true);
+                      toast(res.data.error || 'Venue review status was not confirmed. Reload to check before retrying.', true);
                   }
               });
         });
     }
 
-    // ── Boot ────────────────────────────────────────────────────────
+    // Only validated business accounts can initialize the dashboard.
+    window.SLBizApp = {showAccount, loadPhotos, loadPromos, loadReviews, loadVenueList};
     function boot() {
-        enhanceLogout();
+        $('bdPhotoForm').addEventListener('submit',savePhoto);
+        $('bdPhotoCancel').addEventListener('click',closePhotoForm);
+        $('bdLogout').addEventListener('click', access.logout);
+        for (const [panel,load] of Object.entries({photos:loadPhotos,reviews:loadReviews,promotions:loadPromos})) {
+            document.querySelector('[data-panel="'+panel+'"]').addEventListener('click',load);
+        }
+        $('bdReviewSort').addEventListener('change', loadReviews);
+        $('bdStatsRetry').addEventListener('click', () => loadReport(30, true));
         enhanceSaveHandler();
         enhancePromoCreate();
-        if (getToken()) {
-            hydrateOnLoad();
-            setTimeout(function () { loadReviews(); }, 600);
-            setTimeout(function () { loadPhotos(); }, 800);
-            setTimeout(function () { loadPromos(); }, 900);
-            setTimeout(function () { loadVenueList(); }, 1000);
-        }
+        access.restore();
     }
-
-    // Public API for inline handlers to call after login/claim
-    window.SLBizApp = {
-        reload: function () {
-            if (!getToken()) return;
-            hydrateOnLoad();
-            setTimeout(loadReviews, 200);
-            setTimeout(loadPhotos, 300);
-            setTimeout(loadPromos, 400);
-            setTimeout(loadVenueList, 500);
-        },
-        loadPhotos: loadPhotos,
-        loadPromos: loadPromos,
-        loadVenueList: loadVenueList,
-        loadReviews: loadReviews,
-        hydrate: hydrateOnLoad
-    };
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', boot);
-    } else {
-        setTimeout(boot, 50);
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once:true});
+    else boot();
 })();

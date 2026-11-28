@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "observedOn": "2026-11-24",
+  "userTimezone": "America/New_York",
+  "scope": "Source and current deployment audit; read-only production aggregate queries and signed-out desktop browser inspection; isolated synthetic regressions; assistance draft only.",
+  "reviewedBaseline": {
+    "remoteCommit": "49eb15070504213b048bc9b9b9c1f750e62f214e",
+    "localEquivalentCommit": "2c0c89e3cab0c9dccb04084ee2cdcde1b7f8367c",
+    "tree": "1a87190cbc64ed321f299067df0af28a3c405b65",
+    "pullRequest": 39,
+    "draft": true,
+    "mergedToProduction": false
+  },
+  "deploymentReads": {
+    "frontend": {
+      "provider": "Netlify",
+      "deployId": "6b04fe26fc45f94f82790ad4",
+      "commit": "0741fc91105ce886984c9888b64b6f7a90864ff6",
+      "state": "ready",
+      "publishedAt": "2026-11-24T03:02:14.618Z"
+    },
+    "backend": {
+      "provider": "Render",
+      "deployId": "dep-dbug852fngtc73cmslg0",
+      "commit": "7b11bc0cd4edd0b1f7ebb8b6af3f3df096b79b7a",
+      "state": "live",
+      "autoDeploy": false
+    },
+    "isolatedQA": {
+      "provider": "Render",
+      "deployId": "dep-dc2gb1s0916s73a1o1u0",
+      "commit": "49eb15070504213b048bc9b9b9c1f750e62f214e",
+      "state": "live",
+      "autoDeploy": false
+    },
+    "vercelPilot": {
+      "project": "scenelink-ai-pilot",
+      "deployId": "dpl_HTYZ14YYoS2xDMf81pfuBsTzpVzt",
+      "commit": "935880c8598c661a4c5d952e23c362df010585e9",
+      "state": "READY",
+      "mainAppHostedHere": false,
+      "actionsRunsObserved": 4,
+      "liveOnceWorkflowRunObserved": false
+    }
+  },
+  "baselineCI": {
+    "runId": 45320027017,
+    "head": "87f114c299f8f2f6105b1246218d4dee92ba558a",
+    "conclusion": "success",
+    "jobsPassed": 8,
+    "appliesToAssistancePatch": false
+  },
+  "productionData": {
+    "readOnly": true,
+    "totalVenues": 1710,
+    "markedActive": 1630,
+    "markedInactive": 80,
+    "reviewFlagged": 49,
+    "missingAddressField": 394,
+    "missingCoordinates": 6,
+    "missingWebsiteField": 861,
+    "activeNotClosed": 1622,
+    "activeNotClosedReviewFlagged": 41,
+    "activeNotClosedMissingAddressField": 386,
+    "activeNotClosedMissingCoordinates": 4,
+    "sourceLedgerRows": 0,
+    "auditedIntakeBatchRows": 0,
+    "storedDirectImageURLs": 469,
+    "storedGooglePhotoReferenceArrays": 809,
+    "photoAvailabilityOrAccuracyCertified": false
+  },
+  "browser": {
+    "surface": "Supported desktop cloud browser",
+    "signedInActions": false,
+    "productionLoginAttempted": false,
+    "homepage": "loaded",
+    "discovery": "loaded; live directory reported 1622; 360 Cafe search returned two entries",
+    "duplicateCandidate": {
+      "name": "360 Cafe",
+      "slugs": [
+        "360-cafe-3214091551",
+        "360-cafe-m5ddx"
+      ],
+      "coordinates": [
+        [
+          42.356229,
+          -71.061974
+        ],
+        [
+          42.35623,
+          -71.061974
+        ]
+      ],
+      "disposition": "requires identity review; no rows removed or merged"
+    },
+    "venueDetail": "opened with unavailable photo and missing hours/phone/price for sampled venue",
+    "adminEntry": "email/password gate and separate admin secret option visible",
+    "businessEntry": "login and forgot-password form opened; no submission",
+    "consoleSample": "browser-extension-origin errors, not attributed to application",
+    "physicalDevice": false
+  },
+  "reproductions": [
+    {
+      "area": "admin publication",
+      "engine": "actual guarded handler and canonical discovery SQL; PGlite; auth middleware retained but invocation stubbed",
+      "baseline": "is_active:true returned200 and made review-pending row discoverable",
+      "newTestsBaseline": {
+        "pass": 3,
+        "fail": 3
+      },
+      "fixed": "409 before any mutation; nonboolean400; withdrawal and flags retained"
+    },
+    {
+      "area": "owner publication",
+      "engine": "real Express handlers, business JWTs and PGlite",
+      "baseline": "both name-only create routes returned200 with active discoverable rows; link failure left orphan active row",
+      "fixed": "transactional inactive review-pending202 submissions; rollback; first primary association; pending edits"
+    },
+    {
+      "area": "contacts",
+      "engine": "actual handler and PGlite",
+      "baseline": "two filtered rows returned total0 after placeholder count error",
+      "fixed": "correct list/count binding; SQL failure returns500"
+    },
+    {
+      "area": "health",
+      "engine": "JSDOM with intercepted HTTP responses",
+      "baseline": "HTTP500 error payload rendered API ONLINE green",
+      "fixed": "HTTP and payload checks; explicit ERROR/UNKNOWN; healthy health with missing summary is DB UNKNOWN"
+    },
+    {
+      "area": "owner name rendering",
+      "engine": "JSDOM",
+      "baseline": "text-context encoder did not encode angle brackets or ampersand",
+      "fixed": "HTML-like names remain text in multi-venue table and selector"
+    },
+    {
+      "area": "native Concierge analytics assertion",
+      "engine": "actual handler with deferred database promises; native PostgreSQL 18.3 and real HTTP",
+      "baseline": "HTTP response completed while analytics INSERT was pending; a separate pooled SELECT can precede commit",
+      "fixed": "QA-only session completion barrier; unchanged privacy assertions; captured INSERT rejection fails QA; no production behavior change, retries, or timed sleeps"
+    }
+  ],
+  "validation": {
+    "runtime": "Node24.22.3 (repository range >=24.22.1 <25)",
+    "syntax": "npm run check passed",
+    "backend": {
+      "tests": 238,
+      "pass": 237,
+      "fail": 0,
+      "skipped": 1
+    },
+    "backendSkip": "native whole-database restore guard requires its explicit native fixture; not exercised by this generic suite",
+    "frontend": {
+      "tests": 646,
+      "pass": 646,
+      "fail": 0,
+      "skipped": 0
+    },
+    "social": {
+      "pass": 40,
+      "fail": 0,
+      "scope": "VM mocked fetch only; no HTTP/server/database/account writes"
+    },
+    "frontendManifestEntries": 471,
+    "independentReviews": "admin diagnostics; publication guard; owner transactions and UI; add-first follow-up; evidence report; QA analytics completion observer and unchanged privacy assertions",
+    "nativeOwnerLockContention": "source-reviewed; not experimentally tested across native database connections",
+    "hostedPatchAcceptance": "not performed",
+    "remotePatchCI": "consult assistance pull request checks for exact remote head",
+    "nativeConcierge": {
+      "database": "fresh disposable literal-loopback PostgreSQL 18.3",
+      "groupsPassed": 33,
+      "groupsFailed": 0,
+      "inMemoryModelRequests": 9,
+      "externalNetworkAttempts": 0,
+      "privateBaselineUnchanged": true,
+      "productionAccess": false,
+      "receipt": "evidence/concierge-analytics-native-20261124.json"
+    },
+    "deterministicAnalyticsObserver": {
+      "pass": 4,
+      "fail": 0,
+      "strictUnhandledRejections": true
+    }
+  },
+  "changedRuntimeFileSHA256": {
+    "src/routes/admin.js": "f6cda61710358a56cd768c782633c21aab99abb87b3a0f1974b4f6f54d94e844",
+    "src/routes/business.js": "f36c150cf36552c7eb8ebc323e4446c4bf0228f408f03191a7e9d0681090a258",
+    "web/frontend/admin.html": "d2eb1ac7781a6c47e754049c712e1a96d8f9cf3101516359b5295603be8312b3",
+    "web/frontend/business.html": "c7b1350e518d9fe3f7fc3b835bf5dc682f26ac396e229634cf9d016479e9a505",
+    "web/frontend/js/sl-admin-portal.js": "8c0e91b6da100317f6f15475a3f72156fd0756723d8aaf40b344e41f2b0aa105",
+    "web/frontend/js/sl-business-app.js": "a27a76dcf7f8c0507bb0d472742ef37a3393dba0939316882239d33b21b684f3",
+    "web/frontend/version.json": "73ee99a419b6f66446604446ea692327d651a6dd548421d8ad626efdca0b4892"
+  },
+  "releaseBoundary": {
+    "productionDeployment": false,
+    "accountOrCredentialChanges": false,
+    "productionDataWrites": false,
+    "venueImportOrActivation": false,
+    "realModelCalls": false,
+    "emailOrMessagingSends": false,
+    "paymentChanges": false,
+    "remainingGates": [
+      "production authenticated admin acceptance",
+      "hosted owner/member/expiry scenarios",
+      "fresh production backup and applicable isolated restore",
+      "migration016 and old-writer cutover",
+      "venue review/intake and separate activation",
+      "physical iPhone/Safari and real inbox/OAuth",
+      "production-equivalent existing-browser cache transition",
+      "customer-visible owner gallery/promotions"
+    ]
+  },
+  "assistanceCIInitialRun": {
+    "runId": 45341797020,
+    "head": "6cacc7bd1fa36fc411c7e120bc610b73e5af45b4",
+    "conclusion": "failure",
+    "jobsPassed": 7,
+    "jobsFailed": 1,
+    "failedJob": "postgres (concierge)",
+    "cause": "Native test queried analytics before asynchronous INSERT promises settled; deterministic actual-handler reproduction confirmed the ordering.",
+    "disposition": "QA-only completion observer awaits original session write promises, propagates insert errors, and preserves existing identity/privacy assertions. Consult PR42 checks for corrected-head CI."
+  }
+}

@@ -412,3 +412,61 @@
 .sl-auth-overlay [hidden] { display: none !important; }
 .sl-auth-overlay [data-google-host] { display: flex; justify-content: center; min-width: 0; }
 .sl-auth-overlay [data-oauth-cancel] { margin: 8px auto 16px; }
+
+/* Account access uses the same charcoal, warm gold and control geometry on
+   bundled and standalone pages. Keep the provider's official button intact. */
+.sl-auth-overlay { background: rgb(6 9 12 / 76%) !important; padding: 24px; }
+.sl-auth-overlay .sl-auth-modal {
+  width: 100%; max-width: 440px; margin: 0; padding: 30px 28px 26px; border-radius: 24px;
+  background: var(--sl-ui-bg, #101316); border-color: var(--sl-ui-border, #49535e);
+  max-height: calc(100dvh - 48px); overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: #49535e transparent;
+}
+.sl-auth-overlay .sl-auth-brand { margin-bottom: 22px; }
+.sl-auth-overlay .sl-auth-brand-logo { background: transparent; box-shadow: none; width: 88px; height: 88px; }
+.sl-auth-overlay .sl-auth-official-logo { display: block; width: 88px; height: 88px; object-fit: contain; border-radius: 18px; }
+.sl-auth-overlay .sl-auth-title { font-size: 28px; line-height: 1.2; font-weight: 700; margin: 8px 0; }
+.sl-auth-overlay .sl-auth-sub { color: var(--sl-ui-muted, #b9c1ca); font-size: 14px; line-height: 1.5; }
+.sl-auth-overlay .sl-auth-close { width: 44px; height: 44px; min-width: 44px; min-height: 44px; top: 12px; right: 12px; }
+.sl-auth-overlay .sl-auth-tabs { margin: 0 0 22px; padding: 4px; border: 1px solid #303841; background: #191e23; }
+.sl-auth-overlay .sl-auth-tab { min-height: 44px; font-size: 14px; color: #b9c1ca; }
+.sl-auth-overlay .sl-auth-tab.active { color: #f3d783; background: #302a1b; box-shadow: none; }
+.sl-auth-overlay .sl-auth-field { margin-bottom: 16px; }
+.sl-auth-overlay .sl-auth-label { font-size: 13px; color: var(--sl-ui-text, #f5f6f7); margin-bottom: 7px; }
+.sl-auth-overlay .sl-auth-input { min-height: 48px; font-size: 16px; line-height: 1.5; background: #191e23; border-color: #49535e; }
+.sl-auth-overlay .sl-auth-input::placeholder { color: #b9c1ca; }
+.sl-auth-overlay .sl-auth-password { position: relative; display: flex; align-items: center; }
+.sl-auth-overlay .sl-auth-password .sl-auth-input { margin-top: 0; padding-right: 78px !important; }
+.sl-auth-overlay .sl-auth-password .sl-auth-password-toggle {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  min-width: 58px; min-height: 44px; padding: 8px; margin: 0;
+  border: 0; background: transparent; color: var(--sl-ui-gold, #e3bc54);
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+html[data-sl-design] body .sl-auth-password .sl-auth-password-toggle {
+  min-height: 44px !important; border-color: transparent; background: transparent;
+  color: var(--sl-ui-gold); transform: translateY(-50%);
+}
+html[data-sl-design] body .sl-auth-password .sl-auth-input { margin-top: 0; padding-right: 78px !important; }
+.sl-auth-overlay .sl-auth-submit { min-height: 50px; border-radius: 12px; background: #e3bc54; color: #18150d; box-shadow: none; margin-top: 4px; }
+.sl-auth-overlay .sl-auth-submit:hover:not(:disabled) { background: #f2d17b; box-shadow: none; transform: none; }
+.sl-auth-overlay .sl-auth-hint, .sl-auth-overlay .sl-auth-terms { color: var(--sl-ui-muted, #b9c1ca); font-size: 12px; line-height: 1.55; }
+.sl-auth-overlay .sl-auth-username-hint { margin: -7px 0 18px; }
+.sl-auth-overlay .sl-auth-terms { margin: 18px 0 0; }
+.sl-auth-overlay .sl-auth-or { color: #b9c1ca; font-size: 11px; margin: 16px 0; }
+.sl-auth-overlay .sl-auth-foot { margin-top: 12px; font-size: 14px; }
+.sl-auth-overlay .sl-auth-link { min-height: 44px; padding: 10px 6px; color: #e3bc54; }
+.sl-auth-overlay .sl-auth-error { color: #fca5a5; background: #2b1b20; border-color: #7a3f49; }
+.sl-auth-overlay .sl-auth-error, .sl-auth-overlay .sl-auth-success { line-height: 1.5; border-radius: 12px; padding: 12px 14px; }
+.sl-auth-overlay [aria-invalid="true"], html[data-sl-design] body .sl-auth-overlay [aria-invalid="true"] { border-color: #ee9393 !important; }
+.sl-auth-overlay :is(button, a, input, [tabindex]):focus-visible { outline: 3px solid var(--sl-ui-focus, #f4d88e); outline-offset: 3px; }
+.sl-auth-overlay form[aria-busy="true"] .sl-auth-submit { cursor: progress; }
+@media (max-width: 480px) {
+  .sl-auth-overlay { padding: 12px; padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+  .sl-auth-overlay .sl-auth-modal { padding: 28px 20px 22px; max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); border-radius: 22px; }
+  .sl-auth-overlay .sl-auth-title { font-size: 26px; }
+  .sl-auth-overlay .sl-auth-brand { margin-bottom: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sl-auth-overlay, .sl-auth-modal, .sl-auth-overlay * { animation: none !important; transition: none !important; }
+}

@@ -1,0 +1,784 @@
+{
+  "scope": "isolated fictional browser acceptance; no real-provider or iOS certification",
+  "native_postgres": "18.3 (Debian 18.3-1.pgdg13+1)",
+  "browser": "151.0.7922.34",
+  "tested_commit": "9e7b19d2eed4a5fcddd497954ed7f84054a8a8e1",
+  "workflow_run_id": "45351331962",
+  "source_sha256": {
+    "src/launch/identity.js": "0351cf8e432cbdef97b04ae2e82052460984ce97a93efb1d1b44c766fdb84a1a",
+    "src/launch/people.js": "8c1a5f76b8d5c44f531261ebad6a0e15e812a728a948cbd4c33f0586393e9800",
+    "src/launch/media.js": "7a35f75a0203b37071605b4e27f933a6d1465363e0bdb08a780fe3a4bb5a2746",
+    "src/launch/messages.js": "46d64d90828d356d3baca988eae7a7331d49d532611ee901cb9f847d65953983",
+    "src/launch/session.js": "1473ec6d394014453356ca84e28d95a647f5d1e5d2071c30d6126fe7fc6abe34",
+    "src/routes/oauth.js": "4334b11b3d556cbbfd7b774ebefd9d2db18291a1c1714bb8bcf48227c91238e5",
+    "src/services/mailer.js": "f2c7c2348ac4b03b06dfdbf85c1e0e510e6d03119740feedf6eab4695499f0e6",
+    "web/frontend/js/sl-auth-core.js": "2284dd1a9a4819f8f195694b9fc12a70c045a699d13e2ebac1a6f98bde4ec70f",
+    "web/frontend/js/sl-auth-ui.js": "368d574fc890fcca89c113f11333aa62372e8fdcb067dae529b633789b82b30d",
+    "web/frontend/js/sl-bundle-7d.js": "8498b90d7049fcedd8086e38b39de361dd09b3cd557731f17d06fa41d2bb8497",
+    "web/frontend/js/sl-social-profile.js": "d81fed50e915ddc97550599f4d449d76c76fa3a6bffb2e9c252d12e65554fd86",
+    "web/frontend/js/sl-social-messages.js": "05e4b4ccc7944c6c62dd20a804ce9e797724aa6e8886cecf58d47eb8022cb44a",
+    "web/frontend/js/sl-account-settings.js": "c2797eb5cc44e37ed291be95eabfca27314c7ca1500fe4adedaa542bc910e686",
+    "web/frontend/js/sl-reset-password.js": "549780338b1ded42a1289501c287f17fed2d95af23c30c568a54ec867683f838",
+    "web/frontend/js/sl-email-verification.js": "747f0006d54d9173d5002f51143a3d1405a7b8d8ae2992872a4966e3424bd80b",
+    "web/frontend/js/sl-verification-banner.js": "fca2348df1fea5ed7cbe749e5e367bc8206926e2c26c1483d04500e06fabce86",
+    "web/frontend/css/sl-social-profile.css": "d4f81ff3dd16f4eafb4191e3731cbcc906af809bc5d480e6114d85dde199ad74",
+    "web/frontend/css/sl-auth-ui.css": "bcdc7211ed2f7be5edeb9b895e8e77104507f7496582095a110035fa750289f3",
+    "web/frontend/css/sl-account-entry.css": "f7d03bd88dafdc1b5d415652519e5449c78794725fc8fc98962ac381120776e0",
+    "web/frontend/css/sl-bundle-7d.css": "19704727daa234acc63f8d895d97bf740c9e4e527909deb71d944a1c1e9c9a5f",
+    "web/frontend/css/sl-design-system.css": "9df6bbd3630d0f932fa7d43c3c0b275c276c6feedffa41e100b41fd091828a9b"
+  },
+  "steps": [
+    {
+      "name": "Desktop and mobile login, signup, recovery visuals",
+      "result": "passed"
+    },
+    {
+      "name": "Real password sign-in and profile customization persist through reload",
+      "result": "passed"
+    },
+    {
+      "name": "Search, request, recipient acceptance and shared friendship state",
+      "result": "passed"
+    },
+    {
+      "name": "Privacy settings remove messaging and blocks remove friendship",
+      "result": "passed"
+    },
+    {
+      "name": "Cross-tab logout clears private state and revokes the session",
+      "result": "passed"
+    },
+    {
+      "name": "Real signup queues one welcome email without a delivery claim",
+      "result": "passed"
+    },
+    {
+      "name": "In-app permanent deletion clears the account, queue and current session",
+      "result": "passed"
+    },
+    {
+      "name": "Isolated recovery screens and branded welcome email render at mobile and desktop widths",
+      "result": "passed"
+    }
+  ],
+  "api_responses": [
+    {
+      "method": "POST",
+      "path": "/api/auth/forgot-password",
+      "status": 503
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/lists",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/plans",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/achievements",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/media/capability",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/auth/profile",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/achievements",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/social/summary",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/lists",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/plans",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/achievements",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/lists",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/plans",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/media/capability",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/lists",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/plans",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/lists",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/plans",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/achievements",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/lists",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/plans",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends/pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/search",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/friends/request",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends/pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/search",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/achievements",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends/pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/venues/search",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/friends/accept",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends/pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/achievements",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends/pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/search",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/blocked",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/users/me/settings",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/blocked",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/achievements",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends/pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/search",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/b532045e-1a5f-4d78-950a-4daa0c801001",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/social/summary",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/lists",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/plans",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/plans",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/lists",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/users/b532045e-1a5f-4d78-950a-4daa0c801001/block",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/social/summary",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/blocked",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/lists",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/plans",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/lists",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/plans",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/achievements",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/users/b532045e-1a5f-4d78-950a-4daa0c801001/block",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends/pending",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/blocked",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/achievements",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/lists",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/plans",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/blocked",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/venues",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/signup",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/lists",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/plans",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/achievements",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/lists",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/plans",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/blocked",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/account/deletion",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/analytics/event",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/auth/account",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 401
+    }
+  ],
+  "uncaught_errors": [],
+  "limitations": [
+    "SMTP inbox delivery not tested",
+    "Real Apple/Google OAuth not tested",
+    "Cloudinary upload and external cleanup not tested",
+    "Physical iOS, native accessibility and signed App Store build not tested",
+    "Recovery token validation uses separate route/DOM tests; these screenshots do not certify email delivery"
+  ]
+}

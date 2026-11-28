@@ -53,12 +53,15 @@ router.get('/stats', requireAdmin, async (req, res) => {
 // GET /api/admin/users?page=1&limit=50&search=
 router.get('/users', requireAdmin, async (req, res) => {
     try {
-        const page = Math.max(1, parseInt(req.query.page) || 1);
-        const limit = Math.min(100, parseInt(req.query.limit) || 50);
+        const requestedLimit = parseInt(req.query.limit, 10);
+        const limit = Number.isSafeInteger(requestedLimit) && requestedLimit > 0 ? Math.min(100, requestedLimit) : 50;
+        const requestedPage = parseInt(req.query.page, 10);
+        const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 && requestedPage <= Math.floor(Number.MAX_SAFE_INTEGER / limit) ? requestedPage : 1;
         const offset = (page - 1) * limit;
-        const search = req.query.search ? `%${req.query.search}%` : null;
+        const term = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+        const search = term ? `%${term}%` : null;
 
-        const whereClause = search ? 'WHERE email ILIKE $3 OR display_name ILIKE $3 OR username ILIKE $3' : '';
+        const where = parameter => search ? `WHERE email ILIKE ${parameter} OR display_name ILIKE ${parameter} OR username ILIKE ${parameter}` : '';
         const params = search ? [limit, offset, search] : [limit, offset];
 
         const [usersResult, countResult] = await Promise.all([
@@ -67,12 +70,12 @@ router.get('/users', requireAdmin, async (req, res) => {
                         is_active, created_at, updated_at,
                         (SELECT COUNT(*) FROM checkins WHERE user_id = users.id) as checkin_count,
                         (SELECT COUNT(*) FROM favorites WHERE user_id = users.id) as favorite_count
-                 FROM users ${whereClause}
-                 ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+                 FROM users ${where('$3')}
+                 ORDER BY created_at DESC, id DESC LIMIT $1 OFFSET $2`,
                 params
             ),
             pool.query(
-                `SELECT COUNT(*) as total FROM users ${whereClause}`,
+                `SELECT COUNT(*) as total FROM users ${where('$1')}`,
                 search ? [search] : []
             ),
         ]);
@@ -80,6 +83,7 @@ router.get('/users', requireAdmin, async (req, res) => {
         res.json({
             users: usersResult.rows,
             total: parseInt(countResult.rows[0].total),
+            search_supported: true,
             page,
             limit,
             pages: Math.ceil(parseInt(countResult.rows[0].total) / limit),
@@ -253,11 +257,17 @@ router.get('/plans', requireAdmin, async (req, res) => {
     }
 });
 
-// PATCH /api/admin/venues/:id — toggle featured/trending/active
+// PATCH /api/admin/venues/:id — edit flags or withdraw; publication requires separate review
 router.patch('/venues/:id', requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { featured, trending, spotlight, is_active } = req.body;
+        if (is_active !== undefined && typeof is_active !== 'boolean') {
+            return res.status(400).json({ error: 'is_active must be a boolean', code: 'invalid_venue_activation' });
+        }
+        if (is_active === true) {
+            return res.status(409).json({ error: 'Venue publication requires a reviewed activation workflow', code: 'venue_publication_requires_review' });
+        }
         const updates = [];
         const params = [];
         let idx = 1;
@@ -293,18 +303,18 @@ router.get('/contacts', requireAdmin, async (req, res) => {
     try {
         const limit = Math.min(200, parseInt(req.query.limit) || 50);
         const status = req.query.status || null;
-        const where = status ? `WHERE status = $2` : '';
+        const where = parameter => status ? `WHERE status = ${parameter}` : '';
         const params = status ? [limit, status] : [limit];
         const result = await pool.query(
             `SELECT id, name, email, subject, LEFT(message,300) as preview, source, status, created_at
-             FROM contact_messages ${where}
+             FROM contact_messages ${where('$2')}
              ORDER BY created_at DESC LIMIT $1`,
             params
-        ).catch(() => ({ rows: [] }));
+        );
         const cnt = await pool.query(
-            `SELECT COUNT(*) as total FROM contact_messages ${where}`,
+            `SELECT COUNT(*) as total FROM contact_messages ${where('$1')}`,
             status ? [status] : []
-        ).catch(() => ({ rows: [{ total: 0 }] }));
+        );
         res.json({ messages: result.rows, total: parseInt(cnt.rows[0].total) });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -416,7 +426,7 @@ router.get('/stats', requireAdmin, async (req, res) => {
             safeCount('SELECT COUNT(*) as total FROM business_users'),
             safeCount('SELECT COUNT(*) as total FROM checkins'),
             safeCount('SELECT COUNT(*) as total FROM favorites'),
-            safeCount("SELECT COUNT(*) as total FROM newsletter_subscribers WHERE status='active'"),
+            safeCount("SELECT COUNT(*) as total FROM newsletter_subscribers WHERE status='active' AND opt_in_confirmed_at IS NOT NULL"),
         ]);
 
         res.json({

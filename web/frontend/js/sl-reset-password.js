@@ -1,6 +1,8 @@
 /* Dedicated reset entry point. Token stays in this closure only. */
 (function () {
   'use strict';
+  var business = /^\/business-reset-password(?:\.html)?\/?$/.test(window.location.pathname);
+  var endpoint = business ? '/api/business/reset-password' : '/api/auth/reset-password';
   var token = '';
   var safeUrl = false;
   try {
@@ -16,6 +18,25 @@
     safeUrl = true;
   } catch (_) { token = ''; }
 
+  function requestJSON(endpoint, payload) {
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null, timer;
+    var timeout = new Promise(function (_resolve, reject) {
+      timer = setTimeout(function () {
+        var error = new Error('Account service timed out'); error.code = 'ACCOUNT_TIMEOUT'; reject(error);
+        if (controller) controller.abort();
+      }, 15000);
+    });
+    var request = Promise.resolve().then(function () {
+      return fetch(endpoint, {
+        method: 'POST', mode: 'same-origin', credentials: 'omit', redirect: 'error',
+        cache: 'no-store', referrerPolicy: 'no-referrer', signal: controller && controller.signal,
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+    }).then(async function (response) {
+      return { response: response, body: await response.json().catch(function () { return null; }) };
+    });
+    return Promise.race([request, timeout]).finally(function () { clearTimeout(timer); });
+  }
   function init() {
     var form = document.getElementById('resetForm');
     var password = document.getElementById('newPassword');
@@ -25,7 +46,19 @@
     if (!form || !password || !confirm || !submit || !status) return;
     var busy = false;
     function message(text, kind) { status.textContent = text; status.setAttribute('data-kind', kind || ''); }
-    function disabled(value) { password.disabled = value; confirm.disabled = value; submit.disabled = value; }
+    var toggles = document.querySelectorAll ? document.querySelectorAll('[data-password-toggle]') : [];
+    function disabled(value) {
+      password.disabled = value; confirm.disabled = value; submit.disabled = value;
+      Array.from(toggles).forEach(function (button) { button.disabled = value; });
+    }
+    Array.from(toggles).forEach(function (button) {
+      button.addEventListener('click', function () {
+        var input = document.getElementById(button.getAttribute('data-password-toggle'));
+        var show = input.type === 'password'; input.type = show ? 'text' : 'password';
+        button.textContent = show ? 'Hide' : 'Show'; button.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        button.setAttribute('aria-pressed', String(show));
+      });
+    });
     if (!token || !safeUrl) {
       disabled(true);
       message('This reset link is missing or invalid. Return to SceneLink and request a new password reset link.', 'error');
@@ -43,16 +76,16 @@
       disabled(true);
       message('Resetting your password…');
       try {
-        var response = await fetch('/api/auth/reset-password', {
-          method: 'POST', mode: 'same-origin', credentials: 'omit', redirect: 'error',
-          cache: 'no-store', referrerPolicy: 'no-referrer',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: token, password: password.value })
-        });
+        var result = await requestJSON(endpoint, { token: token, password: password.value });
+        var response = result.response;
         if (!response.ok) {
           if (response.status === 400) message('The reset link is invalid, expired, or currently unavailable. Request a new reset link from SceneLink.', 'error');
           else if (response.status === 429) message('Too many attempts. Please wait before trying again.', 'error');
           else message('Password reset is temporarily unavailable. Please try again later.', 'error');
+          return;
+        }
+        if (!result.body || result.body.ok !== true) {
+          message('The password change could not be confirmed. Try signing in or request a fresh link.', 'error');
           return;
         }
         token = '';
@@ -61,7 +94,7 @@
         form.hidden = true;
         message('Your password has been reset. Return to SceneLink to log in with your new password.', 'success');
       } catch (_) {
-        message('Unable to reach the reset service. Your password reset was not confirmed. Please try again.', 'error');
+        message('Unable to reach the reset service. Your password reset was not confirmed. Try signing in with the new password, or request a fresh reset link.', 'error');
       } finally {
         busy = false;
         disabled(!token);

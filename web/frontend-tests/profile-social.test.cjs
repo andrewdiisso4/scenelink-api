@@ -36,6 +36,51 @@ test('stale profile rejection preserves draft and never claims saved',async t=>{
  m.w.confirm=()=>false;m.click('[data-action=reload-edit]');await tick();assert.equal(m.$('slspEditForm').elements.bio.value,'Unsent draft');
  m.$('slspEditForm').dispatchEvent(new m.w.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert(m.$('slspEdit').hidden);m.click('[data-action=edit]');assert.equal(m.$('slspEditForm').elements.bio.value,'Unsent draft');
 });
+for(const scenario of ['unconfirmed write','unchanged write revision','changed name','changed username','changed bio','changed city','changed links','photo not removed','stale readback','missing revision','missing links'])test('profile '+scenario+' retains the submitted draft without a success claim',async t=>{
+ let saved;
+ const m=await make(t,{user:{...baseUser,avatar_url:'https://assets.example.test/old.webp'},handle:(r,ctx)=>{
+  if(r.method==='PUT'){
+   saved={...ctx.user,...r.body,profile_revision:2};
+   return{body:{user:scenario==='unconfirmed write'?{...ctx.user,profile_revision:2}:scenario==='unchanged write revision'?{...saved,profile_revision:1}:saved}};
+  }
+  if(r.url==='/api/users/me'&&saved){
+   const user={...saved,profile_revision:3};
+   if(scenario==='changed name')user.display_name='Old name';
+   if(scenario==='changed username')user.username='old_username';
+   if(scenario==='changed bio')user.bio='Another session edited this';
+   if(scenario==='changed city')user.city='Another city';
+   if(scenario==='changed links')user.social_links=[];
+   if(scenario==='photo not removed')user.avatar_url='https://assets.example.test/old.webp';
+   if(scenario==='stale readback')user.profile_revision=1;
+   if(scenario==='missing revision')delete user.profile_revision;
+   if(scenario==='missing links')delete user.social_links;
+   return{body:{user}};
+  }
+ }});
+ m.click('[data-action=edit]');await tick();const form=m.$('slspEditForm');
+ form.elements.display_name.value='My new name';form.elements.username.value='new_username';form.elements.bio.value='Keep my text';form.elements.city.value='Boston';form.elements.social_x.value='https://x.com/scenelink';form.elements.remove_avatar.checked=true;
+ m.submit('slspEditForm');await tick();
+ assert.equal(m.$('slspEditForm'),form);assert.equal(form.dataset.revision,'1');assert.equal(form.elements.display_name.value,'My new name');assert.equal(form.elements.bio.value,'Keep my text');assert.equal(form.elements.social_x.value,'https://x.com/scenelink');assert.equal(form.elements.remove_avatar.checked,true);assert.equal(form.elements.bio.disabled,false);
+ assert.match(m.$('slspEditStatus').textContent,/readback failed.*draft is still here/);assert.equal(m.$('slspActionStatus').textContent,'');
+});
+test('profile confirmation accepts the canonical social URLs persisted by the server',async t=>{
+ const {socialLinks}=require('../../src/launch/profile');
+ const m=await make(t,{handle:(r,ctx)=>{if(r.method==='PUT'){ctx.setUser({...ctx.user,...r.body,social_links:socialLinks(r.body.social_links),profile_revision:2});return{body:{user:ctx.user}};}}});
+ m.click('[data-action=edit]');await tick();const form=m.$('slspEditForm');
+ for(const [provider,url]of Object.entries({instagram:'https://www.instagram.com/scenelink/',facebook:'https://www.facebook.com/scenelink/',tiktok:'https://tiktok.com/@scenelink/',x:'https://twitter.com/scenelink/',youtube:'https://youtube.com/@scenelink/',linkedin:'https://linkedin.com/in/scenelink/',snapchat:'https://snapchat.com/add/scenelink/'}))form.elements['social_'+provider].value=url;
+ m.submit('slspEditForm');await tick();
+ assert.match(m.$('slspActionStatus').textContent,/Profile saved and read back/);assert.equal(m.$('slspEditForm').elements.social_x.value,'https://x.com/scenelink');assert.equal(m.$('slspEditForm').elements.social_instagram.value,'https://instagram.com/scenelink');assert.equal(m.w.document.activeElement.dataset.action,'edit');
+});
+test('unchanged profile can confirm an idempotent save at the same revision',async t=>{
+ const m=await make(t,{handle:(r,ctx)=>r.method==='PUT'?{body:{user:ctx.user,replayed:true}}:null});
+ m.click('[data-action=edit]');await tick();m.submit('slspEditForm');await tick();
+ assert.match(m.$('slspActionStatus').textContent,/Profile saved and read back/);assert.equal(m.$('slspEditForm').dataset.revision,'1');
+});
+test('reloading a saved profile reopens the editor and focuses the reloaded values',async t=>{
+ const m=await make(t);m.click('[data-action=edit]');await tick();const old=m.$('slspEditForm');old.elements.bio.value='Draft to discard';
+ m.click('[data-action=reload-edit]');await tick();
+ assert.notEqual(m.$('slspEditForm'),old);assert.equal(m.$('slspEdit').hidden,false);assert.equal(m.$('slspEditForm').elements.bio.value,'');assert.equal(m.w.document.activeElement,m.$('slspEditForm').elements.display_name);
+});
 test('privacy edits include real booleans, opt-in read receipts and revision',async t=>{
  let body;const m=await make(t,{handle:(r,ctx)=>{if(r.method==='PATCH'){body=r.body;ctx.setUser({...ctx.user,...r.body,profile_revision:2});return{body:{user:{...ctx.user,...r.body,profile_revision:2}}};}}});m.click('[data-tab=settings]');await tick();const form=m.$('slspSettingsForm');form.elements.discoverable.checked=false;form.elements.share_read_receipts.checked=true;form.elements.allow_messages.value='none';m.submit('slspSettingsForm');await tick();
  assert.equal(body.discoverable,false);assert.equal(body.share_read_receipts,true);assert.equal(body.allow_messages,'none');assert.equal(body.revision,1);assert.match(m.$('slspActionStatus').textContent,/Privacy settings saved and read back/);
@@ -96,6 +141,22 @@ test('people search suppresses older and input-changed responses; requests use s
   if(r.url==='/api/friends/request'){requested=true;return{body:{friendship_id:'request-id',status:'pending',direction:'outgoing'}};}
  }});m.click('[data-tab=friends]');await tick();m.$('slspSearchInput').value='old';m.submit('slspSearchForm');await tick();m.$('slspSearchInput').value='new';m.$('slspSearchInput').dispatchEvent(new m.w.Event('input',{bubbles:true}));m.submit('slspSearchForm');await tick();releaseOld();await tick();assert.match(m.$('slspSearchResults').textContent,/NEW RESPONSE/);assert(!m.$('slspSearchResults').textContent.includes('OLD RESPONSE'));
  m.click('#slspSearchResults [data-action=request]');await tick();assert.match(m.$('slspSearchResults').textContent,/Request pending/);assert.match(m.$('slspActionStatus').textContent,/pending until/);assert.equal(m.calls.find(c=>c.url==='/api/friends/request').body.user_id,PEER);
+});
+test('refreshing friends replaces a pending request notice and search controls after recipient acceptance',async t=>{
+ let relationship=null;
+ const peer=()=>({id:PEER,username:'friend',display_name:'Fictional friend',can_message:relationship==='accepted',friendship_status:relationship?{id:'request-id',status:relationship,direction:'outgoing'}:null});
+ const m=await make(t,{handle:r=>{
+  if(r.url.startsWith('/api/users/search'))return{body:{results:[peer()]}};
+  if(r.url.startsWith('/api/friends?'))return{body:{friends:relationship==='accepted'?[peer()]:[]}};
+  if(r.url==='/api/friends/request'){relationship='pending';return{body:{friendship_id:'request-id',status:'pending',direction:'outgoing'}};}
+ }});
+ m.click('[data-tab=friends]');await tick();m.$('slspSearchInput').value='friend';m.submit('slspSearchForm');await tick();
+ m.click('#slspSearchResults [data-action=request]');await tick();assert.match(m.$('slspActionStatus').textContent,/pending until/);
+ relationship='accepted';m.click('[data-action=friends]');await tick();await tick();
+ assert.equal(m.$('slspActionStatus').textContent,'');
+ assert.equal(m.$('slspSearchResults').querySelector('[data-action=remove]').textContent,'Remove friend');
+ assert(m.$('slspSearchResults').querySelector('a[href^="/messages"]'));
+ assert.match(m.$('slspFriends').textContent,/Fictional friend/);
 });
 test('session change clears private profile and ignores stale response',async t=>{
  let release;const m=await make(t,{handle:async r=>{if(r.url.includes('/users/search')){await new Promise(resolve=>release=resolve);return{body:{results:[{id:PEER,display_name:'OLD PRIVATE RESULT'}]}};}}});m.click('[data-tab=friends]');await tick();m.$('slspSearchInput').value='test';m.submit('slspSearchForm');await tick();m.w.localStorage.removeItem('sl_jwt_token');m.w.dispatchEvent(new m.w.Event('sl-auth-change'));release();await tick();assert.match(m.$('slSocialProfile').textContent,/Sign in to edit/);assert(!m.$('slSocialProfile').textContent.includes('OLD PRIVATE RESULT'));assert(!m.$('slspSettingsForm'));
@@ -273,6 +334,40 @@ test('reopening edit during capability lookup does not launch a replacement look
 test('failed photo capability lookup can be retried by reopening edit',async t=>{
  let count=0;const m=await make(t,{handle:r=>r.url==='/api/media/capability'?(++count===1?{status:503,body:{error:'Unavailable'}}:{body:{enabled:true,contract:'server-upload-v1'}}):null});
  m.click('[data-action=edit]');await tick();assert(!m.$('slspAvatarFile'));m.click('[data-action=cancel-edit]');m.click('[data-action=edit]');await tick();assert(m.$('slspAvatarFile'));
+});
+test('photo availability has an inline retry that preserves the current draft',async t=>{
+ let count=0;const m=await make(t,{handle:r=>r.url==='/api/media/capability'?(++count===1?{status:503,body:{error:'Unavailable'}}:{body:{enabled:true,contract:'server-upload-v1'}}):null});
+ m.click('[data-action=edit]');await tick();const form=m.$('slspEditForm');form.elements.bio.value='Still editing';
+ const retry=form.querySelector('[data-action=retry-avatar]');assert(retry);retry.focus();retry.click();await tick();
+ assert.equal(count,2);assert.equal(m.$('slspEditForm'),form);assert.equal(form.elements.bio.value,'Still editing');assert(m.$('slspAvatarFile'));assert.equal(m.$('slspAvatarCapability').hasAttribute('aria-busy'),false);assert.equal(m.w.document.activeElement,m.$('slspAvatarFile'));
+});
+test('a first confirmed photo can be removed immediately without losing unsaved text',async t=>{
+ let uploaded;
+ const m=await make(t,{handle:(r,ctx)=>{
+  if(r.url==='/api/media/capability')return{body:{enabled:true,contract:'server-upload-v1'}};
+  if(r.url==='/api/media/upload'){uploaded=r.body;ctx.setUser({...ctx.user,avatar_url:'https://assets.example.test/first.webp',profile_revision:2});return{body:{asset:{kind:'avatar',url:ctx.user.avatar_url}}};}
+  if(r.method==='PUT'){ctx.setUser({...ctx.user,...r.body,profile_revision:3});return{body:{user:ctx.user}};}
+ }});
+ m.click('[data-action=edit]');await tick();const form=m.$('slspEditForm');form.elements.bio.value='My pending bio';assert.equal(m.$('slspRemoveAvatar').hidden,true);
+ choosePhoto(m);m.click('[data-action=upload-avatar]');await tick();await tick();
+ assert.equal(uploaded.revision,1);assert.equal(m.$('slspEditForm'),form);assert.equal(form.elements.bio.value,'My pending bio');assert.equal(m.$('slspRemoveAvatar').hidden,false);assert.match(m.$('slspAvatarPreview').querySelector('img').src,/first.webp/);
+ form.elements.remove_avatar.checked=true;m.submit('slspEditForm');await tick();
+ const write=m.calls.find(r=>r.method==='PUT');assert.equal(write.body.revision,2);assert.equal(write.body.avatar_url,null);assert.equal(write.body.bio,'My pending bio');assert.match(m.$('slspActionStatus').textContent,/Profile saved and read back/);assert.equal(m.$('slspRemoveAvatar').hidden,true);assert(!m.w.document.querySelector('.slsp-hero img'));
+});
+test('broken photo falls back to escaped initials in the hero and editor',async t=>{
+ const m=await make(t,{user:{...baseUser,display_name:'<member>',avatar_url:'https://assets.example.test/missing.webp'}});
+ for(const image of [...m.w.document.querySelectorAll('img.slsp-avatar')])image.dispatchEvent(new m.w.Event('error'));
+ assert.equal(m.w.document.querySelectorAll('img.slsp-avatar').length,0);assert.equal(m.w.document.querySelector('.slsp-hero .slsp-avatar').textContent,'<');assert.equal(m.$('slspAvatarPreview').querySelector('.slsp-avatar').textContent,'<');assert(!m.w.document.querySelector('member'));
+});
+test('empty images never start a provider upload',async t=>{
+ const m=await make(t,{handle:r=>r.url==='/api/media/capability'?{body:{enabled:true,contract:'server-upload-v1'}}:null});m.click('[data-action=edit]');await tick();
+ Object.defineProperty(m.$('slspAvatarFile'),'files',{value:[new m.w.File([],'empty.png',{type:'image/png'})]});m.click('[data-action=upload-avatar]');await tick();
+ assert.equal(m.calls.filter(r=>r.url==='/api/media/upload').length,0);assert.equal(m.$('slspAvatarStatus').dataset.kind,'error');
+});
+test('an avatar revision conflict keeps the selected photo and text draft for review',async t=>{
+ const m=await make(t,{handle:r=>r.url==='/api/media/capability'?{body:{enabled:true,contract:'server-upload-v1'}}:r.url==='/api/media/upload'?{status:409,body:{error:'Profile changed while uploading',code:'STALE_PROFILE'}}:null});
+ m.click('[data-action=edit]');await tick();const form=m.$('slspEditForm'),{input,file}=choosePhoto(m);form.elements.bio.value='Keep this text';m.click('[data-action=upload-avatar]');await tick();await tick();
+ assert.equal(form.dataset.revision,'1');assert.equal(form.elements.bio.value,'Keep this text');assert.equal(input.files[0],file);assert.equal(input.disabled,false);assert.equal(m.$('slspRemoveAvatar').hidden,true);assert.match(m.$('slspAvatarStatus').textContent,/changed in another session/);
 });
 for(const [label,asset,readUser] of [
  ['wrong kind',{kind:'post',url:'https://assets.example.test/new.webp'},{avatar_url:'https://assets.example.test/new.webp',profile_revision:2}],

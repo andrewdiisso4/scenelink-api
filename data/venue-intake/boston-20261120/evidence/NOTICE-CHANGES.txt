@@ -1,0 +1,19 @@
+NOTICE OF CHANGES TO THIS EXTRACT
+
+Source: Overture Maps Foundation, places release 2026-11-18.0.
+Retrieved: 2026-11-20 UTC.
+The source was geographically filtered to bounding box
+west=-71.30, south=42.18, east=-70.88, north=42.50.
+No source property values were edited in the raw extract.
+The accompanying GeoJSONSeq is an output representation produced by the official
+Overture Python client. The GeoParquet extract retains source nulls and per-row
+bounding boxes. Source file identity, retrieval times and extract checksums are
+recorded in ../extract-metadata.json.
+
+Overture's attribution page identifies its transformation of Foursquare data
+to the Overture schema (Changed: 2026-03-18). Its page snapshot is retained as
+overture-attribution.html. The full current Foursquare notice and the full
+CDLA Permissive 2.0, Apache 2.0 and CC0 1.0 license texts accompany this extract.
+
+These source records are not independently verified as currently open and are
+not approved for production activation by this extraction step.
