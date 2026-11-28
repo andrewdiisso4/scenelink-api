@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const frontend = path.join(__dirname, '../frontend');
 const read = file => fs.readFileSync(path.join(frontend, file), 'utf8');
 const origin = 'https://scenelink.test';
-const marker = 'connected-20261128-social-business';
+const marker = 'connected-20261128-profile-social-qa';
 const controller = read('business.html').match(/src="([^"]*js\/sl-business-app\.js[^"]*)"/)[1];
 
 test('pending-review owner UI uses a fresh controller URL with the paired API release', () => {

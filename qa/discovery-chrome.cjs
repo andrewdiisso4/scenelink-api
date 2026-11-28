@@ -43,6 +43,13 @@ const server=http.createServer((req,res)=>{
     await page.getByText('Harbor Test Kitchen',{exact:true}).waitFor({state:'visible',timeout:6000});
     await search.press('ArrowDown');
     assert.match(await page.locator('[aria-selected=true].slus-item').innerText(), /Harbor Test Kitchen/);
+    const contrastRatios=await page.locator('[aria-selected=true].slus-item').evaluate(row=>{
+      const luminance=color=>color.match(/[0-9.]+/g).slice(0,3).map(Number).map(x=>x/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4).reduce((sum,x,i)=>sum+x*[.2126,.7152,.0722][i],0);
+      const b=luminance(getComputedStyle(row).backgroundColor);
+      return [...row.querySelectorAll('.slus-name,.slus-meta')].map(e=>{const f=luminance(getComputedStyle(e).color);return (Math.max(f,b)+.05)/(Math.min(f,b)+.05);});
+    });
+    assert.equal(contrastRatios.length,2,prefix);
+    assert(contrastRatios.every(ratio=>ratio>=4.5),prefix+' search contrast '+JSON.stringify(contrastRatios));
     await page.locator('.slus-clear').click();
     assert.equal(await search.inputValue(),'');
     await launcher.click();

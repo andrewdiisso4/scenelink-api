@@ -140,3 +140,17 @@
 #socialFeed .sf-post-audience select { min-height: 44px !important; padding-block: 8px !important; }
 #slMessagesWorkspace .slm-initial { overflow: hidden; }
 #slMessagesWorkspace .slm-initial img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Keep in-content links recognizably interactive on every dark surface. */
+html[data-sl-design] body :is(
+  .slsp .slsp-person a,
+  .slsp a.slsp-pill,
+  #socialFeed .sf-comment-byline a,
+  #socialFeed .sf-preview-note a,
+  #slMessagesWorkspace .slm-recipient-person a
+) {
+  color: #f7d786;
+  text-decoration: underline;
+  text-decoration-thickness: from-font;
+  text-underline-offset: 0.19em;
+}

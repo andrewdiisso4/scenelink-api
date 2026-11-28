@@ -25,7 +25,7 @@ async function mount(t, {handle,storage={},page='business.html',url='/business'}
         if(path.includes('/listings/'))return reply({ok:true,venue_id:owner.venue_id,window_days:Number(new URL(path,w.location).searchParams.get('days')),metrics:['view','save','plan_add','website_click'],counts:{view:12,save:0,plan_add:3,website_click:2},total:17});
         if(path.includes('/venues'))return reply({venues:[{...owner.venue,is_primary:true}]});
         if(path.includes('/photos'))return reply({photos:[]});
-        if(path.includes('/reviews'))return reply({reviews:[]});
+        if(path.includes('/reviews'))return reply({reviews:[],venue_id:owner.venue_id});
         if(path.includes('/promos'))return reply({promos:[]});
         throw Error('Unexpected request '+path);
     };
@@ -111,7 +111,7 @@ test('only changed listing fields are saved; a mismatched confirmation preserves
     h.el('bdEditHours').value='Fri 6–11';h.el('bdSaveListing').click();await tick();
     const write=h.calls.find(c=>c.method==='PATCH');
     assert.equal(write.path,'/api/business/venue?venue_id=venue-fixture');
-    assert.deepEqual(write.body,{hours_display:'Fri 6–11'});
+    assert.deepEqual(write.body,{hours_display:'Fri 6–11',expected_active_venue_id:owner.venue_id});
     assert.match(h.w.document.body.textContent,/did not confirm/);assert.equal(h.el('bdEditHours').value,'Fri 6–11');
     confirm=true;h.el('bdSaveListing').click();await tick();h.el('bdSaveListing').click();await tick();
     assert.equal(h.calls.filter(c=>c.method==='PATCH').length,2);
@@ -283,4 +283,24 @@ test('stale cross-tab location and legacy reporting refresh cannot overwrite a d
     assert.equal(h.el('bdCurrentLocation').textContent,'Now managing Fixture Café');
     assert.equal(h.el('bdSwitchLocation').disabled,true);
     assert.equal(h.el('bdSaveListing').disabled,true);
+});
+
+
+test('an old owner tab cannot save after the location changes and preserves the draft', async t => {
+    const h=await mount(t,{storage:{sl_biz_token:'fixture'},handle:c=>c.method==='PATCH'?reply({error:'Location changed'},409):undefined});
+    h.el('bdEditHours').value='Unsent hours';
+    h.el('bdSaveListing').click();
+    await tick();
+    assert.equal(h.el('bdEditHours').value,'Unsent hours');
+    assert.equal(h.el('bdSaveListing').disabled,true);
+    assert.match(h.el('bdSwitchStatus').textContent,/changed in another tab/);
+    assert.equal(h.calls.filter(c=>c.method==='PATCH').length,1);
+});
+
+test('owner reviews send the displayed venue and reject results for a different venue', async t => {
+    const h=await mount(t,{storage:{sl_biz_token:'fixture'},handle:c=>c.path.includes('/reviews')?
+        reply({reviews:[{rating:4,content:'Another location review'}],venue_id:'venue-other'}):undefined});
+    assert(h.calls.some(c=>c.path==='/api/business/reviews?venue_id='+owner.venue_id));
+    assert.match(h.el('bdReviewsList').textContent,/Reviews unavailable/);
+    assert.doesNotMatch(h.el('bdReviewsList').textContent,/Another location review/);
 });

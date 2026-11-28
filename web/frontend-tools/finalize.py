@@ -9,7 +9,7 @@ epoch=os.environ.get('SOURCE_DATE_EPOCH')
 built=(datetime.fromtimestamp(int(epoch),timezone.utc) if epoch is not None else datetime.now(timezone.utc)).isoformat()
 root=Path(__file__).resolve().parent.parent/'frontend'
 sync_auth_css(root)
-tag='connected-20261128-social-business'
+tag='connected-20261128-profile-social-qa'
 for name in ['sl-bundle-7d.js','sl-bundle-7d-ui.js']:
  p=root/'js'/name;s=p.read_text();matches=list(re.finditer(r'/\* === (js/[^ ]+) === \*/',s));header=s[:matches[0].start()]
  p.write_text(header+'\n\n'.join('/* === '+m[1]+' === */\n'+(root/m[1]).read_text().strip() for m in matches)+'\n')
@@ -29,7 +29,7 @@ for key,value in {'phase':'release-acceptance','sw_version':'sl-'+tag,'deploy':t
 p.write_text(s)
 # Preserve release provenance when issuing a new shared asset revision.
 metadata=json.loads((root/'version.json').read_text())
-metadata.update({'phase':'release-acceptance','sw_version':'sl-'+tag,'timestamp':built,'status':'versioned_build','requires_paired_backend':True,'required_migration':'019_newsletter_opt_in.sql','rollout_order':'paired_backend_then_frontend','admin_controller_cache_key':tag,'business_controller_cache_key':tag,'summary':'Account and social release candidate: consistent sign-in and recovery, verified profile persistence, consent-aware people actions, recent-provider account deletion and branded welcome email. This build adds a confirmable footer newsletter and optional scoped signup email transport. Includes unified discovery search, a floating Concierge entry, linked social screens, confirmed profile identity synchronization, documented fixture exclusions, protected business location switching, and the prior admin, business and Concierge fixes. Requires the paired API candidate. External provider cleanup and native App Store acceptance remain release gates; AI and provider pilots remain off.'})
+metadata.update({'phase':'release-acceptance','sw_version':'sl-'+tag,'timestamp':built,'status':'versioned_build','requires_paired_backend':True,'required_migration':'019_newsletter_opt_in.sql','rollout_order':'paired_backend_then_frontend','admin_controller_cache_key':tag,'business_controller_cache_key':tag,'summary':'Account and social release candidate: consistent sign-in and recovery, verified profile persistence, consent-aware people actions, recent-provider account deletion and branded welcome email. This build adds a confirmable footer newsletter and optional scoped signup email transport. Preserves unified discovery, high-contrast social links, the floating Concierge entry, and multi-location owner integrity with measured activity only. Adds current profile counts, confirmed profile/header identity synchronization, and narrow documented fixture exclusions including review writes and owner review reads. Requires the paired API candidate. External provider cleanup and native App Store acceptance remain release gates; AI and provider pilots remain off.'})
 (root/'version.json').write_text(json.dumps(metadata,indent=2)+'\n')
 evidence=root.parent/'frontend-evidence';evidence.mkdir(exist_ok=True)
 (evidence/'candidate-sha256.json').write_text(json.dumps({str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.rglob('*')) if p.is_file()},indent=2)+'\n')

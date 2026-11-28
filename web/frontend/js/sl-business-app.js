@@ -33,7 +33,7 @@
     async function businessFetch(url, options) {
         const token = getToken();
         if (!token) throw Error('Business sign-in required.');
-        if (operator.venue_id && /\/(?:photos|promos)(?:\/|$)/.test(url) && !url.includes('?')) {
+        if (operator.venue_id && /\/(?:photos|promos|reviews)(?:\/|$)/.test(url) && !url.includes('?')) {
             url += '?venue_id=' + encodeURIComponent(operator.venue_id);
         }
         const response = await window.fetch(url, {...options,cache:'no-store'});
@@ -303,12 +303,16 @@
             businessFetch(API + '/venue?venue_id=' + encodeURIComponent(venueId), {
                 method: 'PATCH',
                 headers: authHeaders(),
-                body: JSON.stringify(payload)
+                body: JSON.stringify({...payload, expected_active_venue_id:venueId})
             })
-                .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+                .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, data: d }; }); })
                 .then(function (res) {
                     newBtn.disabled = false; newBtn.innerHTML = orig;
                     if (!res.ok) {
+                        if (res.status === 409) {
+                            switchNeedsReload = true;
+                            setText('bdSwitchStatus', 'The active location changed in another tab. Copy any unsaved edits before reloading.');
+                        }
                         toast(res.data.error || 'Save failed', true);
                         return;
                     }
@@ -338,10 +342,12 @@
     function loadReviews() {
         var token = getToken();
         if (!token) return;
+        const venueId = operator.venue_id;
         businessFetch(API + '/reviews', { headers: authHeaders() })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (d) {
-                if (!Array.isArray(d?.reviews)) throw Error();
+                if (token !== getToken() || venueId !== operator.venue_id) return;
+                if (!Array.isArray(d?.reviews) || (venueId && d.venue_id !== venueId)) throw Error();
                 var c = $('bdReviewsList'); if (!c) return;
                 var reviews = d.reviews || [];
                 const sort = $('bdReviewSort').selectedIndex;
@@ -368,7 +374,10 @@
                         '</div>';
                 }).join('');
             })
-            .catch(function () { setText('bdReviewsList','Reviews unavailable. Reopen Reviews to retry.'); });
+            .catch(function () {
+                if (token === getToken() && venueId === operator.venue_id)
+                    setText('bdReviewsList','Reviews unavailable. Reopen Reviews to retry.');
+            });
     }
 
     function timeAgo(ts) {

@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const frontend = path.join(__dirname, '../frontend');
 const read = file => fs.readFileSync(path.join(frontend, file), 'utf8');
 const origin = 'https://scenelink.test';
-const marker = 'connected-20261128-social-business';
+const marker = 'connected-20261128-profile-social-qa';
 const controller = read('admin.html').match(/src="([^"]*js\/sl-admin-portal\.js[^"]*)"/)[1];
 
 test('the reconciled admin asset keeps a unique cache key, hotfix provenance and the paired release contract', () => {

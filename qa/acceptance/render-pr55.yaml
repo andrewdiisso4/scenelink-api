@@ -1,0 +1,69 @@
+# Separate synthetic QA for the composed PR55 candidate; never adopt existing QA.
+# Read RENDER_PR55.md before planning. Create with autoSync=false and
+# existingResources=create_new only after the named QA branch is frozen.
+previews:
+  generation: 'off'
+
+projects:
+  - name: scenelink-release-qa-20261123-pr55
+    environments:
+      - name: acceptance
+        services:
+          - type: web
+            name: scenelink-release-qa-20261123-pr55
+            runtime: node
+            repo: https://github.com/andrewdiisso4/scenelink-api
+            branch: qa/profile-social-pr55-20261128
+            region: virginia
+            plan: free
+            autoDeployTrigger: 'off'
+            buildCommand: npm ci --omit=dev --ignore-scripts
+            startCommand: node qa/acceptance/start.cjs
+            healthCheckPath: /__acceptance/health
+            envVars:
+              - key: NODE_ENV
+                value: production
+              - key: NODE_VERSION
+                value: '24.22.1'
+              - key: ACCEPTANCE_MODE
+                value: isolated-synthetic
+              - key: ACCEPTANCE_ENVIRONMENT_ID
+                value: scenelink-release-qa-20261123
+              - key: DATABASE_URL
+                fromDatabase:
+                  name: scenelink-release-qa-20261123-pr55-db
+                  property: connectionString
+              - key: ACCEPTANCE_DB_HOST
+                fromDatabase:
+                  name: scenelink-release-qa-20261123-pr55-db
+                  property: host
+              - key: ACCEPTANCE_DB_NAME
+                fromDatabase:
+                  name: scenelink-release-qa-20261123-pr55-db
+                  property: database
+              - key: JWT_SECRET
+                generateValue: true
+              - key: ACCEPTANCE_ACCESS_SECRET
+                generateValue: true
+              - key: ACCEPTANCE_FIXTURE_PASSWORD
+                generateValue: true
+              - key: ALLOW_DEMO_SEED
+                value: 'false'
+              - key: FORCE_RESEED
+                value: 'false'
+              - key: EMAIL_PROVIDER
+                value: disabled
+              - key: ENABLE_PROVIDER_FETCH
+                value: 'false'
+              - key: CONCIERGE_AI_PILOT_ENABLED
+                value: 'false'
+        databases:
+          - name: scenelink-release-qa-20261123-pr55-db
+            databaseName: scenelink_release_qa_20261123_pr55
+            user: scenelink_release_qa_pr55
+            postgresMajorVersion: '18'
+            region: virginia
+            plan: 0.1c-256mb
+            diskSizeGB: 1
+            storageAutoscalingEnabled: false
+            ipAllowList: []
