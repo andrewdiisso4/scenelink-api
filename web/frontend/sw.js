@@ -14,23 +14,23 @@
  *     stale HTML even momentarily
  */
 
-const VERSION = 'sl-connected-20261128-auth-session-qa';
+const VERSION = 'sl-connected-20261128-december-audit';
 const SHELL_CACHE = `sl-shell-${VERSION}`;
 const RUNTIME_CACHE = `sl-runtime-${VERSION}`;
 const IMG_CACHE = `sl-img-${VERSION}`;
 
 const SHELL_URLS = [
-  '/js/ai-concierge-v5.js?v=connected-20261128-auth-session-qa',
-  '/css/sl-design-system.css?v=connected-20261128-auth-session-qa',
+  '/js/ai-concierge-v5.js?v=connected-20261128-december-audit',
+  '/css/sl-design-system.css?v=connected-20261128-december-audit',
   '/images/brand/scenelink-wordmark.png',
   '/images/brand/scenelink-full.png',
-  '/js/sl-connected-lists.js?v=connected-20261128-auth-session-qa',
-  '/js/sl-social-messages.js?v=connected-20261128-auth-session-qa',
-  '/js/sl-social-profile.js?v=connected-20261128-auth-session-qa',
-  '/js/sl-events.js?v=connected-20261128-auth-session-qa',
-  '/js/sl-connected-plans.js?v=connected-20261128-auth-session-qa',
-  '/js/sl-connected-actions.js?v=connected-20261128-auth-session-qa',
-  '/js/sl-connected-api.js?v=connected-20261128-auth-session-qa',
+  '/js/sl-connected-lists.js?v=connected-20261128-december-audit',
+  '/js/sl-social-messages.js?v=connected-20261128-december-audit',
+  '/js/sl-social-profile.js?v=connected-20261128-december-audit',
+  '/js/sl-events.js?v=connected-20261128-december-audit',
+  '/js/sl-connected-plans.js?v=connected-20261128-december-audit',
+  '/js/sl-connected-actions.js?v=connected-20261128-december-audit',
+  '/js/sl-connected-api.js?v=connected-20261128-december-audit',
   '/offline.html',
   '/manifest.json',
   '/icons/icon-192.png',
@@ -38,21 +38,21 @@ const SHELL_URLS = [
   '/icons/apple-touch-icon.png',
   '/icons/favicon.ico',
   // Phase 7D: precache the bundles so first-paint after install is instant
-  '/css/sl-bundle-7d.css?v=connected-20261128-auth-session-qa',
-  '/js/sl-bundle-7d.js?v=connected-20261128-auth-session-qa',
-  '/js/sl-nav-gate.js?v=connected-20261128-auth-session-qa',
-  '/js/sl-fetch-guard.js?v=connected-20261128-auth-session-qa',
-  '/js/sl-version-marker.js?v=connected-20261128-auth-session-qa',
-  '/js/sl-bundle-7d-ui.js?v=connected-20261128-auth-session-qa',
-  '/css/sl-phase8-launch.css?v=connected-20261128-auth-session-qa',
-  '/js/sl-phase8-completion.js?v=connected-20261128-auth-session-qa',
-  '/js/sl-phase8d-recovery.js?v=connected-20261128-auth-session-qa',
-  '/css/sl-universal-search.css?v=connected-20261128-auth-session-qa',
-  '/js/sl-universal-search.js?v=connected-20261128-auth-session-qa',
-  '/js/sl-social-network.js?v=connected-20261128-auth-session-qa',
-  '/js/sl-social-core.js?v=connected-20261128-auth-session-qa',
-  '/js/sl-social-integration-9a.js?v=connected-20261128-auth-session-qa',
-  '/js/sl-venue-activity-9a.js?v=connected-20261128-auth-session-qa'
+  '/css/sl-bundle-7d.css?v=connected-20261128-december-audit',
+  '/js/sl-bundle-7d.js?v=connected-20261128-december-audit',
+  '/js/sl-nav-gate.js?v=connected-20261128-december-audit',
+  '/js/sl-fetch-guard.js?v=connected-20261128-december-audit',
+  '/js/sl-version-marker.js?v=connected-20261128-december-audit',
+  '/js/sl-bundle-7d-ui.js?v=connected-20261128-december-audit',
+  '/css/sl-phase8-launch.css?v=connected-20261128-december-audit',
+  '/js/sl-phase8-completion.js?v=connected-20261128-december-audit',
+  '/js/sl-phase8d-recovery.js?v=connected-20261128-december-audit',
+  '/css/sl-universal-search.css?v=connected-20261128-december-audit',
+  '/js/sl-universal-search.js?v=connected-20261128-december-audit',
+  '/js/sl-social-network.js?v=connected-20261128-december-audit',
+  '/js/sl-social-core.js?v=connected-20261128-december-audit',
+  '/js/sl-social-integration-9a.js?v=connected-20261128-december-audit',
+  '/js/sl-venue-activity-9a.js?v=connected-20261128-december-audit'
 ];
 
 // ── install: nuke ALL old sl-* caches, then precache shell ──────────────
