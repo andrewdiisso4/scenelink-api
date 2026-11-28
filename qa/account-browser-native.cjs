@@ -221,6 +221,38 @@ async function waitUntil(fn,label,timeoutMs=5000) {for(let i=0;i<Math.ceil(timeo
     }
     await emailCtx.close();
   });
+  await stage('Inbox verification click reaches the gated API and consumes the token once in Chromium',async()=>{
+    const token=crypto.randomBytes(32).toString('hex');
+    const hash=crypto.createHash('sha256').update(token).digest('hex');
+    const email='qa.member@example.invalid';
+    await db('UPDATE users SET email_verified_at=NULL,verified_email=NULL WHERE id=$1',[memberID]);
+    await db(`INSERT INTO email_verification_tokens(token_hash,user_id,email,expires_at)
+      VALUES ($1,$2,$3,NOW()+INTERVAL '1 hour')`,[hash,memberID,email]);
+    const url=origin+'/verify-email.html#token='+token;
+    const readLanding = async () => {
+      await page.goto(origin+'/__acceptance/');
+      const response=await page.goto(url);
+      assert.equal(response.status(),200);
+      const button=page.locator('#verifySubmit:enabled');
+      await button.waitFor();
+      assert.equal(new URL(page.url()).hash,'');
+      return button;
+    };
+    const click = async expected => {
+      const button=await readLanding();
+      const got=page.waitForResponse(r=>r.url()===origin+'/api/auth/verification/confirm'&&r.request().method()==='POST');
+      await button.click();
+      const response=await got;assert.equal(response.status(),expected);
+      assert.equal(await response.request().headerValue('origin'),origin);
+      const referer=await response.request().headerValue('referer');
+      if(referer) assert.equal(referer,origin+'/');
+    };
+    await click(200);
+    await page.locator('#verifyStatus[data-kind=success]').waitFor();
+    assert.equal((await db('SELECT verified_email FROM users WHERE id=$1',[memberID]))[0].verified_email,email);
+    await click(400);
+    await page.locator('#verifyStatus[data-kind=error]').waitFor();
+  });
   assert.deepEqual(errors,[],'No uncaught JavaScript errors in tested real pages');
   const sourceFiles=['src/launch/identity.js','src/launch/people.js','src/launch/media.js','src/launch/messages.js','src/launch/session.js','src/routes/oauth.js','src/services/mailer.js','web/frontend/js/sl-auth-core.js','web/frontend/js/sl-auth-ui.js','web/frontend/js/sl-bundle-7d.js','web/frontend/js/sl-social-profile.js','web/frontend/js/sl-social-messages.js','web/frontend/js/sl-account-settings.js','web/frontend/js/sl-reset-password.js','web/frontend/js/sl-email-verification.js','web/frontend/js/sl-verification-banner.js','web/frontend/css/sl-social-profile.css','web/frontend/css/sl-auth-ui.css','web/frontend/css/sl-account-entry.css','web/frontend/css/sl-bundle-7d.css','web/frontend/css/sl-design-system.css'];
   const receipt={scope:'isolated fictional browser acceptance; no real-provider or iOS certification',native_postgres:nativeVersion,browser:await browser.version(),tested_commit:sourceCommit,workflow_run_id:process.env.GITHUB_RUN_ID||null,

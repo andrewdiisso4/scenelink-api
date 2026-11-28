@@ -26,6 +26,7 @@ function makeVerificationLanding(canonical) {
     '<p id="qaUnlockRecovery" hidden><a href="/__acceptance/" target="_blank" rel="noopener noreferrer">Unlock the private SceneLink test environment</a> in the new tab, then return here and select Confirm email again.</p>' +
     '<noscript><p>JavaScript is required. No verification request has been sent.</p></noscript>';
   return shell('Confirm your SceneLink test email',body)
+    .replace('<main>','<main class="sl-account-card">')
     .replace('<meta charset="utf-8">','<meta charset="utf-8"><meta name="referrer" content="no-referrer"><script>'+scripts+'</script>');
 }
 
